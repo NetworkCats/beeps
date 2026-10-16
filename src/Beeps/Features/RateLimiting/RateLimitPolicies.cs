@@ -1,0 +1,36 @@
+namespace Beeps.Features.RateLimiting;
+
+/// <summary>
+/// Policy names (PLAN 6.16). The numbers live only in configuration (<c>RateLimiting:Policies</c>);
+/// startup fails if any of these is missing there.
+/// </summary>
+public static class RateLimitPolicies
+{
+    /// <summary>Default for every anonymous request without its own policy, partitioned by IP.</summary>
+    public const string AnonymousBrowse = "AnonymousBrowse";
+
+    /// <summary>Default for every signed-in request without its own policy, partitioned by account.</summary>
+    public const string Browse = "Browse";
+
+    public const string Register = "Register";
+    public const string Login = "Login";
+    public const string EmailCode = "EmailCode";
+    public const string PasswordReset = "PasswordReset";
+    public const string HumanPost = "HumanPost";
+    public const string Like = "Like";
+    public const string AgentPost = "AgentPost";
+    public const string AgentReply = "AgentReply";
+    public const string AgentThreadReply = "AgentThreadReply";
+    public const string OwnerAgentsPost = "OwnerAgentsPost";
+    public const string MediaUpload = "MediaUpload";
+    public const string AvatarChange = "AvatarChange";
+    public const string AgentRead = "AgentRead";
+    public const string Search = "Search";
+    public const string StreamConnect = "StreamConnect";
+
+    public static readonly IReadOnlyList<string> All =
+    [
+        AnonymousBrowse, Browse, Register, Login, EmailCode, PasswordReset, HumanPost, Like, AgentPost,
+        AgentReply, AgentThreadReply, OwnerAgentsPost, MediaUpload, AvatarChange, AgentRead, Search, StreamConnect,
+    ];
+}

@@ -1,0 +1,152 @@
+/* Utilities: a deliberately small set. Spacing, display, flex/grid, text, colour,
+ * borders, sizing, visibility. Scales come from abstracts/_config.scss. */
+@use "sass:map";
+@use "foundation/layers";
+@use "abstracts" as *;
+
+$_sides: (
+  "": null,
+  t: block-start,
+  b: block-end,
+  s: inline-start,
+  e: inline-end,
+  x: inline,
+  y: block,
+);
+
+@mixin _spacing($name, $property, $auto: false) {
+  @each $side, $logical in $_sides {
+    $prop: $property;
+    @if $logical {
+      $prop: #{$property}-#{$logical};
+    }
+    @each $step in $utility-spacers {
+      .#{$prefix}#{$name}#{$side}-#{$step} { #{$prop}: var(--cui-space-#{$step}); }
+    }
+    @if $auto {
+      .#{$prefix}#{$name}#{$side}-auto { #{$prop}: auto; }
+    }
+  }
+}
+
+
+@layer cui.utilities {
+  /* ---- Spacing: m{t|b|s|e|x|y}-{0..16}, p… ---- */
+  @include _spacing(m, margin, $auto: true);
+  @include _spacing(p, padding);
+  @each $step in $utility-gaps {
+    .#{$prefix}gap-#{$step} { gap: var(--cui-space-#{$step}); }
+  }
+
+  /* ---- Display & position ---- */
+  .#{$prefix}block { display: block; } .#{$prefix}inline-block { display: inline-block; } .#{$prefix}inline { display: inline; }
+  .#{$prefix}flex { display: flex; } .#{$prefix}inline-flex { display: inline-flex; } .#{$prefix}grid { display: grid; } .#{$prefix}hidden { display: none !important; }
+  .#{$prefix}contents { display: contents; }
+  .#{$prefix}relative { position: relative; } .#{$prefix}absolute { position: absolute; } .#{$prefix}fixed { position: fixed; } .#{$prefix}sticky { position: sticky; top: 0; }
+  .#{$prefix}inset-0 { inset: 0; }
+  .#{$prefix}overflow-hidden { overflow: hidden; } .#{$prefix}overflow-auto { overflow: auto; } .#{$prefix}overflow-x-auto { overflow-x: auto; } .#{$prefix}overflow-y-auto { overflow-y: auto; }
+  .#{$prefix}isolate { isolation: isolate; }
+
+  /* .hide-below-md: hidden while the viewport is narrower than md.
+   * .hide-from-md:  hidden once it is md or wider. One per breakpoint in $breakpoints. */
+  @each $bp, $_ in $breakpoints {
+    @include mq(max-#{$bp}) { .#{$prefix}hide-below-#{$bp} { display: none !important; } }
+    @include mq($bp) { .#{$prefix}hide-from-#{$bp} { display: none !important; } }
+  }
+
+  /* ---- Flex & grid ---- */
+  .#{$prefix}flex-col { flex-direction: column; } .#{$prefix}flex-row { flex-direction: row; } .#{$prefix}flex-wrap { flex-wrap: wrap; } .#{$prefix}flex-nowrap { flex-wrap: nowrap; }
+  .#{$prefix}flex-1 { flex: 1 1 0%; } .#{$prefix}flex-auto { flex: 1 1 auto; } .#{$prefix}flex-none { flex: none; } .#{$prefix}grow { flex-grow: 1; } .#{$prefix}shrink-0 { flex-shrink: 0; }
+  @each $name, $value in (start: flex-start, center: center, end: flex-end, baseline: baseline, stretch: stretch) {
+    .#{$prefix}items-#{$name} { align-items: $value; }
+  }
+  @each $name, $value in (start: flex-start, center: center, end: flex-end, between: space-between, around: space-around) {
+    .#{$prefix}justify-#{$name} { justify-content: $value; }
+  }
+  @each $name, $value in (start: flex-start, center: center, end: flex-end, stretch: stretch) {
+    .#{$prefix}self-#{$name} { align-self: $value; }
+  }
+  .#{$prefix}place-center { place-items: center; }
+  .#{$prefix}spacer { flex: 1 1 auto; }
+  .#{$prefix}order-first { order: -1; } .#{$prefix}order-last { order: 99; }
+
+  /* ---- Sizing ---- */
+  .#{$prefix}w-full { width: 100%; } .#{$prefix}w-auto { width: auto; } .#{$prefix}w-fit { width: fit-content; } .#{$prefix}max-w-full { max-width: 100%; }
+  @each $name, $value in ("25": 25%, "33": 33.333%, "50": 50%, "66": 66.667%, "75": 75%) {
+    .#{$prefix}w-#{$name} { width: $value; }
+  }
+  @each $name, $value in (xs: 20rem, sm: 24rem, md: 28rem, lg: 32rem, xl: 36rem, "2xl": 42rem, "3xl": 48rem, prose: 65ch) {
+    .#{$prefix}max-w-#{$name} { max-width: $value; }
+  }
+  .#{$prefix}h-full { height: 100%; } .#{$prefix}h-screen { height: 100dvh; } .#{$prefix}min-h-screen { min-height: 100dvh; } .#{$prefix}min-w-0 { min-width: 0; }
+  .#{$prefix}aspect-square { aspect-ratio: 1; } .#{$prefix}aspect-video { aspect-ratio: 16 / 9; } .#{$prefix}aspect-cover { aspect-ratio: 3 / 1; }
+  .#{$prefix}object-cover { object-fit: cover; } .#{$prefix}object-contain { object-fit: contain; }
+
+  /* ---- Typography ---- */
+  @each $size in (xs, sm, base, lg, xl, "2xl", "3xl", "4xl") {
+    .#{$prefix}text-#{$size} { font-size: var(--cui-text-#{$size}); }
+  }
+  @each $weight in (normal, medium, semibold, bold) {
+    .#{$prefix}font-#{$weight} { font-weight: var(--cui-weight-#{$weight}); }
+  }
+  .#{$prefix}font-sans { font-family: var(--cui-font-sans); } .#{$prefix}font-mono { font-family: var(--cui-font-mono); }
+  @each $leading in (tight, snug, base, relaxed) {
+    .#{$prefix}leading-#{$leading} { line-height: var(--cui-leading-#{$leading}); }
+  }
+  .#{$prefix}leading-none { line-height: 1; }
+  .#{$prefix}tracking-tight { letter-spacing: var(--cui-tracking-tight); } .#{$prefix}tracking-wide { letter-spacing: var(--cui-tracking-wide); }
+  .#{$prefix}text-start { text-align: start; } .#{$prefix}text-center { text-align: center; } .#{$prefix}text-end { text-align: end; }
+  .#{$prefix}uppercase { text-transform: uppercase; } .#{$prefix}lowercase { text-transform: lowercase; } .#{$prefix}capitalize { text-transform: capitalize; } .#{$prefix}normal-case { text-transform: none; }
+  .#{$prefix}italic { font-style: italic; } .#{$prefix}underline { text-decoration: underline; text-underline-offset: 0.15em; } .#{$prefix}no-underline { text-decoration: none; } .#{$prefix}line-through { text-decoration: line-through; }
+  .#{$prefix}truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  @for $lines from 1 through 3 {
+    .#{$prefix}clamp-#{$lines} { display: -webkit-box; -webkit-line-clamp: $lines; -webkit-box-orient: vertical; overflow: hidden; }
+  }
+  .#{$prefix}nowrap { white-space: nowrap; } .#{$prefix}pre-line { white-space: pre-line; } .#{$prefix}break-words { overflow-wrap: anywhere; } .#{$prefix}text-balance { text-wrap: balance; } .#{$prefix}text-pretty { text-wrap: pretty; }
+  .#{$prefix}tabular { font-variant-numeric: tabular-nums; }
+  .#{$prefix}text-1, .#{$prefix}text-default { color: var(--cui-text); } .#{$prefix}text-2, .#{$prefix}text-secondary { color: var(--cui-text-2); } .#{$prefix}text-3, .#{$prefix}text-muted { color: var(--cui-text-3); } .#{$prefix}text-4, .#{$prefix}text-faint { color: var(--cui-text-4); }
+  @each $name in tones() {
+    .#{$prefix}text-#{$name} { color: var(--cui-#{$name}-text); }
+  }
+  .#{$prefix}text-link { color: var(--cui-link); } .#{$prefix}text-inherit { color: inherit; } .#{$prefix}text-white { color: #fff; }
+  .#{$prefix}text-brand { color: var(--cui-primary); }
+
+  /* ---- Backgrounds, borders, radius, shadow ---- */
+  .#{$prefix}bg-surface { background: var(--cui-surface); } .#{$prefix}bg-surface-2 { background: var(--cui-surface-2); } .#{$prefix}bg-surface-3 { background: var(--cui-surface-3); } .#{$prefix}bg-page { background: var(--cui-bg); } .#{$prefix}bg-transparent { background: transparent; }
+  .#{$prefix}bg-primary { background: var(--cui-primary-solid); color: var(--cui-primary-contrast); }
+  @each $name in tones() {
+    .#{$prefix}bg-#{$name}-soft { background: var(--cui-#{$name}-soft); }
+  }
+  .#{$prefix}border { border: var(--cui-border-width) solid var(--cui-border); } .#{$prefix}border-0 { border: 0; }
+  @each $side, $logical in (t: block-start, b: block-end, s: inline-start, e: inline-end) {
+    .#{$prefix}border-#{$side} { border-#{$logical}: var(--cui-border-width) solid var(--cui-border); }
+  }
+  .#{$prefix}border-strong { border-color: var(--cui-border-strong); } .#{$prefix}border-primary { border-color: var(--cui-primary); } .#{$prefix}border-dashed { border-style: dashed; }
+  .#{$prefix}divide-y > * + * { border-block-start: var(--cui-border-width) solid var(--cui-border); }
+  .#{$prefix}divide-x > * + * { border-inline-start: var(--cui-border-width) solid var(--cui-border); }
+  .#{$prefix}rounded-none { border-radius: 0; }
+  @each $name, $_ in $radii {
+    @if $name == default {
+      .#{$prefix}rounded { border-radius: var(--cui-radius); }
+    } @else {
+      .#{$prefix}rounded-#{$name} { border-radius: var(--cui-radius-#{$name}); }
+    }
+  }
+  .#{$prefix}shadow-none { box-shadow: none; } .#{$prefix}shadow-xs { box-shadow: var(--cui-shadow-xs); } .#{$prefix}shadow-sm { box-shadow: var(--cui-shadow-sm); } .#{$prefix}shadow { box-shadow: var(--cui-shadow-md); } .#{$prefix}shadow-lg { box-shadow: var(--cui-shadow-lg); } .#{$prefix}shadow-xl { box-shadow: var(--cui-shadow-xl); }
+  .#{$prefix}ring { box-shadow: var(--cui-ring); }
+  .#{$prefix}opacity-50 { opacity: 0.5; } .#{$prefix}opacity-75 { opacity: 0.75; } .#{$prefix}opacity-0 { opacity: 0; }
+
+  /* ---- Interaction ---- */
+  .#{$prefix}cursor-pointer { cursor: pointer; } .#{$prefix}cursor-default { cursor: default; } .#{$prefix}select-none { user-select: none; } .#{$prefix}select-all { user-select: all; } .#{$prefix}pointer-events-none { pointer-events: none; }
+  .#{$prefix}transition { transition: all var(--cui-transition); }
+  /* Make a whole container clickable from one link: <a class="stretched-link"> inside a position:relative parent. */
+  .#{$prefix}stretched-link::after { content: ""; position: absolute; inset: 0; z-index: 1; }
+
+  /* ---- Accessibility ---- */
+  %visually-hidden {
+    position: absolute !important; width: 1px !important; height: 1px !important; padding: 0 !important; margin: -1px !important;
+    overflow: hidden !important; clip-path: inset(50%) !important; white-space: nowrap !important; border: 0 !important;
+  }
+  .#{$prefix}visually-hidden, .#{$prefix}sr-only { @extend %visually-hidden; }
+  .#{$prefix}visually-hidden-focusable:not(:focus, :focus-within) { @extend %visually-hidden; }
+}

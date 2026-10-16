@@ -1,0 +1,203 @@
+/* Navbar: the dark band at the top. logo | search | links.
+ *
+ *   <header class="navbar navbar-sticky"><div class="container navbar-inner">
+ *     <a class="navbar-brand" href="/"><span class="icon">hive</span> Acme</a>
+ *     <div class="navbar-search"><div class="input-icon"><span class="icon">search</span><input class="input" placeholder="Search"><kbd>/</kbd></div></div>
+ *     <button class="btn btn-ghost btn-icon navbar-toggle" data-cui-toggle="nav-main" aria-expanded="false" aria-label="Menu"><span class="icon">menu</span></button>
+ *     <ul id="nav-main" class="navbar-nav"><li><a class="navbar-link" href aria-current="page">Home</a></li>…</ul>
+ *   </div></header>
+ *
+ * Variants: .navbar-light (page surface), .navbar-primary (brand fill), .navbar-transparent,
+ * .navbar-sticky. Inside the band the text / border / hover / ring / cut-out tokens are remapped
+ * like .band, so ghost buttons, counts and indicators read correctly without extra classes. */
+@use "../foundation/layers";
+@use "../abstracts" as *;
+
+@layer cui.components {
+  .#{$prefix}navbar {
+    --cui-text: var(--cui-band-text);
+    --cui-text-2: var(--cui-band-muted);
+    --cui-text-3: var(--cui-band-muted);
+    --cui-text-4: color-mix(in oklch, var(--cui-band-muted) 60%, transparent);
+    --cui-border: var(--cui-band-border);
+    --cui-surface-hover: var(--cui-band-hover);
+    --cui-ring: var(--cui-band-ring);
+    --cui-cutout: var(--cui-band);
+    position: relative;
+    z-index: var(--cui-z-sticky);
+    /* Collapses on its own width (not the viewport), so a navbar inside an app shell or a
+     * narrow column folds up correctly too. */
+    container: cui-navbar / inline-size;
+    min-height: var(--cui-navbar-height);
+    color: var(--cui-band-text);
+    background: var(--cui-navbar-bg, var(--cui-band));
+    border-block-end: var(--cui-border-width) solid var(--cui-band-border);
+  }
+  .#{$prefix}navbar-sticky { position: sticky; top: 0; }
+  /* Light: `inherit` hands back the page's own (tinted) tokens instead of the band remap. */
+  .#{$prefix}navbar-light {
+    --cui-text: inherit;
+    --cui-text-2: inherit;
+    --cui-text-3: inherit;
+    --cui-text-4: inherit;
+    --cui-border: inherit;
+    --cui-surface-hover: inherit;
+    --cui-ring: inherit;
+    --cui-cutout: var(--cui-surface);
+    color: var(--cui-text);
+    background: var(--cui-surface);
+    border-block-end-color: var(--cui-border);
+    .#{$prefix}navbar-link.#{$prefix}active, .#{$prefix}navbar-link[aria-current]:not([aria-current="false"]) { color: var(--cui-primary-text); }
+  }
+  .#{$prefix}navbar-primary {
+    --cui-band-border: color-mix(in oklch, var(--cui-primary-contrast) 18%, transparent);
+    --cui-band-muted: color-mix(in oklch, var(--cui-primary-contrast) 75%, transparent);
+    --cui-text: var(--cui-primary-contrast);
+    --cui-text-2: var(--cui-band-muted);
+    --cui-text-3: var(--cui-band-muted);
+    --cui-text-4: color-mix(in oklch, var(--cui-primary-contrast) 45%, transparent);
+    --cui-border: var(--cui-band-border);
+    --cui-surface-hover: color-mix(in oklch, var(--cui-primary-contrast) 12%, transparent);
+    --cui-ring: 0 0 0 3px color-mix(in oklch, var(--cui-primary-contrast) 35%, transparent);
+    --cui-cutout: var(--cui-primary-solid);
+    background: var(--cui-primary-solid);
+    color: var(--cui-primary-contrast);
+    border-block-end-color: var(--cui-band-border);
+  }
+  .#{$prefix}navbar-transparent { background: transparent; border-block-end-color: transparent; }
+
+  .#{$prefix}navbar-inner {
+    display: flex;
+    align-items: center;
+    gap: var(--cui-space-4);
+    min-height: var(--cui-navbar-height);
+    @container cui-navbar (width >= 48rem) { gap: var(--cui-space-6); }
+  }
+
+  .#{$prefix}navbar-brand {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--cui-space-2);
+    font-size: var(--cui-text-lg);
+    font-weight: var(--cui-weight-semibold);
+    letter-spacing: var(--cui-tracking-tight);
+    color: inherit;
+    text-decoration: none;
+    white-space: nowrap;
+    > img, > svg { height: 1.75rem; width: auto; }
+    > .#{$prefix}icon { --cui-icon-size: 1.5rem; }
+  }
+
+  /* Search slot: grows, capped. */
+  .#{$prefix}navbar-search {
+    flex: 1 1 auto;
+    max-width: 36rem;
+    min-width: 0;
+    /* .input here; .search-input gets the same treatment in search.css. */
+    .#{$prefix}input {
+      --_border: var(--cui-band-border);
+      --_ring: 0 0 0 3px var(--cui-primary-ring);
+      background: oklch(100% 0 0 / 0.08);
+      color: var(--cui-band-text);
+      box-shadow: inset 0 1px 2px oklch(0% 0 0 / 0.25);
+      &::placeholder { color: var(--cui-band-muted); }
+      &:hover:not(:focus) { --_border: oklch(100% 0 0 / 0.25); background: oklch(100% 0 0 / 0.1); }
+      &:focus { background: oklch(100% 0 0 / 0.12); --_border: var(--cui-primary); box-shadow: inset 0 1px 2px oklch(0% 0 0 / 0.25), var(--_ring); }
+    }
+    .#{$prefix}input-icon > .#{$prefix}icon { color: var(--cui-band-muted); }
+    kbd, .#{$prefix}kbd { color: var(--cui-band-muted); background: transparent; border-color: var(--cui-band-border); box-shadow: none; }
+  }
+  .#{$prefix}navbar-light .#{$prefix}navbar-search {
+    .#{$prefix}input { --_ring: 0 0 0 3px var(--cui-primary-ring); background: var(--cui-surface-2); color: var(--cui-text); --_border: var(--cui-border); box-shadow: var(--cui-shadow-well); &::placeholder { color: var(--cui-text-4); } &:hover:not(:focus) { background: var(--cui-surface-2); } &:focus { background: var(--cui-surface); box-shadow: var(--cui-shadow-well), var(--_ring); } }
+    .#{$prefix}input-icon > .#{$prefix}icon { color: var(--cui-text-3); }
+    kbd, .#{$prefix}kbd { color: var(--cui-text-3); border-color: var(--cui-border-strong); box-shadow: var(--cui-shadow-key); }
+  }
+
+  /* Links */
+  .#{$prefix}navbar-nav {
+    display: flex;
+    align-items: center;
+    gap: var(--cui-space-1);
+    margin-inline-start: auto;
+    list-style: none;
+  }
+  .#{$prefix}navbar-link {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--cui-space-1-5);
+    min-height: 2.25rem;
+    padding: 0 var(--cui-space-2-5);
+    font-size: var(--cui-text-sm);
+    font-weight: var(--cui-weight-medium);
+    color: var(--cui-text-2);
+    border-radius: var(--cui-radius);
+    text-decoration: none;
+    white-space: nowrap;
+    transition: background-color var(--cui-transition), color var(--cui-transition);
+    > .#{$prefix}icon { --cui-icon-size: 1.25rem; }
+    &:hover { color: var(--cui-text); background: var(--cui-surface-hover); }
+    &.#{$prefix}active, &[aria-current]:not([aria-current="false"]) { color: var(--cui-text); }
+    &:focus-visible { @include focus-ring; }
+  }
+  .#{$prefix}navbar-divider { width: 1px; height: 1.5rem; background: var(--cui-border); margin-inline: var(--cui-space-1); }
+
+  /* Narrow: the search drops to its own row; with a .navbar-toggle the links fold into a
+   * panel it opens. A navbar without a toggle keeps its links visible and lets them wrap. */
+  .#{$prefix}navbar-toggle { display: none; margin-inline-start: auto; }
+  @container cui-navbar (width < 48rem) {
+    .#{$prefix}navbar-toggle { display: inline-flex; }
+    .#{$prefix}navbar-inner {
+      flex-wrap: wrap;
+      align-content: flex-start;
+      gap: 0 var(--cui-space-2);
+      /* A zero-width strut that is always one navbar tall and sits first in the top row, so
+       * that row (brand, toggle, actions) keeps its height and vertical centring whatever
+       * it contains — opening the panel below never pulls the logo or toggle up. */
+      &::before {
+        content: "";
+        order: -1;
+        align-self: stretch;
+        width: 0;
+        min-height: var(--cui-navbar-height);
+        margin-inline-end: calc(-1 * var(--cui-space-2)); /* cancel the column gap it adds */
+      }
+    }
+    .#{$prefix}navbar-search { order: 3; flex-basis: 100%; max-width: none; padding-block: 0 var(--cui-space-3); }
+    .#{$prefix}navbar-nav { flex-wrap: wrap; }
+    .#{$prefix}navbar-inner:has(> .#{$prefix}navbar-toggle) > .#{$prefix}navbar-nav {
+      display: none;
+      order: 4;
+      flex-basis: 100%;
+      flex-direction: column;
+      align-items: stretch;
+      padding-block: var(--cui-space-2) var(--cui-space-3);
+      border-block-start: var(--cui-border-width) solid var(--cui-border);
+      /* .is-collapsing keeps it shown while toggle.js slides it shut. */
+      .#{$prefix}navbar:has(.#{$prefix}navbar-toggle[aria-expanded="true"]) &, &.#{$prefix}open, &.#{$prefix}is-collapsing { display: flex; }
+      > .#{$prefix}navbar-divider { display: none; }
+    }
+  }
+
+  /* Sub-navbar: pale strip under the navbar (Artifact Hub) */
+  .#{$prefix}subnav {
+    background: var(--cui-surface);
+    border-block-end: var(--cui-border-width) solid var(--cui-border);
+    font-size: var(--cui-text-sm);
+    .#{$prefix}container, .#{$prefix}subnav-inner { display: flex; align-items: center; gap: var(--cui-space-4); min-height: 2.75rem; flex-wrap: wrap; }
+  }
+
+  /* Skip link */
+  .#{$prefix}skip-link {
+    position: absolute;
+    inset-inline-start: var(--cui-space-4);
+    top: var(--cui-space-4);
+    z-index: calc(var(--cui-z-tooltip) + 1);
+    padding: var(--cui-space-2) var(--cui-space-4);
+    background: var(--cui-primary-solid);
+    color: var(--cui-primary-contrast);
+    border-radius: var(--cui-radius);
+    translate: 0 -200%;
+    transition: translate var(--cui-transition);
+    &:focus { translate: 0 0; }
+  }
+}

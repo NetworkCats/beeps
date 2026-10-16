@@ -1,0 +1,28 @@
+// beeps design tokens, applied on top of collection-ui's defaults.
+//
+// Direction: restrained and content-first. Hierarchy comes from type and whitespace; no
+// gradients, glass or decorative motion. Concretely:
+// - Brand: indigo (set in main.scss). Calm, readable as link colour on both themes, and distinct
+//   from the status colours (green/amber/red/cyan).
+// - Fonts: the system stack with explicit Simplified Chinese fallbacks. beeps is bilingual and
+//   upstream's IBM Plex has no CJK glyphs; system fonts also mean no web-font download.
+// - Width: a feed of short posts reads best in a narrow column, so the page container is narrower
+//   than upstream's and the feed column narrower still.
+// - Header and footer are light (page surface + hairline) instead of upstream's dark band, so the
+//   content, not the chrome, carries the page.
+@use "../collection-ui/foundation/layers";
+
+// Same layer as upstream's tokens and loaded after them, so these win while any unlayered page
+// CSS still wins over both.
+@layer cui.tokens {
+  :root {
+    --cui-font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial,
+      "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC", "Noto Sans SC", sans-serif,
+      "Apple Color Emoji", "Segoe UI Emoji";
+    --cui-font-mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, "Liberation Mono", monospace;
+
+    --cui-container: 64rem;
+    --beeps-feed-width: 40rem;
+    --beeps-text-leading: var(--cui-leading-relaxed);
+  }
+}

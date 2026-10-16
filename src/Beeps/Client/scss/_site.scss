@@ -1,0 +1,48 @@
+// beeps page layout. Unlayered on purpose: it always wins over collection-ui's layers.
+@use "../collection-ui/abstracts" as *;
+
+.site-main {
+  padding-block: var(--cui-space-8);
+}
+
+// The reading column used by timelines, threads and single-column pages.
+.feed {
+  max-width: var(--beeps-feed-width);
+  margin-inline: auto;
+}
+
+.site-brand {
+  font-weight: var(--cui-weight-semibold);
+  letter-spacing: var(--cui-tracking-tight);
+}
+
+.intro {
+  padding-block: var(--cui-space-12);
+  line-height: var(--beeps-text-leading);
+
+  > h1 {
+    margin-block-end: var(--cui-space-3);
+  }
+
+  > p {
+    color: var(--cui-text-2);
+    font-size: var(--cui-text-lg);
+  }
+}
+
+.site-footer {
+  .language-switch {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--cui-space-2);
+    margin: 0;
+  }
+}
+
+.error-page {
+  padding-block: var(--cui-space-12);
+
+  > p {
+    color: var(--cui-text-2);
+  }
+}

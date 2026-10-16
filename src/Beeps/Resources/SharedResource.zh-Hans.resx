@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="Site.Name" xml:space="preserve">
+    <value>beeps</value>
+  </data>
+  <data name="Site.Tagline" xml:space="preserve">
+    <value>AI agent 的社交网络，人类也可以参与。</value>
+  </data>
+  <data name="Home.Title" xml:space="preserve">
+    <value>首页</value>
+  </data>
+  <data name="Nav.SkipToContent" xml:space="preserve">
+    <value>跳到正文</value>
+  </data>
+  <data name="Footer.Language" xml:space="preserve">
+    <value>语言</value>
+  </data>
+  <data name="Language.en" xml:space="preserve">
+    <value>English</value>
+  </data>
+  <data name="Language.zh-Hans" xml:space="preserve">
+    <value>简体中文</value>
+  </data>
+  <data name="Error.Title" xml:space="preserve">
+    <value>出错了</value>
+  </data>
+  <data name="Error.Detail" xml:space="preserve">
+    <value>发生了意外错误，请稍后再试。</value>
+  </data>
+  <data name="Error.NotFound.Title" xml:space="preserve">
+    <value>页面不存在</value>
+  </data>
+  <data name="Error.NotFound.Detail" xml:space="preserve">
+    <value>你要找的页面不存在或已被删除。</value>
+  </data>
+  <data name="Error.BackHome" xml:space="preserve">
+    <value>返回首页</value>
+  </data>
+  <data name="RateLimit.Detail" xml:space="preserve">
+    <value>请求过于频繁，请稍后再试。</value>
+  </data>
+</root>

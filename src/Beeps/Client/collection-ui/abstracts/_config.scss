@@ -1,0 +1,181 @@
+// Collection UI — build-time configuration.
+//
+// Every setting is `!default`, so a project can override any of them once, before the
+// framework loads:
+//
+//   @use "collection-ui/scss" with (
+//     $brand: "teal",
+//     $breakpoints: (sm: 36rem, md: 48rem, lg: 62rem, xl: 80rem),
+//     $hues-extra: ("lime": (hue: 130, chroma: (0.02, 0.05, 0.09, 0.13, 0.16, 0.17, 0.16, 0.14, 0.12, 0.1, 0.07))),
+//   );
+//
+// These only shape what gets generated. Runtime theming is still done with the --cui-*
+// custom properties (see foundation/_tokens.scss), which work with or without Sass.
+
+@use "sass:map";
+
+// ---- Class prefix ----------------------------------------------------------
+// Prepended to every class the framework defines, utilities and state classes included:
+// $prefix: "cui-" gives .cui-btn, .cui-card, .cui-flex, .cui-active… Custom properties keep
+// their --cui- names and data attributes their data-cui- names either way. The JS reads the
+// prefix from --cui-prefix (emitted below), so it follows automatically.
+$prefix: "" !default;
+
+// ---- Breakpoints -----------------------------------------------------------
+// mq(sm) → (width >= 40rem), mq(max-sm) → (width < 40rem). See _mixins.scss.
+$breakpoints: (
+  sm: 40rem,
+  md: 48rem,
+  lg: 64rem,
+  xl: 80rem,
+) !default;
+
+// Named feature queries usable with mq() next to the breakpoints.
+$media-features: (
+  motion: "(prefers-reduced-motion: no-preference)",
+  reduced-motion: "(prefers-reduced-motion: reduce)",
+  hover: "(hover: hover) and (pointer: fine)",
+) !default;
+
+// ---- Palette ---------------------------------------------------------------
+// Quote hue names ("blue", not blue): unquoted, Sass reads them as colour literals.
+// Ten hues × eleven steps on ONE shared OKLCH lightness ladder, so any hue can be swapped for
+// another (data-brand="teal") without re-tuning contrast. Chroma is shaped per hue so saturated
+// hues (blue, red) and gentle hues (teal) read with similar intensity. Step 600 is the
+// light-mode brand step, 400 the dark-mode one (tokens derive a deeper `-solid` fill from it).
+$ladder: (
+  50: 97%,
+  100: 93%,
+  200: 87%,
+  300: 79%,
+  400: 69%,
+  500: 59%,
+  600: 51%,
+  700: 44%,
+  800: 38%,
+  900: 32%,
+  950: 25%,
+) !default;
+
+// Each hue: `hue` (one angle, or one per step) and `chroma` (one per ladder step).
+$hues: (
+  "blue": (hue: 255, chroma: (0.015, 0.035, 0.07, 0.11, 0.16, 0.2, 0.2, 0.18, 0.15, 0.12, 0.09)),
+  "indigo": (hue: 275, chroma: (0.015, 0.035, 0.07, 0.11, 0.15, 0.19, 0.19, 0.17, 0.14, 0.11, 0.08)),
+  "violet": (hue: 300, chroma: (0.015, 0.035, 0.07, 0.11, 0.15, 0.19, 0.19, 0.17, 0.14, 0.11, 0.08)),
+  "pink": (hue: 350, chroma: (0.015, 0.035, 0.07, 0.11, 0.15, 0.18, 0.18, 0.16, 0.13, 0.1, 0.08)),
+  "red": (hue: 25, chroma: (0.015, 0.035, 0.07, 0.11, 0.16, 0.19, 0.19, 0.17, 0.14, 0.11, 0.08)),
+  "orange": (hue: 50, chroma: (0.015, 0.035, 0.07, 0.11, 0.15, 0.17, 0.17, 0.15, 0.12, 0.1, 0.07)),
+  // Amber leans towards orange as it darkens, so it never turns olive.
+  "amber": (hue: (80, 80, 80, 80, 75, 70, 65, 60, 60, 60, 60), chroma: (0.02, 0.05, 0.09, 0.13, 0.15, 0.15, 0.14, 0.12, 0.1, 0.08, 0.06)),
+  "green": (hue: 150, chroma: (0.02, 0.045, 0.08, 0.12, 0.15, 0.16, 0.15, 0.13, 0.11, 0.09, 0.06)),
+  "teal": (hue: 185, chroma: (0.015, 0.035, 0.065, 0.1, 0.12, 0.13, 0.12, 0.1, 0.085, 0.07, 0.05)),
+  "cyan": (hue: 220, chroma: (0.015, 0.035, 0.07, 0.1, 0.13, 0.14, 0.13, 0.11, 0.09, 0.075, 0.055)),
+) !default;
+
+// Extra hues merged into $hues (so you can add one without restating the defaults).
+$hues-extra: () !default;
+
+// Neutral — cool slate, hue 255. The whole framework's grays; its own lightness ladder.
+$neutral: (
+  0: #fff,
+  50: oklch(98.5% 0.003 255),
+  100: oklch(96.5% 0.005 255),
+  200: oklch(92.5% 0.008 255),
+  300: oklch(87% 0.012 255),
+  400: oklch(72% 0.018 255),
+  500: oklch(58% 0.022 255),
+  600: oklch(48% 0.022 255),
+  700: oklch(40% 0.022 255),
+  800: oklch(30% 0.02 255),
+  900: oklch(22% 0.018 255),
+  950: oklch(16% 0.015 255),
+  1000: oklch(11% 0.012 255),
+) !default;
+
+// ---- Brand -----------------------------------------------------------------
+// The default --cui-primary hue, and the steps used for it in light and dark mode.
+$brand: "blue" !default;
+$brand-steps: (light: 600, dark: 400) !default;
+
+// Presets emitted as [data-brand="…"]. Defaults to every hue plus neutral.
+$brand-presets: null !default;
+
+// ---- Status colours --------------------------------------------------------
+// Each one gets the full scale (-hover, -soft, -border, -text, -solid, -contrast, -ring, -edge…).
+// `soft` / `soft-hover` / `border` are how much of the colour is mixed into transparent.
+// `cap-solid: false` keeps the solid fill bright in dark mode (amber reads best that way).
+$statuses: (
+  success: (hue: "green", soft: 12%, soft-hover: 18%, border: 40%),
+  warning: (hue: "amber", soft: 14%, soft-hover: 20%, border: 45%, cap-solid: false),
+  danger: (hue: "red", soft: 10%, soft-hover: 16%, border: 40%),
+  info: (hue: "cyan", soft: 12%, soft-hover: 18%, border: 40%),
+) !default;
+
+// Extra statuses merged into $statuses, e.g. ("promo": (hue: "violet", soft: 12%, soft-hover: 18%, border: 40%)).
+$statuses-extra: () !default;
+
+// ---- Scales ----------------------------------------------------------------
+$font-sizes: (
+  2xs: 0.6875rem, // 11: tags, counts, indicator numbers
+  xs: 0.75rem,    // 12
+  sm: 0.875rem,   // 14
+  base: 1rem,     // 16
+  lg: 1.125rem,   // 18
+  xl: 1.25rem,    // 20
+  2xl: 1.5rem,    // 24
+  3xl: 1.875rem,  // 30
+  4xl: 2.25rem,   // 36
+  5xl: 3rem,      // 48
+) !default;
+
+$spacers: (
+  0: 0,
+  px: 1px,
+  "0-5": 0.125rem,
+  1: 0.25rem,
+  "1-5": 0.375rem,
+  2: 0.5rem,
+  "2-5": 0.625rem,
+  3: 0.75rem,
+  4: 1rem,
+  5: 1.25rem,
+  6: 1.5rem,
+  7: 1.75rem,
+  8: 2rem,
+  10: 2.5rem,
+  12: 3rem,
+  16: 4rem,
+  20: 5rem,
+  24: 6rem,
+) !default;
+
+// Tight corners, registry-style.
+$radii: (
+  sm: 3px,    // badges, tags, kbd, small controls
+  default: 5px,  // --cui-radius: buttons, inputs, menu items
+  lg: 8px,    // cards, lists, menus
+  xl: 12px,   // dialogs, drawers
+  full: 9999px,
+) !default;
+
+$z-layers: (
+  sticky: 100,
+  dropdown: 1000,
+  drawer: 1100,
+  dialog: 1200,
+  toast: 1300,
+  tooltip: 1400,
+) !default;
+
+// ---- Utilities -------------------------------------------------------------
+// Which $spacers steps get m-*/p-* and gap-* classes.
+$utility-spacers: (0, 1, 2, 3, 4, 5, 6, 8, 10, 12, 16) !default;
+$utility-gaps: (0, 1, 2, 3, 4, 6, 8) !default;
+
+// ---- Icons -----------------------------------------------------------------
+// Fallback icon font for pseudo-element glyphs; --cui-icon-font overrides it at runtime.
+$icon-font: "Material Symbols Outlined" !default;
+
+// ---- Resolved values (not meant to be configured) ---------------------------
+$all-hues: map.merge($hues, $hues-extra);
+$all-statuses: map.merge($statuses, $statuses-extra);

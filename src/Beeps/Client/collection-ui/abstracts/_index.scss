@@ -1,0 +1,8 @@
+// The Collection UI toolkit: config, functions and mixins. Emits no CSS, so it is safe to
+// @use from your own stylesheets:
+//
+//   @use "collection-ui/scss/abstracts" as cui;
+//   .sidebar { @include cui.mq(lg) { position: sticky; } }
+@forward "config";
+@forward "functions";
+@forward "mixins";

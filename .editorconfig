@@ -1,0 +1,23 @@
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+indent_style = space
+indent_size = 4
+trim_trailing_whitespace = true
+
+[*.{json,yml,yaml,ts,scss,css,js,cshtml,html,xml,csproj,props,resx,slnx}]
+indent_size = 2
+
+[*.cshtml]
+indent_size = 4
+
+[*.cs]
+# beeps is an application, not a library consumed from VB, so clashes with VB keywords
+# (`Shared`, `Error`) do not matter.
+dotnet_diagnostic.CA1716.severity = none
+
+[src/Beeps/Infrastructure/Data/Migrations/*.cs]
+generated_code = true

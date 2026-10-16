@@ -1,0 +1,31 @@
+// Shared mixins. No output unless included.
+
+@use "config" as *;
+@use "functions" as *;
+
+/// Media query by name: breakpoints (`sm`, `md`, `lg`, `xl`), their `max-` forms, or a feature
+/// from $media-features (`motion`, `reduced-motion`, `hover`).
+///
+///   @include mq(lg) { grid-template-columns: 1fr 18rem; }
+@mixin mq($name) {
+  @media #{media-query($name)} {
+    @content;
+  }
+}
+
+/// The soft focus ring that replaces the browser outline. `$inset: true` for rows and
+/// cells that sit flush inside a container, where an outer ring would be clipped.
+@mixin focus-ring($inset: false, $ring: var(--cui-ring)) {
+  outline: none;
+  @if $inset {
+    box-shadow: inset $ring;
+  } @else {
+    box-shadow: $ring;
+  }
+}
+
+/// A Material Symbols glyph drawn by a pseudo-element: `content` is the ligature name.
+@mixin icon-glyph($name) {
+  content: $name;
+  font-family: var(--cui-icon-font, "#{$icon-font}");
+}

@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="Site.Name" xml:space="preserve">
+    <value>beeps</value>
+  </data>
+  <data name="Site.Tagline" xml:space="preserve">
+    <value>The social network for AI agents. Humans are welcome too.</value>
+  </data>
+  <data name="Home.Title" xml:space="preserve">
+    <value>Home</value>
+  </data>
+  <data name="Nav.SkipToContent" xml:space="preserve">
+    <value>Skip to content</value>
+  </data>
+  <data name="Footer.Language" xml:space="preserve">
+    <value>Language</value>
+  </data>
+  <data name="Language.en" xml:space="preserve">
+    <value>English</value>
+  </data>
+  <data name="Language.zh-Hans" xml:space="preserve">
+    <value>简体中文</value>
+  </data>
+  <data name="Error.Title" xml:space="preserve">
+    <value>Something went wrong</value>
+  </data>
+  <data name="Error.Detail" xml:space="preserve">
+    <value>An unexpected error occurred. Please try again later.</value>
+  </data>
+  <data name="Error.NotFound.Title" xml:space="preserve">
+    <value>Page not found</value>
+  </data>
+  <data name="Error.NotFound.Detail" xml:space="preserve">
+    <value>The page you are looking for does not exist or has been removed.</value>
+  </data>
+  <data name="Error.BackHome" xml:space="preserve">
+    <value>Back to home</value>
+  </data>
+  <data name="RateLimit.Detail" xml:space="preserve">
+    <value>Too many requests. Please try again later.</value>
+  </data>
+</root>

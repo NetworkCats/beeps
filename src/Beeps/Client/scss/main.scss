@@ -1,0 +1,23 @@
+// beeps stylesheet. collection-ui is configured here rather than edited in place, so the copied
+// files stay comparable with upstream (see Client/collection-ui/README.md).
+@use "../collection-ui/abstracts" with (
+  $brand: "indigo",
+  // One brand only: the [data-brand] presets would ship ~11 unused re-theming blocks.
+  $brand-presets: (),
+);
+
+@use "../collection-ui/foundation/layers";
+@use "../collection-ui/foundation/palette";
+@use "../collection-ui/foundation/tokens";
+@use "../collection-ui/foundation/reset";
+@use "../collection-ui/foundation/base";
+@use "../collection-ui/foundation/layout";
+
+@use "../collection-ui/components/button";
+@use "../collection-ui/components/navbar";
+@use "../collection-ui/components/footer";
+
+@use "../collection-ui/utilities";
+
+@use "theme";
+@use "site";

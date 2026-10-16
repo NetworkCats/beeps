@@ -1,0 +1,249 @@
+/* Buttons. Base .btn is the "secondary" look: a white keycap with a tinted hairline, a
+ * highlight on top and a 1px edge below. Pressing flattens it (edge gone, 1px down).
+ * Solid variants keep the same relief in their own colour. */
+@use "../foundation/layers";
+@use "sass:list";
+@use "../abstracts" as *;
+
+// Focus ring per tone: primary keeps --cui-ring so overriding it re-styles every control.
+@function _ring($tone) {
+  @if $tone == "primary" {
+    @return var(--cui-ring);
+  }
+  @return var(--cui-ring-#{$tone});
+}
+
+@function _solid-variants() {
+  $sel: ();
+  @each $tone in tones() {
+    $sel: list.append($sel, ".#{$prefix}btn-#{$tone}", $separator: comma);
+  }
+  @return $sel;
+}
+
+@layer cui.components {
+  .#{$prefix}btn {
+    --_bg: var(--cui-btn-bg, var(--cui-surface));
+    --_bg-hover: var(--cui-btn-bg-hover, var(--cui-surface-hover));
+    --_bg-active: var(--cui-btn-bg-active, var(--cui-surface-2));
+    --_fg: var(--cui-btn-fg, var(--cui-text));
+    --_border: var(--cui-btn-border, var(--cui-control-border));
+    --_highlight: var(--cui-btn-highlight, var(--cui-highlight));
+    --_edge: var(--cui-btn-edge, var(--cui-edge));
+    --_shadow: var(--cui-btn-shadow, inset 0 1px 0 var(--_highlight), 0 1px 0 var(--_edge));
+    --_shadow-active: var(--cui-btn-shadow-active, var(--cui-shadow-pressed));
+    --_ring: var(--cui-btn-ring, var(--cui-ring));
+    --_height: var(--cui-btn-height, var(--cui-control-height));
+    --_px: var(--cui-btn-px, var(--cui-control-padding-x));
+    --_font: var(--cui-btn-font, var(--cui-control-font-size));
+    --_weight: var(--cui-btn-weight, var(--cui-weight-medium));
+    --_radius: var(--cui-btn-radius, var(--cui-control-radius));
+
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--cui-space-2);
+    min-height: var(--_height);
+    padding: 0 var(--_px);
+    font-size: var(--_font);
+    font-weight: var(--_weight);
+    line-height: 1.2;
+    text-align: center;
+    text-decoration: none;
+    white-space: nowrap;
+    color: var(--_fg);
+    background: var(--_bg);
+    border: var(--cui-border-width) solid var(--_border);
+    border-radius: var(--_radius);
+    box-shadow: var(--_shadow);
+    cursor: pointer;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    transition: background-color var(--cui-transition), border-color var(--cui-transition), color var(--cui-transition), box-shadow var(--cui-transition), translate var(--cui-duration-fast) var(--cui-ease);
+
+    &:hover { background: var(--_bg-hover); color: var(--_fg); text-decoration: none; }
+    &:active, &.#{$prefix}active { background: var(--_bg-active); translate: 0 1px; box-shadow: var(--_shadow-active); }
+    &:focus-visible { outline: none; box-shadow: var(--_shadow), var(--_ring); }
+    &:disabled, &.#{$prefix}disabled, &[aria-disabled="true"] {
+      opacity: 0.5;
+      pointer-events: none;
+      box-shadow: none;
+      translate: none;
+    }
+
+    > .#{$prefix}icon { --cui-icon-size: 1.25em; margin-inline: -0.125em; }
+  }
+
+  /* Solid variants, one per tone (primary + every status in the config): same keycap
+   * relief, coloured. The border is a darker step of the fill so the button reads as an
+   * object, not a flat rectangle. */
+  @each $tone in tones() {
+    .#{$prefix}btn-#{$tone} {
+      --_bg: var(--cui-#{$tone}-solid);
+      --_bg-hover: var(--cui-#{$tone}-solid-hover);
+      --_bg-active: var(--cui-#{$tone}-solid-active);
+      --_fg: var(--cui-#{$tone}-contrast);
+      --_border: var(--cui-#{$tone}-edge);
+      --_highlight: oklch(100% 0 0 / 0.18);
+      --_edge: oklch(0% 0 0 / 0.3);
+      --_shadow-active: inset 0 1px 2px oklch(0% 0 0 / 0.25);
+      --_ring: #{_ring($tone)};
+      --_weight: var(--cui-weight-semibold);
+    }
+  }
+
+  /* Flat variants: no relief at all, so they sit inside rows and toolbars quietly.
+   * .btn-soft is the primary one; .btn-soft-<status> for each status. */
+  @each $tone in tones() {
+    $suffix: "-#{$tone}";
+    @if $tone == "primary" {
+      $suffix: "";
+    }
+    .#{$prefix}btn-soft#{$suffix} {
+      --_bg: var(--cui-#{$tone}-soft);
+      --_bg-hover: var(--cui-#{$tone}-soft-hover);
+      --_bg-active: color-mix(in oklch, var(--cui-#{$tone}) 22%, transparent);
+      --_fg: var(--cui-#{$tone}-text);
+      --_border: transparent;
+      --_shadow: none;
+      --_shadow-active: none;
+      --_ring: #{_ring($tone)};
+    }
+  }
+  .#{$prefix}btn-outline {
+    --_bg: transparent;
+    --_bg-hover: var(--cui-primary-soft);
+    --_bg-active: var(--cui-primary-soft-hover);
+    --_fg: var(--cui-primary-text);
+    --_border: var(--cui-primary-border);
+    --_shadow: none;
+    --_shadow-active: none;
+  }
+  .#{$prefix}btn-ghost {
+    --_bg: transparent;
+    --_bg-hover: var(--cui-surface-hover);
+    --_bg-active: var(--cui-surface-2);
+    --_fg: var(--cui-text-2);
+    --_border: transparent;
+    --_shadow: none;
+    --_shadow-active: none;
+    &:hover { --_fg: var(--cui-text); }
+  }
+  .#{$prefix}btn-link {
+    --_bg: transparent;
+    --_bg-hover: transparent;
+    --_bg-active: transparent;
+    --_fg: var(--cui-link);
+    --_border: transparent;
+    --_shadow: none;
+    --_shadow-active: none;
+    --_px: 0.25rem;
+    &:hover { text-decoration: underline; text-underline-offset: 0.15em; --_fg: var(--cui-link-hover); }
+    &:active { translate: none; }
+  }
+  /* On dark bands (navbar, hero): translucent white. */
+  .#{$prefix}btn-band {
+    --_bg: oklch(100% 0 0 / 0.1);
+    --_bg-hover: oklch(100% 0 0 / 0.16);
+    --_bg-active: oklch(100% 0 0 / 0.22);
+    --_fg: #fff;
+    --_border: oklch(100% 0 0 / 0.16);
+    --_highlight: oklch(100% 0 0 / 0.1);
+    --_edge: oklch(0% 0 0 / 0.35);
+    --_shadow-active: inset 0 1px 2px oklch(0% 0 0 / 0.3);
+    --_ring: var(--cui-band-ring);
+  }
+
+  /* Sizes */
+  .#{$prefix}btn-sm { --_height: var(--cui-control-height-sm); --_px: 0.625rem; --_font: var(--cui-text-xs); gap: var(--cui-space-1-5); }
+  .#{$prefix}btn-xs { --_height: var(--cui-control-height-xs); --_px: 0.5rem; --_font: var(--cui-text-xs); gap: var(--cui-space-1); --_radius: var(--cui-radius-sm); }
+  .#{$prefix}btn-lg { --_height: var(--cui-control-height-lg); --_px: 1rem; --_font: var(--cui-text-sm); }
+  .#{$prefix}btn-block { display: flex; width: 100%; }
+  .#{$prefix}btn-pill { --_radius: var(--cui-radius-full); }
+
+  /* Icon-only: square. */
+  .#{$prefix}btn-icon {
+    --_px: 0;
+    width: var(--_height);
+    padding: 0;
+    > .#{$prefix}icon { margin: 0; --cui-icon-size: 1.125rem; }
+  }
+  .#{$prefix}btn-icon.#{$prefix}btn-sm > .#{$prefix}icon { --cui-icon-size: 1rem; }
+  .#{$prefix}btn-icon.#{$prefix}btn-xs > .#{$prefix}icon { --cui-icon-size: 0.875rem; }
+
+  /* Loading state: hide label, show spinner. */
+  .#{$prefix}btn-loading {
+    color: transparent !important;
+    pointer-events: none;
+    &::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      margin: auto;
+      width: 1em;
+      height: 1em;
+      border: 2px solid var(--_fg);
+      border-right-color: transparent;
+      border-radius: 50%;
+      animation: cui-spin 0.7s linear infinite;
+    }
+  }
+
+  /* Group: fused buttons sharing borders. */
+  .#{$prefix}btn-group {
+    display: inline-flex;
+    align-items: stretch;
+    isolation: isolate;
+    > .#{$prefix}btn {
+      border-radius: 0;
+      &:first-child { border-start-start-radius: var(--_radius); border-end-start-radius: var(--_radius); }
+      &:last-child { border-start-end-radius: var(--_radius); border-end-end-radius: var(--_radius); }
+      &:not(:first-child) { margin-inline-start: calc(-1 * var(--cui-border-width)); }
+      &:hover, &:focus-visible, &.#{$prefix}active { z-index: 1; }
+      /* Fused keys don't drop; the pressed look comes from the variant's own active slots. */
+      &:active, &.#{$prefix}active { translate: none; }
+    }
+    > :is(#{_solid-variants()}):not(:first-child) { border-inline-start-color: oklch(0% 0 0 / 0.25); }
+  }
+
+  /* Split count button, GitHub-style: [★ Star][1.2k] */
+  .#{$prefix}btn-count {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--cui-control-height-sm);
+    padding-inline: 0.625rem;
+    font-size: var(--cui-text-xs);
+    font-weight: var(--cui-weight-semibold);
+    font-variant-numeric: tabular-nums;
+    color: var(--cui-text-2);
+    background: var(--cui-surface-2);
+    border: var(--cui-border-width) solid var(--cui-control-border);
+    border-inline-start: 0;
+    border-start-end-radius: var(--cui-control-radius);
+    border-end-end-radius: var(--cui-control-radius);
+    box-shadow: 0 1px 0 var(--cui-edge);
+  }
+  .#{$prefix}btn-group > .#{$prefix}btn-count { margin-inline-start: 0; }
+
+  /* Close button (dialogs, alerts, chips) */
+  .#{$prefix}btn-close {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.75rem;
+    height: 1.75rem;
+    padding: 0;
+    color: var(--cui-text-3);
+    background: transparent;
+    border: 0;
+    border-radius: var(--cui-radius-sm);
+    cursor: pointer;
+    transition: background-color var(--cui-transition), color var(--cui-transition);
+    &::before { @include icon-glyph("close"); font-size: 1.125rem; line-height: 1; }
+    &:hover { color: var(--cui-text); background: var(--cui-surface-hover); }
+    &:focus-visible { @include focus-ring; }
+  }
+
+  @keyframes cui-spin { to { transform: rotate(360deg); } }
+}

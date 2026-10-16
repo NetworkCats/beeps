@@ -1,0 +1,10 @@
+@page "/error/{code:int?}"
+@model ErrorModel
+@{
+    ViewData["Title"] = Model.IsNotFound ? L["Error.NotFound.Title"] : L["Error.Title"];
+}
+<section class="error-page feed">
+    <h1>@ViewData["Title"]</h1>
+    <p>@(Model.IsNotFound ? L["Error.NotFound.Detail"] : L["Error.Detail"])</p>
+    <a class="btn" href="~/">@L["Error.BackHome"]</a>
+</section>

@@ -1,0 +1,18 @@
+# .NET
+bin/
+obj/
+*.user
+.vs/
+.idea/
+TestResults/
+
+# Node / client build output
+node_modules/
+src/Beeps/wwwroot/dist/
+
+# Local secrets
+.env
+*.local.json
+
+# OS
+.DS_Store

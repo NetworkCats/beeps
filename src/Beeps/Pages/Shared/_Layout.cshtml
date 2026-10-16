@@ -1,0 +1,58 @@
+@using System.Globalization
+@using Beeps.Features.Localization
+@{
+    var currentCulture = CultureInfo.CurrentUICulture.Name;
+    var returnUrl = $"{Context.Request.PathBase}{Context.Request.Path}{Context.Request.QueryString}";
+}
+<!DOCTYPE html>
+<html lang="@currentCulture">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>@ViewData["Title"] · @L["Site.Name"]</title>
+    <meta name="description" content="@L["Site.Tagline"]">
+    <link rel="icon" type="image/png" href="~/images/logo.png" asp-append-version="true">
+    <link rel="apple-touch-icon" href="~/images/logo.png" asp-append-version="true">
+    <link rel="stylesheet" href="~/dist/main.css" asp-append-version="true">
+    <script type="module" src="~/dist/main.js" asp-append-version="true"></script>
+    @await RenderSectionAsync("Head", required: false)
+</head>
+<body class="page">
+    <a class="skip-link" href="#main">@L["Nav.SkipToContent"]</a>
+    <header class="navbar navbar-light navbar-sticky">
+        <div class="container navbar-inner">
+            <a class="navbar-brand site-brand" href="~/">
+                <img src="~/images/logo.png" asp-append-version="true" alt="" width="28" height="28">
+                @L["Site.Name"]
+            </a>
+        </div>
+    </header>
+
+    <main id="main" class="page-main site-main">
+        <div class="container">
+            @RenderBody()
+        </div>
+    </main>
+
+    <footer class="footer footer-light footer-simple site-footer">
+        <div class="container footer-bottom">
+            <form class="language-switch" method="post" asp-page="/Culture" aria-label="@L["Footer.Language"]">
+                <input type="hidden" name="returnUrl" value="@returnUrl">
+                @foreach (var culture in SupportedCultures.All)
+                {
+                    if (culture == currentCulture)
+                    {
+                        <span class="btn btn-ghost btn-sm" lang="@culture" aria-current="true">@L[$"Language.{culture}"]</span>
+                    }
+                    else
+                    {
+                        <button class="btn btn-ghost btn-sm" type="submit" name="culture" value="@culture" lang="@culture">@L[$"Language.{culture}"]</button>
+                    }
+                }
+            </form>
+        </div>
+    </footer>
+
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

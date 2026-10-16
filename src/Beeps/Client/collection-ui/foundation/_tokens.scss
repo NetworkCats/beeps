@@ -1,0 +1,251 @@
+// Semantic tokens. Every colour is a light-dark() pair, so one declaration serves both
+// themes. `color-scheme` on :root follows the OS; data-theme="light|dark" overrides it.
+//
+// The signature of Collection UI is that the neutrals are not neutral: page, inset
+// surfaces, hairlines, muted text, shadows and the dark band all carry a faint (2–12%) wash of
+// --cui-tint (the brand colour by default), the way crates.io's cream page and jsr's
+// cyan hairlines do. Change the brand and the whole sheet re-tints with it; set
+// `--cui-tint: var(--cui-neutral-500)` for plain grays.
+@use "sass:map";
+@use "layers";
+@use "../abstracts" as *;
+
+/// The derived scale of one semantic colour --cui-<name>: hover/active steps, soft washes,
+/// border, text, ring, and a solid fill with its contrast ink and edge.
+/// $opts: soft, soft-hover, border (mix percentages), cap-solid (default true): in dark mode
+/// cap the fill at L 55% so it carries white text; false keeps it bright with dark ink.
+@mixin color-scale($name, $opts) {
+  $c: var(--cui-#{$name});
+  $solid: var(--cui-#{$name}-solid);
+  --cui-#{$name}-hover: color-mix(in oklch, #{$c} 88%, var(--cui-shade));
+  --cui-#{$name}-active: color-mix(in oklch, #{$c} 78%, var(--cui-shade));
+  --cui-#{$name}-soft: color-mix(in oklch, #{$c} #{map.get($opts, soft)}, transparent);
+  --cui-#{$name}-soft-hover: color-mix(in oklch, #{$c} #{map.get($opts, soft-hover)}, transparent);
+  --cui-#{$name}-border: color-mix(in oklch, #{$c} #{map.get($opts, border)}, transparent);
+  --cui-#{$name}-text: color-mix(in oklch, #{$c} 85%, var(--cui-text));
+  --cui-#{$name}-ring: color-mix(in oklch, #{$c} 30%, transparent);
+  @if map.get($opts, cap-solid) == false {
+    --cui-#{$name}-solid: #{$c};
+    --cui-#{$name}-solid-hover: var(--cui-#{$name}-hover);
+  } @else {
+    --cui-#{$name}-solid: light-dark(#{$c}, oklch(from #{$c} min(l, 0.55) c h));
+    --cui-#{$name}-solid-hover: color-mix(in oklch, #{$solid} 90%, var(--cui-shade));
+  }
+  --cui-#{$name}-solid-active: color-mix(in oklch, #{$solid} 84%, #000);
+  --cui-#{$name}-contrast: oklch(from #{$solid} calc(clamp(0, (0.66 - l) * 1000, 1)) 0 h);
+  // 1px border + bottom edge of solid fills.
+  --cui-#{$name}-edge: color-mix(in oklch, #{$solid} 80%, #000);
+}
+
+@layer cui.tokens {
+  :root {
+    color-scheme: light dark;
+    --cui-prefix: "#{$prefix}"; /* the class prefix ($prefix), read by the JS */
+
+    /* ---- Brand ------------------------------------------------------------- */
+    --cui-primary: #{brand-color($brand)};
+    --cui-tint: var(--cui-primary);  /* hue that washes the neutrals (see above) */
+    --cui-shade: light-dark(#000, #fff); /* what "darker on hover" means in each theme */
+
+    /* ---- Status ------------------------------------------------------------ */
+    // Each status gets the full scale; see color-scale() below and $statuses / $statuses-extra in the config.
+    @each $name, $status in $all-statuses {
+      --cui-#{$name}: #{brand-color(map.get($status, hue))};
+    }
+    @each $name, $status in $all-statuses {
+      @include color-scale($name, $status);
+    }
+
+    /* ---- Surfaces (tinted) ------------------------------------------------- */
+    --cui-bg: light-dark(
+      color-mix(in oklch, var(--cui-tint) 2.5%, var(--cui-neutral-50)),
+      color-mix(in oklch, var(--cui-tint) 3%, var(--cui-neutral-950)));            /* page */
+    --cui-surface: light-dark(
+      var(--cui-neutral-0),
+      color-mix(in oklch, var(--cui-tint) 2%, var(--cui-neutral-900)));            /* cards, rows, inputs */
+    --cui-surface-2: light-dark(
+      color-mix(in oklch, var(--cui-tint) 3%, var(--cui-neutral-100)),
+      color-mix(in oklch, var(--cui-tint) 3%, var(--cui-neutral-800)));            /* inset: code, table head, strips */
+    --cui-surface-3: light-dark(
+      color-mix(in oklch, var(--cui-tint) 5%, var(--cui-neutral-200)),
+      color-mix(in oklch, var(--cui-tint) 4%, var(--cui-neutral-700)));            /* pressed / strong inset */
+    --cui-surface-hover: light-dark(
+      color-mix(in oklch, var(--cui-tint) 3%, var(--cui-neutral-50)),
+      color-mix(in oklch, var(--cui-tint) 3%, color-mix(in oklch, var(--cui-neutral-900) 55%, var(--cui-neutral-800))));
+    --cui-overlay: light-dark(
+      color-mix(in oklch, var(--cui-tint) 25%, oklch(20% 0.02 255 / 0.5)),
+      oklch(5% 0.01 255 / 0.72));
+    --cui-band: light-dark(
+      color-mix(in oklch, var(--cui-tint) 14%, var(--cui-neutral-950)),
+      color-mix(in oklch, var(--cui-tint) 8%, var(--cui-neutral-1000)));           /* navbar / hero / footer */
+    --cui-band-2: light-dark(
+      color-mix(in oklch, var(--cui-tint) 12%, var(--cui-neutral-900)),
+      color-mix(in oklch, var(--cui-tint) 7%, var(--cui-neutral-950)));
+    --cui-band-text: var(--cui-neutral-50);
+    --cui-band-muted: color-mix(in oklch, var(--cui-tint) 12%, var(--cui-neutral-400));
+    --cui-band-border: oklch(100% 0 0 / 0.12);
+    --cui-band-hover: oklch(100% 0 0 / 0.08);
+    --cui-band-ring: 0 0 0 3px oklch(100% 0 0 / 0.3);              /* focus ring on dark bands */
+    /* The colour that "cuts" a ring around overlapping marks (avatar stacks, presence and
+     * unread dots). Bands, navbars and solid surfaces re-point it to their own background. */
+    --cui-cutout: var(--cui-surface);
+
+    /* ---- Lines (tinted hairlines) ------------------------------------------ */
+    --cui-border: light-dark(
+      color-mix(in oklch, var(--cui-tint) 7%, var(--cui-neutral-200)),
+      color-mix(in oklch, var(--cui-tint) 6%, var(--cui-neutral-800)));
+    --cui-border-strong: light-dark(
+      color-mix(in oklch, var(--cui-tint) 9%, var(--cui-neutral-300)),
+      color-mix(in oklch, var(--cui-tint) 8%, var(--cui-neutral-700)));
+    --cui-border-width: 1px;
+    --cui-divider: var(--cui-border);
+
+    /* ---- Text (ink, faintly tinted) --------------------------------------- */
+    --cui-text: light-dark(
+      color-mix(in oklch, var(--cui-tint) 6%, var(--cui-neutral-900)),
+      var(--cui-neutral-50));
+    --cui-text-2: light-dark(
+      color-mix(in oklch, var(--cui-tint) 6%, var(--cui-neutral-600)),
+      color-mix(in oklch, var(--cui-tint) 5%, var(--cui-neutral-400)));  /* secondary */
+    --cui-text-3: light-dark(
+      color-mix(in oklch, var(--cui-tint) 8%, var(--cui-neutral-500)),
+      color-mix(in oklch, var(--cui-tint) 6%, var(--cui-neutral-500)));  /* muted / meta */
+    --cui-text-4: light-dark(
+      color-mix(in oklch, var(--cui-tint) 6%, var(--cui-neutral-400)),
+      color-mix(in oklch, var(--cui-tint) 5%, var(--cui-neutral-600)));  /* placeholder, disabled */
+
+    /* ---- Type -------------------------------------------------------------- */
+    --cui-font-sans: "IBM Plex Sans", "Inter Variable", Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
+    --cui-font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, "Liberation Mono", "Courier New", monospace;
+    --cui-font-body: var(--cui-font-sans);
+    --cui-font-heading: var(--cui-font-sans);
+
+    @each $size, $value in $font-sizes {
+      --cui-text-#{$size}: #{$value};
+    }
+
+    --cui-leading-tight: 1.2;
+    --cui-leading-snug: 1.35;
+    --cui-leading-base: 1.5;
+    --cui-leading-relaxed: 1.65;
+
+    --cui-weight-normal: 400;
+    --cui-weight-medium: 500;
+    --cui-weight-semibold: 600;
+    --cui-weight-bold: 600; /* opinion: 600 is bold enough */
+
+    --cui-tracking-tight: -0.015em;
+    --cui-tracking-wide: 0.06em;  /* uppercase micro-labels */
+
+    /* ---- Space ------------------------------------------------------------- */
+    @each $step, $value in $spacers {
+      --cui-space-#{$step}: #{$value};
+    }
+
+    /* ---- Shape: tight corners, registry-style ------------------------------ */
+    @each $name, $value in $radii {
+      @if $name == default {
+        --cui-radius: #{$value};
+      } @else {
+        --cui-radius-#{$name}: #{$value};
+      }
+    }
+
+    /* ---- Elevation & relief (tinted) --------------------------------------- */
+    --cui-shadow-color: light-dark(color-mix(in oklch, var(--cui-tint) 30%, var(--cui-neutral-900)), oklch(0% 0 0));
+    --cui-shadow-xs: 0 1px 2px color-mix(in oklch, var(--cui-shadow-color) 6%, transparent);
+    --cui-shadow-sm: 0 1px 3px color-mix(in oklch, var(--cui-shadow-color) 8%, transparent), 0 1px 2px -1px color-mix(in oklch, var(--cui-shadow-color) 6%, transparent);
+    --cui-shadow-md: 0 4px 12px -2px color-mix(in oklch, var(--cui-shadow-color) 12%, transparent), 0 2px 4px -2px color-mix(in oklch, var(--cui-shadow-color) 8%, transparent);
+    --cui-shadow-lg: 0 12px 32px -8px color-mix(in oklch, var(--cui-shadow-color) 22%, transparent), 0 4px 8px -4px color-mix(in oklch, var(--cui-shadow-color) 10%, transparent);
+    --cui-shadow-xl: 0 24px 64px -12px color-mix(in oklch, var(--cui-shadow-color) 35%, transparent);
+    /* Relief: controls are physical. Buttons are keycaps (highlight on top, a 1px edge
+     * below), inputs are wells (sunk), pressing flattens the keycap. */
+    --cui-highlight: light-dark(oklch(100% 0 0 / 0.8), oklch(100% 0 0 / 0.07));
+    --cui-edge: light-dark(color-mix(in oklch, var(--cui-shadow-color) 16%, transparent), oklch(0% 0 0 / 0.55));
+    --cui-shadow-key: inset 0 1px 0 var(--cui-highlight), 0 1px 0 var(--cui-edge);
+    --cui-shadow-well: inset 0 1px 2px color-mix(in oklch, var(--cui-shadow-color) 7%, transparent);
+    --cui-shadow-pressed: inset 0 1px 2px color-mix(in oklch, var(--cui-shadow-color) 18%, transparent);
+    @each $name in statuses() {
+      --cui-ring-#{$name}: 0 0 0 3px var(--cui-#{$name}-ring);
+    }
+
+    /* ---- Motion ------------------------------------------------------------ */
+    /* Things arrive with --cui-ease-out (fast start, long settle) and leave faster with
+     * --cui-ease-in; state changes in place use --cui-ease. Small physical parts (switch
+     * thumb, check mark) settle with --cui-ease-spring, a damped spring with ~4% overshoot. */
+    --cui-duration-fast: 100ms;
+    --cui-duration: 150ms;
+    --cui-duration-slow: 250ms;
+    --cui-duration-slower: 400ms; /* large surfaces: drawers, sheets, progress fills */
+    --cui-ease: cubic-bezier(0.2, 0, 0, 1);
+    --cui-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+    --cui-ease-in: cubic-bezier(0.4, 0, 1, 1);
+    --cui-ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+    --cui-ease-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
+    --cui-ease-spring: linear(0, 0.155 6.3%, 0.442 12.5%, 0.703 18.8%, 0.884 25%, 0.986 31.3%, 1.029 37.5%, 1.038 43.8%, 1.032 50%, 1.021 56.3%, 1.011 62.5%, 1.004 68.8%, 1 75%, 0.999 87.5%, 1);
+    --cui-transition: var(--cui-duration) var(--cui-ease);
+
+    /* ---- Layers ------------------------------------------------------------ */
+    @each $name, $value in $z-layers {
+      --cui-z-#{$name}: #{$value};
+    }
+
+    /* ---- Layout ------------------------------------------------------------ */
+    --cui-container: 72rem;
+    --cui-container-narrow: 44rem;
+    --cui-container-wide: 90rem;
+    --cui-gutter: 1rem;
+    --cui-navbar-height: 3.5rem;
+    --cui-sidebar-width: 18rem;
+
+    /* ---- Controls (shared by button, input, select) ------------------------ */
+    --cui-control-height-xs: 1.5rem;    /* 24 */
+    --cui-control-height-sm: 1.75rem;   /* 28 */
+    --cui-control-height: 2rem;         /* 32 */
+    --cui-control-height-lg: 2.5rem;    /* 40 */
+    --cui-control-padding-x: 0.75rem;
+    --cui-control-font-size: 0.8125rem; /* 13 */
+    --cui-control-radius: var(--cui-radius);
+    --cui-control-border: light-dark(
+      color-mix(in oklch, var(--cui-tint) 12%, var(--cui-neutral-300)),
+      color-mix(in oklch, var(--cui-tint) 8%, var(--cui-neutral-700)));
+    --cui-control-bg: var(--cui-surface);
+  }
+
+  /* Everything derived from --cui-primary. Declared on [data-brand] too, so a subtree that
+   * re-points the brand (data-brand="teal" on a section) re-derives its fills, washes,
+   * links and rings instead of inheriting values already resolved at :root. */
+  :root, [data-brand] {
+    // Solid fills (buttons, solid badges, checked controls, primary bands). In light mode
+    // this is the brand itself; in dark mode the brand is a light step tuned for text on a
+    // dark page, which as a fill would force black labels on a pastel slab. So the fill is
+    // capped at L 55% there: a deeper, saturated slab that carries white text.
+    @include color-scale(primary, (soft: 10%, soft-hover: 16%, border: 40%));
+    --cui-link: var(--cui-primary);
+    --cui-link-hover: var(--cui-primary-hover);
+    --cui-selection: var(--cui-primary-soft-hover);
+    --cui-ring: 0 0 0 3px var(--cui-primary-ring);
+    --cui-focus-ring: var(--cui-ring);
+  }
+
+  /* Neutral brand: in dark mode the brand is near-white, and a light slab with dark ink is
+   * the intended monochrome look, so it is not capped like the hues. */
+  [data-brand="neutral"] { --cui-primary-solid: var(--cui-primary); }
+
+  @include mq(sm) {
+    :root { --cui-gutter: 1.5rem; }
+  }
+
+  @include mq(reduced-motion) {
+    :root {
+      --cui-duration-fast: 0ms;
+      --cui-duration: 0ms;
+      --cui-duration-slow: 0ms;
+      --cui-duration-slower: 0ms;
+    }
+  }
+
+  /* Manual theme override. CUI.theme.set() toggles this attribute. */
+  [data-theme="light"] { color-scheme: light; }
+  [data-theme="dark"] { color-scheme: dark; }
+}

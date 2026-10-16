@@ -1,0 +1,6 @@
+// Cascade layer order. Later layers win, and anything a user writes outside a layer beats all
+// of them, so overriding the framework never needs !important.
+//
+// Every module that emits CSS @uses this one first. Sass loads a module once, so the
+// statement is printed once, at the very top, whichever subset of files you pull in.
+@layer cui.reset, cui.tokens, cui.base, cui.layout, cui.components, cui.utilities;

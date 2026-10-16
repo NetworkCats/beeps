@@ -1,0 +1,26 @@
+{
+  "name": "beeps-client",
+  "private": true,
+  "type": "module",
+  "description": "Client assets for beeps: TypeScript and SCSS in src/Beeps/Client, built into src/Beeps/wwwroot/dist.",
+  "license": "MIT",
+  "scripts": {
+    "build": "npm run typecheck && node scripts/build-client.ts",
+    "watch": "node scripts/build-client.ts --watch",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "node --test \"src/Beeps/Client/ts/**/*.test.ts\""
+  },
+  "devDependencies": {
+    "@types/node": "26.6.5",
+    "esbuild": "0.28.2",
+    "sass": "1.105.1",
+    "typescript": "7.0.2"
+  },
+  "engines": {
+    "node": ">=24"
+  },
+  "allowScripts": {
+    "esbuild": false,
+    "@parcel/watcher": false
+  }
+}

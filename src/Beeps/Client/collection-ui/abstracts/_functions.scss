@@ -1,0 +1,86 @@
+// Helpers that turn config into CSS values. No output.
+
+@use "sass:list";
+@use "sass:map";
+@use "sass:meta";
+@use "sass:string";
+@use "config" as *;
+
+/// The media query for a breakpoint (`sm`, `max-md`…) or a named feature (`motion`, `hover`).
+/// Anything else is passed through, so `mq("(orientation: portrait)")` works too.
+@function media-query($name) {
+  $key: $name;
+  @if meta.type-of($name) == string {
+    $key: string.unquote($name);
+  }
+  @if map.has-key($breakpoints, $key) {
+    @return "(width >= #{map.get($breakpoints, $key)})";
+  }
+  @if meta.type-of($key) == string and string.index($key, "max-") == 1 {
+    $bp: string.slice($key, 5);
+    @if not map.has-key($breakpoints, $bp) {
+      @error "Unknown breakpoint `#{$bp}`. Known: #{map.keys($breakpoints)}.";
+    }
+    @return "(width < #{map.get($breakpoints, $bp)})";
+  }
+  @if map.has-key($media-features, $key) {
+    @return map.get($media-features, $key);
+  }
+  @return $name;
+}
+
+/// A hue name as a string. Unquoted names like `teal` are Sass colour literals, which would
+/// print as anything (`cyan` comes out as `aqua`), so they are rejected with a hint.
+@function hue-name($hue) {
+  @if meta.type-of($hue) == color {
+    @error "Hue names must be quoted strings: write \"#{meta.inspect($hue)}\", not #{meta.inspect($hue)}.";
+  }
+  @return $hue;
+}
+
+/// OKLCH value of `$hue` (a key of $all-hues) at palette `$step` (a key of $ladder).
+@function palette-color($hue, $step) {
+  $hue: hue-name($hue);
+  @if not map.has-key($all-hues, $hue) {
+    @error "Unknown hue `#{$hue}`. Known: #{map.keys($all-hues)}.";
+  }
+  $def: map.get($all-hues, $hue);
+  $i: list.index(map.keys($ladder), $step);
+  $angle: map.get($def, hue);
+  @if list.length($angle) > 1 {
+    $angle: list.nth($angle, $i);
+  }
+  // Interpolated so the value is written exactly as authored.
+  @return string.unquote("oklch(#{map.get($ladder, $step)} #{list.nth(map.get($def, chroma), $i)} #{$angle})");
+}
+
+/// light-dark() pair for a brand preset: the hue's light and dark brand steps.
+@function brand-color($hue) {
+  $hue: hue-name($hue);
+  @if $hue == "neutral" {
+    @return string.unquote("light-dark(var(--cui-neutral-800), var(--cui-neutral-200))");
+  }
+  $light: map.get($brand-steps, light);
+  $dark: map.get($brand-steps, dark);
+  @return string.unquote("light-dark(var(--cui-#{$hue}-#{$light}), var(--cui-#{$hue}-#{$dark}))");
+}
+
+/// Status names from $statuses + $statuses-extra (success, warning, danger, info by default).
+@function statuses() {
+  @return map.keys($all-statuses);
+}
+
+/// The colour "tones" every coloured variant is generated for: primary plus each status.
+/// A status added to $statuses-extra gets .btn-<name>, .badge-<name>, .alert-<name>, .text-<name>…
+/// automatically.
+@function tones() {
+  @return list.join(("primary",), statuses());
+}
+
+/// Brand presets to emit: $brand-presets, or every hue plus neutral.
+@function brand-presets() {
+  @if $brand-presets {
+    @return $brand-presets;
+  }
+  @return list.append(map.keys($all-hues), "neutral");
+}

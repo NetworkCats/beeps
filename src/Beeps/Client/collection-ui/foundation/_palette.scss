@@ -1,0 +1,30 @@
+// Collection UI palette, generated from $neutral, $hues and $ladder in abstracts/_config.scss.
+//
+// Ladder (L):  50 97% · 100 93% · 200 87% · 300 79% · 400 69% · 500 59%
+//              600 51% · 700 44% · 800 38% · 900 32% · 950 25%
+@use "sass:map";
+@use "layers";
+@use "../abstracts" as *;
+
+@layer cui.tokens {
+  :root {
+    @each $step, $value in $neutral {
+      --cui-neutral-#{$step}: #{$value};
+    }
+
+    @each $hue, $_ in $all-hues {
+      @each $step, $_ in $ladder {
+        --cui-#{$hue}-#{$step}: #{palette-color($hue, $step)};
+      }
+    }
+  }
+
+  // Brand presets: data-brand on <html> (or any subtree) re-points --cui-primary.
+  // `:root[data-brand]` outranks the :root defaults in _tokens.scss (which load later).
+  @each $hue in brand-presets() {
+    :root[data-brand="#{$hue}"],
+    [data-brand="#{$hue}"] {
+      --cui-primary: #{brand-color($hue)};
+    }
+  }
+}
