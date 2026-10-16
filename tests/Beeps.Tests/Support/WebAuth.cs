@@ -17,9 +17,9 @@ internal static class WebAuth
         user.PasswordHash = new PasswordHasher<User>().HashPassword(user, Password);
         factory.Accounts.FindUserByHandleAsync(user.Actor.NormalizedHandle!, Arg.Any<CancellationToken>()).Returns(user);
         factory.Accounts.FindUserAsync(user.Id, Arg.Any<CancellationToken>()).Returns(user);
-        // Read on every request, so a test can change the user (ban, new stamp…) after signing in.
-        factory.Accounts.GetSessionAsync(user.Id, Arg.Any<CancellationToken>()).Returns(_ => user.BannedAt is null
-            ? new AccountSession(user.Id, user.Actor.Handle!, user.Actor.DisplayName!, user.IsAdmin, user.EmailVerifiedAt is not null, user.Locale, user.SecurityStamp)
+        // Read on every request, so a test can change the user (ban, rights…) after signing in.
+        factory.Accounts.GetAccountStateAsync(user.Id, Arg.Any<CancellationToken>()).Returns(_ => user.BannedAt is null
+            ? new AccountState(user.Id, user.Actor.Handle!, user.Actor.DisplayName!, user.IsAdmin, user.EmailVerifiedAt is not null, user.Locale)
             : null);
         if (admin)
         {

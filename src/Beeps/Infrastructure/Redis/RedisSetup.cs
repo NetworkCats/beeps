@@ -41,7 +41,7 @@ public static class RedisSetup
         {
             Expiration = TimeSpan.FromMinutes(5),
             LocalCacheExpiration = TimeSpan.FromSeconds(30),
-        }).AddAgentKeyCacheSerializer();
+        }).AddBeepsCacheSerializers();
         return services;
     }
 }

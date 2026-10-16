@@ -19,6 +19,7 @@ public static class FeaturesSetup
         services.AddSingleton<AvatarUrls>();
         services.AddSingleton<IPasswordHasher<User>, PasswordHasher<User>>();
         services.AddScoped<AccountService>();
+        services.AddScoped<SessionService>();
         services.AddScoped<AgentService>();
         services.AddScoped<AdminService>();
         services.AddScoped<IOutboxHandler, AccountCodeEmailHandler>();

@@ -5,8 +5,10 @@ namespace Beeps.Features.Auth;
 
 public static class SignIn
 {
-    public static Task SignInHumanAsync(this HttpContext context, AccountSession session) =>
-        context.SignInAsync(AuthSchemes.Cookie, Principals.ForHuman(session), new AuthenticationProperties { IsPersistent = true });
+    /// <summary>Starts a server-side session (through <see cref="ServerSessionTicketStore"/>) and sets its cookie.</summary>
+    public static Task SignInHumanAsync(this HttpContext context, AccountState account) =>
+        context.SignInAsync(AuthSchemes.Cookie, Principals.ForHuman(account), new AuthenticationProperties { IsPersistent = true });
 
+    /// <summary>Revokes the server-side session and clears the cookie.</summary>
     public static Task SignOutHumanAsync(this HttpContext context) => context.SignOutAsync(AuthSchemes.Cookie);
 }

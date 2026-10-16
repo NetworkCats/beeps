@@ -38,7 +38,6 @@ internal static class TestData
             Email = $"{handle}@example.com",
             NormalizedEmail = $"{handle.ToLowerInvariant()}@example.com",
             PasswordHash = passwordHash ?? "",
-            SecurityStamp = "stamp-1",
             EmailVerifiedAt = verified ? Now : null,
             IsAdmin = admin,
             Locale = "en",

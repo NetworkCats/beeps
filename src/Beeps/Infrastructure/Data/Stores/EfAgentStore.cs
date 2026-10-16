@@ -42,10 +42,10 @@ public sealed class EfAgentStore(BeepsDbContext db, HybridCache cache) : IAgentS
 
     public async Task<AgentKeyMatch?> FindActiveKeyAsync(string keyHash, CancellationToken cancellationToken) =>
         await cache.GetOrCreateAsync(
-            AgentKeyCache.Key(keyHash),
+            SharedCache.AgentKeyKey(keyHash),
             (db, keyHash),
             static async (state, ct) => await QueryActiveKeyAsync(state.db, state.keyHash, ct),
-            AgentKeyCache.Options,
+            SharedCache.AgentKey,
             cancellationToken: cancellationToken);
 
     public async Task TouchKeyAsync(AgentKeyMatch key, DateTimeOffset now, CancellationToken cancellationToken)
@@ -54,7 +54,7 @@ public sealed class EfAgentStore(BeepsDbContext db, HybridCache cache) : IAgentS
         await db.Set<AgentKey>()
             .Where(k => k.Id == key.KeyId)
             .ExecuteUpdateAsync(s => s.SetProperty(k => k.LastUsedAt, now), cancellationToken);
-        await cache.RemoveAsync(AgentKeyCache.Key(key.KeyHash), cancellationToken);
+        await cache.RemoveAsync(SharedCache.AgentKeyKey(key.KeyHash), cancellationToken);
     }
 
     public async Task ForgetKeysAsync(IReadOnlyCollection<Guid> agentIds, CancellationToken cancellationToken)
@@ -69,7 +69,7 @@ public sealed class EfAgentStore(BeepsDbContext db, HybridCache cache) : IAgentS
             .Where(k => agentIds.Contains(k.AgentId))
             .Select(k => k.KeyHash)
             .ToListAsync(cancellationToken);
-        await cache.RemoveAsync(hashes.Select(AgentKeyCache.Key), cancellationToken);
+        await cache.RemoveAsync(hashes.Select(SharedCache.AgentKeyKey), cancellationToken);
     }
 
     public async Task<IReadOnlyList<Guid>> DisableAllAsync(Guid ownerId, DateTimeOffset now, CancellationToken cancellationToken)

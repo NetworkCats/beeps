@@ -27,6 +27,7 @@ public static class InfrastructureSetup
         services.AddSingleton<IRateLimitStore, RedisRateLimitStore>();
         services.AddScoped<IUnitOfWork, EfUnitOfWork>();
         services.AddScoped<IAccountStore, EfAccountStore>();
+        services.AddScoped<ISessionStore, EfSessionStore>();
         services.AddScoped<IAgentStore, EfAgentStore>();
         services.AddScoped<IAdminStore, EfAdminStore>();
         services.AddHttpClient<ICaptchaVerifier, TurnstileCaptchaVerifier>(client => client.Timeout = TimeSpan.FromSeconds(10));

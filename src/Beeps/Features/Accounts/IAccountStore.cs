@@ -22,8 +22,14 @@ public interface IAccountStore
 
     Task<User?> FindUserByHandleAsync(string normalizedHandle, CancellationToken cancellationToken);
 
-    /// <summary>What a signed-in request needs to know about its account; null if it is gone, deleted or banned.</summary>
-    Task<AccountSession?> GetSessionAsync(Guid userId, CancellationToken cancellationToken);
+    /// <summary>
+    /// What a signed-in request needs to know about its account; null if it is gone, deleted or banned.
+    /// Served from a shared Valkey cache; <see cref="ForgetAccountAsync"/> drops it after a change.
+    /// </summary>
+    Task<AccountState?> GetAccountStateAsync(Guid userId, CancellationToken cancellationToken);
+
+    /// <summary>Drops the cached <see cref="AccountState"/>. Call after committing any change to it.</summary>
+    Task ForgetAccountAsync(Guid userId, CancellationToken cancellationToken);
 
     /// <summary><see cref="RegistrationMode.Open"/> until an admin changes it.</summary>
     Task<RegistrationMode> GetRegistrationModeAsync(CancellationToken cancellationToken);
@@ -51,12 +57,11 @@ public interface IAccountStore
     Task<bool> TryCountCodeAttemptAsync(EmailCodePurpose purpose, string normalizedEmail, DateTimeOffset now, int maxAttempts, CancellationToken cancellationToken);
 }
 
-/// <summary>The signed-in account, as re-read from the database on every request.</summary>
-public sealed record AccountSession(
+/// <summary>The signed-in account as every request sees it: rights, verification and language take effect at once.</summary>
+public sealed record AccountState(
     Guid UserId,
     string Handle,
     string DisplayName,
     bool IsAdmin,
     bool EmailVerified,
-    string Locale,
-    string SecurityStamp);
+    string Locale);

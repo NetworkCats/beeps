@@ -1,10 +1,11 @@
 using Beeps.Features.Accounts;
 using Beeps.Features.Site;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Hybrid;
 
 namespace Beeps.Infrastructure.Data.Stores;
 
-public sealed class EfAccountStore(BeepsDbContext db) : IAccountStore
+public sealed class EfAccountStore(BeepsDbContext db, HybridCache cache) : IAccountStore
 {
     public Task<bool> AnyUsersAsync(CancellationToken cancellationToken) =>
         db.Set<User>().AnyAsync(cancellationToken);
@@ -31,18 +32,25 @@ public sealed class EfAccountStore(BeepsDbContext db) : IAccountStore
     public Task<User?> FindUserByHandleAsync(string normalizedHandle, CancellationToken cancellationToken) =>
         Users().FirstOrDefaultAsync(u => u.Actor.NormalizedHandle == normalizedHandle, cancellationToken);
 
-    public Task<AccountSession?> GetSessionAsync(Guid userId, CancellationToken cancellationToken) =>
-        db.Set<User>()
-            .Where(u => u.Id == userId && u.BannedAt == null && u.Actor.DeletedAt == null)
-            .Select(u => new AccountSession(
-                u.Id,
-                u.Actor.Handle!,
-                u.Actor.DisplayName!,
-                u.IsAdmin,
-                u.EmailVerifiedAt != null,
-                u.Locale,
-                u.SecurityStamp))
-            .FirstOrDefaultAsync(cancellationToken);
+    public async Task<AccountState?> GetAccountStateAsync(Guid userId, CancellationToken cancellationToken) =>
+        await cache.GetOrCreateAsync(
+            SharedCache.AccountKey(userId),
+            (db, userId),
+            static async (state, ct) => await state.db.Set<User>()
+                .Where(u => u.Id == state.userId && u.BannedAt == null && u.Actor.DeletedAt == null)
+                .Select(u => new AccountState(
+                    u.Id,
+                    u.Actor.Handle!,
+                    u.Actor.DisplayName!,
+                    u.IsAdmin,
+                    u.EmailVerifiedAt != null,
+                    u.Locale))
+                .FirstOrDefaultAsync(ct),
+            SharedCache.Account,
+            cancellationToken: cancellationToken);
+
+    public async Task ForgetAccountAsync(Guid userId, CancellationToken cancellationToken) =>
+        await cache.RemoveAsync(SharedCache.AccountKey(userId), cancellationToken);
 
     public async Task<RegistrationMode> GetRegistrationModeAsync(CancellationToken cancellationToken)
     {

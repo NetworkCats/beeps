@@ -45,6 +45,8 @@ public sealed class BeepsWebApplicationFactory : WebApplicationFactory<Program>
 
     internal ImmediateUnitOfWork UnitOfWork { get; } = new();
 
+    internal InMemorySessionStore Sessions { get; } = new();
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Testing");
@@ -68,6 +70,7 @@ public sealed class BeepsWebApplicationFactory : WebApplicationFactory<Program>
             Replace(services, Email);
             Replace(services, Outbox);
             Replace<IUnitOfWork>(services, UnitOfWork);
+            Replace<ISessionStore>(services, Sessions);
             services.Configure<KeyManagementOptions>(options => options.XmlRepository = new InMemoryXmlRepository());
             services.RemoveAll<IDistributedCache>();
             services.AddDistributedMemoryCache();

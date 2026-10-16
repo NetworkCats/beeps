@@ -15,6 +15,7 @@ public sealed class AdminServiceTests
 
     private readonly IAdminStore store = Substitute.For<IAdminStore>();
     private readonly IAccountStore accounts = Substitute.For<IAccountStore>();
+    private readonly ISessionStore sessions = Substitute.For<ISessionStore>();
     private readonly IAgentStore agents = Substitute.For<IAgentStore>();
     private readonly ImmediateUnitOfWork unitOfWork = new();
     private readonly List<AdminAuditLog> audit = [];
@@ -95,7 +96,9 @@ public sealed class AdminServiceTests
 
         Assert.True(result.IsSuccess);
         Assert.Equal(TestData.Now, user.BannedAt);
-        Assert.NotEqual("stamp-1", user.SecurityStamp);
+        await sessions.Received(1).RevokeAllAsync(user.Id, TestData.Now, Arg.Any<CancellationToken>());
+        await sessions.Received(1).ForgetAllAsync(user.Id, Arg.Any<CancellationToken>());
+        await accounts.Received(1).ForgetAccountAsync(user.Id, Arg.Any<CancellationToken>());
         Assert.Equal([AdvisoryLocks.Admins], unitOfWork.Locks);
         var entry = Assert.Single(audit);
         Assert.Equal((AuditActions.BanUser, AdminId, user.Id), (entry.Action, entry.AdminId, entry.TargetId));
@@ -127,6 +130,7 @@ public sealed class AdminServiceTests
         var revoke = await service.SetAdminAsync(AdminId, user.Id, false, TestSupport.Ct);
 
         Assert.All([ban.Error, delete.Error, revoke.Error], e => Assert.Equal(AdminErrorCodes.LastAdmin, e?.Code));
+        await sessions.DidNotReceiveWithAnyArgs().ForgetAllAsync(default, TestSupport.Ct);
         Assert.True(user.IsAdmin);
         Assert.Null(user.BannedAt);
         Assert.Empty(audit);
@@ -160,6 +164,9 @@ public sealed class AdminServiceTests
         Assert.True(user.IsAdmin);
         Assert.Equal(AdminErrorCodes.UserBanned, refused.Error?.Code);
         Assert.Equal(AuditActions.GrantAdmin, Assert.Single(audit).Action);
+        // Only the successful change clears the cached rights.
+        await accounts.Received(1).ForgetAccountAsync(user.Id, Arg.Any<CancellationToken>());
+        await accounts.DidNotReceive().ForgetAccountAsync(banned.Id, Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -173,6 +180,7 @@ public sealed class AdminServiceTests
         Assert.True(result.IsSuccess);
         Assert.Null(user.BannedAt);
         Assert.Equal(AuditActions.UnbanUser, Assert.Single(audit).Action);
+        await accounts.Received(1).ForgetAccountAsync(user.Id, Arg.Any<CancellationToken>());
         await agents.DidNotReceiveWithAnyArgs().DisableAllAsync(default, default, TestSupport.Ct);
     }
 
@@ -187,7 +195,8 @@ public sealed class AdminServiceTests
         Assert.True(result.IsSuccess);
         Assert.Equal(TestData.Now, user.Actor.DeletedAt);
         Assert.False(user.IsAdmin);
-        Assert.NotEqual("stamp-1", user.SecurityStamp);
+        await sessions.Received(1).RevokeAllAsync(user.Id, TestData.Now, Arg.Any<CancellationToken>());
+        await sessions.Received(1).ForgetAllAsync(user.Id, Arg.Any<CancellationToken>());
         Assert.Equal(AuditActions.DeleteUser, Assert.Single(audit).Action);
     }
 
@@ -278,7 +287,6 @@ public sealed class AdminServiceTests
                 Email = user.Email,
                 NormalizedEmail = user.NormalizedEmail,
                 PasswordHash = "",
-                SecurityStamp = "stamp-1",
                 IsAdmin = admin,
                 Locale = "en",
             };
@@ -295,6 +303,6 @@ public sealed class AdminServiceTests
         var avatars = new AvatarUrls(TestData.Site);
         var localizer = new TestLocalizer();
         var agentService = new AgentService(agents, unitOfWork, avatars, Options.Create(new AgentOptions()), TestData.Time(), localizer, NullLogger<AgentService>.Instance);
-        return new AdminService(store, accounts, agents, agentService, unitOfWork, avatars, TestData.Time(), localizer, NullLogger<AdminService>.Instance);
+        return new AdminService(store, accounts, sessions, agents, agentService, unitOfWork, avatars, TestData.Time(), localizer, NullLogger<AdminService>.Instance);
     }
 }

@@ -39,11 +39,27 @@ internal sealed class UserConfiguration : IEntityTypeConfiguration<User>
         builder.HasOne(u => u.Actor).WithOne().HasForeignKey<User>(u => u.Id).OnDelete(DeleteBehavior.Restrict);
         builder.Property(u => u.Email).HasMaxLength(User.EmailMaxLength);
         builder.Property(u => u.NormalizedEmail).HasMaxLength(User.EmailMaxLength);
-        builder.Property(u => u.SecurityStamp).HasMaxLength(64);
         builder.Property(u => u.Locale).HasMaxLength(16);
         builder.HasIndex(u => u.NormalizedEmail).IsUnique().HasDatabaseName(AccountIndexes.UniqueEmail).HasOperators("text_pattern_ops");
         // Counting admins (last-admin rule, admin checks) only ever looks at this handful of rows.
         builder.HasIndex(u => u.Id).HasFilter("is_admin").HasDatabaseName("ix_users_admins");
+    }
+}
+
+internal sealed class UserSessionConfiguration : IEntityTypeConfiguration<UserSession>
+{
+    public void Configure(EntityTypeBuilder<UserSession> builder)
+    {
+        builder.ToTable("user_sessions");
+        builder.HasKey(s => s.Id);
+        builder.Property(s => s.Id).ValueGeneratedNever();
+        builder.Property(s => s.TokenHash).HasMaxLength(64);
+        builder.Property(s => s.UserAgent).HasMaxLength(UserSession.UserAgentMaxLength);
+        builder.Property(s => s.IpAddress).HasMaxLength(UserSession.IpAddressMaxLength);
+        builder.HasIndex(s => s.TokenHash).IsUnique();
+        // Revoking or forgetting all of a user's sessions.
+        builder.HasIndex(s => s.UserId);
+        builder.HasOne<User>().WithMany().HasForeignKey(s => s.UserId).OnDelete(DeleteBehavior.Cascade);
     }
 }
 

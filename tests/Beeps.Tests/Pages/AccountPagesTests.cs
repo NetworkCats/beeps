@@ -113,13 +113,43 @@ public sealed class AccountPagesTests : IDisposable
     }
 
     [Fact]
-    public async Task ANewSecurityStampEndsTheSession()
+    public async Task SigningInCreatesAServerSideSession()
+    {
+        var user = WebAuth.ArrangeUser(factory);
+        using var client = WebAuth.NewClient(factory);
+        client.DefaultRequestHeaders.UserAgent.ParseAdd("TestBrowser/1.0");
+
+        using var response = await WebAuth.PostFormAsync(client, "/login", "/login", ("Login", "tom"), ("Password", WebAuth.Password));
+
+        var session = Assert.Single(factory.Sessions.All);
+        Assert.Equal(user.Id, session.UserId);
+        Assert.Equal("TestBrowser/1.0", session.UserAgent);
+        // The cookie holds a protected session reference, not the account's claims.
+        var cookie = response.Headers.GetValues("Set-Cookie").Single(c => c.StartsWith("beeps.session=", StringComparison.Ordinal));
+        Assert.True(cookie.Split(';')[0].Length < 400, cookie);
+    }
+
+    [Fact]
+    public async Task SigningOutRevokesTheSessionEverywhere()
+    {
+        var user = WebAuth.ArrangeUser(factory);
+        using var client = await WebAuth.SignInAsync(factory, user);
+
+        using var logout = await WebAuth.PostFormAsync(client, "/agents", "/logout");
+
+        Assert.Equal(HttpStatusCode.Redirect, logout.StatusCode);
+        Assert.NotNull(Assert.Single(factory.Sessions.All).RevokedAt);
+    }
+
+    [Fact]
+    public async Task ARevokedSessionCannotBeReplayed()
     {
         var user = WebAuth.ArrangeUser(factory);
         using var client = await WebAuth.SignInAsync(factory, user);
         using var before = await client.GetAsync(new Uri("/agents", UriKind.Relative), TestSupport.Ct);
 
-        user.SecurityStamp = "after-password-reset";
+        // What a password reset or a ban does on the server, while the browser keeps its cookie.
+        await factory.Sessions.RevokeAllAsync(user.Id, TestData.Now, TestSupport.Ct);
         using var after = await client.GetAsync(new Uri("/agents", UriKind.Relative), TestSupport.Ct);
 
         Assert.Equal(HttpStatusCode.OK, before.StatusCode);

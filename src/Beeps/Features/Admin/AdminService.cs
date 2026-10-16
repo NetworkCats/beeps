@@ -13,6 +13,7 @@ namespace Beeps.Features.Admin;
 public sealed partial class AdminService(
     IAdminStore store,
     IAccountStore accounts,
+    ISessionStore sessions,
     IAgentStore agents,
     AgentService agentService,
     IUnitOfWork unitOfWork,
@@ -68,7 +69,7 @@ public sealed partial class AdminService(
         return new AdminUserDetails(user, avatars.For(user.Id), userAgents);
     }
 
-    /// <summary>Bans the user, ends their sessions and disables all their agents (PLAN 3.6).</summary>
+    /// <summary>Bans the user, ends all their sessions and disables all their agents (PLAN 3.6).</summary>
     public async Task<Result> BanUserAsync(Guid adminId, Guid userId, CancellationToken cancellationToken)
     {
         IReadOnlyList<Guid> agentIds = [];
@@ -85,18 +86,20 @@ public sealed partial class AdminService(
             }
 
             user.BannedAt = now;
-            user.SecurityStamp = User.NewSecurityStamp();
+            await sessions.RevokeAllAsync(user.Id, now, ct);
             agentIds = await agents.DisableAllAsync(user.Id, now, ct);
             Audit(adminId, AuditActions.BanUser, AuditTargets.User, user.Id, $"agents disabled: {agentIds.Count}");
             return Result.Success;
         }, cancellationToken);
+        await ForgetAsync(userId, result, endSessions: true, cancellationToken);
         await agents.ForgetKeysAsync(agentIds, cancellationToken);
         return result;
     }
 
     /// <summary>Lifts a ban. The agents stay disabled until their owner turns them back on.</summary>
-    public Task<Result> UnbanUserAsync(Guid adminId, Guid userId, CancellationToken cancellationToken) =>
-        ChangeUserAsync(adminId, userId, (user, _, _) =>
+    public async Task<Result> UnbanUserAsync(Guid adminId, Guid userId, CancellationToken cancellationToken)
+    {
+        var result = await ChangeUserAsync(adminId, userId, (user, _, _) =>
         {
             if (user.BannedAt is null)
             {
@@ -107,6 +110,9 @@ public sealed partial class AdminService(
             Audit(adminId, AuditActions.UnbanUser, AuditTargets.User, user.Id, null);
             return Task.FromResult(Result.Success);
         }, cancellationToken);
+        await ForgetAsync(userId, result, endSessions: false, cancellationToken);
+        return result;
+    }
 
     /// <summary>Soft-deletes the user and all their agents. Handle and email stay taken, so nobody can reappear as them.</summary>
     public async Task<Result> DeleteUserAsync(Guid adminId, Guid userId, CancellationToken cancellationToken)
@@ -121,11 +127,12 @@ public sealed partial class AdminService(
 
             user.Actor.DeletedAt = now;
             user.IsAdmin = false;
-            user.SecurityStamp = User.NewSecurityStamp();
+            await sessions.RevokeAllAsync(user.Id, now, ct);
             agentIds = await agents.DeleteAllAsync(user.Id, now, ct);
             Audit(adminId, AuditActions.DeleteUser, AuditTargets.User, user.Id, $"agents deleted: {agentIds.Count}");
             return Result.Success;
         }, cancellationToken);
+        await ForgetAsync(userId, result, endSessions: true, cancellationToken);
         await agents.ForgetKeysAsync(agentIds, cancellationToken);
         return result;
     }
@@ -138,7 +145,7 @@ public sealed partial class AdminService(
             return denied;
         }
 
-        return await unitOfWork.InTransactionAsync(
+        var result = await unitOfWork.InTransactionAsync(
             AdvisoryLocks.Admins,
             async ct =>
             {
@@ -170,6 +177,8 @@ public sealed partial class AdminService(
                 return Result.Success;
             },
             cancellationToken);
+        await ForgetAsync(userId, result, endSessions: false, cancellationToken);
+        return result;
     }
 
     public async Task<Result<RegistrationMode>> GetRegistrationModeAsync(Guid adminId, CancellationToken cancellationToken) =>
@@ -311,6 +320,25 @@ public sealed partial class AdminService(
                 return result;
             },
             cancellationToken);
+    }
+
+    /// <summary>
+    /// After a committed change: drops the cached account state, so the change applies to the user's very
+    /// next request, and with <paramref name="endSessions"/> the cached copies of their revoked sessions.
+    /// </summary>
+    private async Task ForgetAsync(Guid userId, Result result, bool endSessions, CancellationToken cancellationToken)
+    {
+        if (!result.IsSuccess)
+        {
+            return;
+        }
+
+        if (endSessions)
+        {
+            await sessions.ForgetAllAsync(userId, cancellationToken);
+        }
+
+        await accounts.ForgetAccountAsync(userId, cancellationToken);
     }
 
     /// <summary>An error if taking <paramref name="user"/> out of the admin set would leave it empty.</summary>

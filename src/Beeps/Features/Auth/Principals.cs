@@ -7,19 +7,24 @@ namespace Beeps.Features.Auth;
 
 public static class Principals
 {
-    public static ClaimsPrincipal ForHuman(AccountSession session)
+    /// <param name="sessionId">The server-side session, once there is one (not yet while signing in).</param>
+    public static ClaimsPrincipal ForHuman(AccountState account, Guid? sessionId = null)
     {
-        ArgumentNullException.ThrowIfNull(session);
+        ArgumentNullException.ThrowIfNull(account);
         List<Claim> claims =
         [
-            new(ClaimTypes.NameIdentifier, session.UserId.ToString("D")),
-            new(ClaimTypes.Name, session.Handle),
+            new(ClaimTypes.NameIdentifier, account.UserId.ToString("D")),
+            new(ClaimTypes.Name, account.Handle),
             new(BeepsClaims.Kind, BeepsClaims.HumanKind),
-            new(BeepsClaims.SecurityStamp, session.SecurityStamp),
-            new(BeepsClaims.Locale, session.Locale),
-            new(BeepsClaims.EmailVerified, session.EmailVerified ? "true" : "false"),
+            new(BeepsClaims.Locale, account.Locale),
+            new(BeepsClaims.EmailVerified, account.EmailVerified ? "true" : "false"),
         ];
-        if (session.IsAdmin)
+        if (sessionId is { } id)
+        {
+            claims.Add(new Claim(BeepsClaims.SessionId, id.ToString("D")));
+        }
+
+        if (account.IsAdmin)
         {
             claims.Add(new Claim(ClaimTypes.Role, BeepsClaims.AdminRole));
         }

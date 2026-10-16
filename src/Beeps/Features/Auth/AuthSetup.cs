@@ -1,3 +1,4 @@
+using Beeps.Features.Accounts;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Mvc.ApplicationModels;
 
@@ -19,10 +20,11 @@ public static class AuthSetup
                 options.Cookie.HttpOnly = true;
                 options.Cookie.SameSite = SameSiteMode.Lax;
                 options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
-                options.ExpireTimeSpan = TimeSpan.FromDays(30);
+                // The cookie carries only a session token; the session itself is server-side (PLAN 6.14).
+                options.SessionStore = new ServerSessionTicketStore();
+                options.ExpireTimeSpan = SessionService.Lifetime;
                 options.SlidingExpiration = true;
                 options.LoginPath = LoginPath;
-                options.Events.OnValidatePrincipal = SessionValidator.ValidateAsync;
                 options.Events.OnRedirectToAccessDenied = context =>
                 {
                     // An unverified account is sent to finish verification; anyone else gets a plain 403 page.

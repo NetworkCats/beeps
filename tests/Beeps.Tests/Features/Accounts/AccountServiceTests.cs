@@ -12,6 +12,7 @@ namespace Beeps.Tests.Features.Accounts;
 public sealed class AccountServiceTests
 {
     private readonly IAccountStore store = Substitute.For<IAccountStore>();
+    private readonly ISessionStore sessions = Substitute.For<ISessionStore>();
     private readonly ImmediateUnitOfWork unitOfWork = new();
     private readonly IOutbox outbox = Substitute.For<IOutbox>();
     private readonly ICaptchaVerifier captcha = Substitute.For<ICaptchaVerifier>();
@@ -307,7 +308,7 @@ public sealed class AccountServiceTests
         var result = await CreateService().LoginAsync(login, "correct horse", TestData.Origin, TestSupport.Ct);
 
         Assert.Equal(user.Id, result.Value.UserId);
-        Assert.Equal("stamp-1", result.Value.SecurityStamp);
+        Assert.Equal("tom", result.Value.Handle);
     }
 
     [Fact]
@@ -412,8 +413,13 @@ public sealed class AccountServiceTests
 
         Assert.True(result.IsSuccess);
         Assert.Equal("hashed:new password!", user.PasswordHash);
-        Assert.NotEqual("stamp-1", user.SecurityStamp);
         Assert.Equal(TestData.Now, user.EmailVerifiedAt);
+        Received.InOrder(() =>
+        {
+            sessions.RevokeAllAsync(user.Id, TestData.Now, Arg.Any<CancellationToken>());
+            sessions.ForgetAllAsync(user.Id, Arg.Any<CancellationToken>());
+            store.ForgetAccountAsync(user.Id, Arg.Any<CancellationToken>());
+        });
     }
 
     [Fact]
@@ -448,19 +454,40 @@ public sealed class AccountServiceTests
         Assert.Equal("zh-Hans", user.Locale);
         Assert.False(unsupported.IsSuccess);
         Assert.Equal(1, unitOfWork.Saves);
+        await store.Received(1).ForgetAccountAsync(user.Id, Arg.Any<CancellationToken>());
     }
 
     [Fact]
-    public async Task SessionsAndRegistrationModeComeFromTheStore()
+    public async Task AWrongResetCodeStaysCountedAndKeepsSessions()
     {
-        var session = new AccountSession(Guid.NewGuid(), "tom", "Tom", false, true, "en", "stamp");
-        store.GetSessionAsync(session.UserId, Arg.Any<CancellationToken>()).Returns(session);
-        store.GetRegistrationModeAsync(Arg.Any<CancellationToken>()).Returns(RegistrationMode.InviteOnly);
-        var service = CreateService();
+        var user = TestData.User();
+        await IssueResetCodeAsync(user);
 
-        Assert.Same(session, await service.GetSessionAsync(session.UserId, TestSupport.Ct));
-        Assert.Null(await service.GetSessionAsync(Guid.NewGuid(), TestSupport.Ct));
-        Assert.Equal(RegistrationMode.InviteOnly, await service.GetRegistrationModeAsync(TestSupport.Ct));
+        var result = await CreateService().ResetPasswordAsync(new PasswordResetRequest(user.Email, "000000", "new password!"), TestSupport.Ct);
+
+        Assert.Equal(AccountErrorCodes.CodeInvalid, result.Error?.Code);
+        // Counted outside any transaction, so a rollback cannot undo it.
+        Assert.Empty(unitOfWork.Locks);
+        await sessions.DidNotReceiveWithAnyArgs().RevokeAllAsync(default, default, TestSupport.Ct);
+    }
+
+    [Fact]
+    public async Task VerifyingClearsTheCachedAccountState()
+    {
+        var user = TestData.User(verified: false);
+        var (code, _) = await IssueVerificationCodeAsync(user);
+
+        await CreateService().VerifyEmailAsync(user.Id, code, TestSupport.Ct);
+
+        await store.Received(1).ForgetAccountAsync(user.Id, Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task RegistrationModeComesFromTheStore()
+    {
+        store.GetRegistrationModeAsync(Arg.Any<CancellationToken>()).Returns(RegistrationMode.InviteOnly);
+
+        Assert.Equal(RegistrationMode.InviteOnly, await CreateService().GetRegistrationModeAsync(TestSupport.Ct));
     }
 
     private static RegisterRequest Request(string username = "Tom_1", string? invite = null) =>
@@ -500,6 +527,7 @@ public sealed class AccountServiceTests
         var localizer = new TestLocalizer();
         return new AccountService(
             store,
+            sessions,
             unitOfWork,
             outbox,
             captcha,

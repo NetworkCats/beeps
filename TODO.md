@@ -52,13 +52,16 @@
 - **默认头像改用 `Jdenticon-net`**：PLAN 写的是 `Jdenticon.AspNetCore`，但它依赖 ASP.NET Core 1.0 时代的包（含已知高危漏洞），NuGet 审计会让构建直接失败。`Jdenticon-net` 是同一项目的核心库（MIT、无依赖），AspNetCore 包只多了用不到的 tag helper。需要确认是否同步修改 PLAN。
 - **固定了 `System.Security.Cryptography.Pkcs` 10.0.13**：MailKit（经 MimeKit）要求的 10.0.0 有已知高危漏洞。
 - **邮箱验证码限流已按确认放宽 IP 维度**：按邮箱仍是 60 秒 1 次、每天 10 次；按 IP 改为独立策略 `EmailCodeIp`（每分钟 3 次、每天 30 次），PLAN 6.16 已同步。重置密码请求无论邮箱是否存在都计数，避免借此探测账号；注册时只有确定要发信才计入验证码配额（邀请码错误等失败不占配额）。
-- **Identity 的用法**：使用 Identity 的 `PasswordHasher`、Cookie 方案名和安全戳机制，没有使用 `UserManager` 和 Identity 的 EF 表；用户表按 PLAN 8 自定义，Service 只依赖可 mock 的接口。每个已登录请求按 ID 查一次库重建身份，所以封禁、重置密码、撤销管理员都立即生效；以后需要时再加短 TTL 缓存。
+- **Identity 的用法**：使用 Identity 的 `PasswordHasher` 和 Cookie 方案名，没有使用 `UserManager` 和 Identity 的 EF 表；用户表按 PLAN 8 自定义，Service 只依赖可 mock 的接口。
+- **已改为服务端会话（按确认）**：Cookie 只放会话 token；会话记录在 PostgreSQL `user_sessions`（只存 token 哈希），Valkey 缓存会话和账号状态，正常的已登录请求不查库（实测连续 20 个请求零条 SQL）。登出吊销当前会话，重置密码、封禁、删除吊销全部会话，权限和语言等变化时删除账号状态缓存，都立即生效。原来的安全戳（`security_stamp` 列）已删除。PLAN 6.4、6.7、6.14、8、12 已同步。
+- **过期会话不会被清理**：`user_sessions` 中过期和已吊销的记录会一直累积，之后加定时任务清理。会话已记录 User-Agent 和 IP，"查看 / 踢出登录设备"页面可以在阶段 3 的个人设置里做。
+- **Cookie 刷新的实现细节**：Cookie 处理器只在票据过半时重新签发 Cookie，而会话在服务端顺延，所以会话被顺延的那次请求会把票据标记为需要刷新（见 `ServerSessionTicketStore`），让浏览器 Cookie 的过期时间跟上服务端会话。
 - **第一位管理员在提交注册时确定**（尚未验证邮箱），判断和写入在同一事务中并持有 advisory lock。
 - **未验证邮箱的账号不会被清理**：会一直占用用户名和邮箱。之后可加定时任务清理超过 N 天未验证的账号。
 - **onboarding 第 5 步还不是实时的**：需要手动刷新；SSE 在阶段 5。agent 首次连接（`hello`）在阶段 2，在那之前"已连接"状态不会出现，agent 也没有名称和 handle。
 - **提前实现了 `GET /api/v1/agent/me`**，用于端到端验证 agent key 认证。作者信息结构（`ActorResponse` + `relation`）阶段 2 统一定义时可能调整（尚未发布）；`skill.md` 阶段 2 编写时要写入它。
-- **Agent key 认证结果只缓存在 Valkey**（1 分钟，不用进程内 L1），吊销、停用、删除、封禁时主动清除，所以立即生效；Valkey 不可用时回落到数据库查询。
-- **Valkey 不可用时响应很慢**：实测首页约 6 秒、agent API 约 12 秒（每次 Valkey 调用都等满 5 秒超时后才放行）。功能正确，阶段 7 需要调小超时或加熔断。
+- **认证相关缓存只放在 Valkey**（agent key 1 分钟，会话和账号状态 10 分钟，都不用进程内 L1），改动时主动清除，所以立即生效；Valkey 不可用时回落到数据库查询。
+- **Valkey 不可用时响应很慢**：实测首页约 6 秒、agent API 约 12 秒（每次 Valkey 调用都等满 5 秒超时后才放行）；改成服务端会话后，已登录请求还要多读两次缓存，会更慢。功能正确，阶段 7 需要调小超时或加熔断。
 - **解封后 agent 仍保持停用**：封禁会停用全部 agent，解封时无法区分哪些是用户自己停用的，所以由用户自己重新启用。
 - **删除用户和 agent 都是软删除**：用户名、邮箱、handle 保留，不能被重新注册（防冒充）。
 - **SMTP 发信没有幂等**：outbox 重试时 MailHog 可能收到两封；Resend 用 outbox 消息 ID 作为 Idempotency-Key。
@@ -66,7 +69,7 @@
 - **登录后导航栏在窄屏上可能拥挤**：没有折叠菜单（collection-ui 的折叠需要 JS），阶段 3 做网页时处理。
 - **`/admin` 暂时直接跳转到用户列表**，概览页在阶段 6。
 - **线上必填配置**：`Site__BaseUrl`、`Turnstile__SiteKey`、`Turnstile__SecretKey`、`Email__From`、`Email__ResendApiToken` 缺失时应用拒绝启动（有意为之），阶段 7 写入 `.env.example`。
-- **本地环境**：本阶段的冒烟测试数据已从本地数据库清除（新建的 7 张表已 TRUNCATE），MailHog 中留有测试邮件。
+- **本地环境**：本阶段的冒烟测试数据已从本地数据库清除（新建的 8 张表已 TRUNCATE），MailHog 中留有测试邮件。
 
 ## 阶段 2：Agent API 与核心功能
 - [ ] `POST /api/v1/agent/hello`：提交模型名称，生成默认名称和 `@主人.名称` handle

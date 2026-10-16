@@ -12,6 +12,7 @@ namespace Beeps.Features.Accounts;
 /// <summary>Human accounts: registration, email codes, sign-in and password reset (PLAN 3.1, 6.13–6.15).</summary>
 public sealed partial class AccountService(
     IAccountStore store,
+    ISessionStore sessions,
     IUnitOfWork unitOfWork,
     IOutbox outbox,
     ICaptchaVerifier captcha,
@@ -31,7 +32,6 @@ public sealed partial class AccountService(
         Email = "",
         NormalizedEmail = "",
         PasswordHash = "",
-        SecurityStamp = "",
         Locale = SupportedCultures.Default,
     };
 
@@ -44,7 +44,7 @@ public sealed partial class AccountService(
     /// the check and the insert share one transaction under <see cref="AdvisoryLocks.Admins"/>, so two
     /// simultaneous first sign-ups cannot both win.
     /// </summary>
-    public async Task<Result<AccountSession>> RegisterAsync(RegisterRequest request, RequestOrigin origin, CancellationToken cancellationToken)
+    public async Task<Result<AccountState>> RegisterAsync(RegisterRequest request, RequestOrigin origin, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
         ArgumentNullException.ThrowIfNull(origin);
@@ -142,7 +142,6 @@ public sealed partial class AccountService(
             Email = request.Email!.Trim(),
             NormalizedEmail = email,
             PasswordHash = "",
-            SecurityStamp = User.NewSecurityStamp(),
             Locale = SupportedCultures.Find(origin.Culture) ?? SupportedCultures.Default,
             CreatedAt = now,
         };
@@ -150,7 +149,7 @@ public sealed partial class AccountService(
 
         try
         {
-            return await unitOfWork.InTransactionAsync<AccountSession>(
+            return await unitOfWork.InTransactionAsync<AccountState>(
                 AdvisoryLocks.Admins,
                 async ct =>
                 {
@@ -167,7 +166,7 @@ public sealed partial class AccountService(
                     }
 
                     LogRegistered(logger, id, user.IsAdmin);
-                    return ToSession(user);
+                    return ToState(user);
                 },
                 cancellationToken);
         }
@@ -207,6 +206,7 @@ public sealed partial class AccountService(
 
         user.EmailVerifiedAt = time.GetUtcNow();
         await unitOfWork.SaveChangesAsync(cancellationToken);
+        await store.ForgetAccountAsync(user.Id, cancellationToken);
         return Result.Success;
     }
 
@@ -241,7 +241,7 @@ public sealed partial class AccountService(
     }
 
     /// <param name="login">Email address or username.</param>
-    public async Task<Result<AccountSession>> LoginAsync(string? login, string? password, RequestOrigin origin, CancellationToken cancellationToken)
+    public async Task<Result<AccountState>> LoginAsync(string? login, string? password, RequestOrigin origin, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(origin);
         if (string.IsNullOrWhiteSpace(login) || string.IsNullOrEmpty(password))
@@ -300,7 +300,7 @@ public sealed partial class AccountService(
             await unitOfWork.SaveChangesAsync(cancellationToken);
         }
 
-        return ToSession(user);
+        return ToState(user);
     }
 
     /// <summary>
@@ -345,7 +345,7 @@ public sealed partial class AccountService(
         return Result.Success;
     }
 
-    /// <summary>Sets the new password and ends every existing session (the security stamp changes).</summary>
+    /// <summary>Sets the new password and ends every existing session.</summary>
     public async Task<Result> ResetPasswordAsync(PasswordResetRequest request, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -376,17 +376,34 @@ public sealed partial class AccountService(
             return CodeInvalid();
         }
 
+        // Outside the transaction: a wrong guess must stay counted even though nothing else is saved.
         var consumed = await ConsumeCodeAsync(EmailCodePurpose.ResetPassword, user.NormalizedEmail, request.Code!, cancellationToken);
         if (!consumed.IsSuccess)
         {
             return consumed;
         }
 
-        user.PasswordHash = passwordHasher.HashPassword(user, request.NewPassword!);
-        user.SecurityStamp = User.NewSecurityStamp();
-        // The code proved the address works.
-        user.EmailVerifiedAt ??= time.GetUtcNow();
-        await unitOfWork.SaveChangesAsync(cancellationToken);
+        // The new password and the end of every old session commit together.
+        var result = await unitOfWork.InTransactionAsync(
+            null,
+            async ct =>
+            {
+                var now = time.GetUtcNow();
+                user.PasswordHash = passwordHasher.HashPassword(user, request.NewPassword!);
+                // The code proved the address works.
+                user.EmailVerifiedAt ??= now;
+                await sessions.RevokeAllAsync(user.Id, now, ct);
+                await unitOfWork.SaveChangesAsync(ct);
+                return Result.Success;
+            },
+            cancellationToken);
+        if (!result.IsSuccess)
+        {
+            return result;
+        }
+
+        await sessions.ForgetAllAsync(user.Id, cancellationToken);
+        await store.ForgetAccountAsync(user.Id, cancellationToken);
         LogPasswordReset(logger, user.Id);
         return Result.Success;
     }
@@ -407,24 +424,20 @@ public sealed partial class AccountService(
 
         user.Locale = supported;
         await unitOfWork.SaveChangesAsync(cancellationToken);
+        await store.ForgetAccountAsync(user.Id, cancellationToken);
         return Result.Success;
     }
 
     public Task<RegistrationMode> GetRegistrationModeAsync(CancellationToken cancellationToken) =>
         store.GetRegistrationModeAsync(cancellationToken);
 
-    /// <summary>Re-reads the account on every signed-in request; null ends the session.</summary>
-    public Task<AccountSession?> GetSessionAsync(Guid userId, CancellationToken cancellationToken) =>
-        store.GetSessionAsync(userId, cancellationToken);
-
-    private static AccountSession ToSession(User user) => new(
+    private static AccountState ToState(User user) => new(
         user.Id,
         user.Actor.Handle!,
         user.Actor.DisplayName!,
         user.IsAdmin,
         user.EmailVerifiedAt is not null,
-        user.Locale,
-        user.SecurityStamp);
+        user.Locale);
 
     private static string IpPartition(RequestOrigin origin) => $"ip:{origin.ClientIp}";
 

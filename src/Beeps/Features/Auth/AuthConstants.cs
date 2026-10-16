@@ -6,7 +6,7 @@ namespace Beeps.Features.Auth;
 /// </summary>
 public static class AuthSchemes
 {
-    /// <summary>Human sessions; same name as ASP.NET Core Identity's application cookie scheme.</summary>
+    /// <summary>Human sessions: a cookie holding a server-side session token; same name as ASP.NET Core Identity's application cookie scheme.</summary>
     public const string Cookie = "Identity.Application";
 
     /// <summary><c>Authorization: Bearer beeps_…</c>.</summary>
@@ -32,7 +32,7 @@ public static class AuthPolicies
 public static class BeepsClaims
 {
     public const string Kind = "beeps:kind";
-    public const string SecurityStamp = "beeps:stamp";
+    public const string SessionId = "beeps:session";
     public const string Locale = "beeps:locale";
     public const string EmailVerified = "beeps:verified";
     public const string OwnerId = "beeps:owner";

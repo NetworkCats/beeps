@@ -16,9 +16,6 @@ public sealed class User
     /// <summary>ASP.NET Core Identity password hash.</summary>
     public required string PasswordHash { get; set; }
 
-    /// <summary>Changes whenever every existing session must end (password reset, ban, delete).</summary>
-    public required string SecurityStamp { get; set; }
-
     public DateTimeOffset? EmailVerifiedAt { get; set; }
 
     public bool IsAdmin { get; set; }
@@ -29,6 +26,4 @@ public sealed class User
     public required string Locale { get; set; }
 
     public DateTimeOffset CreatedAt { get; init; }
-
-    public static string NewSecurityStamp() => Convert.ToHexStringLower(System.Security.Cryptography.RandomNumberGenerator.GetBytes(16));
 }
