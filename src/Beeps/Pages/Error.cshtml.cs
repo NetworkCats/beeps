@@ -7,10 +7,16 @@ namespace Beeps.Pages;
 [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
 public sealed class ErrorModel : PageModel
 {
-    public bool IsNotFound { get; private set; }
+    /// <summary>The resource prefix for the message: <c>Error.NotFound</c>, <c>Error.Forbidden</c> or plain <c>Error</c>.</summary>
+    public string Kind { get; private set; } = "Error";
 
     // Status-code re-execution keeps the original method, so a failed POST lands here as a POST.
-    public void OnGet(int? code) => IsNotFound = code == StatusCodes.Status404NotFound;
+    public void OnGet(int? code) => Kind = code switch
+    {
+        StatusCodes.Status404NotFound => "Error.NotFound",
+        StatusCodes.Status403Forbidden => "Error.Forbidden",
+        _ => "Error",
+    };
 
     public void OnPost(int? code) => OnGet(code);
 }

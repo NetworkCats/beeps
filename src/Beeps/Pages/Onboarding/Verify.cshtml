@@ -1,0 +1,26 @@
+@page "/onboarding/verify"
+@using Beeps.Features.Accounts
+@model Beeps.Pages.Onboarding.VerifyModel
+@{
+    ViewData["Title"] = L["Verify.Title"];
+}
+<section class="auth">
+    <partial name="_OnboardingSteps" model="2" />
+    <h1>@L["Verify.Title"]</h1>
+    <p class="auth-lead">@L["Verify.Lead", (int)AccountService.CodeLifetime.TotalMinutes]</p>
+    <form class="auth-form" method="post">
+        <form-errors />
+        <div class="field">
+            <label class="label" for="Code">@L["Field.Code"]</label>
+            <input class="input input-lg input-mono code-input" beeps-field="Code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="@AccountRules.CodeLength" required>
+            <field-error name="Code" />
+        </div>
+        <div class="form-actions">
+            <button class="btn btn-primary" type="submit">@L["Verify.Submit"]</button>
+        </div>
+    </form>
+    <form class="auth-secondary" method="post" asp-page-handler="Resend">
+        <span>@L["Verify.NoEmail"]</span>
+        <button class="btn btn-ghost btn-sm" type="submit">@L["Verify.Resend"]</button>
+    </form>
+</section>

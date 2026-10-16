@@ -1,0 +1,161 @@
+/* Copy box: the copyable install command / invite link / API key / fingerprint field.
+ * Pair with data-cui-copy (src/js/copy.js), which sets data-copied on the button for 1.5 s.
+ *
+ * <div class="copy-box" data-cui-copy>
+ *   <span class="copy-box-label">npm</span>
+ *   <code><span class="prompt">$</span>npm i collection-ui</code>
+ *   <button class="btn-copy" aria-label="Copy"></button>
+ * </div>
+ * <div class="copy-box copy-box-sans"><span class="copy-box-text">https://example.com/invite/abc</span><button class="btn-copy">Copy</button></div>
+ * <span class="copy-inline"><code>a1b2c3</code><button class="btn-copy btn-copy-inline" data-cui-copy="a1b2c3" aria-label="Copy"></button></span>
+ *
+ * Modifiers: .copy-box-dark (terminal look in both themes), .copy-box-sm, .copy-box-quiet
+ * (button appears on hover), .copy-box-sans (links), .copy-box-stack (several boxes). */
+@use "../foundation/layers";
+@use "../abstracts" as *;
+
+@layer cui.components {
+  .#{$prefix}copy-box {
+    --_height: var(--cui-copy-box-height, var(--cui-control-height));
+    --_bg: var(--cui-copy-box-bg, var(--cui-surface-2));
+    --_fg: var(--cui-copy-box-fg, var(--cui-text));
+    --_border: var(--cui-copy-box-border, var(--cui-border));
+    --_muted: var(--cui-copy-box-muted, var(--cui-text-3));
+    --_hover: var(--cui-copy-box-hover, var(--cui-surface-hover));
+    --_radius: var(--cui-copy-box-radius, var(--cui-radius));
+    display: flex;
+    align-items: stretch;
+    min-height: var(--_height);
+    min-width: 0;
+    font-family: var(--cui-font-mono);
+    font-size: var(--cui-text-sm);
+    color: var(--_fg);
+    background: var(--_bg);
+    border: var(--cui-border-width) solid var(--_border);
+    border-radius: var(--_radius);
+    overflow: hidden;
+    > code, > .#{$prefix}copy-box-text, > input {
+      flex: 1 1 auto;
+      display: flex;
+      align-items: center;
+      min-width: 0;
+      padding: var(--cui-space-2) var(--cui-space-3);
+      font: inherit;
+      color: inherit;
+      background: none;
+      border: 0;
+      border-radius: 0;
+      white-space: nowrap;
+      overflow-x: auto;
+      scrollbar-width: none;
+      user-select: all;
+      &::-webkit-scrollbar { display: none; }
+      &:focus { outline: none; }
+      > .#{$prefix}prompt { color: var(--_muted); user-select: none; margin-inline-end: 0.5em; }
+    }
+    > code > .#{$prefix}copy-box-faint, .#{$prefix}copy-box-faint { color: var(--_muted); }
+    &:focus-within { border-color: var(--cui-primary); }
+  }
+  .#{$prefix}copy-box-label {
+    display: inline-flex;
+    align-items: center;
+    flex-shrink: 0;
+    padding-inline: var(--cui-space-3);
+    font-family: var(--cui-font-sans);
+    font-size: var(--cui-text-xs);
+    font-weight: var(--cui-weight-semibold);
+    letter-spacing: var(--cui-tracking-wide);
+    text-transform: uppercase;
+    color: var(--_muted);
+    background: color-mix(in oklch, var(--_fg) 4%, transparent);
+    border-inline-end: var(--cui-border-width) solid var(--_border);
+    user-select: none;
+  }
+
+  /* The copy button cell. Only a bare .btn-copy is a cell; `.btn.btn-copy` stays a normal
+   * button (code-block headers) and just swaps its icon, see code.css. */
+  .#{$prefix}btn-copy:where(:not(.#{$prefix}btn)) {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.3em;
+    flex-shrink: 0;
+    min-width: var(--_height, var(--cui-control-height));
+    padding: 0;
+    font-family: var(--cui-font-sans);
+    font-size: var(--cui-text-sm);
+    font-weight: var(--cui-weight-medium);
+    color: var(--_muted, var(--cui-text-3));
+    background: transparent;
+    border: 0;
+    border-inline-start: var(--cui-border-width) solid var(--_border, var(--cui-border));
+    border-radius: 0;
+    cursor: pointer;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    transition: background-color var(--cui-transition), color var(--cui-transition);
+    &::before {
+      @include icon-glyph("content_copy");
+      font-size: 1.125rem;
+      line-height: 1;
+    }
+    &:not(:empty) { padding-inline: var(--cui-space-3); &::before { display: none; } }
+    &:hover { color: var(--_fg, var(--cui-text)); background: var(--_hover, var(--cui-surface-hover)); }
+    &:focus-visible { @include focus-ring($inset: true); }
+    /* The check pops in on a spring, so the confirmation registers at a glance. */
+    &[data-copied] { color: var(--cui-success-text); &::before { content: "check"; animation: cui-pop var(--cui-duration-slow) var(--cui-ease-spring); } }
+    > .#{$prefix}icon { --cui-icon-size: 1.125rem; }
+  }
+  .#{$prefix}copy-box-sans { font-family: var(--cui-font-sans); }
+  .#{$prefix}copy-box-sm {
+    --_height: var(--cui-control-height-sm);
+    font-size: var(--cui-text-xs);
+    border-radius: var(--cui-radius-sm);
+    > code, > .#{$prefix}copy-box-text, > input { padding: var(--cui-space-1) var(--cui-space-2-5); }
+    .#{$prefix}btn-copy:not(.#{$prefix}btn)::before { font-size: 1rem; }
+  }
+  .#{$prefix}copy-box-lg { --_height: var(--cui-control-height-lg); --_radius: var(--cui-radius-lg); font-size: var(--cui-text-base); > code, > .#{$prefix}copy-box-text, > input { padding-inline: var(--cui-space-4); } }
+  /* Terminal look, same in both themes */
+  .#{$prefix}copy-box-dark {
+    --_bg: var(--cui-neutral-950);
+    --_fg: var(--cui-neutral-50);
+    --_border: var(--cui-neutral-800);
+    --_muted: var(--cui-neutral-500);
+    --_hover: var(--cui-neutral-800);
+    color-scheme: dark;
+    .#{$prefix}btn-copy[data-copied] { color: var(--cui-success-text); }
+  }
+  /* Hover-reveal copy button (pointer devices only) */
+  .#{$prefix}copy-box-quiet {
+    @include mq(hover) {
+      > .#{$prefix}btn-copy { opacity: 0; transition: opacity var(--cui-transition), background-color var(--cui-transition), color var(--cui-transition); }
+      &:hover > .#{$prefix}btn-copy, > .#{$prefix}btn-copy:focus-visible, > .#{$prefix}btn-copy[data-copied] { opacity: 1; }
+    }
+  }
+  .#{$prefix}copy-box-stack { display: flex; flex-direction: column; gap: var(--cui-space-2); }
+  .#{$prefix}copy-box-block { width: 100%; }
+
+  /* Inline: <code> + tiny copy icon */
+  .#{$prefix}copy-inline {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    min-width: 0;
+    vertical-align: middle;
+    > code { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  }
+  .#{$prefix}btn-copy-inline {
+    min-width: 0;
+    width: 1.25rem;
+    height: 1.25rem;
+    border: 0;
+    border-radius: var(--cui-radius-sm);
+    color: var(--cui-text-3);
+    vertical-align: middle;
+    &::before { font-size: 1rem; }
+    &:hover { color: var(--cui-text); background: var(--cui-surface-hover); }
+    &:focus-visible { box-shadow: var(--cui-ring); }
+  }
+
+  @keyframes cui-pop { from { scale: 0.4; opacity: 0; } }
+}

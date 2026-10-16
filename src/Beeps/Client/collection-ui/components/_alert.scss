@@ -1,0 +1,213 @@
+/* Alerts, banners and callouts.
+ *
+ * .alert — inline message with a status accent:
+ *   <div class="alert alert-warning" role="alert">
+ *     <span class="icon alert-icon">warning</span>
+ *     <div class="alert-content">
+ *       <p class="alert-title">Yanked version</p>
+ *       <p class="alert-text">1.2.0 was yanked by the owner. Upgrade to 1.2.1.</p>
+ *       <div class="alert-actions"><a class="btn btn-sm">View changelog</a></div>
+ *     </div>
+ *     <button class="btn-close" aria-label="Dismiss" data-cui-dismiss></button>
+ *   </div>
+ *   Status: .alert-info -success -warning -danger -primary. Looks: .alert-solid, .alert-plain.
+ *   Size: .alert-sm. Dismissal: add .is-dismissing, remove the node after animationend.
+ *
+ * .banner — full-width thin bar (site notice):
+ *   <div class="banner banner-primary">v2 is out · <a href>Read the notes</a><button class="btn-close"></button></div>
+ *   Variants: .banner-primary -success -warning -danger -info -band (solid); default is a soft brand
+ *   tint, .banner-soft-success -warning -danger -info for soft status tints. .banner-start aligns left.
+ *
+ * .callout — GitHub-style markdown admonition for .prose:
+ *   <div class="callout callout-tip"><p class="callout-title">Tip</p><p>…</p></div>
+ *   Kinds: .callout-note -tip -important -warning -caution. */
+@use "sass:list";
+@use "sass:map";
+@use "../foundation/layers";
+@use "../abstracts" as *;
+
+@layer cui.components {
+  /* ---- Alert --------------------------------------------------------------- */
+  .#{$prefix}alert {
+    /* Variants set --_status / --_tint / --_contrast; everything else derives. The public
+     * --cui-alert-* tokens restyle the plain (no status) alert. */
+    --_accent: var(--_status, var(--cui-alert-accent, var(--cui-border-strong)));
+    --_bg: var(--_tint, var(--cui-alert-bg, var(--cui-surface)));
+    --_fg: var(--cui-alert-fg, var(--cui-text));
+    --_fg-2: var(--cui-alert-fg-2, var(--cui-text-2));
+    --_icon: var(--_status, var(--cui-alert-icon, var(--cui-text-3)));
+    --_border: var(--cui-alert-border, var(--cui-border));
+    --_radius: var(--cui-alert-radius, var(--cui-radius-lg));
+    position: relative;
+    display: flex;
+    align-items: flex-start;
+    gap: var(--cui-space-3);
+    padding: var(--cui-space-3) var(--cui-space-4);
+    font-size: var(--cui-text-sm);
+    line-height: var(--cui-leading-base);
+    color: var(--_fg);
+    background: var(--_bg);
+    border: var(--cui-border-width) solid var(--_border);
+    border-inline-start: 3px solid var(--_accent);
+    border-radius: var(--_radius);
+
+    > .#{$prefix}btn-close {
+      flex-shrink: 0;
+      margin-inline-start: auto;
+      margin-block: -0.125rem;
+      margin-inline-end: -0.375rem;
+      color: var(--_fg-2);
+      &:hover { color: var(--_fg); background: color-mix(in oklch, currentColor 10%, transparent); }
+    }
+    a:not(.#{$prefix}btn) { color: inherit; font-weight: var(--cui-weight-medium); text-decoration: underline; text-underline-offset: 0.15em; }
+  }
+  .#{$prefix}alert-icon {
+    --cui-icon-size: 1.25rem;
+    font-size: 1.25rem;
+    line-height: 1;
+    flex-shrink: 0;
+    margin-block-start: 0.05rem;
+    color: var(--_icon);
+  }
+  .#{$prefix}alert-content {
+    flex: 1 1 auto;
+    min-width: 0;
+    color: var(--_fg-2);
+    > p { margin: 0; }
+    > * + * { margin-block-start: var(--cui-space-1); }
+  }
+  .#{$prefix}alert-title { font-weight: var(--cui-weight-semibold); color: var(--_fg); margin: 0; }
+  .#{$prefix}alert-text { color: var(--_fg-2); margin: 0; }
+  .#{$prefix}alert-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--cui-space-2);
+    margin-block-start: var(--cui-space-2);
+  }
+
+  /* Status variants: opaque tint (status mixed into the surface) so stacking stays clean. */
+  // Amber is light, so warning mixes in a little more to read as strongly as the others.
+  $_mix: (warning: (tint: 10%, border: 30%));
+  @each $tone in tones() {
+    $mix: map.get($_mix, $tone) or (tint: 8%, border: 25%);
+    .#{$prefix}alert-#{$tone} {
+      --_status: var(--cui-#{$tone});
+      --_tint: color-mix(in oklch, var(--cui-#{$tone}) #{map.get($mix, tint)}, var(--cui-surface));
+      --_solid: var(--cui-#{$tone}-solid);
+      --_contrast: var(--cui-#{$tone}-contrast);
+      --_border: color-mix(in oklch, var(--cui-#{$tone}) #{map.get($mix, border)}, var(--cui-border));
+    }
+  }
+
+  /* Solid: status background, contrast text. Without a status it's an inverted (dark) alert. */
+  .#{$prefix}alert-solid {
+    --_bg: var(--_solid, var(--cui-text));
+    --_fg: var(--_contrast, var(--cui-surface));
+    --_fg-2: color-mix(in oklch, var(--_fg) 82%, transparent);
+    --_icon: var(--_fg);
+    --_border: transparent;
+    --_accent: var(--_bg);
+    .#{$prefix}btn-close { color: var(--_fg-2); &:hover { color: var(--_fg); background: color-mix(in oklch, var(--_fg) 15%, transparent); } }
+  }
+  /* Plain: just the soft tint, no border or accent stripe. */
+  .#{$prefix}alert-plain {
+    --_border: transparent;
+    --_accent: transparent;
+    --_bg: var(--_tint, var(--cui-surface-2));
+  }
+  .#{$prefix}alert-sm { padding: var(--cui-space-2) var(--cui-space-3); gap: var(--cui-space-2); font-size: var(--cui-text-xs); .#{$prefix}alert-icon { --cui-icon-size: 1rem; font-size: 1rem; margin-block-start: 0.1rem; } }
+  .#{$prefix}alert-center { align-items: center; }
+
+  /* toggle.js fades it, then collapses its height so the content below slides up. */
+  .#{$prefix}alert.#{$prefix}is-dismissing, .#{$prefix}banner.#{$prefix}is-dismissing {
+    animation: cui-fade-out var(--cui-duration) var(--cui-ease-in) forwards;
+    pointer-events: none;
+  }
+  @keyframes cui-fade-out { to { opacity: 0; } }
+
+  /* ---- Banner -------------------------------------------------------------- */
+  .#{$prefix}banner {
+    --_bg: var(--cui-banner-bg, var(--cui-primary-soft));
+    --_fg: var(--cui-banner-fg, var(--cui-primary-text));
+    position: relative;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: var(--cui-space-1) var(--cui-space-2);
+    padding: var(--cui-space-2) calc(var(--cui-gutter) + 2.25rem);
+    font-size: var(--cui-text-sm);
+    font-weight: var(--cui-weight-medium);
+    line-height: var(--cui-leading-snug);
+    text-align: center;
+    color: var(--_fg);
+    background: var(--_bg);
+    > .#{$prefix}icon { --cui-icon-size: 1.125rem; }
+    a:not(.#{$prefix}btn) { color: inherit; text-decoration: underline; text-underline-offset: 0.15em; &:hover { opacity: 0.85; } }
+    > .#{$prefix}btn-close {
+      position: absolute;
+      inset-inline-end: var(--cui-space-2);
+      top: 50%;
+      transform: translateY(-50%);
+      color: inherit;
+      opacity: 0.75;
+      &:hover { opacity: 1; color: inherit; background: color-mix(in oklch, currentColor 12%, transparent); }
+    }
+  }
+  .#{$prefix}banner-start { justify-content: flex-start; text-align: start; }
+  $_solid-banners: ();
+  @each $tone in tones() {
+    .#{$prefix}banner-#{$tone} { --_bg: var(--cui-#{$tone}-solid); --_fg: var(--cui-#{$tone}-contrast); }
+    $_solid-banners: list.append($_solid-banners, ".#{$prefix}banner-#{$tone}", $separator: comma);
+  }
+  .#{$prefix}banner-band    { --_bg: var(--cui-band);    --_fg: var(--cui-band-text); }
+  @each $status in statuses() {
+    .#{$prefix}banner-soft-#{$status} { --_bg: var(--cui-#{$status}-soft); --_fg: var(--cui-#{$status}-text); }
+  }
+  /* Solid banners carry their own focus ring and close-button wash. */
+  .#{$prefix}banner:is(#{$_solid-banners}, .#{$prefix}banner-band) {
+    --cui-ring: 0 0 0 3px color-mix(in oklch, var(--_fg) 35%, transparent);
+  }
+
+  /* ---- Callout (prose admonition) ------------------------------------------ */
+  .#{$prefix}callout {
+    --_accent: var(--cui-callout-accent, var(--cui-border-strong));
+    --_title: var(--cui-callout-title, var(--cui-text));
+    --_icon: "sticky_note_2";
+    padding: var(--cui-space-3) var(--cui-space-4);
+    color: var(--cui-text-2);
+    background: color-mix(in oklch, var(--_accent) 6%, transparent);
+    border-inline-start: 3px solid var(--_accent);
+    border-start-end-radius: var(--cui-radius);
+    border-end-end-radius: var(--cui-radius);
+    > * + * { margin-block-start: var(--cui-space-2); }
+    > p { margin: 0; }
+    code { background: color-mix(in oklch, var(--_accent) 10%, var(--cui-surface-2)); }
+  }
+  .#{$prefix}callout-title {
+    display: flex;
+    align-items: center;
+    gap: var(--cui-space-2);
+    margin: 0;
+    font-size: var(--cui-text-sm);
+    font-weight: var(--cui-weight-semibold);
+    line-height: var(--cui-leading-snug);
+    color: var(--_title);
+    &::before {
+      content: var(--_icon);
+      font-family: var(--cui-icon-font, "#{$icon-font}");
+      font-weight: normal;
+      font-size: 1.25rem;
+      line-height: 1;
+      flex-shrink: 0;
+    }
+    > .#{$prefix}icon { --cui-icon-size: 1.25rem; }
+    &:has(> .#{$prefix}icon)::before { content: none; }
+  }
+  .#{$prefix}callout-note      { --_accent: var(--cui-info);    --_title: var(--cui-info-text);    --_icon: "info"; }
+  .#{$prefix}callout-tip       { --_accent: var(--cui-success); --_title: var(--cui-success-text); --_icon: "lightbulb"; }
+  .#{$prefix}callout-important { --_accent: light-dark(var(--cui-violet-600), var(--cui-violet-400)); --_title: color-mix(in oklch, var(--_accent) 85%, var(--cui-text)); --_icon: "report"; }
+  .#{$prefix}callout-warning   { --_accent: var(--cui-warning); --_title: var(--cui-warning-text); --_icon: "warning"; }
+  .#{$prefix}callout-caution   { --_accent: var(--cui-danger);  --_title: var(--cui-danger-text);  --_icon: "dangerous"; }
+}

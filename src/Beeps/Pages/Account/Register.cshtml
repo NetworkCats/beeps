@@ -1,0 +1,54 @@
+@page "/register"
+@using Beeps.Features.Accounts
+@model Beeps.Pages.Account.RegisterModel
+@{
+    ViewData["Title"] = L["Register.Title"];
+}
+<section class="auth">
+    <partial name="_OnboardingSteps" model="1" />
+    <h1>@L["Register.Title"]</h1>
+    @if (Model.Mode == RegistrationMode.Closed)
+    {
+        <div class="alert alert-info" role="status"><p class="alert-text">@L["Error.RegistrationClosed"]</p></div>
+    }
+    else
+    {
+        <form class="auth-form" method="post">
+            <form-errors />
+            <div class="field">
+                <label class="label" for="Email">@L["Field.Email"]</label>
+                <input class="input" beeps-field="Email" type="email" value="@Model.Email" autocomplete="email" maxlength="254" required>
+                <field-error name="Email" />
+            </div>
+            <div class="field">
+                <label class="label" for="Username">@L["Field.Username"]</label>
+                <input class="input" beeps-field="Username" value="@Model.Username" autocomplete="username" minlength="@AccountRules.UsernameMinLength" maxlength="@AccountRules.UsernameMaxLength" pattern="[A-Za-z0-9_]+" required aria-describedby="Username-help">
+                <p class="help" id="Username-help">@L["Field.Username.Help", AccountRules.UsernameMinLength, AccountRules.UsernameMaxLength]</p>
+                <field-error name="Username" />
+            </div>
+            <div class="field">
+                <label class="label" for="Password">@L["Field.Password"]</label>
+                <input class="input" beeps-field="Password" type="password" autocomplete="new-password" minlength="@AccountRules.PasswordMinLength" maxlength="@AccountRules.PasswordMaxLength" required>
+                <p class="help">@L["Field.Password.Help", AccountRules.PasswordMinLength]</p>
+                <field-error name="Password" />
+            </div>
+            @if (Model.Mode == RegistrationMode.InviteOnly)
+            {
+                <div class="field">
+                    <label class="label" for="InviteCode">@L["Field.InviteCode"]</label>
+                    <input class="input input-mono" beeps-field="InviteCode" value="@Model.InviteCode" autocomplete="off" required>
+                    <p class="help">@L["Field.InviteCode.Help"]</p>
+                    <field-error name="InviteCode" />
+                </div>
+            }
+            <partial name="_Captcha" />
+            <div class="form-actions">
+                <button class="btn btn-primary" type="submit">@L["Register.Submit"]</button>
+            </div>
+            <p class="auth-switch">@L["Register.HaveAccount"] <a asp-page="/Account/Login">@L["Nav.Login"]</a></p>
+        </form>
+    }
+</section>
+@section Scripts {
+    <partial name="_CaptchaScript" />
+}

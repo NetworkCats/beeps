@@ -1,0 +1,172 @@
+/* Tables: dense data rows with hairline separators.
+ *
+ *   <div class="table-container">                      optional bordered/rounded scroll wrapper
+ *     <table class="table table-hover" data-cui-sort>
+ *       <thead><tr>
+ *         <th data-sort>Name</th>                       sortable (JS sets aria-sort)
+ *         <th data-sort="number" class="num">Downloads</th>
+ *         <th aria-sort="descending" data-sort="date">Updated</th>
+ *         <th><span class="visually-hidden">Actions</span></th>
+ *       </tr></thead>
+ *       <tbody>
+ *         <tr><td>serde</td><td class="num">1,204,431</td><td>2 days ago</td>
+ *             <td class="table-actions"><a class="btn btn-ghost btn-xs">Edit</a></td></tr>
+ *       </tbody>
+ *       <caption>Most downloaded crates</caption>
+ *     </table>
+ *   </div>
+ *
+ * Modifiers on .table: -hover -striped -bordered -sm -sticky -fixed -stack (rows stack below --sm;
+ * cells need data-label="Column"). .num on th/td right-aligns tabular numbers. */
+@use "../foundation/layers";
+@use "../abstracts" as *;
+
+@layer cui.components {
+  .#{$prefix}table {
+    --_px: var(--cui-table-px, var(--cui-space-4));
+    --_py: var(--cui-table-py, var(--cui-space-3));
+    --_border: var(--cui-table-border, var(--cui-border));
+    --_head-bg: var(--cui-table-head-bg, var(--cui-surface-2));
+    width: 100%;
+    font-size: var(--cui-text-sm);
+    line-height: var(--cui-leading-snug);
+    color: var(--cui-text);
+    border-collapse: collapse;
+    text-align: start;
+
+    th, td {
+      padding: var(--_py) var(--_px);
+      text-align: start;
+      vertical-align: middle;
+      border-block-end: var(--cui-border-width) solid var(--_border);
+    }
+    th {
+      font-weight: var(--cui-weight-semibold);
+      color: var(--cui-text-2);
+      white-space: nowrap;
+    }
+    /* Column headers are tracked uppercase micro-labels on a tinted strip. */
+    thead th {
+      padding-block: var(--cui-space-2-5);
+      font-size: var(--cui-text-xs);
+      letter-spacing: var(--cui-tracking-wide);
+      text-transform: uppercase;
+      color: var(--cui-text-3);
+      background: var(--_head-bg);
+    }
+    tfoot td, tfoot th { background: var(--_head-bg); color: var(--cui-text-2); border-block-end: 0; }
+    tbody tr:last-child > td { border-block-end-color: var(--_border); }
+    caption {
+      caption-side: bottom;
+      padding: var(--cui-space-2) var(--_px);
+      font-size: var(--cui-text-xs);
+      color: var(--cui-text-3);
+      text-align: start;
+    }
+
+    /* Cell helpers */
+    .#{$prefix}num { text-align: end; font-variant-numeric: tabular-nums; }
+    .#{$prefix}mono { font-family: var(--cui-font-mono); font-size: 0.9em; }
+    td > .#{$prefix}avatar { vertical-align: middle; }
+  }
+
+  /* Row hover: opt-in so plain tables stay quiet. */
+  .#{$prefix}table-hover tbody tr {
+    transition: background-color var(--cui-transition);
+    &:hover > td { background: var(--cui-surface-hover); }
+  }
+  .#{$prefix}table-striped tbody tr:nth-child(even) > td { background: var(--cui-surface-2); }
+  .#{$prefix}table-bordered {
+    border: var(--cui-border-width) solid var(--_border);
+    th, td { border: var(--cui-border-width) solid var(--_border); }
+  }
+  .#{$prefix}table-sm { --_px: var(--cui-space-3); --_py: var(--cui-space-2); }
+  .#{$prefix}table-fixed { table-layout: fixed; }
+  .#{$prefix}table-sticky thead th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    box-shadow: inset 0 -1px 0 var(--_border);
+  }
+
+  /* Wrapper: makes a table look like a .list and scrolls sideways when too wide. */
+  .#{$prefix}table-container {
+    background: var(--cui-surface);
+    border: var(--cui-border-width) solid var(--cui-border);
+    border-radius: var(--cui-radius-lg);
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    > .#{$prefix}table { margin: 0; }
+    > .#{$prefix}table tbody tr:last-child > td { border-block-end: 0; }
+    > .#{$prefix}table caption { border-block-start: var(--cui-border-width) solid var(--cui-border); }
+  }
+
+  /* Sortable headers: <th data-sort aria-sort="ascending|descending"> */
+  .#{$prefix}table th[data-sort] {
+    cursor: pointer;
+    user-select: none;
+    transition: color var(--cui-transition), background-color var(--cui-transition);
+    &::after {
+      @include icon-glyph("unfold_more");
+      font-weight: normal;
+      font-size: 1rem;
+      line-height: 1;
+      display: inline-block;
+      vertical-align: -0.2em;
+      margin-inline-start: var(--cui-space-1);
+      color: var(--cui-text-4);
+      transition: color var(--cui-transition), rotate var(--cui-duration-slow) var(--cui-ease);
+    }
+    &:hover { color: var(--cui-text); &::after { color: var(--cui-text-3); } }
+    &:focus-visible { @include focus-ring($inset: true); }
+    &[aria-sort="ascending"], &[aria-sort="descending"] {
+      color: var(--cui-primary-text);
+      &::after { color: var(--cui-primary); }
+    }
+    /* One chevron that turns over when the direction flips. */
+    &[aria-sort="ascending"]::after, &[aria-sort="descending"]::after { content: "expand_more"; }
+    &[aria-sort="ascending"]::after { rotate: 180deg; }
+  }
+
+  /* Trailing actions cell */
+  .#{$prefix}table .#{$prefix}table-actions {
+    text-align: end;
+    white-space: nowrap;
+    padding-block: var(--cui-space-2);
+    > * + * { margin-inline-start: var(--cui-space-1); }
+  }
+
+  /* Selection column */
+  .#{$prefix}table .#{$prefix}table-check { width: 1%; padding-inline-end: 0; }
+
+  /* Responsive: below --sm, rows become stacked label/value blocks. */
+  @include mq(max-sm) {
+    .#{$prefix}table-stack {
+      thead { display: none; }
+      tbody, tr, td { display: block; }
+      tr {
+        padding-block: var(--cui-space-2);
+        border-block-end: var(--cui-border-width) solid var(--_border);
+      }
+      td {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        gap: var(--cui-space-4);
+        padding: var(--cui-space-1-5) var(--_px);
+        border: 0;
+        text-align: end;
+        &::before {
+          content: attr(data-label);
+          flex-shrink: 0;
+          font-weight: var(--cui-weight-medium);
+          color: var(--cui-text-3);
+          text-align: start;
+        }
+        &:not([data-label])::before { content: none; }
+      }
+      .#{$prefix}table-actions { justify-content: flex-end; }
+    }
+    .#{$prefix}table-container > .#{$prefix}table-stack tbody tr:last-child { border-block-end: 0; }
+  }
+}

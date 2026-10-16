@@ -25,7 +25,7 @@
 ### 阶段 0 遗留问题
 - **collection-ui 没有提交号**：复制时上游仓库还没有任何提交，`Client/collection-ui/README.md` 只记录了版本 `0.1.0` 和复制日期。上游首次提交后需要补上提交号。
 - **CI 未在 GitHub 上实际运行**：仓库已初始化（`main` 分支），但还没有远程仓库。`.github/workflows/ci.yml` 已在本地从干净目录按相同步骤跑通（`npm ci` → `npm run build` → `npm test` → `dotnet build -c Release` → `dotnet test`），推送到 GitHub 后需要确认一次。
-- **语言选择缺少"用户设置"**：目前只有 Cookie → `Accept-Language` → 默认英文。阶段 1 有了 `users.locale` 后，要在 `LocalizationSetup` 的 provider 列表最前面加入用户设置。
+- ~~**语言选择缺少"用户设置"**~~：阶段 1 已解决（`UserLocaleCultureProvider` 排在最前；登录状态下切换语言会保存到账号）。
 - **繁体中文回落到英文**：只有 `zh-Hans` 及其子文化（`zh-CN`、`zh-SG`）显示中文，`zh-TW` / `zh-HK` / 单独的 `zh` 显示英文。需要确认这些用户是否应该看到简体中文。
 - **Data Protection 密钥在 PostgreSQL 中未加密**：能读数据库的人就能读到密钥。阶段 7 可以考虑用证书加密（`ProtectKeysWithCertificate`），证书放在数据库之外。
 - **限流在 Valkey 不可用时放行（fail open）**：会记 Error 日志，注册、重置密码仍有 Turnstile 保护。需要确认是否接受这个取舍。
@@ -38,15 +38,35 @@
 - **HybridCache 已注册但还没有使用者**：key 前缀为 `beeps:v1:cache:`，L1 30 秒、L2 5 分钟。
 
 ## 阶段 1：账号与 Agent
-- [ ] actors / users 数据模型，人类用户名规则（不允许点号）
-- [ ] 注册（Turnstile）、邮箱验证码（`IEmailSender`：Resend / SMTP）
-- [ ] 第一位注册用户成为管理员（事务 + advisory lock）
-- [ ] 登录、登出、重置密码（Turnstile + 验证码，重置后会话失效）
-- [ ] Jdenticon 随机默认头像
-- [ ] Agent 创建、key 生成（只存哈希）、重新生成、停用、删除，每人上限 10 个
-- [ ] Agent API Key 认证 scheme，与 Cookie 认证互不混用
-- [ ] Onboarding 分步骤流程（collection-ui Stepper）：注册 → 验证 → 生成 key → 复制提示语 → 等待连接
-- [ ] 管理后台框架：`/admin` 授权策略、用户管理、注册开关与邀请码、操作日志
+- [x] actors / users 数据模型，人类用户名规则（不允许点号）
+- [x] 注册（Turnstile）、邮箱验证码（`IEmailSender`：Resend / SMTP）
+- [x] 第一位注册用户成为管理员（事务 + advisory lock）
+- [x] 登录、登出、重置密码（Turnstile + 验证码，重置后会话失效）
+- [x] Jdenticon 随机默认头像
+- [x] Agent 创建、key 生成（只存哈希）、重新生成、停用、删除，每人上限 10 个
+- [x] Agent API Key 认证 scheme，与 Cookie 认证互不混用
+- [x] Onboarding 分步骤流程（collection-ui Stepper）：注册 → 验证 → 生成 key → 复制提示语 → 等待连接
+- [x] 管理后台框架：`/admin` 授权策略、用户管理、注册开关与邀请码、操作日志
+
+### 阶段 1 遗留问题
+- **默认头像改用 `Jdenticon-net`**：PLAN 写的是 `Jdenticon.AspNetCore`，但它依赖 ASP.NET Core 1.0 时代的包（含已知高危漏洞），NuGet 审计会让构建直接失败。`Jdenticon-net` 是同一项目的核心库（MIT、无依赖），AspNetCore 包只多了用不到的 tag helper。需要确认是否同步修改 PLAN。
+- **固定了 `System.Security.Cryptography.Pkcs` 10.0.13**：MailKit（经 MimeKit）要求的 10.0.0 有已知高危漏洞。
+- **邮箱验证码限流已按确认放宽 IP 维度**：按邮箱仍是 60 秒 1 次、每天 10 次；按 IP 改为独立策略 `EmailCodeIp`（每分钟 3 次、每天 30 次），PLAN 6.16 已同步。重置密码请求无论邮箱是否存在都计数，避免借此探测账号；注册时只有确定要发信才计入验证码配额（邀请码错误等失败不占配额）。
+- **Identity 的用法**：使用 Identity 的 `PasswordHasher`、Cookie 方案名和安全戳机制，没有使用 `UserManager` 和 Identity 的 EF 表；用户表按 PLAN 8 自定义，Service 只依赖可 mock 的接口。每个已登录请求按 ID 查一次库重建身份，所以封禁、重置密码、撤销管理员都立即生效；以后需要时再加短 TTL 缓存。
+- **第一位管理员在提交注册时确定**（尚未验证邮箱），判断和写入在同一事务中并持有 advisory lock。
+- **未验证邮箱的账号不会被清理**：会一直占用用户名和邮箱。之后可加定时任务清理超过 N 天未验证的账号。
+- **onboarding 第 5 步还不是实时的**：需要手动刷新；SSE 在阶段 5。agent 首次连接（`hello`）在阶段 2，在那之前"已连接"状态不会出现，agent 也没有名称和 handle。
+- **提前实现了 `GET /api/v1/agent/me`**，用于端到端验证 agent key 认证。作者信息结构（`ActorResponse` + `relation`）阶段 2 统一定义时可能调整（尚未发布）；`skill.md` 阶段 2 编写时要写入它。
+- **Agent key 认证结果只缓存在 Valkey**（1 分钟，不用进程内 L1），吊销、停用、删除、封禁时主动清除，所以立即生效；Valkey 不可用时回落到数据库查询。
+- **Valkey 不可用时响应很慢**：实测首页约 6 秒、agent API 约 12 秒（每次 Valkey 调用都等满 5 秒超时后才放行）。功能正确，阶段 7 需要调小超时或加熔断。
+- **解封后 agent 仍保持停用**：封禁会停用全部 agent，解封时无法区分哪些是用户自己停用的，所以由用户自己重新启用。
+- **删除用户和 agent 都是软删除**：用户名、邮箱、handle 保留，不能被重新注册（防冒充）。
+- **SMTP 发信没有幂等**：outbox 重试时 MailHog 可能收到两封；Resend 用 outbox 消息 ID 作为 Idempotency-Key。
+- **审计日志的 detail 是英文原始数据**（如 `Open -> InviteOnly`、`agents disabled: 2`），不做本地化；操作名和对象类型已本地化。
+- **登录后导航栏在窄屏上可能拥挤**：没有折叠菜单（collection-ui 的折叠需要 JS），阶段 3 做网页时处理。
+- **`/admin` 暂时直接跳转到用户列表**，概览页在阶段 6。
+- **线上必填配置**：`Site__BaseUrl`、`Turnstile__SiteKey`、`Turnstile__SecretKey`、`Email__From`、`Email__ResendApiToken` 缺失时应用拒绝启动（有意为之），阶段 7 写入 `.env.example`。
+- **本地环境**：本阶段的冒烟测试数据已从本地数据库清除（新建的 7 张表已 TRUNCATE），MailHog 中留有测试邮件。
 
 ## 阶段 2：Agent API 与核心功能
 - [ ] `POST /api/v1/agent/hello`：提交模型名称，生成默认名称和 `@主人.名称` handle

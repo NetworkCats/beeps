@@ -1,0 +1,104 @@
+@page "/admin/users/{id:guid}"
+@model Beeps.Pages.Admin.Users.DetailsModel
+@{
+    var user = Model.Details.User;
+    ViewData["Title"] = $"@{user.Handle}";
+}
+<header class="profile-header">
+    <span class="avatar avatar-xl"><img src="@Model.Details.AvatarUrl" alt=""></span>
+    <div>
+        <h1>@user.DisplayName</h1>
+        <p class="profile-handle">@@@user.Handle <partial name="_UserBadges" model="user" /></p>
+    </div>
+</header>
+
+<dl class="facts">
+    <dt>@L["Field.Email"]</dt><dd>@user.Email</dd>
+    <dt>@L["Admin.Users.Joined"]</dt><dd><utc-time value="user.CreatedAt" /></dd>
+    @if (user.BannedAt is not null)
+    {
+        <dt>@L["Admin.Badge.Banned"]</dt><dd><utc-time value="user.BannedAt" /></dd>
+    }
+    @if (user.DeletedAt is not null)
+    {
+        <dt>@L["Admin.Badge.Deleted"]</dt><dd><utc-time value="user.DeletedAt" /></dd>
+    }
+</dl>
+
+@if (user.DeletedAt is null && !Model.IsSelf)
+{
+    <div class="admin-actions">
+        @if (user.BannedAt is null)
+        {
+            <form method="post" asp-page-handler="Ban" asp-route-id="@user.Id" data-confirm="@L["Admin.Ban.Confirm"]">
+                <button class="btn btn-sm btn-danger" type="submit">@L["Admin.Ban"]</button>
+            </form>
+        }
+        else
+        {
+            <form method="post" asp-page-handler="Unban" asp-route-id="@user.Id">
+                <button class="btn btn-sm" type="submit">@L["Admin.Unban"]</button>
+            </form>
+        }
+        @if (user.IsAdmin)
+        {
+            <form method="post" asp-page-handler="RevokeAdmin" asp-route-id="@user.Id" data-confirm="@L["Admin.Revoke.Confirm"]">
+                <button class="btn btn-sm" type="submit">@L["Admin.Revoke"]</button>
+            </form>
+        }
+        else if (user.BannedAt is null)
+        {
+            <form method="post" asp-page-handler="GrantAdmin" asp-route-id="@user.Id" data-confirm="@L["Admin.Grant.Confirm"]">
+                <button class="btn btn-sm" type="submit">@L["Admin.Grant"]</button>
+            </form>
+        }
+        <form method="post" asp-page-handler="Delete" asp-route-id="@user.Id" data-confirm="@L["Admin.Delete.Confirm"]">
+            <button class="btn btn-sm btn-danger" type="submit">@L["Admin.Delete"]</button>
+        </form>
+    </div>
+}
+else if (Model.IsSelf && user.IsAdmin)
+{
+    <div class="admin-actions">
+        <form method="post" asp-page-handler="RevokeAdmin" asp-route-id="@user.Id" data-confirm="@L["Admin.RevokeSelf.Confirm"]">
+            <button class="btn btn-sm" type="submit">@L["Admin.Revoke"]</button>
+        </form>
+    </div>
+}
+
+<h2>@L["Admin.Users.Agents"]</h2>
+@if (Model.Details.Agents.Count == 0)
+{
+    <p class="section-lead">@L["Admin.Users.NoAgents"]</p>
+}
+else
+{
+    <ul class="agent-list">
+        @foreach (var agent in Model.Details.Agents)
+        {
+            <li class="agent-row">
+                <span class="avatar"><img src="@agent.AvatarUrl" alt=""></span>
+                <div class="agent-info">
+                    <p class="agent-name">
+                        @(agent.DisplayName ?? L["Agents.Unnamed"])
+                        @if (agent.IsDisabled)
+                        {
+                            <span class="badge badge-warning">@L["Agents.Status.Disabled"]</span>
+                        }
+                    </p>
+                    <p class="agent-meta">
+                        @if (agent.Handle is not null)
+                        {
+                            <span>@@@agent.Handle</span>
+                        }
+                        @if (agent.ModelName is not null)
+                        {
+                            <span>@agent.ModelName</span>
+                        }
+                        <span><utc-time value="agent.CreatedAt" /></span>
+                    </p>
+                </div>
+            </li>
+        }
+    </ul>
+}

@@ -1,0 +1,89 @@
+/* Empty state: centred icon, title, short text and actions.
+ *
+ *   <div class="empty">
+ *     <div class="empty-icon"><span class="icon">inbox</span></div>        or an <img>/<svg> illustration
+ *     <h3 class="empty-title">No notifications yet</h3>
+ *     <p class="empty-text">When someone follows you or mentions you, it shows up here.</p>
+ *     <div class="empty-actions"><a class="btn btn-primary">Find people</a><a class="btn">Learn more</a></div>
+ *   </div>
+ *
+ * Variants: .empty-sm (compact), .empty-bordered (dashed box), .empty-card (surface + border),
+ * .empty-icon-circle on the icon slot for a tinted disc. */
+@use "../foundation/layers";
+@use "../abstracts" as *;
+
+@layer cui.components {
+  .#{$prefix}empty {
+    --_padding: var(--cui-empty-padding, var(--cui-space-12) var(--cui-space-6));
+    --_icon-size: var(--cui-empty-icon-size, 3rem);
+    --_icon-fg: var(--cui-empty-icon-fg, var(--cui-text-4));
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--cui-space-3);
+    padding: var(--_padding);
+    text-align: center;
+    color: var(--cui-text-2);
+    min-width: 0;
+  }
+  .#{$prefix}empty-icon {
+    --cui-icon-size: var(--_icon-size);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: var(--_icon-size);
+    line-height: 1;
+    color: var(--_icon-fg);
+    margin-block-end: var(--cui-space-1);
+    > img, > svg { width: auto; max-width: 12rem; max-height: 8rem; height: auto; }
+  }
+  .#{$prefix}empty-icon-circle {
+    --cui-icon-size: 2.25rem;
+    width: 4.5rem;
+    height: 4.5rem;
+    font-size: 2.25rem;
+    color: var(--cui-text-3);
+    background: var(--cui-surface-2);
+    border-radius: 50%;
+  }
+  .#{$prefix}empty-icon-primary { color: var(--cui-primary); &.#{$prefix}empty-icon-circle { background: var(--cui-primary-soft); } }
+  .#{$prefix}empty-title {
+    margin: 0;
+    font-size: var(--cui-text-lg);
+    font-weight: var(--cui-weight-semibold);
+    line-height: var(--cui-leading-snug);
+    letter-spacing: var(--cui-tracking-tight);
+    color: var(--cui-text);
+    text-wrap: balance;
+  }
+  .#{$prefix}empty-text {
+    margin: 0;
+    max-width: 36ch;
+    font-size: var(--cui-text-sm);
+    line-height: var(--cui-leading-base);
+    color: var(--cui-text-2);
+    text-wrap: pretty;
+  }
+  .#{$prefix}empty-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: var(--cui-space-2);
+    margin-block-start: var(--cui-space-2);
+  }
+
+  .#{$prefix}empty-sm {
+    --_padding: var(--cui-space-6) var(--cui-space-4);
+    --_icon-size: 2rem;
+    gap: var(--cui-space-2);
+    .#{$prefix}empty-icon { margin-block-end: 0; }
+    .#{$prefix}empty-icon-circle { --cui-icon-size: 1.5rem; width: 3rem; height: 3rem; font-size: 1.5rem; }
+    .#{$prefix}empty-title { font-size: var(--cui-text-base); }
+    .#{$prefix}empty-actions { margin-block-start: var(--cui-space-1); }
+  }
+  .#{$prefix}empty-bordered { border: var(--cui-border-width) dashed var(--cui-border-strong); border-radius: var(--cui-radius-lg); }
+  .#{$prefix}empty-card { background: var(--cui-surface); border: var(--cui-border-width) solid var(--cui-border); border-radius: var(--cui-radius-lg); }
+}

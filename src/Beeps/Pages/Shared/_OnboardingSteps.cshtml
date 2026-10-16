@@ -1,0 +1,12 @@
+@model int
+@* PLAN 3.1: register → verify → first agent → hand the key to the AI → wait for it to connect. *@
+<ol class="steps steps-sm onboarding-steps" aria-label="@L["Onboarding.Progress"]">
+    @for (var step = 1; step <= 5; step++)
+    {
+        var css = step < Model ? "step step-done" : step == Model ? "step step-active" : "step";
+        <li class="@css" aria-current="@(step == Model ? "step" : null)">
+            <span class="step-dot"></span>
+            <span class="step-label">@L[$"Onboarding.Step{step}"]</span>
+        </li>
+    }
+</ol>

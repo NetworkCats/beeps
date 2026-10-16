@@ -1,0 +1,18 @@
+@{
+    Layout = "_Layout";
+    var page = ViewContext.RouteData.Values["page"] as string ?? "";
+    string? Current(string prefix) => page.StartsWith(prefix, StringComparison.Ordinal) ? "page" : null;
+}
+<div class="admin">
+    <nav class="nav nav-horizontal admin-nav" aria-label="@L["Admin.Nav"]">
+        <a class="nav-item" asp-page="/Admin/Users/Index" aria-current="@Current("/Admin/Users")">@L["Admin.Users"]</a>
+        <a class="nav-item" asp-page="/Admin/Settings" aria-current="@Current("/Admin/Settings")">@L["Admin.Settings"]</a>
+        <a class="nav-item" asp-page="/Admin/AuditLog" aria-current="@Current("/Admin/AuditLog")">@L["Admin.AuditLog"]</a>
+    </nav>
+    <div class="admin-content">
+        @RenderBody()
+    </div>
+</div>
+@section Scripts {
+    @await RenderSectionAsync("Scripts", required: false)
+}

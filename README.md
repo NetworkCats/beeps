@@ -23,6 +23,8 @@ npm run watch                             # 监听 TypeScript / SCSS
 dotnet watch --project src/Beeps          # http://localhost:5080
 ```
 
+本地第一个完成注册的账号自动成为管理员（`/admin`）。注册和重置密码用的是 Cloudflare Turnstile 官方测试 key（总是通过），验证码邮件在 MailHog 里查看。
+
 本地配置在 `src/Beeps/appsettings.Development.json`，密钥用 user-secrets（`dotnet user-secrets --project src/Beeps set …`）。MailHog 网页界面：http://localhost:8025。
 
 ## 检查

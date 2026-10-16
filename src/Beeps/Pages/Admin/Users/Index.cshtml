@@ -1,0 +1,48 @@
+@page "/admin/users"
+@model Beeps.Pages.Admin.Users.IndexModel
+@{
+    ViewData["Title"] = L["Admin.Users"];
+}
+<header class="section-header">
+    <h1>@L["Admin.Users"]</h1>
+    <form class="admin-search" method="get" role="search">
+        <input class="input input-sm" type="search" name="q" value="@Model.Q" placeholder="@L["Admin.Users.Search"]" aria-label="@L["Admin.Users.Search"]" maxlength="100">
+        <button class="btn btn-sm" type="submit">@L["Admin.Search"]</button>
+    </form>
+</header>
+@if (Model.Users.Items.Count == 0)
+{
+    <div class="empty empty-sm"><p class="empty-text">@L["Admin.Users.None"]</p></div>
+}
+else
+{
+    <div class="table-container">
+        <table class="table table-hover table-stack">
+            <thead>
+                <tr>
+                    <th>@L["Admin.Users.User"]</th>
+                    <th>@L["Field.Email"]</th>
+                    <th>@L["Admin.Users.Status"]</th>
+                    <th>@L["Admin.Users.Joined"]</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var user in Model.Users.Items)
+                {
+                    <tr>
+                        <td data-label="@L["Admin.Users.User"]"><a asp-page="/Admin/Users/Details" asp-route-id="@user.Id">@@@user.Handle</a></td>
+                        <td data-label="@L["Field.Email"]">@user.Email</td>
+                        <td data-label="@L["Admin.Users.Status"]"><partial name="_UserBadges" model="user" /></td>
+                        <td data-label="@L["Admin.Users.Joined"]"><utc-time value="user.CreatedAt" /></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+    @if (Model.Users.NextCursor is { } next)
+    {
+        <nav class="pager" aria-label="@L["Admin.Pager"]">
+            <a class="btn btn-sm" asp-page="/Admin/Users/Index" asp-route-q="@Model.Q" asp-route-before="@next">@L["Admin.Older"]</a>
+        </nav>
+    }
+}

@@ -3,6 +3,9 @@
 @{
     var currentCulture = CultureInfo.CurrentUICulture.Name;
     var returnUrl = $"{Context.Request.PathBase}{Context.Request.Path}{Context.Request.QueryString}";
+    var signedIn = User.IsHuman();
+    var notice = TempData[Notices.Success] as string;
+    var alert = TempData[Notices.Error] as string;
 }
 <!DOCTYPE html>
 <html lang="@currentCulture">
@@ -25,11 +28,40 @@
                 <img src="~/images/logo.png" asp-append-version="true" alt="" width="28" height="28">
                 @L["Site.Name"]
             </a>
+            <ul class="navbar-nav">
+                @if (signedIn)
+                {
+                    <li><a class="navbar-link" asp-page="/Agents/Index">@L["Nav.Agents"]</a></li>
+                    @if (User.IsInRole(BeepsClaims.AdminRole))
+                    {
+                        <li><a class="navbar-link" asp-page="/Admin/Users/Index">@L["Nav.Admin"]</a></li>
+                    }
+                    <li><span class="navbar-link site-user">@@@User.Identity?.Name</span></li>
+                    <li>
+                        <form class="inline-form" method="post" asp-page="/Account/Logout">
+                            <button class="btn btn-ghost btn-sm" type="submit">@L["Nav.Logout"]</button>
+                        </form>
+                    </li>
+                }
+                else
+                {
+                    <li><a class="navbar-link" asp-page="/Account/Login">@L["Nav.Login"]</a></li>
+                    <li><a class="btn btn-primary btn-sm" asp-page="/Account/Register">@L["Nav.Register"]</a></li>
+                }
+            </ul>
         </div>
     </header>
 
     <main id="main" class="page-main site-main">
         <div class="container">
+            @if (notice is not null)
+            {
+                <div class="alert alert-success site-notice" role="status"><p class="alert-text">@notice</p></div>
+            }
+            @if (alert is not null)
+            {
+                <div class="alert alert-danger site-notice" role="alert"><p class="alert-text">@alert</p></div>
+            }
             @RenderBody()
         </div>
     </main>

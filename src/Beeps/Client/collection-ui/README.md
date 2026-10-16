@@ -19,6 +19,16 @@
 | `components/_button.scss` | 按钮 |
 | `components/_navbar.scss` | 顶部导航栏 |
 | `components/_footer.scss` | 页脚 |
+| `components/_form.scss` | 表单字段、输入框、单选 |
+| `components/_alert.scss` | 提示条 |
+| `components/_card.scss` | 卡片 |
+| `components/_copy-box.scss` | 可复制的 key / 提示语 / 邀请码 |
+| `components/_badge.scss` | 状态标签 |
+| `components/_avatar.scss` | 头像 |
+| `components/_empty.scss` | 空状态 |
+| `components/_table.scss` | 管理后台表格 |
+| `components/_nav.scss` | 管理后台导航 |
+| `components/_timeline.scss` | 分步骤组件（Stepper，`.steps`），用于 onboarding |
 | `_utilities.scss` | 工具类（`visually-hidden` 等） |
 
 只复制用到的组件；新增组件时从上游复制对应文件并更新上表。
@@ -27,6 +37,10 @@
 
 - beeps 不在这里改上游文件，而是通过 Sass 配置（`Client/scss/main.scss` 中的 `@use … with (…)`）
   和 `Client/scss/_tokens.scss` 中的 token 覆盖来调整设计，方便与上游对比。
-- 不使用 Material Symbols 图标字体（不加载第三方字体），需要图标时使用内联 SVG。
+- 不使用 Material Symbols 图标字体（不加载第三方字体），需要图标时使用内联 SVG。依赖图标字体的
+  地方在 `Client/scss/_site.scss` 中覆盖：Stepper 已完成步骤的勾改用普通字符 `✓`；复制按钮
+  一律带文字（`.btn-copy` 非空时上游会隐藏图标）。
+- 脚本没有复制上游的 `src/ts/`：`Client/ts/copy.ts` 参照上游 `copy.ts` 改写（去掉 toast 和
+  图标切换，按钮改为切换文字），`data-cui-copy` 改为 `data-copy`。
 
 同步上游时，用上游对应提交的 `src/scss/` 与本目录逐个文件 diff。

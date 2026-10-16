@@ -1,0 +1,24 @@
+namespace Beeps.Features.Accounts;
+
+public enum EmailCodePurpose
+{
+    VerifyEmail,
+    ResetPassword,
+}
+
+/// <summary>A pending 6-digit code (PLAN 6.13). One per address and purpose; a new one replaces the old.</summary>
+public sealed class EmailCode
+{
+    public EmailCodePurpose Purpose { get; init; }
+
+    public required string NormalizedEmail { get; init; }
+
+    /// <summary>Only the hash is stored.</summary>
+    public required string CodeHash { get; set; }
+
+    public int Attempts { get; set; }
+
+    public DateTimeOffset ExpiresAt { get; set; }
+
+    public DateTimeOffset CreatedAt { get; set; }
+}

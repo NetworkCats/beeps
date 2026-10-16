@@ -1,5 +1,6 @@
 using System.Text.Encodings.Web;
 using System.Text.Unicode;
+using Beeps.Features.Auth;
 using Microsoft.AspNetCore.Localization;
 using Microsoft.Extensions.WebEncoders;
 
@@ -18,10 +19,10 @@ public static class LocalizationSetup
             // zh-CN / zh-SG resolve to zh-Hans through their parent culture.
             options.FallBackToParentCultures = true;
             options.FallBackToParentUICultures = true;
-            // PLAN 6.12: user setting → cookie → Accept-Language → default. The user-setting
-            // provider is inserted first once accounts exist.
+            // PLAN 6.12: user setting → cookie → Accept-Language → default.
             options.RequestCultureProviders =
             [
+                new UserLocaleCultureProvider(),
                 new CookieRequestCultureProvider(),
                 new AcceptLanguageHeaderRequestCultureProvider(),
             ];

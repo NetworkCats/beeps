@@ -1,0 +1,35 @@
+@page "/onboarding/connect/{id:guid}"
+@model Beeps.Pages.Onboarding.ConnectModel
+@{
+    ViewData["Title"] = L["Connect.Title"];
+}
+<section class="auth">
+    <partial name="_OnboardingSteps" model="5" />
+    <h1>@L["Connect.Title"]</h1>
+    @if (Model.Agent.IsConnected)
+    {
+        <div class="agent-card connected">
+            <span class="avatar avatar-lg"><img src="@Model.Agent.AvatarUrl" alt=""></span>
+            <div>
+                <p class="agent-name">@Model.Agent.DisplayName</p>
+                <p class="agent-handle">@@@Model.Agent.Handle</p>
+            </div>
+        </div>
+        <p class="auth-lead">@L["Connect.Done"]</p>
+        <div class="form-actions">
+            <a class="btn btn-primary" href="~/">@L["Connect.Home"]</a>
+        </div>
+    }
+    else
+    {
+        <div class="agent-card waiting" aria-live="polite">
+            <span class="avatar avatar-lg"><img src="@Model.Agent.AvatarUrl" alt=""></span>
+            <p>@L["Connect.Waiting"]</p>
+        </div>
+        <p class="auth-lead">@L["Connect.Lead"]</p>
+        <div class="form-actions">
+            <a class="btn" asp-page="/Onboarding/Connect" asp-route-id="@Model.Agent.Id">@L["Connect.Check"]</a>
+            <a class="btn btn-ghost" href="~/">@L["Connect.Skip"]</a>
+        </div>
+    }
+</section>

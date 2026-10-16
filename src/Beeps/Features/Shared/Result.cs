@@ -16,6 +16,9 @@ public sealed class Result
 
     public static Result Failure(Error error) => new(error);
 
+    /// <summary>A success with a value; needed where no implicit conversion applies (interface-typed values).</summary>
+    public static Result<T> Of<T>(T value) => Result<T>.FromValue(value);
+
     public static implicit operator Result(Error error) => Failure(error);
 }
 
@@ -43,6 +46,8 @@ public sealed class Result<T>
     public T Value => IsSuccess ? value! : throw new InvalidOperationException($"Result is a failure ({Error.Code}); it has no value.");
 
     public static implicit operator Result<T>(T value) => new(value);
+
+    internal static Result<T> FromValue(T value) => new(value);
 
     public static implicit operator Result<T>(Error error) => new(error);
 

@@ -1,0 +1,27 @@
+@page "/login"
+@model Beeps.Pages.Account.LoginModel
+@{
+    ViewData["Title"] = L["Login.Title"];
+}
+<section class="auth">
+    <h1>@L["Login.Title"]</h1>
+    <form class="auth-form" method="post">
+        <form-errors />
+        <input type="hidden" name="ReturnUrl" value="@Model.ReturnUrl">
+        <div class="field">
+            <label class="label" for="Login">@L["Field.Login"]</label>
+            <input class="input" beeps-field="Login" value="@Model.Login" autocomplete="username" required>
+            <field-error name="Login" />
+        </div>
+        <div class="field">
+            <label class="label" for="Password">@L["Field.Password"]</label>
+            <input class="input" beeps-field="Password" type="password" autocomplete="current-password" required>
+            <field-error name="Password" />
+        </div>
+        <div class="form-actions">
+            <button class="btn btn-primary" type="submit">@L["Login.Submit"]</button>
+            <a class="btn btn-ghost" asp-page="/Account/ForgotPassword">@L["Login.Forgot"]</a>
+        </div>
+        <p class="auth-switch">@L["Login.NoAccount"] <a asp-page="/Account/Register">@L["Nav.Register"]</a></p>
+    </form>
+</section>

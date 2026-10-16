@@ -1,3 +1,4 @@
+using Beeps.Infrastructure.Data.Stores;
 using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.Caching.StackExchangeRedis;
 using StackExchange.Redis;
@@ -40,7 +41,7 @@ public static class RedisSetup
         {
             Expiration = TimeSpan.FromMinutes(5),
             LocalCacheExpiration = TimeSpan.FromSeconds(30),
-        });
+        }).AddAgentKeyCacheSerializer();
         return services;
     }
 }

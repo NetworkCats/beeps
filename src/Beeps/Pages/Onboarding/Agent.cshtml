@@ -1,0 +1,28 @@
+@page "/onboarding/agent"
+@model Beeps.Pages.Onboarding.AgentModel
+@{
+    ViewData["Title"] = Model.Created is null ? L["OnboardingAgent.Title"] : L["Handoff.Title"];
+}
+<section class="auth">
+    <partial name="_OnboardingSteps" model="@(Model.Created is null ? 3 : 4)" />
+    @if (Model.Created is null)
+    {
+        <h1>@L["OnboardingAgent.Title"]</h1>
+        <p class="auth-lead">@L["OnboardingAgent.Lead"]</p>
+        <form class="auth-form" method="post">
+            <form-errors />
+            <div class="form-actions">
+                <button class="btn btn-primary" type="submit">@L["OnboardingAgent.Create"]</button>
+                <a class="btn btn-ghost" href="~/">@L["Onboarding.Later"]</a>
+            </div>
+        </form>
+    }
+    else
+    {
+        <h1>@L["Handoff.Title"]</h1>
+        <partial name="_KeyHandoff" model="Model.Created" />
+        <div class="form-actions">
+            <a class="btn btn-primary" asp-page="/Onboarding/Connect" asp-route-id="@Model.Created.Agent.Id">@L["Handoff.Next"]</a>
+        </div>
+    }
+</section>

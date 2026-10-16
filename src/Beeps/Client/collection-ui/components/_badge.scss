@@ -1,0 +1,208 @@
+/* Three tiers of labels:
+ *  .badge  — soft rounded label (status, kind). Variants by colour.
+ *  .tag    — flat uppercase micro label (DEV, SDK, PLATFORM). Square-ish.
+ *  .chip   — interactive pill (keyword, filter) with optional count / remove. */
+@use "../foundation/layers";
+@use "../abstracts" as *;
+
+@layer cui.components {
+  .#{$prefix}badge {
+    --_bg: var(--cui-badge-bg, var(--cui-surface-2));
+    --_fg: var(--cui-badge-fg, var(--cui-text-2));
+    --_border: var(--cui-badge-border, transparent);
+    --_radius: var(--cui-badge-radius, var(--cui-radius-sm));
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3em;
+    padding: 0.125rem 0.5rem;
+    font-size: var(--cui-text-xs);
+    font-weight: var(--cui-weight-medium);
+    line-height: 1.4;
+    white-space: nowrap;
+    color: var(--_fg);
+    background: var(--_bg);
+    border: var(--cui-border-width) solid var(--_border);
+    border-radius: var(--_radius);
+    vertical-align: middle;
+    > .#{$prefix}icon { --cui-icon-size: 1.1em; }
+  }
+  @each $tone in tones() {
+    .#{$prefix}badge-#{$tone} { --_bg: var(--cui-#{$tone}-soft); --_fg: var(--cui-#{$tone}-text); }
+  }
+  .#{$prefix}badge-outline { --_bg: transparent; --_border: currentColor; }
+  @each $tone in tones() {
+    .#{$prefix}badge-outline.#{$prefix}badge-#{$tone} { --_border: var(--cui-#{$tone}-border); }
+  }
+  .#{$prefix}badge-solid { --_bg: var(--cui-text-2); --_fg: var(--cui-surface); } /* neutral when no colour is given */
+  @each $tone in tones() {
+    .#{$prefix}badge-solid.#{$prefix}badge-#{$tone} { --_bg: var(--cui-#{$tone}-solid); --_fg: var(--cui-#{$tone}-contrast); }
+  }
+  .#{$prefix}badge-pill { --_radius: var(--cui-radius-full); padding-inline: 0.625rem; }
+  .#{$prefix}badge-lg { font-size: var(--cui-text-sm); padding: 0.25rem 0.625rem; }
+  .#{$prefix}badge-dot::before {
+    content: "";
+    width: 0.5em;
+    height: 0.5em;
+    border-radius: 50%;
+    background: currentColor;
+  }
+
+  .#{$prefix}tag {
+    --_bg: var(--cui-tag-bg, var(--cui-surface-2));
+    --_fg: var(--cui-tag-fg, var(--cui-text-2));
+    --_radius: var(--cui-tag-radius, var(--cui-radius-sm));
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25em;
+    padding: 0.1rem 0.4rem;
+    font-size: var(--cui-text-2xs);
+    font-weight: var(--cui-weight-semibold);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    line-height: 1.4;
+    color: var(--_fg);
+    background: var(--_bg);
+    border-radius: var(--_radius);
+    white-space: nowrap;
+    vertical-align: middle;
+    > .#{$prefix}icon { --cui-icon-size: 1.2em; }
+  }
+  @each $tone in tones() {
+    .#{$prefix}tag-#{$tone} { --_bg: var(--cui-#{$tone}-soft); --_fg: var(--cui-#{$tone}-text); }
+  }
+  .#{$prefix}tag-solid   { --_bg: var(--cui-primary-solid); --_fg: var(--cui-primary-contrast); }
+  /* Segmented tag: <span class="tag tag-group"><span>SDK</span><a>Dart</a><a>Flutter</a></span> */
+  .#{$prefix}tag-group {
+    padding: 0;
+    gap: 0;
+    overflow: hidden;
+    > * { padding: 0.1rem 0.4rem; }
+    > * + * { border-inline-start: var(--cui-border-width) solid color-mix(in oklch, currentColor 25%, transparent); }
+    > :first-child { background: color-mix(in oklch, currentColor 12%, transparent); }
+    > a:hover { background: color-mix(in oklch, currentColor 12%, transparent); }
+  }
+
+  .#{$prefix}chip {
+    --_height: var(--cui-chip-height, 1.75rem);
+    --_bg: var(--cui-chip-bg, var(--cui-surface));
+    --_fg: var(--cui-chip-fg, var(--cui-text-2));
+    --_border: var(--cui-chip-border, var(--cui-border));
+    --_radius: var(--cui-chip-radius, var(--cui-radius-full));
+    -webkit-tap-highlight-color: transparent;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    min-height: var(--_height);
+    padding: 0 0.625rem;
+    font-size: var(--cui-text-sm);
+    font-weight: var(--cui-weight-medium);
+    line-height: 1;
+    color: var(--_fg);
+    background: var(--_bg);
+    border: var(--cui-border-width) solid var(--_border);
+    border-radius: var(--_radius);
+    white-space: nowrap;
+    text-decoration: none;
+    cursor: default;
+    transition: background-color var(--cui-transition), border-color var(--cui-transition), color var(--cui-transition);
+    > .#{$prefix}icon { --cui-icon-size: 1rem; margin-inline-start: -0.125rem; }
+    > .#{$prefix}hash { opacity: 0.5; font-family: var(--cui-font-mono); margin-inline-end: -0.2rem; }
+  }
+  a.#{$prefix}chip, button.#{$prefix}chip, .#{$prefix}chip-interactive {
+    cursor: pointer;
+    &:hover { border-color: var(--cui-border-strong); background: var(--cui-surface-hover); color: var(--cui-text); }
+    &:focus-visible { @include focus-ring; }
+  }
+  /* Selected state keeps its brand look on hover (the hover rule above is more specific). */
+  .#{$prefix}chip:is(.#{$prefix}chip-active, [aria-pressed="true"], [aria-selected="true"]) {
+    &, &:hover {
+      color: var(--cui-primary-text);
+      background: var(--cui-primary-soft);
+      border-color: var(--cui-primary-border);
+    }
+    &:hover { background: var(--cui-primary-soft-hover); }
+  }
+  .#{$prefix}chip:disabled, .#{$prefix}chip[aria-disabled="true"], .#{$prefix}chip.#{$prefix}disabled { opacity: 0.5; pointer-events: none; }
+  .#{$prefix}chip-sm { --_height: 1.5rem; padding-inline: 0.5rem; font-size: var(--cui-text-xs); }
+  .#{$prefix}chip-primary { color: var(--cui-primary-contrast); background: var(--cui-primary-solid); border-color: transparent; }
+  .#{$prefix}chip-primary:hover { background: var(--cui-primary-solid-hover); color: var(--cui-primary-contrast); }
+  .#{$prefix}chip > .#{$prefix}btn-close { width: 1.125rem; height: 1.125rem; margin-inline-end: -0.375rem; &::before { font-size: 0.875rem; } }
+
+  /* Count pill: tiny number attached to a chip or nav item. */
+  .#{$prefix}count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.25rem;
+    height: 1.125rem;
+    padding-inline: 0.3rem;
+    font-size: var(--cui-text-2xs);
+    font-weight: var(--cui-weight-semibold);
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+    color: var(--cui-text-2);
+    background: color-mix(in oklch, currentColor 12%, transparent);
+    border-radius: var(--cui-radius-full);
+  }
+  .#{$prefix}count-primary { color: var(--cui-primary-contrast); background: var(--cui-primary-solid); }
+  .#{$prefix}count-danger { color: var(--cui-danger-contrast); background: var(--cui-danger-solid); }
+  .#{$prefix}chip > .#{$prefix}count { margin-inline-end: -0.375rem; }
+
+  /* Status dot */
+  .#{$prefix}dot {
+    display: inline-block;
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 50%;
+    background: var(--cui-text-4);
+    vertical-align: middle;
+  }
+  @each $tone in tones() {
+    .#{$prefix}dot-#{$tone} { background: var(--cui-#{$tone}); }
+  }
+
+  /* ---- Indicator ---------------------------------------------------------- */
+  /* Unread indicators for icon buttons: <button class="btn btn-icon"><span class="icon">…</span><span class="indicator"></span></button> */
+  .#{$prefix}btn-icon:has(> .#{$prefix}indicator, > .#{$prefix}indicator-count), .#{$prefix}indicator-host { position: relative; }
+  .#{$prefix}indicator {
+    position: absolute;
+    top: 0.35rem;
+    inset-inline-end: 0.35rem;
+    width: 0.5rem;
+    height: 0.5rem;
+    background: var(--cui-danger);
+    border-radius: 50%;
+    box-shadow: 0 0 0 2px var(--cui-cutout);
+    pointer-events: none;
+  }
+  @each $tone in tones() {
+    .#{$prefix}indicator-#{$tone} { background: var(--cui-#{$tone}); }
+  }
+  .#{$prefix}indicator-count {
+    position: absolute;
+    top: 0.125rem;
+    inset-inline-end: 0.125rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.125rem;
+    height: 1.125rem;
+    padding-inline: 0.25rem;
+    font-size: var(--cui-text-2xs);
+    font-weight: var(--cui-weight-semibold);
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+    color: var(--cui-danger-contrast);
+    background: var(--cui-danger-solid);
+    border-radius: var(--cui-radius-full);
+    box-shadow: 0 0 0 2px var(--cui-cutout);
+    pointer-events: none;
+  }
+
+  /* Removed chips ([data-cui-dismiss] in toggle.js) shrink away instead of vanishing. */
+  .#{$prefix}chip.#{$prefix}is-dismissing, [data-cui-dismissible].#{$prefix}is-dismissing {
+    animation: cui-chip-out var(--cui-duration) var(--cui-ease-in) forwards;
+    pointer-events: none;
+  }
+  @keyframes cui-chip-out { to { opacity: 0; scale: 0.85; } }
+}

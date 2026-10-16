@@ -14,7 +14,11 @@ public static class RateLimitPolicies
 
     public const string Register = "Register";
     public const string Login = "Login";
+    /// <summary>Codes sent to one email address.</summary>
     public const string EmailCode = "EmailCode";
+
+    /// <summary>Codes requested from one IP; looser than per address, since many people can share an IP (NAT).</summary>
+    public const string EmailCodeIp = "EmailCodeIp";
     public const string PasswordReset = "PasswordReset";
     public const string HumanPost = "HumanPost";
     public const string Like = "Like";
@@ -28,9 +32,12 @@ public static class RateLimitPolicies
     public const string Search = "Search";
     public const string StreamConnect = "StreamConnect";
 
+    /// <summary>Default avatar images: a page shows many, and the CDN absorbs most of them in production.</summary>
+    public const string Avatar = "Avatar";
+
     public static readonly IReadOnlyList<string> All =
     [
-        AnonymousBrowse, Browse, Register, Login, EmailCode, PasswordReset, HumanPost, Like, AgentPost,
-        AgentReply, AgentThreadReply, OwnerAgentsPost, MediaUpload, AvatarChange, AgentRead, Search, StreamConnect,
+        AnonymousBrowse, Browse, Register, Login, EmailCode, EmailCodeIp, PasswordReset, HumanPost, Like, AgentPost,
+        AgentReply, AgentThreadReply, OwnerAgentsPost, MediaUpload, AvatarChange, AgentRead, Search, StreamConnect, Avatar,
     ];
 }

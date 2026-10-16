@@ -1,0 +1,346 @@
+/* Forms: fields, inputs, select, checkbox/radio/switch, range, file, input groups. */
+@use "../foundation/layers";
+@use "../abstracts" as *;
+
+@layer cui.components {
+  /* ---- Field wrapper ------------------------------------------------------ */
+  .#{$prefix}field {
+    display: flex;
+    flex-direction: column;
+    gap: var(--cui-space-1-5);
+    min-width: 0;
+  }
+  .#{$prefix}field-inline { flex-direction: row; align-items: center; gap: var(--cui-space-3); }
+  .#{$prefix}label {
+    font-size: var(--cui-text-sm);
+    font-weight: var(--cui-weight-medium);
+    color: var(--cui-text);
+    line-height: var(--cui-leading-snug);
+    &.#{$prefix}required::after, .#{$prefix}required > &::after { content: " *"; color: var(--cui-danger); }
+  }
+  .#{$prefix}help { font-size: var(--cui-text-xs); color: var(--cui-text-3); line-height: var(--cui-leading-snug); }
+  .#{$prefix}error { font-size: var(--cui-text-xs); color: var(--cui-danger-text); line-height: var(--cui-leading-snug); }
+  .#{$prefix}field:has(.#{$prefix}error, [aria-invalid="true"], :user-invalid) .#{$prefix}input,
+  .#{$prefix}field:has(.#{$prefix}error, [aria-invalid="true"], :user-invalid) .#{$prefix}select,
+  .#{$prefix}field:has(.#{$prefix}error, [aria-invalid="true"], :user-invalid) .#{$prefix}textarea {
+    --_border: var(--cui-danger);
+    --_ring: var(--cui-ring-danger);
+  }
+  .#{$prefix}field:has(.#{$prefix}success) :is(.#{$prefix}input, .#{$prefix}select, .#{$prefix}textarea) { --_border: var(--cui-success); --_ring: var(--cui-ring-success); }
+  .#{$prefix}success { font-size: var(--cui-text-xs); color: var(--cui-success-text); line-height: var(--cui-leading-snug); }
+
+  fieldset.#{$prefix}fieldset {
+    display: flex;
+    flex-direction: column;
+    gap: var(--cui-space-4);
+    padding: var(--cui-space-5);
+    border: var(--cui-border-width) solid var(--cui-border);
+    border-radius: var(--cui-radius-lg);
+    min-width: 0;
+    > legend { padding-inline: var(--cui-space-2); font-size: var(--cui-text-sm); font-weight: var(--cui-weight-semibold); }
+  }
+  .#{$prefix}form-row { display: grid; gap: var(--cui-space-4); grid-template-columns: repeat(auto-fit, minmax(min(14rem, 100%), 1fr)); }
+  .#{$prefix}form-actions { display: flex; flex-wrap: wrap; gap: var(--cui-space-2); align-items: center; padding-block-start: var(--cui-space-2); }
+
+  /* ---- Text-like controls ------------------------------------------------- */
+  .#{$prefix}input, .#{$prefix}select, .#{$prefix}textarea {
+    --_border: var(--cui-input-border, var(--cui-control-border));
+    --_ring: var(--cui-input-ring, var(--cui-ring));
+    --_height: var(--cui-input-height, var(--cui-control-height));
+    --_bg: var(--cui-input-bg, var(--cui-control-bg));
+    --_fg: var(--cui-input-fg, var(--cui-text));
+    --_radius: var(--cui-input-radius, var(--cui-control-radius));
+    --_px: var(--cui-input-px, var(--cui-control-padding-x));
+
+    display: block;
+    width: 100%;
+    min-height: var(--_height);
+    padding: 0 var(--_px);
+    font-size: var(--cui-text-sm);
+    line-height: 1.4;
+    color: var(--_fg);
+    background: var(--_bg);
+    border: var(--cui-border-width) solid var(--_border);
+    border-radius: var(--_radius);
+    box-shadow: var(--cui-shadow-well);
+    transition: border-color var(--cui-transition), box-shadow var(--cui-transition), background-color var(--cui-transition);
+    appearance: none;
+
+    &:hover:not(:disabled, :focus) { --_border: color-mix(in oklch, var(--cui-input-border, var(--cui-control-border)) 55%, var(--cui-text-3)); }
+    &:focus, &:focus-visible {
+      outline: none;
+      --_border: var(--cui-primary);
+      box-shadow: var(--cui-shadow-well), var(--_ring);
+    }
+    &:disabled, &[readonly] { background-color: var(--cui-surface-2); color: var(--cui-text-2); box-shadow: none; }
+    &:disabled { opacity: 0.7; }
+    &[aria-invalid="true"], &:user-invalid { --_border: var(--cui-danger); --_ring: var(--cui-ring-danger); }
+  }
+  .#{$prefix}textarea { min-height: 6rem; padding-block: var(--cui-space-2-5); line-height: var(--cui-leading-base); }
+  .#{$prefix}input-sm, .#{$prefix}select-sm { --_height: var(--cui-control-height-sm); --_px: 0.625rem; }
+  .#{$prefix}input-lg, .#{$prefix}select-lg { --_height: var(--cui-control-height-lg); --_px: 1rem; font-size: var(--cui-text-base); }
+  .#{$prefix}input-mono { font-family: var(--cui-font-mono); }
+
+  /* The chevron is two gradient strokes in --_chevron, so it follows the theme, the brand
+   * and any subtree that remaps the text tokens (an SVG data URI can't). */
+  .#{$prefix}select {
+    --_chevron: var(--cui-text-3);
+    --_arm: 0.3125rem;   /* each arm's box; the chevron is 2 × wide, 1 × tall */
+    --_stroke: 0.75px;   /* half the line width */
+    --_end: 0.75rem;     /* distance from the inline end */
+    padding-inline-end: 2.25rem;
+    background-image:
+      linear-gradient(45deg, transparent calc(50% - var(--_stroke)), var(--_chevron) calc(50% - var(--_stroke)) calc(50% + var(--_stroke)), transparent calc(50% + var(--_stroke))),
+      linear-gradient(135deg, transparent calc(50% - var(--_stroke)), var(--_chevron) calc(50% - var(--_stroke)) calc(50% + var(--_stroke)), transparent calc(50% + var(--_stroke)));
+    background-repeat: no-repeat;
+    background-size: var(--_arm) var(--_arm);
+    background-position:
+      right calc(var(--_end) + var(--_arm)) center,
+      right var(--_end) center;
+    cursor: pointer;
+    &:dir(rtl) { background-position: left var(--_end) center, left calc(var(--_end) + var(--_arm)) center; }
+    &:hover:not(:disabled) { --_chevron: var(--cui-text-2); }
+    &[multiple], &[size] { background-image: none; padding-inline-end: var(--_px); height: auto; }
+    option { color: var(--cui-text); background: var(--cui-surface); }
+  }
+
+  /* ---- Input with leading/trailing adornments ----------------------------- */
+  .#{$prefix}input-group {
+    --_height: var(--cui-control-height);
+    display: flex;
+    align-items: stretch;
+    width: 100%;
+    > .#{$prefix}input, > .#{$prefix}select { flex: 1 1 auto; min-width: 0; border-radius: 0; }
+    > .#{$prefix}input:first-child, > .#{$prefix}select:first-child, > .#{$prefix}btn:first-child, > .#{$prefix}input-addon:first-child {
+      border-start-start-radius: var(--cui-control-radius); border-end-start-radius: var(--cui-control-radius);
+    }
+    > .#{$prefix}input:last-child, > .#{$prefix}select:last-child, > .#{$prefix}btn:last-child, > .#{$prefix}input-addon:last-child {
+      border-start-end-radius: var(--cui-control-radius); border-end-end-radius: var(--cui-control-radius);
+    }
+    > :not(:first-child) { margin-inline-start: calc(-1 * var(--cui-border-width)); }
+    > .#{$prefix}btn { border-radius: 0; flex-shrink: 0; min-height: var(--_height); &:active { translate: none; } }
+    > .#{$prefix}input:focus, > .#{$prefix}select:focus, > .#{$prefix}btn:focus-visible { position: relative; z-index: 1; }
+  }
+  /* Sizes: the group re-sizes every control in it. */
+  .#{$prefix}input-group-sm {
+    > :is(.#{$prefix}input, .#{$prefix}select, .#{$prefix}btn) { --_height: var(--cui-control-height-sm); }
+    > :is(.#{$prefix}input, .#{$prefix}select) { padding-inline-start: 0.625rem; }
+    > .#{$prefix}btn { --_px: 0.625rem; }
+    > .#{$prefix}input-addon { padding-inline: var(--cui-space-2-5); font-size: var(--cui-text-xs); }
+  }
+  .#{$prefix}input-group-lg {
+    > :is(.#{$prefix}input, .#{$prefix}select, .#{$prefix}btn) { --_height: var(--cui-control-height-lg); font-size: var(--cui-text-base); }
+    > :is(.#{$prefix}input, .#{$prefix}select) { padding-inline-start: 1rem; }
+    > .#{$prefix}btn { --_px: 1.25rem; }
+    > .#{$prefix}input-addon { padding-inline: var(--cui-space-4); font-size: var(--cui-text-base); }
+  }
+  .#{$prefix}input-addon {
+    display: inline-flex;
+    align-items: center;
+    padding-inline: var(--cui-space-3);
+    font-size: var(--cui-text-sm);
+    color: var(--cui-text-3);
+    background: var(--cui-surface-2);
+    border: var(--cui-border-width) solid var(--cui-control-border);
+    white-space: nowrap;
+    box-shadow: var(--cui-shadow-well);
+  }
+
+  /* Icon inside an input: <div class="input-icon"><span class="icon">search</span><input class="input"></div> */
+  .#{$prefix}input-icon {
+    position: relative;
+    display: flex;
+    align-items: center;
+    > .#{$prefix}icon {
+      position: absolute;
+      inset-inline-start: 0.75rem;
+      color: var(--cui-text-3);
+      pointer-events: none;
+      --cui-icon-size: 1.25rem;
+    }
+    > .#{$prefix}input { padding-inline-start: 2.5rem; }
+    > .#{$prefix}icon:last-child { inset-inline-start: auto; inset-inline-end: 0.75rem; }
+    > .#{$prefix}input:has(+ .#{$prefix}icon) { padding-inline-start: var(--_px); padding-inline-end: 2.5rem; }
+    > kbd, > .#{$prefix}kbd { position: absolute; inset-inline-end: 0.625rem; pointer-events: none; }
+    &:has(> kbd) > .#{$prefix}input { padding-inline-end: 3rem; }
+  }
+
+  /* ---- Checkbox / radio / switch ------------------------------------------ */
+  .#{$prefix}checkbox, .#{$prefix}radio, .#{$prefix}switch {
+    display: inline-flex;
+    align-items: flex-start;
+    gap: var(--cui-space-2-5);
+    font-size: var(--cui-text-sm);
+    line-height: 1.4;
+    cursor: pointer;
+    user-select: none;
+    &:has(input:disabled) { opacity: 0.55; cursor: not-allowed; }
+    > span { padding-top: 0.05rem; }
+    .#{$prefix}help { display: block; margin-top: var(--cui-space-0-5); }
+  }
+  .#{$prefix}checkbox > input, .#{$prefix}radio > input {
+    appearance: none;
+    flex-shrink: 0;
+    width: 1.125rem;
+    height: 1.125rem;
+    margin: 0.05rem 0 0;
+    border: var(--cui-border-width) solid var(--cui-control-border);
+    border-radius: var(--cui-radius-sm);
+    display: inline-grid;
+    place-content: center;
+    background: var(--cui-control-bg);
+    box-shadow: var(--cui-shadow-well);
+    cursor: inherit;
+    transition: background-color var(--cui-transition), border-color var(--cui-transition), box-shadow var(--cui-transition), scale var(--cui-duration-slow) var(--cui-ease-spring);
+    /* The glyph is a mask filled with the contrast colour, so it stays legible on any brand
+     * (white on blue, black on the light neutral fill in dark mode). */
+    &::before {
+      content: "";
+      width: 0.75rem;
+      height: 0.75rem;
+      background: var(--cui-primary-contrast);
+      mask: var(--_glyph, none) center / contain no-repeat;
+      scale: 0.5;
+      opacity: 0;
+      transition: scale var(--cui-duration-fast) var(--cui-ease-in), opacity var(--cui-duration-fast) var(--cui-ease-in);
+    }
+    &:hover { border-color: color-mix(in oklch, var(--cui-control-border) 55%, var(--cui-text-3)); }
+    &:active:not(:disabled) { scale: 0.92; }
+    &:focus-visible { outline: none; box-shadow: var(--cui-shadow-well), var(--cui-ring); }
+    &:checked, &:indeterminate {
+      background-color: var(--cui-primary-solid);
+      border-color: var(--cui-primary-edge);
+      box-shadow: inset 0 1px 0 oklch(100% 0 0 / 0.18);
+      &::before {
+        scale: 1;
+        opacity: 1;
+        /* Pops in with a small spring overshoot. */
+        transition: scale var(--cui-duration-slow) var(--cui-ease-spring), opacity var(--cui-duration-fast) var(--cui-ease);
+      }
+      &:focus-visible { box-shadow: inset 0 1px 0 oklch(100% 0 0 / 0.18), var(--cui-ring); }
+    }
+    /* The tick is the resting glyph, not just the :checked one: the glyph is still fading out
+     * after unchecking, and without a mask it would show as a solid square for that moment. */
+    & { --_glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23000' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m3.5 8.5 3 3 6-7'/%3E%3C/svg%3E"); }
+    &:indeterminate { --_glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23000' stroke-width='2.5' stroke-linecap='round'%3E%3Cpath d='M4 8h8'/%3E%3C/svg%3E"); }
+  }
+  .#{$prefix}radio > input {
+    border-radius: 50%;
+    &::before { width: 0.375rem; height: 0.375rem; border-radius: 50%; mask: none; }
+  }
+  .#{$prefix}switch > input {
+    appearance: none;
+    flex-shrink: 0;
+    width: 2.25rem;
+    height: 1.25rem;
+    margin: 0;
+    border-radius: var(--cui-radius-full);
+    background: var(--cui-surface-3);
+    border: var(--cui-border-width) solid transparent;
+    box-shadow: var(--cui-shadow-well);
+    position: relative;
+    cursor: inherit;
+    transition: background-color var(--cui-duration-slow) var(--cui-ease), box-shadow var(--cui-transition);
+    &::before {
+      content: "";
+      position: absolute;
+      top: 0.0625rem;
+      inset-inline-start: 0.0625rem;
+      width: 1rem;
+      height: 1rem;
+      border-radius: 50%;
+      background: var(--cui-neutral-0);
+      box-shadow: var(--cui-shadow-sm);
+      /* The thumb travels on a spring and stretches while pressed, like a physical toggle. */
+      transition: translate var(--cui-duration-slow) var(--cui-ease-spring), width var(--cui-duration) var(--cui-ease), background-color var(--cui-duration-slow) var(--cui-ease);
+    }
+    &:active:not(:disabled)::before { width: 1.25rem; }
+    &:checked { background: var(--cui-primary-solid); box-shadow: inset 0 1px 2px oklch(0% 0 0 / 0.2); }
+    &:checked::before { background: var(--cui-primary-contrast); }
+    &:checked::before { translate: 1rem 0; }
+    &:dir(rtl):checked::before { translate: -1rem 0; }
+    &:checked:active:not(:disabled)::before { translate: 0.75rem 0; }
+    &:dir(rtl):checked:active:not(:disabled)::before { translate: -0.75rem 0; }
+    &:focus-visible { outline: none; box-shadow: var(--cui-shadow-well), var(--cui-ring); }
+    &:checked:focus-visible { box-shadow: inset 0 1px 2px oklch(0% 0 0 / 0.2), var(--cui-ring); }
+  }
+  .#{$prefix}check-group { display: flex; flex-direction: column; gap: var(--cui-space-2); }
+  .#{$prefix}check-group-inline { flex-direction: row; flex-wrap: wrap; gap: var(--cui-space-4); }
+
+  /* Checkbox list in a bordered box (facet filters). */
+  .#{$prefix}check-list {
+    display: flex;
+    flex-direction: column;
+    border: var(--cui-border-width) solid var(--cui-border);
+    border-radius: var(--cui-radius);
+    background: var(--cui-surface);
+    > .#{$prefix}checkbox, > .#{$prefix}radio {
+      padding: var(--cui-space-2-5) var(--cui-space-3);
+      & + * { border-block-start: var(--cui-border-width) solid var(--cui-border); }
+      &:hover { background: var(--cui-surface-hover); }
+    }
+  }
+
+  /* ---- Range ---------------------------------------------------------------- */
+  .#{$prefix}range {
+    appearance: none;
+    width: 100%;
+    height: 1.25rem;
+    background: transparent;
+    cursor: pointer;
+    &::-webkit-slider-runnable-track { height: 0.375rem; border-radius: var(--cui-radius-full); background: var(--cui-surface-3); }
+    &::-moz-range-track { height: 0.375rem; border-radius: var(--cui-radius-full); background: var(--cui-surface-3); }
+    &::-moz-range-progress { height: 0.375rem; border-radius: var(--cui-radius-full); background: var(--cui-primary-solid); }
+    &::-webkit-slider-thumb { appearance: none; width: 1.125rem; height: 1.125rem; margin-top: -0.375rem; border-radius: 50%; background: var(--cui-primary-solid); border: 2px solid var(--cui-surface); box-shadow: var(--cui-shadow-sm); transition: scale var(--cui-duration) var(--cui-ease), box-shadow var(--cui-transition); }
+    &::-moz-range-thumb { width: 1.125rem; height: 1.125rem; border-radius: 50%; background: var(--cui-primary-solid); border: 2px solid var(--cui-surface); box-shadow: var(--cui-shadow-sm); transition: scale var(--cui-duration) var(--cui-ease), box-shadow var(--cui-transition); }
+    &:hover:not(:disabled)::-webkit-slider-thumb { scale: 1.1; }
+    &:hover:not(:disabled)::-moz-range-thumb { scale: 1.1; }
+    &:active:not(:disabled)::-webkit-slider-thumb { scale: 1.2; }
+    &:active:not(:disabled)::-moz-range-thumb { scale: 1.2; }
+    &:disabled { opacity: 0.55; cursor: not-allowed; }
+    &:focus-visible { outline: none; }
+    &:focus-visible::-webkit-slider-thumb { box-shadow: var(--cui-shadow-sm), var(--cui-ring); }
+    &:focus-visible::-moz-range-thumb { box-shadow: var(--cui-shadow-sm), var(--cui-ring); }
+  }
+
+  /* ---- File ----------------------------------------------------------------- */
+  .#{$prefix}file {
+    display: block;
+    width: 100%;
+    font-size: var(--cui-text-sm);
+    color: var(--cui-text-2);
+    &::file-selector-button {
+      margin-inline-end: var(--cui-space-3);
+      min-height: var(--cui-control-height-sm);
+      padding: 0 0.625rem;
+      font-size: var(--cui-text-sm);
+      font-weight: var(--cui-weight-medium);
+      color: var(--cui-text);
+      background: var(--cui-surface);
+      border: var(--cui-border-width) solid var(--cui-control-border);
+      border-radius: var(--cui-radius);
+      box-shadow: var(--cui-shadow-key);
+      cursor: pointer;
+      transition: background-color var(--cui-transition);
+    }
+    &:hover::file-selector-button { background: var(--cui-surface-hover); }
+    &:active::file-selector-button { background: var(--cui-surface-2); box-shadow: var(--cui-shadow-pressed); }
+    &:focus-visible { outline: none; &::file-selector-button { box-shadow: var(--cui-shadow-key), var(--cui-ring); } }
+    &:disabled { opacity: 0.55; cursor: not-allowed; &::file-selector-button { cursor: not-allowed; } }
+  }
+  .#{$prefix}dropzone {
+    display: grid;
+    place-items: center;
+    gap: var(--cui-space-2);
+    padding: var(--cui-space-8);
+    text-align: center;
+    font-size: var(--cui-text-sm);
+    color: var(--cui-text-2);
+    border: 2px dashed var(--cui-border-strong);
+    border-radius: var(--cui-radius-lg);
+    background: var(--cui-surface);
+    transition: border-color var(--cui-transition), background-color var(--cui-transition);
+    &:hover, &.#{$prefix}dragover { border-color: var(--cui-primary); background: var(--cui-primary-soft); }
+    > .#{$prefix}icon { --cui-icon-size: 2rem; color: var(--cui-text-3); }
+  }
+}

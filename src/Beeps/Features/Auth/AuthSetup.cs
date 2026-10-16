@@ -1,0 +1,84 @@
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Mvc.ApplicationModels;
+
+namespace Beeps.Features.Auth;
+
+public static class AuthSetup
+{
+    public const string LoginPath = "/login";
+    public const string VerifyPath = "/onboarding/verify";
+
+    public static IServiceCollection AddBeepsAuth(this IServiceCollection services)
+    {
+        services.AddAuthentication(AuthSchemes.ByPath)
+            .AddPolicyScheme(AuthSchemes.ByPath, null, options =>
+                options.ForwardDefaultSelector = context => IsApi(context.Request) ? AuthSchemes.AgentKey : AuthSchemes.Cookie)
+            .AddCookie(AuthSchemes.Cookie, options =>
+            {
+                options.Cookie.Name = "beeps.session";
+                options.Cookie.HttpOnly = true;
+                options.Cookie.SameSite = SameSiteMode.Lax;
+                options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
+                options.ExpireTimeSpan = TimeSpan.FromDays(30);
+                options.SlidingExpiration = true;
+                options.LoginPath = LoginPath;
+                options.Events.OnValidatePrincipal = SessionValidator.ValidateAsync;
+                options.Events.OnRedirectToAccessDenied = context =>
+                {
+                    // An unverified account is sent to finish verification; anyone else gets a plain 403 page.
+                    if (context.HttpContext.User.FindFirst(BeepsClaims.EmailVerified)?.Value == "false")
+                    {
+                        context.Response.Redirect(VerifyPath);
+                    }
+                    else
+                    {
+                        context.Response.StatusCode = StatusCodes.Status403Forbidden;
+                    }
+
+                    return Task.CompletedTask;
+                };
+            })
+            .AddScheme<AuthenticationSchemeOptions, AgentKeyAuthenticationHandler>(AuthSchemes.AgentKey, null);
+
+        services.AddAuthorizationBuilder()
+            .AddPolicy(AuthPolicies.SignedIn, policy => policy
+                .AddAuthenticationSchemes(AuthSchemes.Cookie)
+                .RequireAuthenticatedUser()
+                .RequireClaim(BeepsClaims.Kind, BeepsClaims.HumanKind))
+            .AddPolicy(AuthPolicies.Member, policy => policy
+                .AddAuthenticationSchemes(AuthSchemes.Cookie)
+                .RequireAuthenticatedUser()
+                .RequireClaim(BeepsClaims.Kind, BeepsClaims.HumanKind)
+                .RequireClaim(BeepsClaims.EmailVerified, "true"))
+            .AddPolicy(AuthPolicies.Admin, policy => policy
+                .AddAuthenticationSchemes(AuthSchemes.Cookie)
+                .RequireAuthenticatedUser()
+                .RequireClaim(BeepsClaims.Kind, BeepsClaims.HumanKind)
+                .RequireClaim(BeepsClaims.EmailVerified, "true")
+                .RequireRole(BeepsClaims.AdminRole))
+            .AddPolicy(AuthPolicies.Agent, policy => policy
+                .AddAuthenticationSchemes(AuthSchemes.AgentKey)
+                .RequireAuthenticatedUser()
+                .RequireClaim(BeepsClaims.Kind, BeepsClaims.AgentKind));
+        return services;
+    }
+
+    /// <summary>Which pages need which policy. Pages not listed here are public.</summary>
+    public static PageConventionCollection AddBeepsAuthorization(this PageConventionCollection conventions)
+    {
+        ArgumentNullException.ThrowIfNull(conventions);
+        // PLAN 12: the whole admin folder, so a new admin page cannot be forgotten.
+        conventions.AuthorizeFolder("/Admin", AuthPolicies.Admin);
+        conventions.AuthorizeFolder("/Agents", AuthPolicies.Member);
+        conventions.AuthorizePage("/Onboarding/Verify", AuthPolicies.SignedIn);
+        conventions.AuthorizePage("/Onboarding/Agent", AuthPolicies.Member);
+        conventions.AuthorizePage("/Onboarding/Connect", AuthPolicies.Member);
+        return conventions;
+    }
+
+    public static bool IsApi(HttpRequest request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        return request.Path.StartsWithSegments("/api");
+    }
+}

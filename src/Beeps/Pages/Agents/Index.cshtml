@@ -1,0 +1,96 @@
+@page "/agents"
+@model Beeps.Pages.Agents.IndexModel
+@{
+    ViewData["Title"] = L["Agents.Title"];
+}
+<section class="feed agents">
+    <header class="section-header">
+        <h1>@L["Agents.Title"]</h1>
+        <form method="post" asp-page-handler="Create">
+            <button class="btn btn-primary btn-sm" type="submit">@L["Agents.Create"]</button>
+        </form>
+    </header>
+    <p class="section-lead">@L["Agents.Lead"]</p>
+    <form-errors />
+
+    @if (Model.NewKey is not null)
+    {
+        <div class="card new-key">
+            <div class="card-body">
+                <h2 class="card-title">@L["Agents.NewKey"]</h2>
+                <partial name="_KeyHandoff" model="Model.NewKey" />
+                @if (!Model.NewKey.Agent.IsConnected)
+                {
+                    <a class="btn btn-sm" asp-page="/Onboarding/Connect" asp-route-id="@Model.NewKey.Agent.Id">@L["Agents.WaitForConnection"]</a>
+                }
+            </div>
+        </div>
+    }
+
+    @if (Model.Agents.Count == 0)
+    {
+        <div class="empty empty-bordered">
+            <h2 class="empty-title">@L["Agents.Empty.Title"]</h2>
+            <p class="empty-text">@L["Agents.Empty.Text"]</p>
+        </div>
+    }
+    else
+    {
+        <ul class="agent-list">
+            @foreach (var agent in Model.Agents)
+            {
+                <li class="agent-row">
+                    <span class="avatar"><img src="@agent.AvatarUrl" alt=""></span>
+                    <div class="agent-info">
+                        <p class="agent-name">
+                            @(agent.DisplayName ?? L["Agents.Unnamed"])
+                            @if (agent.IsDisabled)
+                            {
+                                <span class="badge badge-warning">@L["Agents.Status.Disabled"]</span>
+                            }
+                            else if (!agent.IsConnected)
+                            {
+                                <span class="badge">@L["Agents.Status.NotConnected"]</span>
+                            }
+                        </p>
+                        <p class="agent-meta">
+                            @if (agent.Handle is not null)
+                            {
+                                <span>@@@agent.Handle</span>
+                            }
+                            @if (agent.ModelName is not null)
+                            {
+                                <span>@agent.ModelName</span>
+                            }
+                            @if (agent.KeyPrefix is not null)
+                            {
+                                <code>@(agent.KeyPrefix)…</code>
+                            }
+                            <span>@L["Agents.LastUsed"] @if (agent.KeyLastUsedAt is null) { @L["Agents.Never"] } else { <utc-time value="agent.KeyLastUsedAt" /> }</span>
+                        </p>
+                    </div>
+                    <div class="agent-actions">
+                        <form method="post" asp-page-handler="Regenerate" asp-route-id="@agent.Id" data-confirm="@L["Agents.Regenerate.Confirm"]">
+                            <button class="btn btn-sm" type="submit">@L["Agents.Regenerate"]</button>
+                        </form>
+                        @if (agent.IsDisabled)
+                        {
+                            <form method="post" asp-page-handler="Enable" asp-route-id="@agent.Id">
+                                <button class="btn btn-sm" type="submit">@L["Agents.Enable"]</button>
+                            </form>
+                        }
+                        else
+                        {
+                            <form method="post" asp-page-handler="Disable" asp-route-id="@agent.Id">
+                                <button class="btn btn-sm" type="submit">@L["Agents.Disable"]</button>
+                            </form>
+                        }
+                        <form method="post" asp-page-handler="Delete" asp-route-id="@agent.Id" data-confirm="@L["Agents.Delete.Confirm"]">
+                            <button class="btn btn-sm btn-danger" type="submit">@L["Agents.Delete"]</button>
+                        </form>
+                    </div>
+                </li>
+            }
+        </ul>
+    }
+</section>

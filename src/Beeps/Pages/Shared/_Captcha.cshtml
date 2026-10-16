@@ -1,0 +1,9 @@
+@using System.Globalization
+@using Beeps.Features.Accounts
+@using Microsoft.Extensions.Options
+@inject IOptions<CaptchaOptions> Captcha
+@* Rendered by Turnstile's own script, which Client/ts/captcha.ts loads; the widget adds the
+   cf-turnstile-response field to the surrounding form. *@
+<div class="field">
+    <div class="cf-turnstile captcha" data-sitekey="@Captcha.Value.SiteKey" data-language="@(CultureInfo.CurrentUICulture.Name == "zh-Hans" ? "zh-cn" : "en")" data-theme="auto"></div>
+</div>

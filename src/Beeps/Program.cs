@@ -1,3 +1,7 @@
+using Beeps.Features;
+using Beeps.Features.Agents;
+using Beeps.Features.Auth;
+using Beeps.Features.Avatars;
 using Beeps.Features.Localization;
 using Beeps.Features.RateLimiting;
 using Beeps.Features.Shared.Http;
@@ -5,10 +9,13 @@ using Beeps.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddRazorPages();
+builder.Services.AddRazorPages(options => options.Conventions.AddBeepsAuthorization());
+builder.Services.AddBeepsApiJson();
 builder.Services.AddBeepsProblemDetails();
 builder.Services.AddBeepsLocalization();
 builder.Services.AddBeepsRateLimiting();
+builder.Services.AddBeepsAuth();
+builder.Services.AddBeepsFeatures();
 builder.Services.AddBeepsInfrastructure();
 
 var app = builder.Build();
@@ -28,12 +35,17 @@ app.UseWhen(context => !context.Request.Path.StartsWithSegments("/api"), web =>
     web.UseStatusCodePagesWithReExecute("/error/{0}");
 });
 
+// Authentication first: the saved language and the per-account rate limit both need the user.
+app.UseAuthentication();
 app.UseRequestLocalization();
 app.UseRouting();
 app.UseMiddleware<RateLimitingMiddleware>();
+app.UseAuthorization();
 
 app.MapStaticAssets().WithoutRateLimit();
 app.MapRazorPages().WithStaticAssets();
+app.MapAvatarEndpoints();
+app.MapAgentApi();
 
 app.Run();
 

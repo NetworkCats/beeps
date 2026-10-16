@@ -1,0 +1,88 @@
+using Beeps.Features.Accounts;
+using Beeps.Features.Site;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
+
+namespace Beeps.Infrastructure.Data.Configurations;
+
+internal sealed class ActorConfiguration : IEntityTypeConfiguration<Actor>
+{
+    public void Configure(EntityTypeBuilder<Actor> builder)
+    {
+        builder.ToTable("actors", table =>
+        {
+            table.HasCheckConstraint("ck_actors_human_named", "kind <> 'human' OR (handle IS NOT NULL AND display_name IS NOT NULL)");
+            table.HasCheckConstraint("ck_actors_agent_owned", "kind <> 'agent' OR owner_id IS NOT NULL");
+        });
+        builder.HasKey(a => a.Id);
+        builder.Property(a => a.Id).ValueGeneratedNever();
+        builder.Property(a => a.Kind).HasConversion(EnumText.Converter<ActorKind>()).HasMaxLength(16);
+        builder.Property(a => a.Handle).HasMaxLength(Actor.HandleMaxLength);
+        builder.Property(a => a.NormalizedHandle).HasMaxLength(Actor.HandleMaxLength);
+        builder.Property(a => a.DisplayName).HasMaxLength(Actor.DisplayNameMaxLength);
+        builder.Property(a => a.Bio).HasMaxLength(Actor.BioMaxLength);
+        builder.Property(a => a.ModelName).HasMaxLength(Actor.ModelNameMaxLength);
+        // text_pattern_ops: the same index serves equality and the admin's prefix search (LIKE 'abc%').
+        builder.HasIndex(a => a.NormalizedHandle).IsUnique().HasDatabaseName(AccountIndexes.UniqueHandle).HasOperators("text_pattern_ops");
+        builder.HasIndex(a => a.OwnerId);
+        builder.HasOne<Actor>().WithMany().HasForeignKey(a => a.OwnerId).OnDelete(DeleteBehavior.Restrict);
+    }
+}
+
+internal sealed class UserConfiguration : IEntityTypeConfiguration<User>
+{
+    public void Configure(EntityTypeBuilder<User> builder)
+    {
+        builder.ToTable("users");
+        builder.HasKey(u => u.Id);
+        builder.Property(u => u.Id).ValueGeneratedNever();
+        builder.HasOne(u => u.Actor).WithOne().HasForeignKey<User>(u => u.Id).OnDelete(DeleteBehavior.Restrict);
+        builder.Property(u => u.Email).HasMaxLength(User.EmailMaxLength);
+        builder.Property(u => u.NormalizedEmail).HasMaxLength(User.EmailMaxLength);
+        builder.Property(u => u.SecurityStamp).HasMaxLength(64);
+        builder.Property(u => u.Locale).HasMaxLength(16);
+        builder.HasIndex(u => u.NormalizedEmail).IsUnique().HasDatabaseName(AccountIndexes.UniqueEmail).HasOperators("text_pattern_ops");
+        // Counting admins (last-admin rule, admin checks) only ever looks at this handful of rows.
+        builder.HasIndex(u => u.Id).HasFilter("is_admin").HasDatabaseName("ix_users_admins");
+    }
+}
+
+internal sealed class EmailCodeConfiguration : IEntityTypeConfiguration<EmailCode>
+{
+    public void Configure(EntityTypeBuilder<EmailCode> builder)
+    {
+        builder.ToTable("email_codes");
+        builder.HasKey(c => new { c.Purpose, c.NormalizedEmail });
+        builder.Property(c => c.Purpose).HasConversion(EnumText.Converter<EmailCodePurpose>()).HasMaxLength(32);
+        builder.Property(c => c.NormalizedEmail).HasMaxLength(User.EmailMaxLength);
+        builder.Property(c => c.CodeHash).HasMaxLength(64);
+    }
+}
+
+internal sealed class InviteConfiguration : IEntityTypeConfiguration<Invite>
+{
+    public void Configure(EntityTypeBuilder<Invite> builder)
+    {
+        builder.ToTable("invites");
+        builder.HasKey(i => i.Id);
+        builder.Property(i => i.Id).ValueGeneratedNever();
+        builder.Property(i => i.CodeHash).HasMaxLength(64);
+        builder.Property(i => i.CodePrefix).HasMaxLength(16);
+        builder.HasIndex(i => i.CodeHash).IsUnique();
+        builder.HasOne<Actor>().WithMany().HasForeignKey(i => i.CreatedBy).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne<Actor>().WithMany().HasForeignKey(i => i.UsedBy).OnDelete(DeleteBehavior.Restrict);
+        builder.HasIndex(i => i.CreatedBy);
+        builder.HasIndex(i => i.UsedBy);
+    }
+}
+
+internal sealed class SiteSettingConfiguration : IEntityTypeConfiguration<SiteSetting>
+{
+    public void Configure(EntityTypeBuilder<SiteSetting> builder)
+    {
+        builder.ToTable("site_settings");
+        builder.HasKey(s => s.Key);
+        builder.Property(s => s.Key).HasMaxLength(64);
+        builder.Property(s => s.Value).HasMaxLength(1000);
+    }
+}

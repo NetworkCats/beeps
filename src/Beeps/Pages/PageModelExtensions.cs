@@ -1,0 +1,51 @@
+using System.Globalization;
+using Beeps.Features.Shared;
+using Beeps.Features.Shared.Http;
+using Microsoft.AspNetCore.Mvc.RazorPages;
+
+namespace Beeps.Pages;
+
+public static class PageModelExtensions
+{
+    /// <summary>What Services need to know about the request; the IP is the one ForwardedHeaders resolved.</summary>
+    public static RequestOrigin Origin(this PageModel page)
+    {
+        ArgumentNullException.ThrowIfNull(page);
+        return new RequestOrigin(
+            page.HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            CultureInfo.CurrentUICulture.Name);
+    }
+
+    /// <summary>
+    /// Shows a Service error on the re-rendered form: field errors next to their inputs, anything else at
+    /// the top. The status code follows the error, so a rate-limited form answers 429 with Retry-After.
+    /// </summary>
+    public static PageResult ShowError(this PageModel page, Error error)
+    {
+        ArgumentNullException.ThrowIfNull(page);
+        ArgumentNullException.ThrowIfNull(error);
+        if (error.Fields is { Count: > 0 } fields)
+        {
+            foreach (var (field, messages) in fields)
+            {
+                foreach (var message in messages)
+                {
+                    page.ModelState.AddModelError(field, message);
+                }
+            }
+        }
+        else
+        {
+            page.ModelState.AddModelError(string.Empty, error.Detail ?? error.Code);
+        }
+
+        if (error.RetryAfter is { } retryAfter)
+        {
+            page.Response.Headers.RetryAfter = ErrorHttpResult.RetryAfterHeaderValue(retryAfter);
+        }
+
+        var result = page.Page();
+        result.StatusCode = ErrorHttpResult.StatusCodeFor(error.Kind);
+        return result;
+    }
+}

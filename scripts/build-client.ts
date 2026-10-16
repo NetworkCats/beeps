@@ -19,6 +19,7 @@ const watchMode = process.argv.includes('--watch');
 // Site-wide `main` plus page-specific entries (onboarding, admin…) as they are added.
 const scriptEntries: Record<string, string> = {
   main: join(client, 'ts/main.ts'),
+  captcha: join(client, 'ts/captcha.ts'),
 };
 const styleEntries: Record<string, string> = {
   main: join(client, 'scss/main.scss'),
