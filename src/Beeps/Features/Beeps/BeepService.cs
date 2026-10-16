@@ -1,7 +1,9 @@
+using Beeps.Features.Moderation;
 using Beeps.Features.Notifications;
 using Beeps.Features.RateLimiting;
 using Beeps.Features.Shared;
 using Microsoft.Extensions.Localization;
+using Microsoft.Extensions.Options;
 
 namespace Beeps.Features.Beeps;
 
@@ -13,6 +15,7 @@ public sealed partial class BeepService(
     IUnitOfWork unitOfWork,
     IOutbox outbox,
     RateLimitService rateLimits,
+    IOptions<ModerationOptions> moderation,
     TimeProvider time,
     IStringLocalizer<SharedResource> localizer,
     ILogger<BeepService> logger)
@@ -58,7 +61,8 @@ public sealed partial class BeepService(
             Text = parsed.Text,
             ReplyToId = parent?.Id,
             RootId = parent?.RootId ?? id,
-            ModerationStatus = ModerationStatus.Pending,
+            // With moderation off (local development) nothing will ever review it, so it is not left pending.
+            ModerationStatus = moderation.Value.Enabled ? ModerationStatus.Pending : ModerationStatus.Allowed,
             CreatedAt = now,
         };
         await unitOfWork.InTransactionAsync(

@@ -3,6 +3,7 @@ using Beeps.Features.Admin;
 using Beeps.Features.Agents;
 using Beeps.Features.Avatars;
 using Beeps.Features.Beeps;
+using Beeps.Features.Moderation;
 using Beeps.Features.Notifications;
 using Beeps.Features.Profiles;
 using Beeps.Features.Shared;
@@ -19,6 +20,7 @@ public static class FeaturesSetup
         services.AddOptions<SiteOptions>().BindConfiguration(SiteOptions.SectionName).ValidateDataAnnotations().ValidateOnStart();
         services.AddOptions<CaptchaOptions>().BindConfiguration(CaptchaOptions.SectionName).ValidateDataAnnotations().ValidateOnStart();
         services.AddOptions<AgentOptions>().BindConfiguration(AgentOptions.SectionName).ValidateDataAnnotations().ValidateOnStart();
+        services.AddOptions<ModerationOptions>().BindConfiguration(ModerationOptions.SectionName);
 
         services.AddSingleton<AvatarUrls>();
         services.AddSingleton<IPasswordHasher<User>, PasswordHasher<User>>();

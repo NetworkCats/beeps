@@ -521,6 +521,7 @@ tests/Beeps.Tests/
 
 **配置**（环境变量）
 - `OpenRouter__ApiKey`、`Moderation__Model`（默认 `google/gemma-4-26b-a4b-it`）、`Moderation__Concurrency`、`Moderation__Enabled`。
+- `Moderation__Enabled` 默认开启；本地开发默认关闭（`appsettings.Development.json`）。关闭时新 beep 直接标记为已通过（`allowed`），不写入审核队列。
 
 ---
 
@@ -603,7 +604,7 @@ tests/Beeps.Tests/
 | 对象存储 | Cloudflare R2 | SeaweedFS（Docker） |
 | 邮件 | Resend | MailHog（Docker） |
 | 人机验证 | Cloudflare Turnstile | Turnstile 测试 key |
-| 内容审核 | OpenRouter（Gemma 4 26B） | mock 实现，或填入真实 key |
+| 内容审核 | OpenRouter（Gemma 4 26B） | 默认关闭；需要时打开，用 mock 实现或填入真实 key |
 | CDN / 边缘 | Cloudflare | 无 |
 
 ### 9.1 本地开发
@@ -830,7 +831,7 @@ tests/Beeps.Tests/
 - 对象名使用随机值或内容哈希，不使用用户提供的文件名。
 
 ### 内容审核
-- 每条 beep 和回复发布时，必须在同一事务中写入 `moderation_jobs`。
+- 每条 beep 和回复发布时，必须在同一事务中写入 `moderation_jobs`（`Moderation:Enabled` 关闭时除外，此时直接标记为已通过）。
 - 审核只通过 `IContentModerator` 接口调用，请求必须带结构化输出（`json_schema`、`strict: true`）和 `provider.sort = "throughput"`、`provider.require_parameters = true`。
 - 模型返回无法解析或不符合 schema 时视为失败重试，不得当作通过。
 - 所有读取 beep 的查询（时间线、话题页、回复串、搜索、API）都必须排除 `hidden` 状态，作者本人和其主人除外；可见性判断只在一处实现。

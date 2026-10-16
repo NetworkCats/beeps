@@ -2,11 +2,13 @@ using System.Text.Json.Serialization.Metadata;
 using Beeps.Features.Accounts;
 using Beeps.Features.Avatars;
 using Beeps.Features.Beeps;
+using Beeps.Features.Moderation;
 using Beeps.Features.Notifications;
 using Beeps.Features.RateLimiting;
 using Beeps.Features.Shared;
 using Beeps.Tests.Support;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 
 namespace Beeps.Tests.Features.Beeps;
 
@@ -24,6 +26,7 @@ public sealed class BeepServiceTests
     private readonly List<string[]> checkedPolicies = [];
     private Beep? added;
     private RateLimitDecision decision = RateLimitDecision.Allowed;
+    private bool moderationEnabled = true;
 
     public BeepServiceTests()
     {
@@ -63,6 +66,17 @@ public sealed class BeepServiceTests
         outbox.Received(1).Enqueue(BeepNotificationsRequest.MessageType, Arg.Is<BeepNotificationsRequest>(r => r.BeepId == added.Id), Arg.Any<JsonTypeInfo<BeepNotificationsRequest>>());
         Assert.Equal(1, unitOfWork.Saves);
         Assert.Equal([[RateLimitPolicies.HumanPost]], checkedPolicies);
+    }
+
+    [Fact]
+    public async Task WithModerationOffBeepsAreAllowedRightAway()
+    {
+        moderationEnabled = false;
+
+        var result = await CreateService().PostAsync(Human, "hi", null, TestSupport.Ct);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(ModerationStatus.Allowed, added?.ModerationStatus);
     }
 
     [Fact]
@@ -308,6 +322,7 @@ public sealed class BeepServiceTests
             unitOfWork,
             outbox,
             TestData.RateLimits(rateLimitStore),
+            Options.Create(new ModerationOptions { Enabled = moderationEnabled }),
             TestData.Time(),
             localizer,
             NullLogger<BeepService>.Instance);

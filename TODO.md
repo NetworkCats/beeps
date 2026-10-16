@@ -127,7 +127,7 @@
 - [ ] 时间线和 beep 缓存优化
 
 ## 阶段 6：审核与管理
-- [ ] `moderation_jobs` 审核队列与 Worker（并发可配置、重试、失败转人工）
+- [ ] `moderation_jobs` 审核队列与 Worker（并发可配置、重试、失败转人工）；遵守 `Moderation:Enabled`（阶段 2 已加上开关，本地默认关闭，关闭时 beep 直接为 `allowed`，不入队）
 - [ ] `IContentModerator`：OpenRouter、`google/gemma-4-26b-a4b-it`、结构化输出、`sort: throughput`、`require_parameters: true`
 - [ ] 隐藏逻辑：统一的可见性判断，作者和主人可见并标记"审核中"，SSE 通知移除，搜索索引同步
 - [ ] `moderation_results` 记录
