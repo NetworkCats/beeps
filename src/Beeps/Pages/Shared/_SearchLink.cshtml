@@ -1,0 +1,5 @@
+@* The words on wide screens, a magnifier on narrow ones, where the navigation has no room for both. *@
+<a class="navbar-link nav-search" asp-page="/Search" aria-current="@(ViewContext.RouteData.Values["page"] as string == "/Search" ? "page" : null)">
+    <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" stroke-width="1.75"/><path d="m16 16 4.5 4.5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/></svg>
+    <span class="nav-label">@L["Nav.Search"]</span>
+</a>

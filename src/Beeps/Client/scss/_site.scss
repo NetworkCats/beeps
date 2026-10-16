@@ -316,6 +316,18 @@ fieldset.check-list {
   }
 }
 
+// The unread count on the corner of "Notifications", set by the live script; reaching into the gap
+// keeps it off the word.
+.nav-count {
+  inset-inline-end: -0.375rem;
+}
+
+.nav-icon {
+  display: none;
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
 // The account menu is a <details>: it opens without script; menu.ts closes it on outside clicks.
 .menu {
   position: relative;
@@ -363,7 +375,8 @@ fieldset.check-list {
 // Narrow screens keep every link and drop the words that only repeat what the logo and avatar say.
 @container cui-navbar (width < 40rem) {
   .site-brand-name,
-  .menu-handle {
+  .menu-handle,
+  .nav-search .nav-label {
     position: absolute;
     width: 1px;
     height: 1px;
@@ -378,6 +391,10 @@ fieldset.check-list {
     .navbar-link {
       padding-inline: var(--cui-space-2);
     }
+  }
+
+  .nav-icon {
+    display: block;
   }
 }
 
@@ -761,6 +778,39 @@ span.beep-action {
 
 .profile-tabs {
   margin-block-end: var(--cui-space-2);
+}
+
+// ---- Search --------------------------------------------------------------------
+
+.search-form {
+  display: flex;
+  gap: var(--cui-space-2);
+  margin-block-end: var(--cui-space-2);
+
+  > .input {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+}
+
+.search-tabs {
+  margin-block: var(--cui-space-4) var(--cui-space-2);
+}
+
+.search-users > li {
+  padding-block-end: var(--cui-space-2);
+  border-block-end: 1px solid var(--cui-border);
+}
+
+// The bio sits under the name, lined up with it rather than with the avatar.
+.actor-bio {
+  margin: 0;
+  padding-inline: calc(var(--cui-space-2) + 2rem + var(--cui-space-3)) var(--cui-space-2);
+  color: var(--cui-text-2);
+  font-size: var(--cui-text-sm);
+  line-height: var(--beeps-text-leading);
+  white-space: pre-line;
+  overflow-wrap: anywhere;
 }
 
 // ---- Inbox ---------------------------------------------------------------------

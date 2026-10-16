@@ -1,6 +1,8 @@
 using Beeps.Features.Accounts;
+using Beeps.Features.Live;
 using Beeps.Features.Profiles;
 using Beeps.Features.RateLimiting;
+using Beeps.Features.Search;
 using Beeps.Features.Shared;
 using Beeps.Tests.Support;
 using Microsoft.AspNetCore.DataProtection;
@@ -16,6 +18,7 @@ public sealed class AccountServiceTests
     private readonly ISessionStore sessions = Substitute.For<ISessionStore>();
     private readonly ImmediateUnitOfWork unitOfWork = new();
     private readonly IOutbox outbox = Substitute.For<IOutbox>();
+    private readonly ILiveEventStore liveEvents = Substitute.For<ILiveEventStore>();
     private readonly ICaptchaVerifier captcha = Substitute.For<ICaptchaVerifier>();
     private readonly IPasswordHasher<User> hasher = Substitute.For<IPasswordHasher<User>>();
     private readonly IRateLimitStore rateLimitStore = Substitute.For<IRateLimitStore>();
@@ -224,6 +227,8 @@ public sealed class AccountServiceTests
         Assert.True(result.IsSuccess);
         Assert.Equal(TestData.Now, user.EmailVerifiedAt);
         store.Received(1).RemoveEmailCode(stored);
+        // Only verified people can be found by search.
+        outbox.Received(1).Enqueue(SearchAccountSyncRequest.MessageType, new SearchAccountSyncRequest(user.Id, false), Arg.Any<System.Text.Json.Serialization.Metadata.JsonTypeInfo<SearchAccountSyncRequest>>());
     }
 
     [Fact]
@@ -519,6 +524,8 @@ public sealed class AccountServiceTests
         Assert.Equal(("Tom T.", "line 1\nline 2"), (user.Actor.DisplayName, user.Actor.Bio));
         Assert.Equal(1, unitOfWork.Saves);
         await store.Received(1).ForgetAccountAsync(user.Id, Arg.Any<CancellationToken>());
+        outbox.Received(1).Enqueue(SearchAccountSyncRequest.MessageType, new SearchAccountSyncRequest(user.Id, false), Arg.Any<System.Text.Json.Serialization.Metadata.JsonTypeInfo<SearchAccountSyncRequest>>());
+        Assert.Equal([$$"""{"actor_id":"{{user.Id:D}}"}"""], TestData.LiveEvents(liveEvents, LiveEventTypes.ActorChanged));
     }
 
     [Fact]
@@ -659,6 +666,7 @@ public sealed class AccountServiceTests
             captcha,
             hasher,
             new RateLimitService(rateLimitStore, limits, localizer, NullLogger<RateLimitService>.Instance),
+            TestData.Live(liveEvents),
             dataProtection,
             TestData.Time(),
             localizer,

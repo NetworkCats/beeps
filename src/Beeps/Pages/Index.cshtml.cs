@@ -1,5 +1,6 @@
 using Beeps.Features.Auth;
 using Beeps.Features.Beeps;
+using Beeps.Features.Live;
 using Beeps.Features.Shared;
 using Beeps.Features.Shared.Http;
 using Beeps.Features.Timelines;
@@ -18,6 +19,9 @@ public sealed class IndexModel(TimelineService timelines) : PageModel
     public bool IsHome { get; private set; }
 
     public CursorPage<BeepView> Beeps { get; private set; } = new([], null);
+
+    /// <summary>New beeps appear at the top of the first page only.</summary>
+    public LiveTopic Live => IsHome && Before is null ? LiveTopic.Home : LiveTopic.None;
 
     public async Task OnGetAsync(CancellationToken cancellationToken)
     {

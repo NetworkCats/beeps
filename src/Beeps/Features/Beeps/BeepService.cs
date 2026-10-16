@@ -1,7 +1,9 @@
+using Beeps.Features.Live;
 using Beeps.Features.Media;
 using Beeps.Features.Moderation;
 using Beeps.Features.Notifications;
 using Beeps.Features.RateLimiting;
+using Beeps.Features.Search;
 using Beeps.Features.Shared;
 using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Options;
@@ -18,6 +20,7 @@ public sealed partial class BeepService(
     IUnitOfWork unitOfWork,
     IOutbox outbox,
     RateLimitService rateLimits,
+    LiveUpdates live,
     IOptions<ModerationOptions> moderation,
     TimeProvider time,
     IStringLocalizer<SharedResource> localizer,
@@ -99,6 +102,8 @@ public sealed partial class BeepService(
                     outbox.Enqueue(BeepNotificationsRequest.MessageType, new BeepNotificationsRequest(id), NotificationsJsonContext.Default.BeepNotificationsRequest);
                 }
 
+                outbox.SyncBeepToSearch(id);
+
                 await unitOfWork.SaveChangesAsync(ct);
                 return Result.Success;
             },
@@ -114,6 +119,9 @@ public sealed partial class BeepService(
         }
 
         LogPosted(logger, id, author.ActorId, parent?.Id, images.Count);
+        await live.BeepPostedAsync(
+            new BeepPostedEvent(id, author.ActorId, author.AccountId, parent?.Id, parent is null ? null : parent.AuthorOwnerId ?? parent.AuthorId, beep.RootId, parsed.Hashtags),
+            cancellationToken);
         return await GetAsync(author, id, cancellationToken);
     }
 
@@ -151,6 +159,20 @@ public sealed partial class BeepService(
         return built[0];
     }
 
+    /// <summary>Handles of the authors of these beeps, for the visible ones; for "replying to @…" lines.</summary>
+    public async Task<IReadOnlyDictionary<Guid, string?>> GetAuthorHandlesAsync(Viewer? viewer, IReadOnlyCollection<Guid> beepIds, CancellationToken cancellationToken)
+    {
+        var rows = await store.GetRowsAsync(beepIds, viewer?.ActorId, cancellationToken);
+        return rows.ToDictionary(r => r.Id, r => r.Author.Handle);
+    }
+
+    /// <summary>The beeps of a thread after <paramref name="after"/>, oldest first, by the id of its root (which may itself be deleted).</summary>
+    public async Task<CursorPage<BeepView>> ListThreadAsync(Viewer? viewer, Guid rootId, Guid? after, int? limit, CancellationToken cancellationToken)
+    {
+        var page = await store.ListThreadAsync(rootId, after, PageRequest.ClampLimit(limit), viewer?.ActorId, cancellationToken);
+        return await views.BuildPageAsync(page, viewer, cancellationToken);
+    }
+
     /// <summary>The whole thread the beep belongs to, oldest first, from its root.</summary>
     public async Task<Result<CursorPage<BeepView>>> GetThreadAsync(Viewer? viewer, Guid beepId, Guid? after, int? limit, CancellationToken cancellationToken)
     {
@@ -179,12 +201,28 @@ public sealed partial class BeepService(
             return Error.Forbidden(BeepErrorCodes.NotYourBeep, localizer["Error.NotYourBeep"]);
         }
 
-        if (!await store.DeleteAsync(beepId, time.GetUtcNow(), cancellationToken))
+        var deleted = false;
+        await unitOfWork.InTransactionAsync(
+            null,
+            async ct =>
+            {
+                deleted = await store.DeleteAsync(beepId, time.GetUtcNow(), ct);
+                if (deleted)
+                {
+                    outbox.SyncBeepToSearch(beepId);
+                    await unitOfWork.SaveChangesAsync(ct);
+                }
+
+                return Result.Success;
+            },
+            cancellationToken);
+        if (!deleted)
         {
             return Result.Success;
         }
 
         LogDeleted(logger, beepId, viewer.ActorId);
+        await live.BeepRemovedAsync(beepId, cancellationToken);
         if (beep.ReplyToId is { } parentId && await store.FindVisibleAsync(parentId, viewer.ActorId, cancellationToken) is { } parent)
         {
             await CountAsync(parent, new BeepCounts(0, -1), cancellationToken);
@@ -291,7 +329,10 @@ public sealed partial class BeepService(
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
             LogCounterFailed(logger, exception, beep.Id);
+            return;
         }
+
+        await live.CountsChangedAsync(beep.Id, cancellationToken);
     }
 
     private Error TextError(BeepTextProblem problem)

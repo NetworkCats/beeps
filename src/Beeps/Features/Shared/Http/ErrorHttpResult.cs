@@ -34,6 +34,7 @@ public sealed class ErrorHttpResult : IResult, IStatusCodeHttpResult, IValueHttp
         ErrorKind.Conflict => StatusCodes.Status409Conflict,
         ErrorKind.RateLimited => StatusCodes.Status429TooManyRequests,
         ErrorKind.TooLarge => StatusCodes.Status413PayloadTooLarge,
+        ErrorKind.Unavailable => StatusCodes.Status503ServiceUnavailable,
         _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, null),
     };
 

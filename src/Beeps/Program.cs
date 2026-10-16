@@ -3,15 +3,18 @@ using Beeps.Features.Agents;
 using Beeps.Features.Auth;
 using Beeps.Features.Avatars;
 using Beeps.Features.Beeps;
+using Beeps.Features.Live;
 using Beeps.Features.Localization;
 using Beeps.Features.Media;
 using Beeps.Features.Notifications;
 using Beeps.Features.Profiles;
 using Beeps.Features.RateLimiting;
+using Beeps.Features.Search;
 using Beeps.Features.Shared.Http;
 using Beeps.Features.Skill;
 using Beeps.Features.Timelines;
 using Beeps.Infrastructure;
+using Beeps.Infrastructure.Search;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -27,6 +30,12 @@ builder.Services.AddBeepsFeatures();
 builder.Services.AddBeepsInfrastructure();
 
 var app = builder.Build();
+
+// One-off maintenance (`dotnet Beeps.dll search rebuild`): runs and exits without serving requests.
+if (SearchCommand.Matches(args))
+{
+    return await SearchCommand.RunAsync(app.Services, args);
+}
 
 // First, so everything after it (logs, rate limits, audit) sees the visitor's real IP.
 app.UseForwardedHeaders();
@@ -64,8 +73,11 @@ app.MapMediaApi();
 app.MapTimelineApi();
 app.MapProfileApi();
 app.MapNotificationApi();
+app.MapSearchApi();
+app.MapLiveEndpoints();
 
 app.Run();
+return 0;
 
 /// <summary>Entry point; public so the integration tests can host the app.</summary>
 public partial class Program;

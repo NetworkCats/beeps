@@ -1,8 +1,10 @@
 using System.Globalization;
 using System.Security.Cryptography;
+using Beeps.Features.Live;
 using Beeps.Features.Localization;
 using Beeps.Features.Profiles;
 using Beeps.Features.RateLimiting;
+using Beeps.Features.Search;
 using Beeps.Features.Shared;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
@@ -19,6 +21,7 @@ public sealed partial class AccountService(
     ICaptchaVerifier captcha,
     IPasswordHasher<User> passwordHasher,
     RateLimitService rateLimits,
+    LiveUpdates live,
     IDataProtectionProvider dataProtection,
     TimeProvider time,
     IStringLocalizer<SharedResource> localizer,
@@ -206,6 +209,8 @@ public sealed partial class AccountService(
         }
 
         user.EmailVerifiedAt = time.GetUtcNow();
+        // From now on the person can be found by search.
+        outbox.SyncAccountToSearch(user.Id);
         await unitOfWork.SaveChangesAsync(cancellationToken);
         await store.ForgetAccountAsync(user.Id, cancellationToken);
         return Result.Success;
@@ -466,8 +471,10 @@ public sealed partial class AccountService(
 
         user.Actor.DisplayName = name;
         user.Actor.Bio = cleanBio;
+        outbox.SyncAccountToSearch(user.Id);
         await unitOfWork.SaveChangesAsync(cancellationToken);
         await store.ForgetAccountAsync(user.Id, cancellationToken);
+        await live.ActorChangedAsync(user.Id, cancellationToken);
         return Result.Success;
     }
 

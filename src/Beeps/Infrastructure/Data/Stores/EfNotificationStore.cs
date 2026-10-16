@@ -51,13 +51,7 @@ public sealed class EfNotificationStore(BeepsDbContext db) : INotificationStore
     public async Task<CursorPage<NotificationRow>> ListAsync(Guid recipientId, PageRequest page, bool unreadOnly, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(page);
-        var visibleBeeps = BeepQueries.Visible(db, recipientId);
-        var visibleActors = BeepQueries.VisibleActors(db);
-        var inbox = db.Set<Notification>()
-            .AsNoTracking()
-            .Where(n => n.RecipientId == recipientId
-                && visibleBeeps.Any(b => b.Id == n.BeepId)
-                && visibleActors.Any(a => a.Id == n.FromActorId));
+        var inbox = Inbox(recipientId);
         if (unreadOnly)
         {
             inbox = inbox.Where(n => n.ReadAt == null);
@@ -89,6 +83,9 @@ public sealed class EfNotificationStore(BeepsDbContext db) : INotificationStore
         return CursorPage.FromOverfetch(rows, page.Limit, r => r.Id);
     }
 
+    public Task<int> CountUnreadAsync(Guid recipientId, CancellationToken cancellationToken) =>
+        Inbox(recipientId).CountAsync(n => n.ReadAt == null, cancellationToken);
+
     public Task<int> MarkReadAsync(Guid recipientId, Guid? upToId, DateTimeOffset now, CancellationToken cancellationToken)
     {
         var unread = db.Set<Notification>().Where(n => n.RecipientId == recipientId && n.ReadAt == null);
@@ -98,5 +95,17 @@ public sealed class EfNotificationStore(BeepsDbContext db) : INotificationStore
         }
 
         return unread.ExecuteUpdateAsync(s => s.SetProperty(n => n.ReadAt, now), cancellationToken);
+    }
+
+    /// <summary>The recipient's notifications about beeps they can still see, from actors that are still visible.</summary>
+    private IQueryable<Notification> Inbox(Guid recipientId)
+    {
+        var visibleBeeps = BeepQueries.Visible(db, recipientId);
+        var visibleActors = BeepQueries.VisibleActors(db);
+        return db.Set<Notification>()
+            .AsNoTracking()
+            .Where(n => n.RecipientId == recipientId
+                && visibleBeeps.Any(b => b.Id == n.BeepId)
+                && visibleActors.Any(a => a.Id == n.FromActorId));
     }
 }

@@ -736,7 +736,7 @@
     <value>Replying to @{0}</value>
   </data>
   <data name="Beep.Replies" xml:space="preserve">
-    <value>{0} replies</value>
+    <value>Replies</value>
   </data>
   <data name="Beep.Like" xml:space="preserve">
     <value>Like</value>
@@ -992,5 +992,62 @@
   </data>
   <data name="Error.AvatarCropInvalid" xml:space="preserve">
     <value>The selected area is outside the image or too small. Choose the image again.</value>
+  </data>
+  <data name="Nav.Search" xml:space="preserve">
+    <value>Search</value>
+  </data>
+  <data name="Search.Title" xml:space="preserve">
+    <value>Search</value>
+  </data>
+  <data name="Search.TitleFor" xml:space="preserve">
+    <value>Search: {0}</value>
+  </data>
+  <data name="Search.Label" xml:space="preserve">
+    <value>Search beeps and people</value>
+  </data>
+  <data name="Search.Placeholder" xml:space="preserve">
+    <value>Search beeps and people</value>
+  </data>
+  <data name="Search.Submit" xml:space="preserve">
+    <value>Search</value>
+  </data>
+  <data name="Search.Hint" xml:space="preserve">
+    <value>Start with # to open a hashtag, for example #beeps.</value>
+  </data>
+  <data name="Search.Tabs" xml:space="preserve">
+    <value>What to search</value>
+  </data>
+  <data name="Search.Beeps" xml:space="preserve">
+    <value>Beeps</value>
+  </data>
+  <data name="Search.Users" xml:space="preserve">
+    <value>People and agents</value>
+  </data>
+  <data name="Search.Empty.Title" xml:space="preserve">
+    <value>Nothing found</value>
+  </data>
+  <data name="Search.Empty.Text" xml:space="preserve">
+    <value>Try other words, or fewer of them.</value>
+  </data>
+  <data name="Error.SearchQueryInvalid" xml:space="preserve">
+    <value>Enter 1 to {0} characters to search for.</value>
+  </data>
+  <data name="Error.SearchTooFar" xml:space="preserve">
+    <value>Only the first {0} results can be shown.</value>
+  </data>
+  <data name="Error.SearchUnavailable" xml:space="preserve">
+    <value>Search is unavailable right now. Try again in a moment.</value>
+  </data>
+  <data name="Error.SearchTypeInvalid" xml:space="preserve">
+    <value>type must be beeps or users.</value>
+  </data>
+  <data name="Error.LiveWatchInvalid" xml:space="preserve">
+    <value>The page to follow is not valid.</value>
+  </data>
+  <data name="Error.LiveBeepsInvalid" xml:space="preserve">
+    <value>beeps must list at most {0} beep ids, separated by commas.</value>
+  </data>
+  <data name="Error.LiveEventIdInvalid" xml:space="preserve">
+    <value>The last event id is not valid.</value>
   </data>
 </root>

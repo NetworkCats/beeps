@@ -1,4 +1,5 @@
 using Beeps.Features.Auth;
+using Beeps.Features.Live;
 using Beeps.Features.Notifications;
 using Beeps.Features.Shared;
 using Microsoft.AspNetCore.Mvc;
@@ -12,6 +13,8 @@ public sealed class NotificationsModel(NotificationService notifications) : Page
     [BindProperty(SupportsGet = true)] public Guid? Before { get; set; }
 
     public CursorPage<NotificationView> Notifications { get; private set; } = new([], null);
+
+    public LiveTopic Live => Before is null ? LiveTopic.Notifications : LiveTopic.None;
 
     public async Task OnGetAsync(CancellationToken cancellationToken) =>
         Notifications = await notifications.ListAsync(User.Viewer(), PageRequest.Create(Before), unreadOnly: false, cancellationToken);

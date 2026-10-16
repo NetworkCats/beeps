@@ -1,0 +1,21 @@
+@using Beeps.Features.Notifications
+@model NotificationView
+@* One inbox entry: the inbox page and the fragment it fetches when new ones arrive. *@
+@{
+    var from = Model.From;
+}
+<li class="notification@(Model.Read ? "" : " notification-unread")" data-notification="@Model.Id">
+    <p class="notification-summary">
+        <a class="notification-actor" href="@SitePaths.Profile(from.Handle!)">
+            <span class="avatar avatar-sm"><img src="@from.AvatarUrl" alt="" width="24" height="24" loading="lazy"></span>
+            @(from.DisplayName ?? from.Handle)
+        </a>
+        <span>@L[$"Notifications.{Model.Type}"]</span>
+        <utc-time value="Model.CreatedAt" />
+        @if (!Model.Read)
+        {
+            <span class="badge badge-primary">@L["Notifications.New"]</span>
+        }
+    </p>
+    <partial name="_Beep" model="new BeepCard(Model.Beep)" />
+</li>

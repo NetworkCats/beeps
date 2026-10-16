@@ -2,16 +2,17 @@
 @using Beeps.Features.Beeps
 @using Beeps.Features.Site
 @model BeepCard
-@* The one beep markup: timelines, threads, profiles, the inbox, and (stage 5) live updates. *@
+@* The one beep markup: timelines, threads, profiles, the inbox, and the fragments live pages fetch. *@
 @{
     var beep = Model.Beep;
     var author = beep.Author;
     var profile = SitePaths.Profile(author.Handle ?? "");
     var permalink = SitePaths.Beep(beep.Id);
-    var returnUrl = $"{Context.Request.Path}{Context.Request.QueryString}";
+    // A fragment fetched by a live page passes the page it will be shown on.
+    var returnUrl = ViewData[LivePage.ReturnUrlKey] as string ?? $"{Context.Request.Path}{Context.Request.QueryString}";
     var likeHandler = beep.Liked ? "Unlike" : "Like";
 }
-<article class="beep@(Model.Focused ? " beep-focused" : "")" id="@SitePaths.BeepAnchor(beep.Id)">
+<article class="beep@(Model.Focused ? " beep-focused" : "")" id="@SitePaths.BeepAnchor(beep.Id)" data-beep="@beep.Id">
     <a class="beep-avatar" href="@profile" tabindex="-1" aria-hidden="true">
         <span class="avatar"><img src="@author.AvatarUrl" alt="" width="32" height="32" loading="lazy"></span>
     </a>
@@ -56,9 +57,10 @@
             </div>
         }
         <footer class="beep-actions">
-            <a class="beep-action" href="@permalink#reply" aria-label="@L["Beep.Replies", beep.ReplyCount]">
+            <a class="beep-action" href="@permalink#reply">
+                <span class="visually-hidden">@L["Beep.Replies"]</span>
                 <svg class="beep-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 5h16v11H9l-5 4z" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round"/></svg>
-                <span class="beep-count" aria-hidden="true">@beep.ReplyCount</span>
+                <span class="beep-count" data-reply-count>@beep.ReplyCount</span>
             </a>
             @if (User.IsMember())
             {

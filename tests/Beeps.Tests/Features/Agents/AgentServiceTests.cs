@@ -1,6 +1,8 @@
 using Beeps.Features.Accounts;
 using Beeps.Features.Agents;
+using Beeps.Features.Live;
 using Beeps.Features.Profiles;
+using Beeps.Features.Search;
 using Beeps.Features.Avatars;
 using Beeps.Features.Shared;
 using Beeps.Tests.Support;
@@ -15,6 +17,8 @@ public sealed class AgentServiceTests
 
     private readonly IAgentStore store = Substitute.For<IAgentStore>();
     private readonly ImmediateUnitOfWork unitOfWork = new();
+    private readonly IOutbox outbox = Substitute.For<IOutbox>();
+    private readonly ILiveEventStore liveEvents = Substitute.For<ILiveEventStore>();
     private readonly AgentOptions options = new() { MaxPerOwner = 3 };
 
     [Fact]
@@ -110,6 +114,7 @@ public sealed class AgentServiceTests
         Assert.Equal(TestData.Now, agent.DeletedAt);
         await store.Received(1).RevokeKeysAsync(agent.Id, TestData.Now, Arg.Any<CancellationToken>());
         await store.Received(1).ForgetKeysAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>());
+        outbox.Received(1).Enqueue(SearchAccountSyncRequest.MessageType, new SearchAccountSyncRequest(agent.Id, true), Arg.Any<System.Text.Json.Serialization.Metadata.JsonTypeInfo<SearchAccountSyncRequest>>());
     }
 
     [Fact]
@@ -197,6 +202,10 @@ public sealed class AgentServiceTests
         await store.Received(1).TryConnectAsync(row.Id, "Claude Opus 4.5", "tom's Claude", "tom.claude2", Arg.Any<CancellationToken>());
         await store.Received(1).ForgetKeysAsync(Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Single() == row.Id), Arg.Any<CancellationToken>());
         Assert.Equal([AdvisoryLocks.OwnerAgents(OwnerId)], unitOfWork.Locks);
+        // Findable from now on, and the owner's onboarding page hears of it.
+        outbox.Received(1).Enqueue(SearchAccountSyncRequest.MessageType, new SearchAccountSyncRequest(row.Id, false), Arg.Any<System.Text.Json.Serialization.Metadata.JsonTypeInfo<SearchAccountSyncRequest>>());
+        Assert.Equal(1, unitOfWork.Saves);
+        Assert.Equal([$$"""{"agent_id":"{{row.Id:D}}","owner_id":"{{OwnerId:D}}"}"""], TestData.LiveEvents(liveEvents, LiveEventTypes.AgentConnected));
     }
 
     [Fact]
@@ -210,6 +219,7 @@ public sealed class AgentServiceTests
         Assert.Equal("Claude Opus 4.5", result.Value.ModelName);
         await store.DidNotReceiveWithAnyArgs().TryConnectAsync(default, default!, default!, default!, TestSupport.Ct);
         Assert.Empty(unitOfWork.Locks);
+        Assert.Empty(TestData.LiveEvents(liveEvents, LiveEventTypes.AgentConnected));
     }
 
     [Fact]
@@ -262,6 +272,8 @@ public sealed class AgentServiceTests
         Assert.Equal([AdvisoryLocks.OwnerAgents(OwnerId)], unitOfWork.Locks);
         Assert.Equal(1, unitOfWork.Saves);
         Assert.Equal("helper", result.Value.HandleName);
+        outbox.Received(1).Enqueue(SearchAccountSyncRequest.MessageType, new SearchAccountSyncRequest(agent.Id, false), Arg.Any<System.Text.Json.Serialization.Metadata.JsonTypeInfo<SearchAccountSyncRequest>>());
+        Assert.Equal([$$"""{"actor_id":"{{agent.Id:D}}"}"""], TestData.LiveEvents(liveEvents, LiveEventTypes.ActorChanged));
     }
 
     [Fact]
@@ -353,6 +365,8 @@ public sealed class AgentServiceTests
     private AgentService CreateService() => new(
         store,
         unitOfWork,
+        outbox,
+        TestData.Live(liveEvents),
         TestData.Avatars,
         Options.Create(options),
         TestData.Time(),

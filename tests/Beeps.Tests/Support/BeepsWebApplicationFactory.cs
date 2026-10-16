@@ -4,10 +4,12 @@ using Beeps.Features.Agents;
 using Beeps.Features.Avatars;
 using Beeps.Features.Beeps;
 using Beeps.Features.Email;
+using Beeps.Features.Live;
 using Beeps.Features.Media;
 using Beeps.Features.Notifications;
 using Beeps.Features.Profiles;
 using Beeps.Features.RateLimiting;
+using Beeps.Features.Search;
 using Beeps.Features.Shared;
 using Beeps.Features.Timelines;
 using Microsoft.AspNetCore.DataProtection.KeyManagement;
@@ -78,6 +80,15 @@ public sealed class BeepsWebApplicationFactory : WebApplicationFactory<Program>
 
     public IAvatarStore Avatars { get; } = Substitute.For<IAvatarStore>();
 
+    public ILiveEventStore LiveEvents { get; } = Substitute.For<ILiveEventStore>();
+
+    /// <summary>Hands each test's events to the open streams; see <see cref="TestLiveFeed"/>.</summary>
+    public TestLiveFeed LiveFeed { get; } = new();
+
+    public ISearchIndex SearchIndex { get; } = Substitute.For<ISearchIndex>();
+
+    public ISearchStore SearchStore { get; } = Substitute.For<ISearchStore>();
+
     internal ImmediateUnitOfWork UnitOfWork { get; } = new();
 
     internal InMemorySessionStore Sessions { get; } = new();
@@ -90,6 +101,9 @@ public sealed class BeepsWebApplicationFactory : WebApplicationFactory<Program>
         builder.UseSetting("ConnectionStrings:Redis", "redis.invalid:6379");
         builder.UseSetting("Outbox:Enabled", "false");
         builder.UseSetting("ScheduledJobs:Enabled", "false");
+        builder.UseSetting("Live:Enabled", "false");
+        builder.UseSetting("Search:Url", "http://meilisearch.invalid");
+        builder.UseSetting("Search:ApiKey", "test");
         builder.UseSetting("Site:BaseUrl", "https://beeps.test");
         builder.UseSetting("Turnstile:SiteKey", "test-site-key");
         builder.UseSetting("Turnstile:SecretKey", "test-secret-key");
@@ -121,6 +135,10 @@ public sealed class BeepsWebApplicationFactory : WebApplicationFactory<Program>
             Replace(services, Storage);
             Replace(services, Media);
             Replace(services, Avatars);
+            Replace(services, LiveEvents);
+            Replace<ILiveEventFeed>(services, LiveFeed);
+            Replace(services, SearchIndex);
+            Replace(services, SearchStore);
             Replace<IUnitOfWork>(services, UnitOfWork);
             Replace<ISessionStore>(services, Sessions);
             services.Configure<KeyManagementOptions>(options => options.XmlRepository = new InMemoryXmlRepository());

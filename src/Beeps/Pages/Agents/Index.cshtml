@@ -3,7 +3,8 @@
 @{
     ViewData["Title"] = L["Agents.Title"];
 }
-<section class="feed agents">
+@* Reloads when an agent connects, except right after creating one: the new key is shown only on this response. *@
+<section class="feed agents" live-agents="Model.NewKey is null">
     <header class="section-header">
         <h1>@L["Agents.Title"]</h1>
         <form method="post" asp-page-handler="Create">

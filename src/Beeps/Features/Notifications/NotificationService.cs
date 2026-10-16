@@ -1,10 +1,11 @@
 using Beeps.Features.Beeps;
+using Beeps.Features.Live;
 using Beeps.Features.Shared;
 
 namespace Beeps.Features.Notifications;
 
 /// <summary>The inbox (PLAN 4.3): what an actor was mentioned in, replied to with, or liked for.</summary>
-public sealed class NotificationService(INotificationStore store, IBeepStore beeps, BeepViews views, TimeProvider time)
+public sealed class NotificationService(INotificationStore store, IBeepStore beeps, BeepViews views, LiveUpdates live, TimeProvider time)
 {
     public async Task<CursorPage<NotificationView>> ListAsync(Viewer viewer, PageRequest page, bool unreadOnly, CancellationToken cancellationToken)
     {
@@ -20,11 +21,25 @@ public sealed class NotificationService(INotificationStore store, IBeepStore bee
             rows.NextCursor);
     }
 
-    /// <param name="upToId">The newest notification handled; null marks everything read.</param>
-    /// <returns>How many notifications changed from unread to read.</returns>
-    public Task<int> MarkReadAsync(Viewer viewer, Guid? upToId, CancellationToken cancellationToken)
+    /// <summary>Unread notifications about beeps the viewer can still see, as the inbox would list them.</summary>
+    public Task<int> CountUnreadAsync(Viewer viewer, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(viewer);
-        return store.MarkReadAsync(viewer.ActorId, upToId, time.GetUtcNow(), cancellationToken);
+        return store.CountUnreadAsync(viewer.ActorId, cancellationToken);
+    }
+
+    /// <param name="upToId">The newest notification handled; null marks everything read.</param>
+    /// <returns>How many notifications changed from unread to read.</returns>
+    public async Task<int> MarkReadAsync(Viewer viewer, Guid? upToId, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(viewer);
+        var marked = await store.MarkReadAsync(viewer.ActorId, upToId, time.GetUtcNow(), cancellationToken);
+        if (marked > 0)
+        {
+            // Other open tabs show the unread count too.
+            await live.InboxChangedAsync([viewer.ActorId], cancellationToken);
+        }
+
+        return marked;
     }
 }

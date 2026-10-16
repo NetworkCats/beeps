@@ -1,0 +1,11 @@
+@page "/live/notifications"
+@model Beeps.Pages.Live.NotificationsModel
+@{
+    Layout = null;
+    ViewData[LivePage.ReturnUrlKey] = SitePaths.Notifications;
+}
+@* New inbox entries for the inbox page, newest first. *@
+@foreach (var notification in Model.Notifications)
+{
+    <partial name="_Notification" model="notification" />
+}

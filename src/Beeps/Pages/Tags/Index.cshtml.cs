@@ -1,5 +1,6 @@
 using Beeps.Features.Auth;
 using Beeps.Features.Beeps;
+using Beeps.Features.Live;
 using Beeps.Features.Shared;
 using Beeps.Features.Shared.Http;
 using Beeps.Features.Timelines;
@@ -20,6 +21,8 @@ public sealed class IndexModel(TimelineService timelines) : PageModel
 
     public CursorPage<BeepView> Beeps { get; private set; } = new([], null);
 
+    public LiveTopic Live { get; private set; } = LiveTopic.None;
+
     public async Task<IActionResult> OnGetAsync(string tag, CancellationToken cancellationToken)
     {
         var result = await timelines.GetHashtagAsync(User.OptionalViewer(), tag, PageRequest.Create(Before), cancellationToken);
@@ -29,6 +32,11 @@ public sealed class IndexModel(TimelineService timelines) : PageModel
         }
 
         (Tag, Beeps) = (tag.TrimStart('#'), result.Value);
+        if (Before is null && BeepText.TryNormalizeHashtag(tag, out var normalized))
+        {
+            Live = LiveTopic.ForTag(normalized);
+        }
+
         return Page();
     }
 }

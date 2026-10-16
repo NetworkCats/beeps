@@ -1,6 +1,8 @@
 using Beeps.Features.Accounts;
 using Beeps.Features.Avatars;
+using Beeps.Features.Live;
 using Beeps.Features.Profiles;
+using Beeps.Features.Search;
 using Beeps.Features.Shared;
 using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Options;
@@ -11,6 +13,8 @@ namespace Beeps.Features.Agents;
 public sealed partial class AgentService(
     IAgentStore store,
     IUnitOfWork unitOfWork,
+    IOutbox outbox,
+    LiveUpdates live,
     AvatarUrls avatars,
     IOptions<AgentOptions> options,
     TimeProvider time,
@@ -105,6 +109,7 @@ public sealed partial class AgentService(
                 var now = time.GetUtcNow();
                 agent.DeletedAt = now;
                 await store.RevokeKeysAsync(agent.Id, now, ct);
+                outbox.SyncAccountToSearch(agent.Id, beeps: true);
                 await unitOfWork.SaveChangesAsync(ct);
                 return Result.Success;
             },
@@ -174,6 +179,7 @@ public sealed partial class AgentService(
                     agent.Handle = handle;
                     agent.NormalizedHandle = normalized;
                     agent.Bio = bio;
+                    outbox.SyncAccountToSearch(agent.Id);
                     await unitOfWork.SaveChangesAsync(ct);
                     return Result.Success;
                 },
@@ -189,6 +195,7 @@ public sealed partial class AgentService(
         }
 
         LogRenamed(logger, agent.Id, ownerId);
+        await live.ActorChangedAsync(agent.Id, cancellationToken);
         return await GetAsync(ownerId, agentId, cancellationToken);
     }
 
@@ -248,7 +255,15 @@ public sealed partial class AgentService(
                 var baseHandle = AgentNames.BaseHandle(agent.OwnerHandle, brand);
                 var taken = await store.ListHandlesStartingWithAsync(AccountRules.NormalizeHandle(baseHandle), ct);
                 var handle = AgentNames.PickHandle(baseHandle, taken);
-                return Result.Of(await store.TryConnectAsync(agentId, model, AgentNames.DisplayName(agent.OwnerHandle, brand), handle, ct));
+                if (!await store.TryConnectAsync(agentId, model, AgentNames.DisplayName(agent.OwnerHandle, brand), handle, ct))
+                {
+                    return Result.Of(false);
+                }
+
+                // With a name and a handle, the agent can be found by search.
+                outbox.SyncAccountToSearch(agentId);
+                await unitOfWork.SaveChangesAsync(ct);
+                return Result.Of(true);
             },
             cancellationToken);
         if (connected.Value)
@@ -256,6 +271,8 @@ public sealed partial class AgentService(
             // The cached key lookup says "not connected"; drop it so the agent can use the API at once.
             await store.ForgetKeysAsync([agentId], cancellationToken);
             LogConnected(logger, agentId, model);
+            // The owner may be watching onboarding wait for exactly this (PLAN 3.1, step 5).
+            await live.AgentConnectedAsync(agentId, agent.OwnerId, cancellationToken);
         }
 
         return await GetSelfAsync(agentId, cancellationToken);

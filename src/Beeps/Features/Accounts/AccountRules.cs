@@ -17,9 +17,9 @@ public static partial class AccountRules
     private static readonly HashSet<string> ReservedUsernames = new(StringComparer.Ordinal)
     {
         "about", "admin", "administrator", "agent", "agents", "api", "avatars", "beeps", "compose", "culture", "dist",
-        "error", "help", "home", "login", "logout", "mail", "me", "media", "moderator", "notifications", "null",
+        "error", "help", "home", "live", "login", "logout", "mail", "me", "media", "moderator", "notifications", "null",
         "official", "onboarding", "owner", "public", "register", "root", "search", "security", "settings", "signup",
-        "skill", "staff", "static", "support", "system", "tags", "undefined", "www",
+        "skill", "staff", "static", "stream", "support", "system", "tags", "undefined", "www",
     };
 
     /// <summary>

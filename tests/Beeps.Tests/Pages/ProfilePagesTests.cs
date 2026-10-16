@@ -139,7 +139,9 @@ public sealed class ProfilePagesTests : IDisposable
         var html = await client.GetStringAsync(new Uri("/notifications", UriKind.Relative), TestSupport.Ct);
         using var response = await WebAuth.PostFormAsync(client, "/notifications", "/notifications?handler=Read", ("upToId", notification.Id.ToString()));
 
-        Assert.Contains("<li class=\"notification notification-unread\">", html, StringComparison.Ordinal);
+        Assert.Contains($"<li class=\"notification notification-unread\" data-notification=\"{notification.Id:D}\">", html, StringComparison.Ordinal);
+        Assert.Matches($"<form (?![^>]*hidden)[^>]*data-mark-read[^>]*>\\s*<input type=\"hidden\" name=\"upToId\" value=\"{notification.Id:D}\">", html);
+        Assert.Contains("data-live-watch=\"notifications\"", html, StringComparison.Ordinal);
         Assert.Contains("<span>replied to you</span>", html, StringComparison.Ordinal);
         Assert.Contains("hi @tom", html, StringComparison.Ordinal);
         Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
@@ -156,7 +158,8 @@ public sealed class ProfilePagesTests : IDisposable
         var html = await client.GetStringAsync(new Uri("/notifications", UriKind.Relative), TestSupport.Ct);
 
         Assert.Contains("还没有通知", html, StringComparison.Ordinal);
-        Assert.DoesNotContain("handler=Read", html, StringComparison.Ordinal);
+        // Kept for the live script, which shows it once something unread arrives.
+        Assert.Contains("data-mark-read hidden=\"hidden\"", html, StringComparison.Ordinal);
     }
 
     private ActorRow ArrangeProfile(string handle, string? bio = null)

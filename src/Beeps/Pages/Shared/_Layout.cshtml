@@ -7,6 +7,8 @@
     var currentCulture = CultureInfo.CurrentUICulture.Name;
     var returnUrl = $"{Context.Request.PathBase}{Context.Request.Path}{Context.Request.QueryString}";
     var signedIn = User.IsHuman();
+    // PLAN 6.10: live updates for members only; everyone else gets static, cacheable pages.
+    var live = User.IsMember();
     var page = ViewContext.RouteData.Values["page"] as string;
     string? Current(string name) => page == name ? "page" : null;
     var (notice, alert) = Notices.Take(Context, TempData);
@@ -22,9 +24,13 @@
     <link rel="apple-touch-icon" href="~/images/logo.png" asp-append-version="true">
     <link rel="stylesheet" href="~/dist/main.css" asp-append-version="true">
     <script type="module" src="~/dist/main.js" asp-append-version="true"></script>
+    @if (live)
+    {
+        <script type="module" src="~/dist/live.js" asp-append-version="true"></script>
+    }
     @await RenderSectionAsync("Head", required: false)
 </head>
-<body class="page">
+<body class="page" live-stream>
     <a class="skip-link" href="#main">@L["Nav.SkipToContent"]</a>
     <header class="navbar navbar-light navbar-sticky">
         <div class="container navbar-inner">
@@ -38,7 +44,14 @@
                     var handle = User.Identity?.Name ?? "";
                     <li><a class="navbar-link" href="~/" aria-current="@Current("/Index")">@L["Nav.Home"]</a></li>
                     <li><a class="navbar-link" asp-page="/Public" aria-current="@Current("/Public")">@L["Nav.Public"]</a></li>
-                    <li><a class="navbar-link" asp-page="/Notifications" aria-current="@Current("/Notifications")">@L["Nav.Notifications"]</a></li>
+                    <li><partial name="_SearchLink" /></li>
+                    <li>
+                        <a class="navbar-link indicator-host" asp-page="/Notifications" aria-current="@Current("/Notifications")">
+                            @L["Nav.Notifications"]
+                            @* Filled in by the live script with the unread count; it sits on the corner, taking no room in the row. *@
+                            <span class="indicator-count nav-count" data-inbox-count hidden></span>
+                        </a>
+                    </li>
                     <li><a class="navbar-link" asp-page="/Agents/Index" aria-current="@Current("/Agents/Index")">@L["Nav.Agents"]</a></li>
                     <li>
                         <details class="menu" data-menu>
@@ -63,6 +76,7 @@
                 }
                 else
                 {
+                    <li><partial name="_SearchLink" /></li>
                     <li><a class="navbar-link" asp-page="/Account/Login">@L["Nav.Login"]</a></li>
                     <li><a class="btn btn-primary btn-sm" asp-page="/Account/Register">@L["Nav.Register"]</a></li>
                 }

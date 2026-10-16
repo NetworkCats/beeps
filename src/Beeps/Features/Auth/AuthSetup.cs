@@ -25,10 +25,25 @@ public static class AuthSetup
                 options.ExpireTimeSpan = SessionService.Lifetime;
                 options.SlidingExpiration = true;
                 options.LoginPath = LoginPath;
+                options.Events.OnRedirectToLogin = context =>
+                {
+                    // PLAN 6.10: the stream and the fragments it leads to refuse signed-out requests outright;
+                    // a redirect to the login page would only feed HTML to a script.
+                    if (IsLive(context.Request))
+                    {
+                        context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                    }
+                    else
+                    {
+                        context.Response.Redirect(context.RedirectUri);
+                    }
+
+                    return Task.CompletedTask;
+                };
                 options.Events.OnRedirectToAccessDenied = context =>
                 {
                     // An unverified account is sent to finish verification; anyone else gets a plain 403 page.
-                    if (context.HttpContext.User.FindFirst(BeepsClaims.EmailVerified)?.Value == "false")
+                    if (!IsLive(context.Request) && context.HttpContext.User.FindFirst(BeepsClaims.EmailVerified)?.Value == "false")
                     {
                         context.Response.Redirect(VerifyPath);
                     }
@@ -86,7 +101,15 @@ public static class AuthSetup
         conventions.AuthorizePage("/Profiles/Follow", AuthPolicies.Member);
         conventions.AuthorizePage("/Notifications", AuthPolicies.Member);
         conventions.AuthorizePage("/Settings", AuthPolicies.Member);
+        conventions.AuthorizeFolder("/Live", AuthPolicies.Member);
         return conventions;
+    }
+
+    /// <summary>The browsers' event stream and the fragments live pages fetch: never a login redirect.</summary>
+    public static bool IsLive(HttpRequest request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        return request.Path.StartsWithSegments("/stream") || request.Path.StartsWithSegments("/live");
     }
 
     public static bool IsApi(HttpRequest request)

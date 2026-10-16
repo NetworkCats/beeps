@@ -12,6 +12,9 @@ public enum ErrorKind
 
     /// <summary>The request carried more data than allowed (an oversized upload).</summary>
     TooLarge,
+
+    /// <summary>A service this operation needs (the search engine…) is not reachable right now.</summary>
+    Unavailable,
 }
 
 /// <summary>
@@ -36,6 +39,8 @@ public sealed record Error(ErrorKind Kind, string Code, string? Detail = null)
     public static Error NotFound(string code, string? detail = null) => new(ErrorKind.NotFound, code, detail);
 
     public static Error Conflict(string code, string? detail = null) => new(ErrorKind.Conflict, code, detail);
+
+    public static Error Unavailable(string code, string? detail = null) => new(ErrorKind.Unavailable, code, detail);
 
     public static Error RateLimited(TimeSpan retryAfter, string? detail = null) =>
         new(ErrorKind.RateLimited, ErrorCodes.RateLimited, detail) { RetryAfter = retryAfter };

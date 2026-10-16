@@ -1,5 +1,6 @@
 using Beeps.Features.Accounts;
 using Beeps.Features.Beeps;
+using Beeps.Features.Live;
 using Beeps.Features.Media;
 using Beeps.Features.RateLimiting;
 using Beeps.Features.Shared;
@@ -30,6 +31,7 @@ public sealed partial class AvatarService(
     IAccountStore accounts,
     IUnitOfWork unitOfWork,
     RateLimitService rateLimits,
+    LiveUpdates live,
     IStringLocalizer<SharedResource> localizer,
     ILogger<AvatarService> logger)
 {
@@ -105,6 +107,7 @@ public sealed partial class AvatarService(
         }
 
         LogChanged(logger, target.Id, viewer.ActorId, mediaId);
+        await live.ActorChangedAsync(target.Id, cancellationToken);
         return Result.Success;
     }
 

@@ -2,10 +2,12 @@ using System.Text.Json.Serialization.Metadata;
 using Beeps.Features.Accounts;
 using Beeps.Features.Avatars;
 using Beeps.Features.Beeps;
+using Beeps.Features.Live;
 using Beeps.Features.Media;
 using Beeps.Features.Moderation;
 using Beeps.Features.Notifications;
 using Beeps.Features.RateLimiting;
+using Beeps.Features.Search;
 using Beeps.Features.Shared;
 using Beeps.Tests.Support;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -22,6 +24,7 @@ public sealed class BeepServiceTests
     private readonly IBeepStore store = Substitute.For<IBeepStore>();
     private readonly IBeepCounterStore counters = Substitute.For<IBeepCounterStore>();
     private readonly IOutbox outbox = Substitute.For<IOutbox>();
+    private readonly ILiveEventStore liveEvents = Substitute.For<ILiveEventStore>();
     private readonly IRateLimitStore rateLimitStore = Substitute.For<IRateLimitStore>();
     private readonly ImmediateUnitOfWork unitOfWork = new();
     private readonly MediaServiceParts media;
@@ -68,8 +71,13 @@ public sealed class BeepServiceTests
         Assert.Equal(ModerationStatus.Pending, added.ModerationStatus);
         store.Received(1).AddBeep(added, Arg.Is<IReadOnlyCollection<Guid>>(m => m.Single() == alice.Id), Arg.Is<IReadOnlyCollection<Guid>>(t => t.Single() == tagId));
         outbox.Received(1).Enqueue(BeepNotificationsRequest.MessageType, Arg.Is<BeepNotificationsRequest>(r => r.BeepId == added.Id), Arg.Any<JsonTypeInfo<BeepNotificationsRequest>>());
+        // Searchable once committed, in the same transaction (PLAN 12), and announced to open pages afterwards.
+        outbox.Received(1).Enqueue(SearchBeepSyncRequest.MessageType, new SearchBeepSyncRequest(added.Id), Arg.Any<JsonTypeInfo<SearchBeepSyncRequest>>());
         Assert.Equal(1, unitOfWork.Saves);
         Assert.Equal([[RateLimitPolicies.HumanPost]], checkedPolicies);
+        Assert.Equal(
+            [$$"""{"id":"{{added.Id:D}}","author_id":"{{OwnerId:D}}","author_account_id":"{{OwnerId:D}}","reply_to_id":null,"reply_to_account_id":null,"root_id":"{{added.Id:D}}","hashtags":["beeps"]}"""],
+            TestData.LiveEvents(liveEvents, LiveEventTypes.BeepPosted));
     }
 
     [Fact]
@@ -98,7 +106,8 @@ public sealed class BeepServiceTests
     [Fact]
     public async Task AnAgentsReplyJoinsTheThreadAndIsLimitedPerThread()
     {
-        var parent = Ref(Guid.NewGuid(), root: Guid.NewGuid(), likes: 4, replies: 2);
+        var parentOwner = Guid.NewGuid();
+        var parent = Ref(Guid.NewGuid(), authorOwner: parentOwner, root: Guid.NewGuid(), likes: 4, replies: 2);
 
         var result = await CreateService().PostAsync(Agent, "same here", parent.Id, [], TestSupport.Ct);
 
@@ -108,6 +117,10 @@ public sealed class BeepServiceTests
         Assert.Equal([[RateLimitPolicies.AgentReply, RateLimitPolicies.AgentThreadReply, RateLimitPolicies.OwnerAgentsPost]], checkedPolicies);
         outbox.Received(1).Enqueue(BeepNotificationsRequest.MessageType, Arg.Any<BeepNotificationsRequest>(), Arg.Any<JsonTypeInfo<BeepNotificationsRequest>>());
         await counters.Received(1).AddAsync(parent.Id, new BeepCounts(4, 2), new BeepCounts(0, 1), Arg.Any<CancellationToken>());
+        await liveEvents.Received(1).MarkCountsChangedAsync(parent.Id, Arg.Any<CancellationToken>());
+        // Home timelines decide on replies by whose account the parent belongs to.
+        var posted = System.Text.Json.JsonSerializer.Deserialize(Assert.Single(TestData.LiveEvents(liveEvents, LiveEventTypes.BeepPosted)), LiveJsonContext.Default.BeepPostedEvent)!;
+        Assert.Equal((Agent.ActorId, OwnerId, parent.Id, parentOwner, parent.RootId), (posted.AuthorId, posted.AuthorAccountId, posted.ReplyToId, posted.ReplyToAccountId, posted.RootId));
     }
 
     [Fact]
@@ -186,6 +199,32 @@ public sealed class BeepServiceTests
     }
 
     [Fact]
+    public async Task AThreadCanBeReadOnByItsRootEvenIfTheRootIsGone()
+    {
+        var root = Guid.NewGuid();
+        var after = Guid.NewGuid();
+        var reply = Row(Guid.NewGuid(), OwnerId);
+        store.ListThreadAsync(root, after, 50, OwnerId, Arg.Any<CancellationToken>()).Returns(new CursorPage<BeepRow>([reply], null));
+
+        var page = await CreateService().ListThreadAsync(Human, root, after, 50, TestSupport.Ct);
+
+        Assert.Equal([reply.Id], page.Items.Select(b => b.Id));
+        await store.DidNotReceiveWithAnyArgs().FindVisibleAsync(default, default, TestSupport.Ct);
+    }
+
+    [Fact]
+    public async Task AuthorHandlesAreOnlyThoseOfVisibleBeeps()
+    {
+        var shown = Row(Guid.NewGuid(), OwnerId);
+        var hidden = Guid.NewGuid();
+        store.GetRowsAsync(Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Count == 2), null, Arg.Any<CancellationToken>()).Returns([shown]);
+
+        var handles = await CreateService().GetAuthorHandlesAsync(null, [shown.Id, hidden], TestSupport.Ct);
+
+        Assert.Equal(new Dictionary<Guid, string?> { [shown.Id] = "tom" }, handles);
+    }
+
+    [Fact]
     public async Task AuthorsDeleteTheirBeepsAndTheParentLosesAReply()
     {
         var parent = Ref(Guid.NewGuid(), replies: 3);
@@ -196,6 +235,9 @@ public sealed class BeepServiceTests
 
         Assert.True(result.IsSuccess);
         await counters.Received(1).AddAsync(parent.Id, new BeepCounts(0, 3), new BeepCounts(0, -1), Arg.Any<CancellationToken>());
+        outbox.Received(1).Enqueue(SearchBeepSyncRequest.MessageType, new SearchBeepSyncRequest(reply.Id), Arg.Any<JsonTypeInfo<SearchBeepSyncRequest>>());
+        Assert.Equal(1, unitOfWork.Saves);
+        Assert.Equal([$$"""{"id":"{{reply.Id:D}}"}"""], TestData.LiveEvents(liveEvents, LiveEventTypes.BeepRemoved));
     }
 
     [Fact]
@@ -236,6 +278,8 @@ public sealed class BeepServiceTests
 
         Assert.True(result.IsSuccess);
         await counters.DidNotReceiveWithAnyArgs().AddAsync(default, default, default, TestSupport.Ct);
+        outbox.DidNotReceiveWithAnyArgs().Enqueue<SearchBeepSyncRequest>(default!, default!, default!);
+        Assert.Empty(TestData.LiveEvents(liveEvents, LiveEventTypes.BeepRemoved));
     }
 
     [Fact]
@@ -252,6 +296,7 @@ public sealed class BeepServiceTests
             Arg.Is<LikeNotificationRequest>(r => r.BeepId == beep.Id && r.ActorId == Agent.ActorId),
             Arg.Any<JsonTypeInfo<LikeNotificationRequest>>());
         await counters.Received(1).AddAsync(beep.Id, new BeepCounts(7, 0), new BeepCounts(1, 0), Arg.Any<CancellationToken>());
+        await liveEvents.Received(1).MarkCountsChangedAsync(beep.Id, Arg.Any<CancellationToken>());
         Assert.Equal([[RateLimitPolicies.Like]], checkedPolicies);
     }
 
@@ -415,6 +460,7 @@ public sealed class BeepServiceTests
             unitOfWork,
             outbox,
             TestData.RateLimits(rateLimitStore),
+            TestData.Live(liveEvents, counters),
             Options.Create(new ModerationOptions { Enabled = moderationEnabled }),
             TestData.Time(),
             localizer,

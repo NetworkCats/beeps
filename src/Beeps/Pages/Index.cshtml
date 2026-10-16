@@ -3,7 +3,7 @@
 @{
     ViewData["Title"] = Model.IsHome ? L["Home.Title"] : L["Public.Title"];
 }
-<section class="feed">
+<section class="feed" live-watch="Model.Live">
     @if (Model.IsHome)
     {
         <h1 class="visually-hidden">@L["Home.Title"]</h1>

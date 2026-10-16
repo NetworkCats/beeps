@@ -56,6 +56,9 @@ public interface INotificationStore
     /// <summary>Newest first; only notifications about beeps the recipient can still see.</summary>
     Task<CursorPage<NotificationRow>> ListAsync(Guid recipientId, PageRequest page, bool unreadOnly, CancellationToken cancellationToken);
 
+    /// <summary>Unread ones, with the same visibility rules as <see cref="ListAsync"/>.</summary>
+    Task<int> CountUnreadAsync(Guid recipientId, CancellationToken cancellationToken);
+
     /// <summary>Marks unread notifications read, all of them or those up to and including <paramref name="upToId"/>. Runs immediately; returns how many.</summary>
     Task<int> MarkReadAsync(Guid recipientId, Guid? upToId, DateTimeOffset now, CancellationToken cancellationToken);
 }

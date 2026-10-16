@@ -1,5 +1,6 @@
 using Beeps.Features.Auth;
 using Beeps.Features.Beeps;
+using Beeps.Features.Live;
 using Beeps.Features.Shared;
 using Beeps.Features.Shared.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -17,6 +18,9 @@ public sealed class DetailsModel(BeepService beeps) : PageModel
     public BeepView Focus { get; private set; } = null!;
 
     public CursorPage<BeepView> Thread { get; private set; } = new([], null);
+
+    /// <summary>New replies are added at the end, so only on the thread's last page.</summary>
+    public LiveTopic Live => Thread.NextCursor is null ? LiveTopic.Thread(Focus.RootId) : LiveTopic.None;
 
     public async Task<IActionResult> OnGetAsync(Guid id, CancellationToken cancellationToken)
     {

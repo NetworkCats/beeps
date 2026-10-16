@@ -1,6 +1,7 @@
 using Beeps.Features.Accounts;
 using Beeps.Features.Avatars;
 using Beeps.Features.Beeps;
+using Beeps.Features.Live;
 using Beeps.Features.Media;
 using Beeps.Features.RateLimiting;
 using Beeps.Features.Shared;
@@ -18,6 +19,7 @@ public sealed class AvatarServiceTests
 
     private readonly IAvatarStore store = Substitute.For<IAvatarStore>();
     private readonly IAccountStore accounts = Substitute.For<IAccountStore>();
+    private readonly ILiveEventStore liveEvents = Substitute.For<ILiveEventStore>();
     private readonly MediaServiceParts media = MediaServiceParts.WithRealImages();
 
     public AvatarServiceTests()
@@ -49,6 +51,8 @@ public sealed class AvatarServiceTests
 
         Assert.True(result.IsSuccess);
         await accounts.Received(1).ForgetAccountAsync(OwnerId, Arg.Any<CancellationToken>());
+        // An open profile page shows the new avatar.
+        Assert.Equal([$$"""{"actor_id":"{{OwnerId:D}}"}"""], TestData.LiveEvents(liveEvents, LiveEventTypes.ActorChanged));
     }
 
     [Fact]
@@ -206,6 +210,7 @@ public sealed class AvatarServiceTests
             accounts,
             media.UnitOfWork,
             TestData.RateLimits(rateLimits),
+            TestData.Live(liveEvents),
             new TestLocalizer(),
             NullLogger<AvatarService>.Instance);
     }

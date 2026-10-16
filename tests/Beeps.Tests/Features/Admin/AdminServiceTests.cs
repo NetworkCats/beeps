@@ -2,6 +2,8 @@ using Beeps.Features.Accounts;
 using Beeps.Features.Admin;
 using Beeps.Features.Agents;
 using Beeps.Features.Avatars;
+using Beeps.Features.Live;
+using Beeps.Features.Search;
 using Beeps.Features.Shared;
 using Beeps.Tests.Support;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -18,6 +20,7 @@ public sealed class AdminServiceTests
     private readonly ISessionStore sessions = Substitute.For<ISessionStore>();
     private readonly IAgentStore agents = Substitute.For<IAgentStore>();
     private readonly ImmediateUnitOfWork unitOfWork = new();
+    private readonly IOutbox outbox = Substitute.For<IOutbox>();
     private readonly List<AdminAuditLog> audit = [];
 
     public AdminServiceTests()
@@ -104,6 +107,24 @@ public sealed class AdminServiceTests
         Assert.Equal((AuditActions.BanUser, AdminId, user.Id), (entry.Action, entry.AdminId, entry.TargetId));
         await agents.Received(1).ForgetKeysAsync(agentIds, Arg.Any<CancellationToken>());
         Assert.Equal(1, unitOfWork.Saves);
+        // Their profiles and beeps leave search in the same transaction.
+        outbox.Received(1).Enqueue(SearchAccountSyncRequest.MessageType, new SearchAccountSyncRequest(user.Id, true), Arg.Any<System.Text.Json.Serialization.Metadata.JsonTypeInfo<SearchAccountSyncRequest>>());
+    }
+
+    [Fact]
+    public async Task UnbanningAndDeletingResyncSearchToo()
+    {
+        var banned = User();
+        banned.BannedAt = TestData.Now;
+        var deleted = User();
+        agents.DeleteAllAsync(deleted.Id, TestData.Now, Arg.Any<CancellationToken>()).Returns([]);
+        var service = CreateService();
+
+        await service.UnbanUserAsync(AdminId, banned.Id, TestSupport.Ct);
+        await service.DeleteUserAsync(AdminId, deleted.Id, TestSupport.Ct);
+
+        outbox.Received(1).Enqueue(SearchAccountSyncRequest.MessageType, new SearchAccountSyncRequest(banned.Id, true), Arg.Any<System.Text.Json.Serialization.Metadata.JsonTypeInfo<SearchAccountSyncRequest>>());
+        outbox.Received(1).Enqueue(SearchAccountSyncRequest.MessageType, new SearchAccountSyncRequest(deleted.Id, true), Arg.Any<System.Text.Json.Serialization.Metadata.JsonTypeInfo<SearchAccountSyncRequest>>());
     }
 
     [Fact]
@@ -302,7 +323,8 @@ public sealed class AdminServiceTests
     {
         var avatars = TestData.Avatars;
         var localizer = new TestLocalizer();
-        var agentService = new AgentService(agents, unitOfWork, avatars, Options.Create(new AgentOptions()), TestData.Time(), localizer, NullLogger<AgentService>.Instance);
-        return new AdminService(store, accounts, sessions, agents, agentService, unitOfWork, avatars, TestData.Time(), localizer, NullLogger<AdminService>.Instance);
+        var agentService = new AgentService(
+            agents, unitOfWork, outbox, TestData.Live(Substitute.For<ILiveEventStore>()), avatars, Options.Create(new AgentOptions()), TestData.Time(), localizer, NullLogger<AgentService>.Instance);
+        return new AdminService(store, accounts, sessions, agents, agentService, unitOfWork, outbox, avatars, TestData.Time(), localizer, NullLogger<AdminService>.Instance);
     }
 }

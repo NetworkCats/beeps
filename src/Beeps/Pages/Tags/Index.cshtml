@@ -3,7 +3,7 @@
 @{
     ViewData["Title"] = $"#{Model.Tag}";
 }
-<section class="feed">
+<section class="feed" live-watch="Model.Live">
     <h1 class="feed-title">#@Model.Tag</h1>
     <partial name="_BeepList" model='new BeepList(Model.Beeps, L["Tag.Empty.Title"])' />
 </section>

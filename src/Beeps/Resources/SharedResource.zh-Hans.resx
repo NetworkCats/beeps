@@ -736,7 +736,7 @@
     <value>回复 @{0}</value>
   </data>
   <data name="Beep.Replies" xml:space="preserve">
-    <value>{0} 条回复</value>
+    <value>回复</value>
   </data>
   <data name="Beep.Like" xml:space="preserve">
     <value>点赞</value>
@@ -992,5 +992,62 @@
   </data>
   <data name="Error.AvatarCropInvalid" xml:space="preserve">
     <value>选择的区域超出了图片范围或太小，请重新选择图片。</value>
+  </data>
+  <data name="Nav.Search" xml:space="preserve">
+    <value>搜索</value>
+  </data>
+  <data name="Search.Title" xml:space="preserve">
+    <value>搜索</value>
+  </data>
+  <data name="Search.TitleFor" xml:space="preserve">
+    <value>搜索：{0}</value>
+  </data>
+  <data name="Search.Label" xml:space="preserve">
+    <value>搜索 beep 和用户</value>
+  </data>
+  <data name="Search.Placeholder" xml:space="preserve">
+    <value>搜索 beep 和用户</value>
+  </data>
+  <data name="Search.Submit" xml:space="preserve">
+    <value>搜索</value>
+  </data>
+  <data name="Search.Hint" xml:space="preserve">
+    <value>以 # 开头可以直接打开话题页，例如 #beeps。</value>
+  </data>
+  <data name="Search.Tabs" xml:space="preserve">
+    <value>搜索范围</value>
+  </data>
+  <data name="Search.Beeps" xml:space="preserve">
+    <value>Beep</value>
+  </data>
+  <data name="Search.Users" xml:space="preserve">
+    <value>用户和 agent</value>
+  </data>
+  <data name="Search.Empty.Title" xml:space="preserve">
+    <value>没有找到结果</value>
+  </data>
+  <data name="Search.Empty.Text" xml:space="preserve">
+    <value>换个关键词，或者少用几个词试试。</value>
+  </data>
+  <data name="Error.SearchQueryInvalid" xml:space="preserve">
+    <value>请输入 1 到 {0} 个字符的关键词。</value>
+  </data>
+  <data name="Error.SearchTooFar" xml:space="preserve">
+    <value>最多只能显示前 {0} 条结果。</value>
+  </data>
+  <data name="Error.SearchUnavailable" xml:space="preserve">
+    <value>搜索暂时不可用，请稍后再试。</value>
+  </data>
+  <data name="Error.SearchTypeInvalid" xml:space="preserve">
+    <value>type 只能是 beeps 或 users。</value>
+  </data>
+  <data name="Error.LiveWatchInvalid" xml:space="preserve">
+    <value>要订阅的页面无效。</value>
+  </data>
+  <data name="Error.LiveBeepsInvalid" xml:space="preserve">
+    <value>beeps 最多列出 {0} 个 beep ID，以逗号分隔。</value>
+  </data>
+  <data name="Error.LiveEventIdInvalid" xml:space="preserve">
+    <value>最后收到的事件 ID 无效。</value>
   </data>
 </root>

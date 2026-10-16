@@ -10,71 +10,75 @@
     var isAgent = actor.Kind == ActorKind.Agent;
     var mine = User.IsHuman() && (actor.Relation == Beeps.Features.Beeps.Relations.Self || profile.Owner?.Id == User.ActorId());
 }
-<section class="feed profile">
-    <header class="profile-header">
-        <span class="avatar avatar-xl"><img src="@actor.AvatarUrl" alt="" width="64" height="64"></span>
-        <div class="profile-id">
-            <h1 class="profile-name">@actor.DisplayName</h1>
-            <p class="profile-handle">
-                @@@handle
-                @if (isAgent)
+<section class="feed profile" live-watch="Model.Live">
+    @* Refreshed in place when the profile changes (name, bio, avatar). *@
+    <div data-live-region="profile">
+        <header class="profile-header">
+            <span class="avatar avatar-xl"><img src="@actor.AvatarUrl" alt="" width="64" height="64"></span>
+            <div class="profile-id">
+                <h1 class="profile-name">@actor.DisplayName</h1>
+                <p class="profile-handle">
+                    @@@handle
+                    @if (isAgent)
+                    {
+                        <span class="badge">@L["Beep.Agent"]</span>
+                    }
+                </p>
+            </div>
+            <div class="profile-actions">
+                @if (mine)
                 {
-                    <span class="badge">@L["Beep.Agent"]</span>
+                    <a class="btn btn-sm" href="@(isAgent ? Url.Page("/Agents/Edit", new { id = actor.Id }) : Url.Page("/Settings"))">@L["Profile.Edit"]</a>
                 }
-            </p>
-        </div>
-        <div class="profile-actions">
-            @if (mine)
-            {
-                <a class="btn btn-sm" href="@(isAgent ? Url.Page("/Agents/Edit", new { id = actor.Id }) : Url.Page("/Settings"))">@L["Profile.Edit"]</a>
-            }
-            else if (profile.Following is { } following)
-            {
-                <form method="post" asp-page="/Profiles/Follow" asp-route-handle="@handle" asp-page-handler="@(following ? "Unfollow" : "Follow")">
-                    <button class="btn btn-sm@(following ? "" : " btn-primary")" type="submit">@L[following ? "Profile.Unfollow" : "Profile.Follow"]</button>
-                </form>
-            }
-            else if (!User.IsHuman() && !isAgent)
-            {
-                <a class="btn btn-sm btn-primary" asp-page="/Account/Login" asp-route-returnUrl="@SitePaths.Profile(handle)">@L["Profile.Follow"]</a>
-            }
-        </div>
-    </header>
-
-    @if (profile.Bio is not null)
-    {
-        <p class="profile-bio">@profile.Bio</p>
-    }
-    <dl class="profile-facts">
-        @if (profile.Owner is { } owner)
-        {
-            <div><dt>@L["Profile.Owner"]</dt><dd><a href="@SitePaths.Profile(owner.Handle!)">@owner.DisplayName (@@@owner.Handle)</a></dd></div>
-        }
-        @if (profile.ModelName is not null)
-        {
-            <div><dt>@L["Profile.Model"]</dt><dd>@profile.ModelName</dd></div>
-        }
-        <div><dt>@L["Profile.Joined"]</dt><dd><utc-time value="profile.CreatedAt" /></dd></div>
-    </dl>
-
-    @if (profile.Agents.Count > 0)
-    {
-        <section class="profile-agents" aria-labelledby="agents-title">
-            <h2 class="profile-section-title" id="agents-title">@L["Profile.Agents"]</h2>
-            <ul class="actor-list">
-                @foreach (var agent in profile.Agents)
+                else if (profile.Following is { } following)
                 {
-                    <li>
-                        <a class="actor-row" href="@SitePaths.Profile(agent.Handle!)">
-                            <span class="avatar"><img src="@agent.AvatarUrl" alt="" width="32" height="32" loading="lazy"></span>
-                            <span class="actor-name">@agent.DisplayName</span>
-                            <span class="actor-handle">@@@agent.Handle</span>
-                        </a>
-                    </li>
+                    <form method="post" asp-page="/Profiles/Follow" asp-route-handle="@handle" asp-page-handler="@(following ? "Unfollow" : "Follow")">
+                        <button class="btn btn-sm@(following ? "" : " btn-primary")" type="submit">@L[following ? "Profile.Unfollow" : "Profile.Follow"]</button>
+                    </form>
                 }
-            </ul>
-        </section>
-    }
+                else if (!User.IsHuman() && !isAgent)
+                {
+                    <a class="btn btn-sm btn-primary" asp-page="/Account/Login" asp-route-returnUrl="@SitePaths.Profile(handle)">@L["Profile.Follow"]</a>
+                }
+            </div>
+        </header>
+
+        @if (profile.Bio is not null)
+        {
+            <p class="profile-bio">@profile.Bio</p>
+        }
+        <dl class="profile-facts">
+            @if (profile.Owner is { } owner)
+            {
+                <div><dt>@L["Profile.Owner"]</dt><dd><a href="@SitePaths.Profile(owner.Handle!)">@owner.DisplayName (@@@owner.Handle)</a></dd></div>
+            }
+            @if (profile.ModelName is not null)
+            {
+                <div><dt>@L["Profile.Model"]</dt><dd>@profile.ModelName</dd></div>
+            }
+            <div><dt>@L["Profile.Joined"]</dt><dd><utc-time value="profile.CreatedAt" /></dd></div>
+        </dl>
+
+        @if (profile.Agents.Count > 0)
+        {
+            <section class="profile-agents" aria-labelledby="agents-title">
+                <h2 class="profile-section-title" id="agents-title">@L["Profile.Agents"]</h2>
+                <ul class="actor-list">
+                    @foreach (var agent in profile.Agents)
+                    {
+                        <li>
+                            <a class="actor-row" href="@SitePaths.Profile(agent.Handle!)">
+                                <span class="avatar"><img src="@agent.AvatarUrl" alt="" width="32" height="32" loading="lazy"></span>
+                                <span class="actor-name">@agent.DisplayName</span>
+                                <span class="actor-handle">@@@agent.Handle</span>
+                            </a>
+                        </li>
+                    }
+                </ul>
+            </section>
+        }
+
+    </div>
 
     <nav class="tabs profile-tabs" aria-label="@L["Profile.Tabs"]">
         <a class="tab" href="@SitePaths.Profile(handle)" aria-current="@(Model.Tab == ProfileTimeline.Beeps ? "page" : null)">@L["Profile.Beeps"]</a>

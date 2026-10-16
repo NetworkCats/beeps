@@ -1,5 +1,7 @@
 using Beeps.Features.Accounts;
 using Beeps.Features.Avatars;
+using Beeps.Features.Beeps;
+using Beeps.Features.Live;
 using Beeps.Features.Media;
 using Beeps.Features.RateLimiting;
 using Beeps.Features.Shared;
@@ -29,6 +31,16 @@ internal static class TestData
         time.GetUtcNow().Returns(Now);
         return time;
     }
+
+    /// <summary>The real live-event publisher over a mocked store, so tests can see which events a change published.</summary>
+    public static LiveUpdates Live(ILiveEventStore store, IBeepCounterStore? counters = null) =>
+        new(store, counters ?? Substitute.For<IBeepCounterStore>(), NullLogger<LiveUpdates>.Instance);
+
+    /// <summary>The live events of one type a mocked store received, with their JSON data.</summary>
+    public static List<string> LiveEvents(ILiveEventStore store, string type) =>
+        [.. store.ReceivedCalls()
+            .Where(c => c.GetMethodInfo().Name == nameof(ILiveEventStore.AppendAsync) && (string)c.GetArguments()[0]! == type)
+            .Select(c => (string)c.GetArguments()[1]!)];
 
     /// <summary>A real rate-limit service over a mocked store: every policy configured, the store decides.</summary>
     public static RateLimitService RateLimits(IRateLimitStore store)

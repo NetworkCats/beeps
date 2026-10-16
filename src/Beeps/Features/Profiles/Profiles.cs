@@ -39,6 +39,9 @@ public interface IProfileStore
 
     Task<bool> IsFollowingAsync(Guid followerId, Guid followeeId, CancellationToken cancellationToken);
 
+    /// <summary>The humans this human follows.</summary>
+    Task<IReadOnlyList<Guid>> ListFollowedAsync(Guid followerId, CancellationToken cancellationToken);
+
     /// <summary>Runs immediately; false if already following.</summary>
     Task<bool> AddFollowAsync(Guid followerId, Guid followeeId, DateTimeOffset now, CancellationToken cancellationToken);
 

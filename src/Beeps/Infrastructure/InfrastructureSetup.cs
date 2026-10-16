@@ -15,9 +15,11 @@ using Beeps.Infrastructure.Data.Stores;
 using Beeps.Infrastructure.Email;
 using Beeps.Infrastructure.Http;
 using Beeps.Infrastructure.Jobs;
+using Beeps.Infrastructure.Live;
 using Beeps.Infrastructure.Media;
 using Beeps.Infrastructure.Outbox;
 using Beeps.Infrastructure.Redis;
+using Beeps.Infrastructure.Search;
 using Beeps.Infrastructure.Storage;
 using Microsoft.AspNetCore.DataProtection;
 
@@ -35,6 +37,8 @@ public static class InfrastructureSetup
         services.AddBeepsScheduledJobs();
         services.AddBeepsEmail();
         services.AddBeepsStorage();
+        services.AddBeepsLive();
+        services.AddBeepsSearch();
         services.AddSingleton<IImageProcessor, SkiaImageProcessor>();
         services.AddSingleton<IRateLimitStore, RedisRateLimitStore>();
         services.AddSingleton<IIdempotencyStore, RedisIdempotencyStore>();

@@ -7,7 +7,7 @@
     var authors = Model.Thread.Items.ToDictionary(b => b.Id, b => b.Author.Handle);
     var focusShown = Model.Thread.Items.Any(b => b.Id == focus.Id);
 }
-<section class="feed thread">
+<section class="feed thread" live-watch="Model.Live">
     <h1 class="visually-hidden">@ViewData["Title"]</h1>
     @if (!focusShown)
     {

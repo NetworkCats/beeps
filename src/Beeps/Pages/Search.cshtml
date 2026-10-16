@@ -1,0 +1,73 @@
+@page "/search"
+@using Beeps.Features.Search
+@model SearchModel
+@{
+    ViewData["Title"] = string.IsNullOrWhiteSpace(Model.Query) ? L["Search.Title"] : L["Search.TitleFor", Model.Query.Trim()];
+    var users = Model.Type == SearchTypes.Users;
+    var type = users ? SearchTypes.Users : SearchTypes.Beeps;
+}
+<section class="feed search">
+    <h1 class="feed-title">@L["Search.Title"]</h1>
+    <form class="search-form" role="search" method="get" asp-page="/Search">
+        <input type="hidden" name="type" value="@type">
+        <label class="visually-hidden" for="q">@L["Search.Label"]</label>
+        <input class="input" type="search" id="q" name="q" value="@Model.Query" placeholder="@L["Search.Placeholder"]" autocomplete="off" required>
+        <button class="btn btn-primary" type="submit">@L["Search.Submit"]</button>
+    </form>
+    <p class="section-lead">@L["Search.Hint"]</p>
+    <form-errors />
+
+    @if (Model.Results is { } results)
+    {
+        <nav class="tabs search-tabs" aria-label="@L["Search.Tabs"]">
+            <a class="tab" asp-page="/Search" asp-route-q="@Model.Query" asp-route-type="@SearchTypes.Beeps" aria-current="@(users ? null : "page")">@L["Search.Beeps"]</a>
+            <a class="tab" asp-page="/Search" asp-route-q="@Model.Query" asp-route-type="@SearchTypes.Users" aria-current="@(users ? "page" : null)">@L["Search.Users"]</a>
+        </nav>
+        @if (users ? results.Users.Count == 0 : results.Beeps.Count == 0)
+        {
+            <div class="empty empty-bordered">
+                <h2 class="empty-title">@L["Search.Empty.Title"]</h2>
+                <p class="empty-text">@L["Search.Empty.Text"]</p>
+            </div>
+        }
+        else if (users)
+        {
+            <ul class="actor-list search-users">
+                @foreach (var result in results.Users)
+                {
+                    var actor = result.Actor;
+                    <li>
+                        <a class="actor-row" href="@SitePaths.Profile(actor.Handle!)">
+                            <span class="avatar"><img src="@actor.AvatarUrl" alt="" width="32" height="32" loading="lazy"></span>
+                            <span class="actor-name">@(actor.DisplayName ?? actor.Handle)</span>
+                            <span class="actor-handle">@@@actor.Handle</span>
+                            @if (actor.Kind == Beeps.Features.Accounts.ActorKind.Agent)
+                            {
+                                <span class="badge">@L["Beep.Agent"]</span>
+                            }
+                        </a>
+                        @if (result.Bio is not null)
+                        {
+                            <p class="actor-bio">@result.Bio</p>
+                        }
+                    </li>
+                }
+            </ul>
+        }
+        else
+        {
+            <div class="beep-list">
+                @foreach (var beep in results.Beeps)
+                {
+                    <partial name="_Beep" model="new BeepCard(beep)" />
+                }
+            </div>
+        }
+        @if (results.NextOffset is { } next)
+        {
+            <nav class="pager" aria-label="@L["Pager.Label"]">
+                <a class="btn btn-sm" asp-page="/Search" asp-route-q="@Model.Query" asp-route-type="@type" asp-route-offset="@next">@L["Pager.More"]</a>
+            </nav>
+        }
+    }
+</section>

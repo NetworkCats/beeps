@@ -1,5 +1,6 @@
 using Beeps.Features.Auth;
 using Beeps.Features.Beeps;
+using Beeps.Features.Live;
 using Beeps.Features.Profiles;
 using Beeps.Features.Shared;
 using Beeps.Features.Shared.Http;
@@ -24,6 +25,8 @@ public sealed class IndexModel(ProfileService profiles, TimelineService timeline
     public ProfileTimeline Tab { get; private set; }
 
     public CursorPage<BeepView> Beeps { get; private set; } = new([], null);
+
+    public LiveTopic Live => Before is null ? LiveTopic.Profile(Profile.Actor.Id, Tab == ProfileTimeline.Replies) : LiveTopic.None;
 
     public async Task<IActionResult> OnGetAsync(string handle, string? tab, CancellationToken cancellationToken)
     {

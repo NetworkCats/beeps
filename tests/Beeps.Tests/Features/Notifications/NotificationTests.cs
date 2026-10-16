@@ -2,6 +2,7 @@ using System.Text.Json;
 using Beeps.Features.Accounts;
 using Beeps.Features.Avatars;
 using Beeps.Features.Beeps;
+using Beeps.Features.Live;
 using Beeps.Features.Notifications;
 using Beeps.Features.Shared;
 using Beeps.Tests.Support;
@@ -18,6 +19,7 @@ public sealed class NotificationTests
     private readonly INotificationStore store = Substitute.For<INotificationStore>();
     private readonly IBeepStore beeps = Substitute.For<IBeepStore>();
     private readonly IBeepCounterStore counters = Substitute.For<IBeepCounterStore>();
+    private readonly ILiveEventStore liveEvents = Substitute.For<ILiveEventStore>();
     private readonly List<Notification> added = [];
 
     public NotificationTests()
@@ -37,11 +39,12 @@ public sealed class NotificationTests
         var mentioned = Guid.NewGuid();
         store.GetBeepAudienceAsync(BeepId, Arg.Any<CancellationToken>()).Returns(new BeepAudience(Author, Parent, [Parent, Author, mentioned]));
 
-        await new BeepNotificationsHandler(store, TestData.Time()).HandleAsync(Envelope(new BeepNotificationsRequest(BeepId)), TestSupport.Ct);
+        await new BeepNotificationsHandler(store, TestData.Live(liveEvents), TestData.Time()).HandleAsync(Envelope(new BeepNotificationsRequest(BeepId)), TestSupport.Ct);
 
         Assert.Equal(
             [(Parent, NotificationType.Reply), (mentioned, NotificationType.Mention)],
             added.Select(n => (n.RecipientId, n.Type)));
+        Assert.Equal([$$"""{"recipient_ids":["{{Parent:D}}","{{mentioned:D}}"]}"""], TestData.LiveEvents(liveEvents, LiveEventTypes.Inbox));
         Assert.All(added, n => Assert.Equal((Author, BeepId, TestData.Now), (n.FromActorId, n.BeepId, n.CreatedAt)));
     }
 
@@ -50,17 +53,18 @@ public sealed class NotificationTests
     {
         store.GetBeepAudienceAsync(BeepId, Arg.Any<CancellationToken>()).Returns(new BeepAudience(Author, Author, []));
 
-        await new BeepNotificationsHandler(store, TestData.Time()).HandleAsync(Envelope(new BeepNotificationsRequest(BeepId)), TestSupport.Ct);
-        await new BeepNotificationsHandler(store, TestData.Time()).HandleAsync(Envelope(new BeepNotificationsRequest(Guid.NewGuid())), TestSupport.Ct);
+        await new BeepNotificationsHandler(store, TestData.Live(liveEvents), TestData.Time()).HandleAsync(Envelope(new BeepNotificationsRequest(BeepId)), TestSupport.Ct);
+        await new BeepNotificationsHandler(store, TestData.Live(liveEvents), TestData.Time()).HandleAsync(Envelope(new BeepNotificationsRequest(Guid.NewGuid())), TestSupport.Ct);
 
         await store.DidNotReceiveWithAnyArgs().AddAsync(default!, TestSupport.Ct);
+        Assert.Empty(TestData.LiveEvents(liveEvents, LiveEventTypes.Inbox));
     }
 
     [Fact]
     public async Task ALikeNotifiesTheAuthorUnlessTakenBackOrTheirOwn()
     {
         var liker = Guid.NewGuid();
-        var handler = new LikeNotificationHandler(store, TestData.Time());
+        var handler = new LikeNotificationHandler(store, TestData.Live(liveEvents), TestData.Time());
         store.GetLikedBeepAuthorAsync(BeepId, liker, Arg.Any<CancellationToken>()).Returns(Author);
         store.GetLikedBeepAuthorAsync(BeepId, Author, Arg.Any<CancellationToken>()).Returns(Author);
 
@@ -70,6 +74,7 @@ public sealed class NotificationTests
 
         var like = Assert.Single(added);
         Assert.Equal((Author, NotificationType.Like, liker), (like.RecipientId, like.Type, like.FromActorId));
+        Assert.Equal([$$"""{"recipient_ids":["{{Author:D}}"]}"""], TestData.LiveEvents(liveEvents, LiveEventTypes.Inbox));
     }
 
     [Fact]
@@ -105,6 +110,19 @@ public sealed class NotificationTests
         store.MarkReadAsync(agent.ActorId, upTo, TestData.Now, Arg.Any<CancellationToken>()).Returns(3);
 
         Assert.Equal(3, await CreateService().MarkReadAsync(agent, upTo, TestSupport.Ct));
+        // Other open tabs and streams update their unread count; nothing changed, nothing to tell.
+        Assert.Equal([$$"""{"recipient_ids":["{{agent.ActorId:D}}"]}"""], TestData.LiveEvents(liveEvents, LiveEventTypes.Inbox));
+        Assert.Equal(0, await CreateService().MarkReadAsync(agent, null, TestSupport.Ct));
+        Assert.Single(TestData.LiveEvents(liveEvents, LiveEventTypes.Inbox));
+    }
+
+    [Fact]
+    public async Task TheUnreadCountIsTheViewersOwn()
+    {
+        var agent = Viewer.Agent(Guid.NewGuid(), Author);
+        store.CountUnreadAsync(agent.ActorId, Arg.Any<CancellationToken>()).Returns(4);
+
+        Assert.Equal(4, await CreateService().CountUnreadAsync(agent, TestSupport.Ct));
     }
 
     private static OutboxEnvelope Envelope(BeepNotificationsRequest payload) =>
@@ -114,5 +132,5 @@ public sealed class NotificationTests
         new(Guid.NewGuid(), LikeNotificationRequest.MessageType, JsonSerializer.Serialize(payload, NotificationsJsonContext.Default.LikeNotificationRequest), 1, TestData.Now);
 
     private NotificationService CreateService() =>
-        new(store, beeps, new BeepViews(beeps, counters, TestData.Avatars, TestData.Media, NullLogger<BeepViews>.Instance), TestData.Time());
+        new(store, beeps, new BeepViews(beeps, counters, TestData.Avatars, TestData.Media, NullLogger<BeepViews>.Instance), TestData.Live(liveEvents), TestData.Time());
 }

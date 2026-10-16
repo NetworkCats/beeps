@@ -22,7 +22,8 @@
     }
     else
     {
-        <div class="agent-card waiting" aria-live="polite">
+        @* The live script reloads the page as soon as this agent says hello. *@
+        <div class="agent-card waiting" aria-live="polite" data-live-agent="@Model.Agent.Id">
             <span class="avatar avatar-lg"><img src="@Model.Agent.AvatarUrl" alt=""></span>
             <p>@L["Connect.Waiting"]</p>
         </div>

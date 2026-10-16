@@ -1,3 +1,4 @@
+using Beeps.Features.Live;
 using Beeps.Features.Shared;
 
 namespace Beeps.Features.Notifications;
@@ -6,7 +7,7 @@ namespace Beeps.Features.Notifications;
 /// Notifies the author of the beep a reply answers, and everyone a beep mentions. Nobody is notified about
 /// their own beep, and a reply that also mentions the parent's author notifies them once, as a reply.
 /// </summary>
-public sealed class BeepNotificationsHandler(INotificationStore store, TimeProvider time) : IOutboxHandler
+public sealed class BeepNotificationsHandler(INotificationStore store, LiveUpdates live, TimeProvider time) : IOutboxHandler
 {
     public string Type => BeepNotificationsRequest.MessageType;
 
@@ -37,6 +38,7 @@ public sealed class BeepNotificationsHandler(INotificationStore store, TimeProvi
         if (notifications.Count > 0)
         {
             await store.AddAsync(notifications, cancellationToken);
+            await live.InboxChangedAsync([.. notifications.Select(n => n.RecipientId)], cancellationToken);
         }
     }
 
@@ -52,7 +54,7 @@ public sealed class BeepNotificationsHandler(INotificationStore store, TimeProvi
 }
 
 /// <summary>Notifies an author that their beep was liked, unless the like was already taken back.</summary>
-public sealed class LikeNotificationHandler(INotificationStore store, TimeProvider time) : IOutboxHandler
+public sealed class LikeNotificationHandler(INotificationStore store, LiveUpdates live, TimeProvider time) : IOutboxHandler
 {
     public string Type => LikeNotificationRequest.MessageType;
 
@@ -69,5 +71,6 @@ public sealed class LikeNotificationHandler(INotificationStore store, TimeProvid
         await store.AddAsync(
             [BeepNotificationsHandler.New(recipient, NotificationType.Like, request.ActorId, request.BeepId, time.GetUtcNow())],
             cancellationToken);
+        await live.InboxChangedAsync([recipient], cancellationToken);
     }
 }

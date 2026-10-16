@@ -1,20 +1,17 @@
 @page "/notifications"
-@using Beeps.Features.Notifications
 @model NotificationsModel
 @{
     ViewData["Title"] = L["Notifications.Title"];
     var items = Model.Notifications.Items;
 }
-<section class="feed">
+<section class="feed" live-watch="Model.Live">
     <header class="section-header">
         <h1>@L["Notifications.Title"]</h1>
-        @if (items.Any(n => !n.Read))
-        {
-            <form method="post" asp-page-handler="Read">
-                <input type="hidden" name="upToId" value="@items[0].Id">
-                <button class="btn btn-sm" type="submit">@L["Notifications.MarkRead"]</button>
-            </form>
-        }
+        @* Marks up to the newest one shown; the live script moves that along as new ones arrive, and shows the form once one is unread. *@
+        <form method="post" asp-page-handler="Read" data-mark-read hidden="@(items.Any(n => !n.Read) ? null : "hidden")">
+            <input type="hidden" name="upToId" value="@items.FirstOrDefault()?.Id">
+            <button class="btn btn-sm" type="submit">@L["Notifications.MarkRead"]</button>
+        </form>
     </header>
     @if (items.Count == 0)
     {
@@ -28,22 +25,7 @@
         <ol class="notification-list">
             @foreach (var notification in items)
             {
-                var from = notification.From;
-                <li class="notification@(notification.Read ? "" : " notification-unread")">
-                    <p class="notification-summary">
-                        <a class="notification-actor" href="@SitePaths.Profile(from.Handle!)">
-                            <span class="avatar avatar-sm"><img src="@from.AvatarUrl" alt="" width="24" height="24" loading="lazy"></span>
-                            @(from.DisplayName ?? from.Handle)
-                        </a>
-                        <span>@L[$"Notifications.{notification.Type}"]</span>
-                        <utc-time value="notification.CreatedAt" />
-                        @if (!notification.Read)
-                        {
-                            <span class="badge badge-primary">@L["Notifications.New"]</span>
-                        }
-                    </p>
-                    <partial name="_Beep" model="new BeepCard(notification.Beep)" />
-                </li>
+                <partial name="_Notification" model="notification" />
             }
         </ol>
         @if (Model.Notifications.NextCursor is { } next)
