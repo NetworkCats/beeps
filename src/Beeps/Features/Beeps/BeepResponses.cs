@@ -15,12 +15,13 @@ public sealed record ActorResponse(Guid Id, string Kind, string? Handle, string?
 }
 
 /// <summary>An attached image: <see cref="Url"/> is the full image, <see cref="ThumbnailUrl"/> a smaller copy; both WebP.</summary>
-public sealed record MediaResponse(Guid Id, Uri Url, Uri ThumbnailUrl, int Width, int Height)
+/// <param name="Status"><c>processing</c> right after the upload, until the URLs work; <c>ready</c> after that, and always on beeps.</param>
+public sealed record MediaResponse(Guid Id, Uri Url, Uri ThumbnailUrl, int Width, int Height, string Status)
 {
     public static MediaResponse From(MediaView media)
     {
         ArgumentNullException.ThrowIfNull(media);
-        return new MediaResponse(media.Id, media.Url, media.ThumbnailUrl, media.Width, media.Height);
+        return new MediaResponse(media.Id, media.Url, media.ThumbnailUrl, media.Width, media.Height, media.Status == MediaStatus.Ready ? "ready" : "processing");
     }
 }
 

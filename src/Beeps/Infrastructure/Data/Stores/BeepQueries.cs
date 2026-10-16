@@ -1,3 +1,4 @@
+using Beeps.Features.Media;
 using System.Linq.Expressions;
 using Beeps.Features.Accounts;
 using Beeps.Features.Beeps;
@@ -10,7 +11,7 @@ namespace Beeps.Infrastructure.Data.Stores;
 internal static class BeepQueries
 {
     public static readonly Expression<Func<Actor, ActorRow>> ToActorRow =
-        a => new ActorRow(a.Id, a.Kind, a.Handle, a.DisplayName, a.OwnerId, a.AvatarMedia == null ? null : a.AvatarMedia.StorageKey);
+        a => new ActorRow(a.Id, a.Kind, a.Handle, a.DisplayName, a.OwnerId, a.AvatarMedia == null || a.AvatarMedia.Status != MediaStatus.Ready ? null : a.AvatarMedia.StorageKey);
 
     /// <summary>Beeps the viewer may see (<see cref="BeepVisibility"/>), untracked.</summary>
     public static IQueryable<Beep> Visible(BeepsDbContext db, Guid? viewerId) =>
@@ -29,7 +30,7 @@ internal static class BeepQueries
                 b.Author.Handle,
                 b.Author.DisplayName,
                 b.Author.OwnerId,
-                b.Author.AvatarMedia == null ? null : b.Author.AvatarMedia.StorageKey),
+                b.Author.AvatarMedia == null || b.Author.AvatarMedia.Status != MediaStatus.Ready ? null : b.Author.AvatarMedia.StorageKey),
             b.ReplyToId,
             b.RootId,
             b.CreatedAt,

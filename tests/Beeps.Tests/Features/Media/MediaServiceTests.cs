@@ -6,7 +6,7 @@ using Beeps.Tests.Support;
 
 namespace Beeps.Tests.Features.Media;
 
-/// <summary>Uploads through the real SkiaSharp processor; storage, store and rate limits are mocks.</summary>
+/// <summary>Uploads through the real SkiaSharp processor; store, outbox and rate limits are mocks. Processing is in <see cref="ProcessMediaHandlerTests"/>.</summary>
 public sealed class MediaServiceTests
 {
     private static readonly Viewer Agent = Viewer.Agent(Guid.NewGuid(), Guid.NewGuid());
@@ -14,25 +14,32 @@ public sealed class MediaServiceTests
     private readonly MediaServiceParts parts = MediaServiceParts.WithRealImages();
 
     [Fact]
-    public async Task AnUploadIsStoredInEverySizeUnderARandomName()
+    public async Task AnUploadIsQueuedForProcessingUnderARandomName()
     {
         MediaItem? stored = null;
+        MediaUpload? upload = null;
         parts.Store.When(s => s.AddMedia(Arg.Any<MediaItem>())).Do(ci => stored = ci.Arg<MediaItem>());
+        parts.Store.When(s => s.AddUpload(Arg.Any<MediaUpload>())).Do(ci => upload = ci.Arg<MediaUpload>());
+        var png = TestImages.Quadrants(3000, 1000);
 
-        var result = await parts.Create().UploadAsync(Agent, TestImages.Content(TestImages.Quadrants(3000, 1000)), TestSupport.Ct);
+        var result = await parts.Create().UploadAsync(Agent, TestImages.Content(png), TestSupport.Ct);
 
         Assert.True(result.IsSuccess);
         Assert.NotNull(stored);
         Assert.Equal(Agent.ActorId, stored.OwnerActorId);
         Assert.Matches("^[0-9a-f]{32}$", stored.StorageKey);
+        // The size the stored image will have, from the header alone.
         Assert.Equal((2048, 683), (stored.Width, stored.Height));
-        foreach (var name in MediaObjects.All(stored.StorageKey))
-        {
-            await parts.Storage.Received(1).PutAsync(name, Arg.Is<ReadOnlyMemory<byte>>(m => IsWebP(m)), "image/webp", Arg.Any<CancellationToken>());
-        }
-
+        Assert.Equal(MediaStatus.Processing, stored.Status);
+        Assert.Equal(stored.Id, upload?.MediaId);
+        Assert.Equal(png, upload?.Data);
+        Assert.Null(upload?.Crop);
+        Assert.Equal([stored.Id], parts.Queued().Select(m => m.ReadPayload(MediaJsonContext.Default.ProcessMediaRequest).MediaId));
+        await parts.Storage.DidNotReceiveWithAnyArgs().PutAsync(default!, default, default!, TestSupport.Ct);
         Assert.Equal(1, parts.UnitOfWork.Saves);
-        Assert.Equal(new MediaView(stored.Id, TestData.Media.Full(stored.StorageKey), TestData.Media.Thumbnail(stored.StorageKey), 2048, 683), result.Value);
+        Assert.Equal(
+            new MediaView(stored.Id, TestData.Media.Full(stored.StorageKey), TestData.Media.Thumbnail(stored.StorageKey), 2048, 683, MediaStatus.Processing),
+            result.Value);
     }
 
     [Fact]
@@ -147,41 +154,33 @@ public sealed class MediaServiceTests
     }
 
     [Fact]
-    public async Task AnAvatarCropIsCheckedAgainstTheUprightSizeAndPassedOnFitted()
+    public async Task AnAvatarCropIsCheckedAgainstTheUprightSizeAndKeptFitted()
     {
         var images = Substitute.For<IImageProcessor>();
         images.ReadHeader(default).ReturnsForAnyArgs(new ImageHeader(ImageFormat.Png, 200, 100));
-        images.Encode(default, default).ReturnsForAnyArgs(new ImageVariants([1], 200, 100, [2], [3]));
-        var service = new MediaServiceParts { Images = images }.Create();
+        var parts = new MediaServiceParts { Images = images };
+        List<MediaUpload> uploads = [];
+        parts.Store.When(s => s.AddUpload(Arg.Any<MediaUpload>())).Do(ci => uploads.Add(ci.Arg<MediaUpload>()));
+        var service = parts.Create();
 
         var fitted = await service.UploadAsync(Agent, TestImages.Content(TestImages.Png()), new AvatarCrop(150, 0, 52), TestSupport.Ct);
         var outside = await service.UploadAsync(Agent, TestImages.Content(TestImages.Png()), new AvatarCrop(150, 0, 60), TestSupport.Ct);
 
         Assert.True(fitted.IsSuccess);
-        images.Received(1).Encode(Arg.Any<ReadOnlyMemory<byte>>(), new AvatarCrop(150, 0, 50));
         Assert.Equal(MediaErrorCodes.AvatarCropInvalid, outside.Error?.Code);
-        images.ReceivedWithAnyArgs(1).Encode(default, default);
+        Assert.Equal([new AvatarCrop(150, 0, 50)], uploads.Select(u => u.Crop));
     }
 
     [Fact]
-    public async Task AnImageThatFailsToDecodeIsRejected()
+    public async Task NothingIsDecodedWhileTheUploaderWaits()
     {
-        var jpeg = TestImages.Quadrants(400, 200, SkiaSharp.SKEncodedImageFormat.Jpeg);
+        var images = Substitute.For<IImageProcessor>();
+        images.ReadHeader(default).ReturnsForAnyArgs(new ImageHeader(ImageFormat.Png, 100, 100));
 
-        var result = await parts.Create().UploadAsync(Agent, TestImages.Content(jpeg[..(jpeg.Length / 2)]), TestSupport.Ct);
+        var result = await new MediaServiceParts { Images = images }.Create().UploadAsync(Agent, TestImages.Content(TestImages.Png()), TestSupport.Ct);
 
-        Assert.Equal(MediaErrorCodes.Unreadable, result.Error?.Code);
-        await parts.Storage.DidNotReceiveWithAnyArgs().PutAsync(default!, default, default!, TestSupport.Ct);
-    }
-
-    [Fact]
-    public async Task WhenTheRowCannotBeSavedTheObjectsAreRemovedAgain()
-    {
-        parts.UnitOfWork.FailNextSave = new InvalidOperationException("database down");
-
-        await Assert.ThrowsAsync<InvalidOperationException>(() => parts.Create().UploadAsync(Agent, TestImages.Content(TestImages.Png()), TestSupport.Ct));
-
-        await parts.Storage.Received(1).DeleteAsync(Arg.Is<IReadOnlyCollection<string>>(names => names.Count == 3), Arg.Any<CancellationToken>());
+        Assert.True(result.IsSuccess);
+        images.DidNotReceiveWithAnyArgs().Encode(default);
     }
 
     [Fact]

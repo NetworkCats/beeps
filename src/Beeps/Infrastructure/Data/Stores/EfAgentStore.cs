@@ -1,5 +1,6 @@
 using Beeps.Features.Accounts;
 using Beeps.Features.Agents;
+using Beeps.Features.Media;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Hybrid;
 
@@ -31,7 +32,7 @@ public sealed class EfAgentStore(BeepsDbContext db, HybridCache cache) : IAgentS
                 x.k == null ? null : x.k.CreatedAt,
                 x.k == null ? null : x.k.LastUsedAt,
                 x.a.Bio,
-                x.a.AvatarMedia == null ? null : x.a.AvatarMedia.StorageKey))
+                x.a.AvatarMedia == null || x.a.AvatarMedia.Status != MediaStatus.Ready ? null : x.a.AvatarMedia.StorageKey))
             .ToListAsync(cancellationToken);
 
     public Task<Actor?> FindAgentAsync(Guid agentId, CancellationToken cancellationToken) =>
@@ -107,8 +108,8 @@ public sealed class EfAgentStore(BeepsDbContext db, HybridCache cache) : IAgentS
                 o.Id,
                 o.Handle!,
                 o.DisplayName!,
-                a.AvatarMedia == null ? null : a.AvatarMedia.StorageKey,
-                o.AvatarMedia == null ? null : o.AvatarMedia.StorageKey))
+                a.AvatarMedia == null || a.AvatarMedia.Status != MediaStatus.Ready ? null : a.AvatarMedia.StorageKey,
+                o.AvatarMedia == null || o.AvatarMedia.Status != MediaStatus.Ready ? null : o.AvatarMedia.StorageKey))
             .FirstOrDefaultAsync(cancellationToken);
 
     public Task<bool> HandleTakenAsync(string normalizedHandle, CancellationToken cancellationToken) =>

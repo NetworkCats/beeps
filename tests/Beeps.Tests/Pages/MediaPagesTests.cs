@@ -5,6 +5,7 @@ using Beeps.Features.Avatars;
 using Beeps.Features.Beeps;
 using Beeps.Features.Media;
 using Beeps.Features.Shared;
+using Beeps.Infrastructure.Media;
 using Beeps.Tests.Support;
 
 namespace Beeps.Tests.Pages;
@@ -124,9 +125,8 @@ public sealed class MediaPagesTests : IDisposable
     {
         var user = WebAuth.ArrangeUser(factory);
         factory.Avatars.FindActorAsync(user.Id, Arg.Any<CancellationToken>()).Returns(new AvatarTarget(user.Id, ActorKind.Human, null));
-        byte[]? avatar = null;
-        factory.Storage.When(s => s.PutAsync(Arg.Is<string>(n => n.EndsWith("/avatar.webp", StringComparison.Ordinal)), Arg.Any<ReadOnlyMemory<byte>>(), Arg.Any<string>(), Arg.Any<CancellationToken>()))
-            .Do(ci => avatar = ci.ArgAt<ReadOnlyMemory<byte>>(1).ToArray());
+        MediaUpload? upload = null;
+        factory.Media.When(m => m.AddUpload(Arg.Any<MediaUpload>())).Do(ci => upload = ci.Arg<MediaUpload>());
         using var client = await WebAuth.SignInAsync(factory, user);
 
         // The bottom-left quadrant of a 200 × 100 image.
@@ -134,8 +134,11 @@ public sealed class MediaPagesTests : IDisposable
             client, "/settings", "/settings?handler=Avatar", [("Crop.X", "0"), ("Crop.Y", "50"), ("Crop.Size", "50")], [TestImages.Quadrants(200, 100)], "Avatar");
 
         Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
-        Assert.Equal((50, 50), TestImages.SizeOf(avatar!));
-        Assert.True(TestImages.Near(TestImages.ColorAt(avatar!, 0.5f, 0.5f), TestImages.BottomLeft));
+        Assert.Equal(new AvatarCrop(0, 50, 50), upload!.Crop);
+        // What the processing job will make of it.
+        var avatar = new SkiaImageProcessor().Encode(upload.Data, upload.Crop)!.Avatar;
+        Assert.Equal((50, 50), TestImages.SizeOf(avatar));
+        Assert.True(TestImages.Near(TestImages.ColorAt(avatar, 0.5f, 0.5f), TestImages.BottomLeft));
     }
 
     [Fact]

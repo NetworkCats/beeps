@@ -355,7 +355,7 @@ tests/Beeps.Tests/
 - **类型**：只允许 JPEG、PNG、WebP、GIF。只支持静态图，GIF 只取第一帧，动画 WebP 同理。
 - **不信任客户端**：忽略文件名和 Content-Type，通过文件头魔数判断真实类型。
 - **尺寸**：解码前先读取图片头中的宽高，超过上限（如 4096×4096 或总像素数上限）直接拒绝，防止解压炸弹；同时设置最小尺寸。
-- **完整解码再重新编码**：用 SkiaSharp 解码后重新编码为 WebP，去掉所有元数据（EXIF、GPS 位置等），解码失败即拒绝。
+- **完整解码再重新编码**：用 SkiaSharp 解码后重新编码为 WebP，去掉所有元数据（EXIF、GPS 位置等）。解码和编码不在上传请求里做，而是通过 Outbox 异步处理（见 6.8），失败可重试；上传请求只做魔数、文件头和尺寸检查，原图暂存在 PostgreSQL（不进公开的存储桶），处理完即删除。解码失败的图片标记为失败，永不显示，也不能再使用。
 - **生成多个尺寸**：原图（限制最大边长）和缩略图；头像裁剪为正方形并生成固定尺寸。
 - **存储**：使用随机或内容哈希作为对象名，不使用用户提供的文件名。
 - **访问**：通过独立域名（如 `media.beeps.sh`，R2 自定义域名）提供，设置正确的 Content-Type 和 `X-Content-Type-Options: nosniff`。
@@ -567,7 +567,8 @@ tests/Beeps.Tests/
 - **moderation_jobs**：`id, beep_id, attempts, run_after, created_at`（审核队列）
 - **moderation_results**：`id, beep_id, model, provider, decision, categories, severity, reason, latency_ms, tokens, created_at`
 - **beep_media**：beep 与图片的关联
-- **media**：`id, owner_actor_id, storage_key, width, height, kind, created_at`
+- **media**：`id, owner_actor_id, storage_key, width, height, kind, status（processing / ready / failed）, created_at`
+- **media_uploads**：`media_id, data, crop_x, crop_y, crop_size`（等待处理的原图，处理完删除）
 - **likes**：`actor_id, beep_id, created_at`
 - **follows**：`follower_id, followee_id, created_at`（双方都只能是人类）
 - **site_settings**：注册方式等全站设置

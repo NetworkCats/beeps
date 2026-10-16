@@ -33,7 +33,7 @@ public sealed class MediaUrls(IOptions<MediaOptions> options)
     public MediaView View(MediaRow media)
     {
         ArgumentNullException.ThrowIfNull(media);
-        return new MediaView(media.Id, Full(media.StorageKey), Thumbnail(media.StorageKey), media.Width, media.Height);
+        return new MediaView(media.Id, Full(media.StorageKey), Thumbnail(media.StorageKey), media.Width, media.Height, media.Status);
     }
 
     private Uri Absolute(string objectName) => new(options.Value.PublicBaseUri, objectName);

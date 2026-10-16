@@ -1,10 +1,16 @@
 namespace Beeps.Features.Media;
 
 /// <summary>An image as stores return it.</summary>
-public sealed record MediaRow(Guid Id, string StorageKey, int Width, int Height);
+public sealed record MediaRow(Guid Id, string StorageKey, int Width, int Height, MediaStatus Status = MediaStatus.Ready);
 
-/// <summary>An image as shown: absolute URLs on the media domain, and the size of the full image.</summary>
-public sealed record MediaView(Guid Id, Uri Url, Uri ThumbnailUrl, int Width, int Height);
+/// <summary>
+/// An image as shown: absolute URLs on the media domain, and the size of the full image. While it is
+/// <see cref="MediaStatus.Processing"/> (only right after the upload) the URLs do not work yet.
+/// </summary>
+public sealed record MediaView(Guid Id, Uri Url, Uri ThumbnailUrl, int Width, int Height, MediaStatus Status = MediaStatus.Ready);
+
+/// <summary>What <see cref="ProcessMediaHandler"/> needs of an upload that is still waiting.</summary>
+public sealed record MediaUploadJob(string StorageKey, int Width, int Height, byte[] Data, AvatarCrop? Crop);
 
 /// <summary>One uploaded file as it arrives; <see cref="Length"/> is what the client declared, if anything.</summary>
 public sealed record MediaContent(Stream Stream, long? Length);
@@ -99,8 +105,23 @@ public interface IMediaStore
 {
     void AddMedia(MediaItem media);
 
+    /// <summary>Stages the original file of a media item that is being processed.</summary>
+    void AddUpload(MediaUpload upload);
+
+    /// <summary>The original of a media item still being processed; null once processed, or if the item is gone.</summary>
+    Task<MediaUploadJob?> FindUploadAsync(Guid mediaId, CancellationToken cancellationToken);
+
     /// <summary>
-    /// Which of these media the actor uploaded, locking them (<c>FOR KEY SHARE</c>) until the transaction
+    /// Ends processing: sets the status and the size of the stored image and deletes the original. Runs
+    /// immediately; call inside a transaction. False if the item is gone or was already processed.
+    /// </summary>
+    Task<bool> FinishProcessingAsync(Guid mediaId, MediaStatus status, int width, int height, CancellationToken cancellationToken);
+
+    /// <summary>The actors whose avatar this media item is.</summary>
+    Task<IReadOnlyList<Guid>> ListAvatarUsersAsync(Guid mediaId, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Which of these media the actor uploaded (and did not fail to process), locking them (<c>FOR KEY SHARE</c>) until the transaction
     /// ends, so <see cref="DeleteUnusedAsync"/> cannot remove one that is about to be used. Runs immediately;
     /// call inside a transaction.
     /// </summary>

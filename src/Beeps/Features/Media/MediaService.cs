@@ -8,26 +8,30 @@ namespace Beeps.Features.Media;
 
 /// <summary>
 /// Image uploads (PLAN 6.11) for humans and agents. Nothing about the file is trusted: the type comes from
-/// its magic number, the size from its header (checked before decoding), and what is stored is a fresh
-/// WebP encoding without metadata, under a random name.
+/// its magic number and the size from its header, both checked here before anything is decoded. Decoding and
+/// re-encoding as WebP without metadata happen afterwards in <see cref="ProcessMediaHandler"/> (PLAN 6.8), which
+/// stores the result under a random name.
 /// </summary>
 public sealed partial class MediaService(
     IImageProcessor images,
-    IMediaStorage storage,
     IMediaStore store,
     IUnitOfWork unitOfWork,
+    IOutbox outbox,
     MediaUrls urls,
     RateLimitService rateLimits,
     TimeProvider time,
     IStringLocalizer<SharedResource> localizer,
     ILogger<MediaService> logger)
 {
-    /// <summary>Uploads one image; its id can then be attached to a beep or made the uploader's avatar.</summary>
+    /// <summary>
+    /// Accepts one image and queues its processing; its id can be attached to a beep or made the uploader's
+    /// avatar right away, and shows once processed.
+    /// </summary>
     public Task<Result<MediaView>> UploadAsync(Viewer uploader, MediaContent content, CancellationToken cancellationToken) =>
         UploadAsync(uploader, content, null, cancellationToken);
 
     /// <summary>
-    /// Uploads one image whose avatar size is <paramref name="avatarCrop"/> (the web avatar forms) instead of
+    /// Accepts one image whose avatar size is <paramref name="avatarCrop"/> (the web avatar forms) instead of
     /// the centered square. A crop outside the image is an error.
     /// </summary>
     public async Task<Result<MediaView>> UploadAsync(Viewer uploader, MediaContent content, AvatarCrop? avatarCrop, CancellationToken cancellationToken)
@@ -58,18 +62,12 @@ public sealed partial class MediaService(
             return Invalid(MediaErrorCodes.AvatarCropInvalid, localizer["Error.AvatarCropInvalid"]);
         }
 
-        var variants = images.Encode(data, crop);
-        if (variants is null)
-        {
-            return Invalid(MediaErrorCodes.Unreadable, localizer["Error.MediaUnreadable"]);
-        }
-
-        return await StoreAsync(uploader, variants, cancellationToken);
+        return await QueueAsync(uploader, data, header.Value, crop, cancellationToken);
     }
 
     /// <summary>
     /// The images of a beep written on the web, uploaded together; at most <see cref="MediaRules.MaxImagesPerBeep"/>.
-    /// Stops at the first that fails: the ones already stored are never used, so the cleanup job removes them.
+    /// Stops at the first that fails: the ones already accepted are never used, so the cleanup job removes them.
     /// </summary>
     public async Task<Result<IReadOnlyList<Guid>>> UploadAllAsync(Viewer uploader, IReadOnlyList<MediaContent> contents, CancellationToken cancellationToken)
     {
@@ -158,42 +156,35 @@ public sealed partial class MediaService(
         };
     }
 
-    private async Task<Result<MediaView>> StoreAsync(Viewer uploader, ImageVariants variants, CancellationToken cancellationToken)
+    /// <summary>
+    /// The media row (with the size the stored image will have), the original file and the message that
+    /// processes it, all in one transaction: nothing is left half-done, and the storage is not touched here.
+    /// </summary>
+    private async Task<Result<MediaView>> QueueAsync(Viewer uploader, byte[] data, ImageHeader header, AvatarCrop? crop, CancellationToken cancellationToken)
     {
         var now = time.GetUtcNow();
+        var (width, height) = MediaRules.FitWithin(header.Width, header.Height, MediaRules.FullMaxSide);
         var media = new MediaItem
         {
             Id = Guid.CreateVersion7(now),
             OwnerActorId = uploader.ActorId,
             StorageKey = Convert.ToHexStringLower(RandomNumberGenerator.GetBytes(MediaItem.StorageKeyLength / 2)),
-            Width = variants.Width,
-            Height = variants.Height,
+            Width = width,
+            Height = height,
+            Status = MediaStatus.Processing,
             CreatedAt = now,
         };
+        store.AddMedia(media);
+        store.AddUpload(new MediaUpload { MediaId = media.Id, Data = data, CropX = crop?.X, CropY = crop?.Y, CropSize = crop?.Size });
+        outbox.Enqueue(ProcessMediaRequest.MessageType, new ProcessMediaRequest(media.Id), MediaJsonContext.Default.ProcessMediaRequest);
+        await unitOfWork.SaveChangesAsync(cancellationToken);
 
-        // Objects first: a row must never point at objects that are not there. If the row then fails, the
-        // objects are removed again; at worst a few unreachable objects stay behind under a random name.
-        await Task.WhenAll(
-            storage.PutAsync(MediaObjects.Full(media.StorageKey), variants.Full, MediaObjects.ContentType, cancellationToken),
-            storage.PutAsync(MediaObjects.Thumbnail(media.StorageKey), variants.Thumbnail, MediaObjects.ContentType, cancellationToken),
-            storage.PutAsync(MediaObjects.Avatar(media.StorageKey), variants.Avatar, MediaObjects.ContentType, cancellationToken));
-        try
-        {
-            store.AddMedia(media);
-            await unitOfWork.SaveChangesAsync(cancellationToken);
-        }
-        catch (Exception) when (!cancellationToken.IsCancellationRequested)
-        {
-            await storage.DeleteAsync(MediaObjects.All(media.StorageKey), CancellationToken.None);
-            throw;
-        }
-
-        LogUploaded(logger, media.Id, uploader.ActorId, media.Width, media.Height);
-        return urls.View(new MediaRow(media.Id, media.StorageKey, media.Width, media.Height));
+        LogUploaded(logger, media.Id, uploader.ActorId, header.Width, header.Height);
+        return urls.View(new MediaRow(media.Id, media.StorageKey, media.Width, media.Height, media.Status));
     }
 
     private static Error Invalid(string code, string detail, ErrorKind kind = ErrorKind.Validation) => new(kind, code, detail);
 
-    [LoggerMessage(Level = LogLevel.Information, Message = "Media {MediaId} uploaded by {ActorId} ({Width}x{Height})")]
+    [LoggerMessage(Level = LogLevel.Information, Message = "Media {MediaId} uploaded by {ActorId} ({Width}x{Height}), queued for processing")]
     private static partial void LogUploaded(ILogger logger, Guid mediaId, Guid actorId, int width, int height);
 }

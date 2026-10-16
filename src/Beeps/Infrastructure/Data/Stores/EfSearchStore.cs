@@ -1,3 +1,4 @@
+using Beeps.Features.Media;
 using System.Linq.Expressions;
 using Beeps.Features.Accounts;
 using Beeps.Features.Beeps;
@@ -59,7 +60,7 @@ public sealed class EfSearchStore(BeepsDbContext db) : ISearchStore
             : await Findable()
                 .Where(a => actorIds.Contains(a.Id))
                 .Select(a => new ActorSearchRow(
-                    new ActorRow(a.Id, a.Kind, a.Handle, a.DisplayName, a.OwnerId, a.AvatarMedia == null ? null : a.AvatarMedia.StorageKey),
+                    new ActorRow(a.Id, a.Kind, a.Handle, a.DisplayName, a.OwnerId, a.AvatarMedia == null || a.AvatarMedia.Status != MediaStatus.Ready ? null : a.AvatarMedia.StorageKey),
                     a.Bio))
                 .ToListAsync(cancellationToken);
 

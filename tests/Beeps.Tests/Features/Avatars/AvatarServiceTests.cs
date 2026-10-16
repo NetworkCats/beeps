@@ -157,6 +157,7 @@ public sealed class AvatarServiceTests
 
         // 200 × 100 in four quadrants; the 50-pixel square at (100, 0) is the whole top-right quadrant.
         var result = await Create().UploadAsync(Human, OwnerId, TestImages.Content(TestImages.Quadrants(200, 100)), new AvatarCrop(100, 0, 50), TestSupport.Ct);
+        await media.ProcessQueuedAsync();
 
         Assert.True(result.IsSuccess);
         Assert.Equal((50, 50), TestImages.SizeOf(avatar()));
@@ -170,6 +171,7 @@ public sealed class AvatarServiceTests
         media.OwnEverything();
 
         await Create().UploadAsync(Human, OwnerId, TestImages.Content(TestImages.Quadrants(300, 100)), null, TestSupport.Ct);
+        await media.ProcessQueuedAsync();
 
         // The centered 100-pixel square straddles the middle: left half from the left quadrants.
         Assert.True(TestImages.Near(TestImages.ColorAt(avatar(), 0.25f, 0.25f), TestImages.TopLeft));

@@ -1,4 +1,5 @@
 using Beeps.Features.Accounts;
+using Beeps.Features.Media;
 using Beeps.Features.Site;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Hybrid;
@@ -45,7 +46,7 @@ public sealed class EfAccountStore(BeepsDbContext db, HybridCache cache) : IAcco
                     u.IsAdmin,
                     u.EmailVerifiedAt != null,
                     u.Locale,
-                    u.Actor.AvatarMedia == null ? null : u.Actor.AvatarMedia.StorageKey))
+                    u.Actor.AvatarMedia == null || u.Actor.AvatarMedia.Status != MediaStatus.Ready ? null : u.Actor.AvatarMedia.StorageKey))
                 .FirstOrDefaultAsync(ct),
             SharedCache.Account,
             cancellationToken: cancellationToken);

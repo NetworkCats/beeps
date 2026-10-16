@@ -31,7 +31,7 @@ public sealed class EfBeepStore(BeepsDbContext db) : IBeepStore
             .Join(BeepQueries.VisibleActors(db), m => m.ActorId, a => a.Id, (m, a) => new
             {
                 m.BeepId,
-                Actor = new ActorRow(a.Id, a.Kind, a.Handle, a.DisplayName, a.OwnerId, a.AvatarMedia == null ? null : a.AvatarMedia.StorageKey),
+                Actor = new ActorRow(a.Id, a.Kind, a.Handle, a.DisplayName, a.OwnerId, a.AvatarMedia == null || a.AvatarMedia.Status != MediaStatus.Ready ? null : a.AvatarMedia.StorageKey),
             })
             .ToListAsync(cancellationToken);
         return rows.GroupBy(r => r.BeepId).ToDictionary(g => g.Key, g => (IReadOnlyList<ActorRow>)[.. g.Select(r => r.Actor)]);
@@ -47,7 +47,8 @@ public sealed class EfBeepStore(BeepsDbContext db) : IBeepStore
         var rows = await db.Set<BeepMedia>()
             .AsNoTracking()
             .Where(bm => beepIds.Contains(bm.BeepId))
-            .Join(db.Set<MediaItem>(), bm => bm.MediaId, m => m.Id, (bm, m) => new { bm.BeepId, bm.Position, Media = new MediaRow(m.Id, m.StorageKey, m.Width, m.Height) })
+            // Images still processing (or that failed to) are not shown.
+            .Join(db.Set<MediaItem>().Where(m => m.Status == MediaStatus.Ready), bm => bm.MediaId, m => m.Id, (bm, m) => new { bm.BeepId, bm.Position, Media = new MediaRow(m.Id, m.StorageKey, m.Width, m.Height) })
             .ToListAsync(cancellationToken);
         return rows.GroupBy(r => r.BeepId).ToDictionary(g => g.Key, g => (IReadOnlyList<MediaRow>)[.. g.OrderBy(r => r.Position).Select(r => r.Media)]);
     }

@@ -12,6 +12,7 @@ public sealed record DeleteMediaObjectsRequest(IReadOnlyList<string> StorageKeys
 
 [JsonSourceGenerationOptions(PropertyNamingPolicy = JsonKnownNamingPolicy.SnakeCaseLower)]
 [JsonSerializable(typeof(DeleteMediaObjectsRequest))]
+[JsonSerializable(typeof(ProcessMediaRequest))]
 internal sealed partial class MediaJsonContext : JsonSerializerContext;
 
 /// <summary>

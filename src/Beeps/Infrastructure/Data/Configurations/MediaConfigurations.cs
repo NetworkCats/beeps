@@ -14,10 +14,24 @@ internal sealed class MediaConfiguration : IEntityTypeConfiguration<MediaItem>
         builder.Property(m => m.Id).ValueGeneratedNever();
         builder.Property(m => m.StorageKey).HasMaxLength(MediaItem.StorageKeyLength);
         builder.HasIndex(m => m.StorageKey).IsUnique();
+        builder.Property(m => m.Status).HasConversion(EnumText.Converter<MediaStatus>()).HasMaxLength(16);
         builder.HasOne<Features.Accounts.Actor>().WithMany().HasForeignKey(m => m.OwnerActorId).OnDelete(DeleteBehavior.Restrict);
         builder.HasIndex(m => m.OwnerActorId);
         // The cleanup job: oldest uploads first.
         builder.HasIndex(m => m.CreatedAt);
+    }
+}
+
+internal sealed class MediaUploadConfiguration : IEntityTypeConfiguration<MediaUpload>
+{
+    public void Configure(EntityTypeBuilder<MediaUpload> builder)
+    {
+        builder.ToTable("media_uploads");
+        builder.HasKey(u => u.MediaId);
+        builder.Property(u => u.MediaId).ValueGeneratedNever();
+        builder.Ignore(u => u.Crop);
+        // The cleanup job deletes unused media rows whatever their status; their originals go with them.
+        builder.HasOne<MediaItem>().WithOne().HasForeignKey<MediaUpload>(u => u.MediaId).OnDelete(DeleteBehavior.Cascade);
     }
 }
 

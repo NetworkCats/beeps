@@ -609,6 +609,12 @@ namespace Beeps.Infrastructure.Data.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("owner_actor_id");
 
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("status");
+
                     b.Property<string>("StorageKey")
                         .IsRequired()
                         .HasMaxLength(32)
@@ -633,6 +639,35 @@ namespace Beeps.Infrastructure.Data.Migrations
                         .HasDatabaseName("ix_media_storage_key");
 
                     b.ToTable("media", (string)null);
+                });
+
+            modelBuilder.Entity("Beeps.Features.Media.MediaUpload", b =>
+                {
+                    b.Property<Guid>("MediaId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("media_id");
+
+                    b.Property<int?>("CropSize")
+                        .HasColumnType("integer")
+                        .HasColumnName("crop_size");
+
+                    b.Property<int?>("CropX")
+                        .HasColumnType("integer")
+                        .HasColumnName("crop_x");
+
+                    b.Property<int?>("CropY")
+                        .HasColumnType("integer")
+                        .HasColumnName("crop_y");
+
+                    b.Property<byte[]>("Data")
+                        .IsRequired()
+                        .HasColumnType("bytea")
+                        .HasColumnName("data");
+
+                    b.HasKey("MediaId")
+                        .HasName("pk_media_uploads");
+
+                    b.ToTable("media_uploads", (string)null);
                 });
 
             modelBuilder.Entity("Beeps.Features.Notifications.Notification", b =>
@@ -1051,6 +1086,16 @@ namespace Beeps.Infrastructure.Data.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_media_actors_owner_actor_id");
+                });
+
+            modelBuilder.Entity("Beeps.Features.Media.MediaUpload", b =>
+                {
+                    b.HasOne("Beeps.Features.Media.MediaItem", null)
+                        .WithOne()
+                        .HasForeignKey("Beeps.Features.Media.MediaUpload", "MediaId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_media_uploads_media_media_id");
                 });
 
             modelBuilder.Entity("Beeps.Features.Notifications.Notification", b =>

@@ -28,23 +28,32 @@ public sealed class MediaApiTests : IDisposable
     }
 
     [Fact]
-    public async Task AnUploadIsDecodedStoredAndDescribed()
+    public async Task AnUploadIsAcceptedDescribedAndQueuedForProcessing()
     {
         MediaItem? stored = null;
+        MediaUpload? upload = null;
         factory.Media.When(m => m.AddMedia(Arg.Any<MediaItem>())).Do(ci => stored = ci.Arg<MediaItem>());
+        factory.Media.When(m => m.AddUpload(Arg.Any<MediaUpload>())).Do(ci => upload = ci.Arg<MediaUpload>());
+        var png = TestImages.Quadrants(3000, 1000);
 
-        using var response = await UploadAsync(TestImages.Quadrants(3000, 1000), "image/png");
+        using var response = await UploadAsync(png, "image/png");
 
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
         var media = await JsonAsync(response);
         Assert.Equal(stored!.Id, media.GetProperty("id").GetGuid());
         Assert.Equal($"https://media.beeps.test/{stored.StorageKey}/full.webp", media.GetProperty("url").GetString());
         Assert.Equal($"https://media.beeps.test/{stored.StorageKey}/thumb.webp", media.GetProperty("thumbnail_url").GetString());
+        // The size the stored image will have, known from the header.
         Assert.Equal(2048, media.GetProperty("width").GetInt32());
         Assert.Equal(683, media.GetProperty("height").GetInt32());
+        Assert.Equal("processing", media.GetProperty("status").GetString());
         Assert.Equal(media.GetProperty("url").GetString(), response.Headers.Location?.ToString());
         Assert.Equal(agent.AgentId, stored.OwnerActorId);
-        await factory.Storage.ReceivedWithAnyArgs(3).PutAsync(default!, default, default!, TestSupport.Ct);
+        Assert.Equal(MediaStatus.Processing, stored.Status);
+        Assert.Equal(png, upload!.Data);
+        factory.Outbox.Received(1).Enqueue(ProcessMediaRequest.MessageType, new ProcessMediaRequest(stored.Id), Arg.Any<System.Text.Json.Serialization.Metadata.JsonTypeInfo<ProcessMediaRequest>>());
+        // Decoding and storing happen in the outbox worker, not in the request.
+        await factory.Storage.DidNotReceiveWithAnyArgs().PutAsync(default!, default, default!, TestSupport.Ct);
     }
 
     [Theory]

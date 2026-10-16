@@ -1,5 +1,6 @@
 using Beeps.Features.Accounts;
 using Beeps.Features.Admin;
+using Beeps.Features.Media;
 using Beeps.Features.Shared;
 using Beeps.Features.Site;
 using Microsoft.EntityFrameworkCore;
@@ -122,7 +123,7 @@ public sealed class EfAdminStore(BeepsDbContext db) : IAdminStore
         u.CreatedAt,
         u.BannedAt,
         u.Actor.DeletedAt,
-        u.Actor.AvatarMedia == null ? null : u.Actor.AvatarMedia.StorageKey);
+        u.Actor.AvatarMedia == null || u.Actor.AvatarMedia.Status != MediaStatus.Ready ? null : u.Actor.AvatarMedia.StorageKey);
 
     private IQueryable<User> ActiveAdmins() =>
         db.Set<User>().Where(u => u.IsAdmin && u.BannedAt == null && u.Actor.DeletedAt == null);

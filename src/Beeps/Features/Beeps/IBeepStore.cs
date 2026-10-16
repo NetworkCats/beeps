@@ -18,7 +18,7 @@ public interface IBeepStore
     /// <summary>The visible actors each beep mentions, keyed by beep id (beeps without any are left out).</summary>
     Task<IReadOnlyDictionary<Guid, IReadOnlyList<ActorRow>>> GetMentionsAsync(IReadOnlyCollection<Guid> beepIds, CancellationToken cancellationToken);
 
-    /// <summary>The images attached to each beep, in order, keyed by beep id (beeps without any are left out).</summary>
+    /// <summary>The ready images attached to each beep, in order, keyed by beep id (beeps without any are left out).</summary>
     Task<IReadOnlyDictionary<Guid, IReadOnlyList<MediaRow>>> GetMediaAsync(IReadOnlyCollection<Guid> beepIds, CancellationToken cancellationToken);
 
     /// <summary>A thread oldest first: every visible beep with this root (the root included), after the cursor.</summary>

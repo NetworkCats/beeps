@@ -1,0 +1,86 @@
+using Beeps.Features.Accounts;
+using Beeps.Features.Live;
+using Beeps.Features.Shared;
+
+namespace Beeps.Features.Media;
+
+/// <summary>Outbox payload: decode one accepted upload, store every size and make it <see cref="MediaStatus.Ready"/>.</summary>
+public sealed record ProcessMediaRequest(Guid MediaId)
+{
+    public const string MessageType = "media.process";
+}
+
+/// <summary>
+/// Image post-processing (PLAN 6.8, 6.11), off the upload request: decodes the original, turns it upright,
+/// re-encodes every size as WebP without metadata and stores them. A storage failure throws, so the message is
+/// retried with backoff; a file that does not decode can never succeed, so it is marked
+/// <see cref="MediaStatus.Failed"/> instead. Idempotent: once processed, the original is gone and a repeat does nothing.
+/// Workers handle one message at a time, which also caps how many images an instance decodes at once.
+/// </summary>
+public sealed partial class ProcessMediaHandler(
+    IMediaStore store,
+    IImageProcessor images,
+    IMediaStorage storage,
+    IUnitOfWork unitOfWork,
+    IAccountStore accounts,
+    LiveUpdates live,
+    ILogger<ProcessMediaHandler> logger) : IOutboxHandler
+{
+    public string Type => ProcessMediaRequest.MessageType;
+
+    public async Task HandleAsync(OutboxEnvelope message, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(message);
+        var mediaId = message.ReadPayload(MediaJsonContext.Default.ProcessMediaRequest).MediaId;
+        var upload = await store.FindUploadAsync(mediaId, cancellationToken);
+        if (upload is null)
+        {
+            // Processed by an earlier delivery, or deleted as unused.
+            return;
+        }
+
+        var variants = images.Encode(upload.Data, upload.Crop);
+        if (variants is null)
+        {
+            await FinishAsync(mediaId, MediaStatus.Failed, upload.Width, upload.Height, cancellationToken);
+            LogUnreadable(logger, mediaId);
+            return;
+        }
+
+        // Overwriting the same names is harmless, so a retry after a partial failure simply writes them all again.
+        await Task.WhenAll(
+            storage.PutAsync(MediaObjects.Full(upload.StorageKey), variants.Full, MediaObjects.ContentType, cancellationToken),
+            storage.PutAsync(MediaObjects.Thumbnail(upload.StorageKey), variants.Thumbnail, MediaObjects.ContentType, cancellationToken),
+            storage.PutAsync(MediaObjects.Avatar(upload.StorageKey), variants.Avatar, MediaObjects.ContentType, cancellationToken));
+        if (!await FinishAsync(mediaId, MediaStatus.Ready, variants.Width, variants.Height, cancellationToken))
+        {
+            // The row went while the objects were written; nothing will ever point at them.
+            await storage.DeleteAsync(MediaObjects.All(upload.StorageKey), cancellationToken);
+            return;
+        }
+
+        LogProcessed(logger, mediaId, variants.Width, variants.Height);
+
+        // An avatar set while it was processing showed the default pattern until now.
+        foreach (var actorId in await store.ListAvatarUsersAsync(mediaId, cancellationToken))
+        {
+            await accounts.ForgetAccountAsync(actorId, cancellationToken);
+            await live.ActorChangedAsync(actorId, cancellationToken);
+        }
+    }
+
+    private async Task<bool> FinishAsync(Guid mediaId, MediaStatus status, int width, int height, CancellationToken cancellationToken)
+    {
+        var finished = await unitOfWork.InTransactionAsync<bool>(
+            null,
+            async ct => Result.Of(await store.FinishProcessingAsync(mediaId, status, width, height, ct)),
+            cancellationToken);
+        return finished.Value;
+    }
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Media {MediaId} processed ({Width}x{Height})")]
+    private static partial void LogProcessed(ILogger logger, Guid mediaId, int width, int height);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Media {MediaId} could not be decoded and will not be shown")]
+    private static partial void LogUnreadable(ILogger logger, Guid mediaId);
+}
