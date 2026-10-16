@@ -8,6 +8,7 @@ using Beeps.Infrastructure.Data;
 using Beeps.Infrastructure.Data.Stores;
 using Beeps.Infrastructure.Email;
 using Beeps.Infrastructure.Http;
+using Beeps.Infrastructure.Jobs;
 using Beeps.Infrastructure.Outbox;
 using Beeps.Infrastructure.Redis;
 using Microsoft.AspNetCore.DataProtection;
@@ -23,6 +24,7 @@ public static class InfrastructureSetup
         services.AddBeepsDatabase();
         services.AddBeepsRedis();
         services.AddBeepsOutbox();
+        services.AddBeepsScheduledJobs();
         services.AddBeepsEmail();
         services.AddSingleton<IRateLimitStore, RedisRateLimitStore>();
         services.AddScoped<IUnitOfWork, EfUnitOfWork>();

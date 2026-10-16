@@ -59,6 +59,9 @@ internal sealed class UserSessionConfiguration : IEntityTypeConfiguration<UserSe
         builder.HasIndex(s => s.TokenHash).IsUnique();
         // Revoking or forgetting all of a user's sessions.
         builder.HasIndex(s => s.UserId);
+        // The cleanup job: ended by expiry, or by revocation (only revoked rows are indexed).
+        builder.HasIndex(s => s.ExpiresAt);
+        builder.HasIndex(s => s.RevokedAt).HasFilter("revoked_at IS NOT NULL");
         builder.HasOne<User>().WithMany().HasForeignKey(s => s.UserId).OnDelete(DeleteBehavior.Cascade);
     }
 }
@@ -72,6 +75,8 @@ internal sealed class EmailCodeConfiguration : IEntityTypeConfiguration<EmailCod
         builder.Property(c => c.Purpose).HasConversion(EnumText.Converter<EmailCodePurpose>()).HasMaxLength(32);
         builder.Property(c => c.NormalizedEmail).HasMaxLength(User.EmailMaxLength);
         builder.Property(c => c.CodeHash).HasMaxLength(64);
+        // The cleanup job.
+        builder.HasIndex(c => c.ExpiresAt);
     }
 }
 

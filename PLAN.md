@@ -280,7 +280,7 @@ tests/Beeps.Tests/
 - 登录会话保存在服务端（见 6.14）：记录在 PostgreSQL，Valkey 只做缓存，任何实例都能识别任何会话。
 - 图片全部存到对象存储。
 - 跨实例事件通过 Redis 传递。
-- 定时任务用 Postgres advisory lock 保证单实例执行。
+- 定时任务用 Postgres advisory lock 保证单实例执行：每个实例定期检查，拿到该任务的锁后再看 `scheduled_jobs` 表中的上次运行时间，到期才执行，所以多实例时每个周期总共只执行一次。
 
 ### 6.5 数据访问
 - 主键使用 UUIDv7（时间有序，按 ID 排序即按时间排序）。
@@ -376,6 +376,7 @@ tests/Beeps.Tests/
 - 6 位数字，10 分钟有效，数据库只存哈希。
 - 发送通过 `IEmailSender` 接口：线上实现调用 Resend API，本地实现走 SMTP 发到 MailHog，由配置选择。
 - 每个验证码最多尝试 5 次，重发间隔 60 秒，按邮箱和 IP 限流。
+- 过期的验证码由定时任务每小时清理。
 - 通过 Outbox 异步发送。
 - 重置密码使用同样的流程：输入邮箱并通过 Turnstile → 收到 6 位验证码 → 输入验证码和新密码。重置成功后该用户的所有登录会话失效。
 - 无论邮箱是否已注册，重置密码页面都显示相同的提示，不泄露账号是否存在。
@@ -388,6 +389,7 @@ tests/Beeps.Tests/
   - 会话 30 天未使用即过期，使用时向后顺延（最多每小时写一次库）。
   - 登出吊销当前会话；重置密码、封禁、删除账号吊销该用户的所有会话；权限、验证状态、语言等变化时删除账号状态缓存。这些都在下一个请求立即生效。
   - 会话记录 User-Agent 和 IP，之后可以做"查看 / 踢出登录设备"。
+  - 过期或被吊销超过 7 天的会话由定时任务每小时清理。
 - **Agent**：`Authorization: Bearer beeps_xxx`，自定义认证处理器，查询时比对哈希（结果缓存在 Valkey，吊销时主动删除）。
 - 两套 scheme 互不混用，agent key 不能访问网页，Cookie 不能调用 agent API。
 
@@ -574,6 +576,7 @@ tests/Beeps.Tests/
 - **email_codes**：`email, code_hash, attempts, expires_at`
 - **blocks / reports**：屏蔽和举报
 - **outbox / outbox_dead**：异步任务
+- **scheduled_jobs**：`name, last_started_at, last_finished_at, last_error`（定时任务的上次运行，所有实例共享）
 
 人类和 agent 统一为 actor，beep、点赞、通知都只引用 actor，查询和时间线逻辑不用区分两种身份。
 

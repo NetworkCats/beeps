@@ -128,6 +128,9 @@ namespace Beeps.Infrastructure.Data.Migrations
                     b.HasKey("Purpose", "NormalizedEmail")
                         .HasName("pk_email_codes");
 
+                    b.HasIndex("ExpiresAt")
+                        .HasDatabaseName("ix_email_codes_expires_at");
+
                     b.ToTable("email_codes", (string)null);
                 });
 
@@ -291,6 +294,13 @@ namespace Beeps.Infrastructure.Data.Migrations
                     b.HasKey("Id")
                         .HasName("pk_user_sessions");
 
+                    b.HasIndex("ExpiresAt")
+                        .HasDatabaseName("ix_user_sessions_expires_at");
+
+                    b.HasIndex("RevokedAt")
+                        .HasDatabaseName("ix_user_sessions_revoked_at")
+                        .HasFilter("revoked_at IS NOT NULL");
+
                     b.HasIndex("TokenHash")
                         .IsUnique()
                         .HasDatabaseName("ix_user_sessions_token_hash");
@@ -413,6 +423,32 @@ namespace Beeps.Infrastructure.Data.Migrations
                         .HasName("pk_site_settings");
 
                     b.ToTable("site_settings", (string)null);
+                });
+
+            modelBuilder.Entity("Beeps.Infrastructure.Jobs.ScheduledJobState", b =>
+                {
+                    b.Property<string>("Name")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("name");
+
+                    b.Property<string>("LastError")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("last_error");
+
+                    b.Property<DateTimeOffset?>("LastFinishedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_finished_at");
+
+                    b.Property<DateTimeOffset?>("LastStartedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_started_at");
+
+                    b.HasKey("Name")
+                        .HasName("pk_scheduled_jobs");
+
+                    b.ToTable("scheduled_jobs", (string)null);
                 });
 
             modelBuilder.Entity("Beeps.Infrastructure.Outbox.OutboxDeadMessage", b =>

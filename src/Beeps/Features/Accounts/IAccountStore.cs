@@ -48,6 +48,9 @@ public interface IAccountStore
 
     void AddEmailCode(EmailCode code);
 
+    /// <summary>Deletes up to <paramref name="batchSize"/> codes that expired before <paramref name="cutoff"/>. Runs immediately; returns how many.</summary>
+    Task<int> DeleteExpiredEmailCodesAsync(DateTimeOffset cutoff, int batchSize, CancellationToken cancellationToken);
+
     void RemoveEmailCode(EmailCode code);
 
     /// <summary>

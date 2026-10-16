@@ -51,4 +51,11 @@ public sealed class EfSessionStore(BeepsDbContext db, HybridCache cache, TimePro
             .ToListAsync(cancellationToken);
         await cache.RemoveAsync(hashes.Select(SharedCache.SessionKey), cancellationToken);
     }
+
+    public Task<int> DeleteEndedAsync(DateTimeOffset cutoff, int batchSize, CancellationToken cancellationToken) =>
+        db.Set<UserSession>()
+            .Where(s => s.ExpiresAt < cutoff || s.RevokedAt < cutoff)
+            .OrderBy(s => s.Id)
+            .Take(batchSize)
+            .ExecuteDeleteAsync(cancellationToken);
 }

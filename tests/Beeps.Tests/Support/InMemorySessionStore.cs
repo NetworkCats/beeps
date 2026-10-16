@@ -50,6 +50,12 @@ internal sealed class InMemorySessionStore : ISessionStore
 
     public Task ForgetAllAsync(Guid userId, CancellationToken cancellationToken) => Task.CompletedTask;
 
+    public Task<int> DeleteEndedAsync(DateTimeOffset cutoff, int batchSize, CancellationToken cancellationToken)
+    {
+        var ended = sessions.Values.Where(s => s.ExpiresAt < cutoff || s.RevokedAt < cutoff).Take(batchSize).ToList();
+        return Task.FromResult(ended.Count(s => sessions.TryRemove(s.TokenHash, out _)));
+    }
+
     private static UserSession Revoked(UserSession s, DateTimeOffset now) => new()
     {
         Id = s.Id, UserId = s.UserId, TokenHash = s.TokenHash, CreatedAt = s.CreatedAt,

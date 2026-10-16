@@ -23,6 +23,7 @@ public static class FeaturesSetup
         services.AddScoped<AgentService>();
         services.AddScoped<AdminService>();
         services.AddScoped<IOutboxHandler, AccountCodeEmailHandler>();
+        services.AddScoped<IScheduledJob, AccountCleanupJob>();
         return services;
     }
 }

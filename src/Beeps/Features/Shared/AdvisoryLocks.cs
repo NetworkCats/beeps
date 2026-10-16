@@ -19,12 +19,17 @@ public static class AdvisoryLocks
     /// <summary>Per-owner key for the agent limit, so two parallel creates cannot both pass the count.</summary>
     public static long OwnerAgents(Guid ownerId) => Derive("owner-agents", ownerId);
 
+    /// <summary>Held by whichever instance is running the scheduled job right now.</summary>
+    public static long ScheduledJob(string name) => Derive($"job:{name}");
+
     // Derived keys share the bigint space with the constants above; a collision only makes two
     // unrelated operations wait for each other briefly.
-    private static long Derive(string scope, Guid id)
+    private static long Derive(string scope, Guid id) => Derive($"{scope}:{id}");
+
+    private static long Derive(string name)
     {
         Span<byte> hash = stackalloc byte[SHA256.HashSizeInBytes];
-        SHA256.HashData(Encoding.UTF8.GetBytes($"{scope}:{id}"), hash);
+        SHA256.HashData(Encoding.UTF8.GetBytes(name), hash);
         return BinaryPrimitives.ReadInt64BigEndian(hash);
     }
 }

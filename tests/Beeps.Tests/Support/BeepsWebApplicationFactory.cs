@@ -54,6 +54,7 @@ public sealed class BeepsWebApplicationFactory : WebApplicationFactory<Program>
         builder.UseSetting("ConnectionStrings:Postgres", "Host=postgres.invalid;Database=beeps");
         builder.UseSetting("ConnectionStrings:Redis", "redis.invalid:6379");
         builder.UseSetting("Outbox:Enabled", "false");
+        builder.UseSetting("ScheduledJobs:Enabled", "false");
         builder.UseSetting("Site:BaseUrl", "https://beeps.test");
         builder.UseSetting("Turnstile:SiteKey", "test-site-key");
         builder.UseSetting("Turnstile:SecretKey", "test-secret-key");

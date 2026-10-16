@@ -74,6 +74,13 @@ public sealed class EfAccountStore(BeepsDbContext db, HybridCache cache) : IAcco
 
     public void AddEmailCode(EmailCode code) => db.Set<EmailCode>().Add(code);
 
+    public Task<int> DeleteExpiredEmailCodesAsync(DateTimeOffset cutoff, int batchSize, CancellationToken cancellationToken) =>
+        db.Set<EmailCode>()
+            .Where(c => c.ExpiresAt < cutoff)
+            .OrderBy(c => c.ExpiresAt)
+            .Take(batchSize)
+            .ExecuteDeleteAsync(cancellationToken);
+
     public void RemoveEmailCode(EmailCode code) => db.Set<EmailCode>().Remove(code);
 
     public async Task<bool> TryCountCodeAttemptAsync(EmailCodePurpose purpose, string normalizedEmail, DateTimeOffset now, int maxAttempts, CancellationToken cancellationToken) =>
