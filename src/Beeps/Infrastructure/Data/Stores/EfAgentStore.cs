@@ -29,7 +29,8 @@ public sealed class EfAgentStore(BeepsDbContext db, HybridCache cache) : IAgentS
                 x.a.DisabledAt,
                 x.k == null ? null : x.k.KeyPrefix,
                 x.k == null ? null : x.k.CreatedAt,
-                x.k == null ? null : x.k.LastUsedAt))
+                x.k == null ? null : x.k.LastUsedAt,
+                x.a.Bio))
             .ToListAsync(cancellationToken);
 
     public Task<Actor?> FindAgentAsync(Guid agentId, CancellationToken cancellationToken) =>
@@ -106,6 +107,9 @@ public sealed class EfAgentStore(BeepsDbContext db, HybridCache cache) : IAgentS
                 o.Handle!,
                 o.DisplayName!))
             .FirstOrDefaultAsync(cancellationToken);
+
+    public Task<bool> HandleTakenAsync(string normalizedHandle, CancellationToken cancellationToken) =>
+        db.Set<Actor>().AnyAsync(a => a.NormalizedHandle == normalizedHandle, cancellationToken);
 
     public async Task<IReadOnlySet<string>> ListHandlesStartingWithAsync(string normalizedPrefix, CancellationToken cancellationToken) =>
         (await db.Set<Actor>()

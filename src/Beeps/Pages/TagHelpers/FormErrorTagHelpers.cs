@@ -37,8 +37,12 @@ public sealed class FieldErrorTagHelper : TagHelper
     public static string ErrorId(string name) => $"{name}-error";
 }
 
-/// <summary>Adds <c>aria-invalid</c> and <c>aria-describedby</c> to an input whose field has errors: <c>&lt;input beeps-field="Email"&gt;</c>.</summary>
+/// <summary>
+/// Names an input (or textarea) after its field and adds <c>aria-invalid</c> and <c>aria-describedby</c>
+/// when the field has errors: <c>&lt;input beeps-field="Email"&gt;</c>.
+/// </summary>
 [HtmlTargetElement("input", Attributes = "beeps-field", TagStructure = TagStructure.WithoutEndTag)]
+[HtmlTargetElement("textarea", Attributes = "beeps-field")]
 public sealed class FieldInputTagHelper : TagHelper
 {
     [HtmlAttributeName("beeps-field")]

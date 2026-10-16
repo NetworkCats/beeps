@@ -62,6 +62,18 @@ public static class Principals
             : Features.Beeps.Viewer.Human(actorId);
     }
 
+    /// <summary>The server-side session a signed-in human's request belongs to.</summary>
+    public static Guid? SessionId(this ClaimsPrincipal principal) =>
+        Guid.TryParse(principal?.FindFirstValue(BeepsClaims.SessionId), CultureInfo.InvariantCulture, out var id) ? id : null;
+
+    /// <summary>The viewer for pages that signed-out visitors can read too; null when signed out.</summary>
+    public static Viewer? OptionalViewer(this ClaimsPrincipal principal) =>
+        principal.IsHuman() || principal?.FindFirstValue(BeepsClaims.Kind) == BeepsClaims.AgentKind ? principal!.Viewer() : null;
+
     public static bool IsHuman(this ClaimsPrincipal principal) =>
         principal?.FindFirstValue(BeepsClaims.Kind) == BeepsClaims.HumanKind;
+
+    /// <summary>Signed in with a verified email: may post, like and follow (same rule as <see cref="AuthPolicies.Member"/>).</summary>
+    public static bool IsMember(this ClaimsPrincipal principal) =>
+        principal.IsHuman() && principal.FindFirstValue(BeepsClaims.EmailVerified) == "true";
 }

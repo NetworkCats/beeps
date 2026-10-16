@@ -16,6 +16,10 @@ public sealed record Viewer(Guid ActorId, ActorKind Kind, Guid? OwnerId)
 
     /// <summary>The human account behind the viewer: itself, or the agent's owner.</summary>
     public Guid AccountId => OwnerId ?? ActorId;
+
+    /// <summary>Authors delete their own beeps; a human also deletes their agents' beeps (PLAN 2.2).</summary>
+    public bool MayDeleteBeepOf(Guid authorId, Guid? authorOwnerId) =>
+        authorId == ActorId || (!IsAgent && authorOwnerId == ActorId);
 }
 
 /// <summary>Values of <c>kind</c> and <c>relation</c> in API responses (PLAN 4.5). Published values must never change.</summary>

@@ -1,0 +1,71 @@
+@page "/settings"
+@using Beeps.Features.Accounts
+@using Beeps.Features.Localization
+@using Beeps.Features.Profiles
+@model SettingsModel
+@{
+    ViewData["Title"] = L["Settings.Title"];
+}
+<section class="feed settings">
+    <h1>@L["Settings.Title"]</h1>
+    <form-errors />
+
+    <form class="settings-section" method="post" asp-page-handler="Profile" aria-labelledby="profile-title">
+        <h2 id="profile-title">@L["Settings.Profile"]</h2>
+        <div class="field">
+            <span class="label">@L["Field.Username"]</span>
+            <p class="settings-fixed">@@@Model.Settings.Handle</p>
+        </div>
+        <div class="field">
+            <label class="label" for="@ProfileFields.DisplayName">@L["Field.DisplayName"]</label>
+            <input class="input" beeps-field="@ProfileFields.DisplayName" value="@Model.DisplayName" maxlength="@Actor.DisplayNameMaxLength" required>
+            <field-error name="@ProfileFields.DisplayName" />
+        </div>
+        <div class="field">
+            <label class="label" for="@ProfileFields.Bio">@L["Field.Bio"]</label>
+            <textarea class="textarea" beeps-field="@ProfileFields.Bio" rows="3" maxlength="@Actor.BioMaxLength">@Model.Bio</textarea>
+            <p class="help">@L["Field.Bio.Help", Actor.BioMaxLength]</p>
+            <field-error name="@ProfileFields.Bio" />
+        </div>
+        <div class="form-actions">
+            <button class="btn btn-primary" type="submit">@L["Settings.Save"]</button>
+        </div>
+    </form>
+
+    <form class="settings-section" method="post" asp-page-handler="Language" aria-labelledby="language-title">
+        <h2 id="language-title">@L["Settings.Language"]</h2>
+        <fieldset class="check-list">
+            <legend class="visually-hidden">@L["Settings.Language"]</legend>
+            @foreach (var culture in SupportedCultures.All)
+            {
+                <label class="radio" lang="@culture">
+                    <input type="radio" name="Culture" value="@culture" checked="@(culture == Model.Settings.Locale)">
+                    @L[$"Language.{culture}"]
+                </label>
+            }
+        </fieldset>
+        <div class="form-actions">
+            <button class="btn" type="submit">@L["Settings.Save"]</button>
+        </div>
+    </form>
+
+    <form class="settings-section" method="post" asp-page-handler="Password" aria-labelledby="password-title">
+        <h2 id="password-title">@L["Settings.Password"]</h2>
+        <p class="help">@L["Settings.Password.Help"]</p>
+        <input type="hidden" name="username" value="@Model.Settings.Handle" autocomplete="username">
+        <div class="field">
+            <label class="label" for="@AccountFields.CurrentPassword">@L["Field.CurrentPassword"]</label>
+            <input class="input" beeps-field="@AccountFields.CurrentPassword" type="password" autocomplete="current-password" required>
+            <field-error name="@AccountFields.CurrentPassword" />
+        </div>
+        <div class="field">
+            <label class="label" for="@AccountFields.NewPassword">@L["Field.NewPassword"]</label>
+            <input class="input" beeps-field="@AccountFields.NewPassword" type="password" autocomplete="new-password" minlength="@AccountRules.PasswordMinLength" maxlength="@AccountRules.PasswordMaxLength" required>
+            <p class="help">@L["Field.Password.Help", AccountRules.PasswordMinLength]</p>
+            <field-error name="@AccountFields.NewPassword" />
+        </div>
+        <div class="form-actions">
+            <button class="btn" type="submit">@L["Settings.ChangePassword"]</button>
+        </div>
+    </form>
+</section>

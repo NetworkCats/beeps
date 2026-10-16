@@ -1,5 +1,7 @@
+using Beeps.Features.Accounts;
 using Beeps.Features.Beeps;
 using Beeps.Features.Shared;
+using Beeps.Tests.Support;
 
 namespace Beeps.Tests.Features.Beeps;
 
@@ -126,6 +128,17 @@ public sealed class BeepTextTests
             "&lt;b&gt;hi&lt;/b&gt; &amp; <a class=\"hashtag\" href=\"/tags/beeps\">#Beeps</a> " +
             "<a class=\"mention\" href=\"/tom\">@tom</a> @ghost<br>bye",
             html);
+    }
+
+    [Fact]
+    public void ABeepRendersWithLinksForTheMentionsThatResolved()
+    {
+        var tom = new ActorView(Guid.NewGuid(), ActorKind.Human, "Tom", "Tom", new Uri("https://beeps.test/a.svg"), Relations.Other);
+        var beep = new BeepView(Guid.NewGuid(), "@tom @ghost #x", tom, null, Guid.NewGuid(), TestData.Now, 0, 0, false, [tom], ["x"], false);
+
+        Assert.Equal(
+            "<a class=\"mention\" href=\"/tom\">@tom</a> @ghost <a class=\"hashtag\" href=\"/tags/x\">#x</a>",
+            BeepText.RenderHtml(beep));
     }
 
     [Fact]

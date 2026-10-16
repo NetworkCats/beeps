@@ -66,6 +66,18 @@ public sealed class ProfileServiceTests
         Assert.Equal(ErrorKind.NotFound, actor.Error?.Kind);
     }
 
+    [Theory]
+    [InlineData("wp-login.php")]
+    [InlineData("tom.claude.extra")]
+    [InlineData("汤姆")]
+    public async Task UrlsThatCannotBeHandlesNeverReachTheDatabase(string handle)
+    {
+        var result = await Create().GetAsync(null, handle, TestSupport.Ct);
+
+        Assert.Equal(ErrorKind.NotFound, result.Error?.Kind);
+        await store.DidNotReceiveWithAnyArgs().FindByHandleAsync(default!, TestSupport.Ct);
+    }
+
     [Fact]
     public async Task FindingAnActorReturnsIt()
     {

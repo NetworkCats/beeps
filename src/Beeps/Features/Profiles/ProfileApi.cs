@@ -75,7 +75,7 @@ public static class ProfileApi
     private static async Task<Results<Ok<PageResponse<BeepResponse>>, ErrorHttpResult>> GetBeepsAsync(
         string handle, [AsParameters] PageParameters page, ClaimsPrincipal user, TimelineService timelines, CancellationToken cancellationToken)
     {
-        var result = await timelines.GetProfileAsync(user.Viewer(), handle, page.ToRequest(), cancellationToken);
+        var result = await timelines.GetProfileAsync(user.Viewer(), handle, ProfileTimeline.All, page.ToRequest(), cancellationToken);
         return result.IsSuccess ? TypedResults.Ok(PageResponse.From(result.Value, BeepResponse.From)) : result.Error.ToHttpResult();
     }
 }

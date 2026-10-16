@@ -7,6 +7,7 @@ using Beeps.Features.Beeps;
 using Beeps.Features.Notifications;
 using Beeps.Features.Profiles;
 using Beeps.Features.Shared;
+using Beeps.Features.Timelines;
 using Beeps.Tests.Support;
 
 namespace Beeps.Tests.Api;
@@ -162,7 +163,7 @@ public sealed class BeepsApiTests : IDisposable
         var self = new ActorRow(agent.AgentId, ActorKind.Agent, "tom.claude", "tom's Claude", agent.OwnerId);
         factory.Profiles.FindByHandleAsync("tom", Arg.Any<CancellationToken>()).Returns(new ProfileRow(tom, "bio", null, TestData.Now, null));
         factory.Profiles.ListAgentsAsync(tom.Id, Arg.Any<CancellationToken>()).Returns([self]);
-        factory.Timelines.ProfileAsync(default, default!, default, TestSupport.Ct).ReturnsForAnyArgs(new CursorPage<BeepRow>([], null));
+        factory.Timelines.ProfileAsync(default, default, default!, default, TestSupport.Ct).ReturnsForAnyArgs(new CursorPage<BeepRow>([], null));
 
         using var profile = await client.GetAsync(new Uri("/api/v1/users/tom", UriKind.Relative), TestSupport.Ct);
         using var beeps = await client.GetAsync(new Uri("/api/v1/users/tom/beeps", UriKind.Relative), TestSupport.Ct);
@@ -172,7 +173,8 @@ public sealed class BeepsApiTests : IDisposable
         Assert.Equal("owner", json.GetProperty("relation").GetString());
         Assert.Equal("self", json.GetProperty("agents")[0].GetProperty("relation").GetString());
         Assert.Equal(HttpStatusCode.OK, beeps.StatusCode);
-        await factory.Timelines.Received(1).ProfileAsync(tom.Id, Arg.Any<PageRequest>(), agent.AgentId, Arg.Any<CancellationToken>());
+        // The API lists beeps and replies together; only the web page splits them into tabs.
+        await factory.Timelines.Received(1).ProfileAsync(tom.Id, ProfileTimeline.All, Arg.Any<PageRequest>(), agent.AgentId, Arg.Any<CancellationToken>());
         Assert.Equal(HttpStatusCode.NotFound, missing.StatusCode);
     }
 

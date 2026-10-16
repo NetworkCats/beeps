@@ -307,3 +307,460 @@ fieldset.check-list {
     overflow-wrap: anywhere;
   }
 }
+
+// ---- Navigation ------------------------------------------------------------
+
+.site-nav {
+  > li {
+    display: flex;
+  }
+}
+
+// The account menu is a <details>: it opens without script; menu.ts closes it on outside clicks.
+.menu {
+  position: relative;
+}
+
+.menu-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--cui-space-2);
+  min-height: 2.25rem;
+  padding: 0 var(--cui-space-2);
+  border-radius: var(--cui-radius);
+  color: var(--cui-text-2);
+  font-size: var(--cui-text-sm);
+  font-weight: var(--cui-weight-medium);
+  list-style: none;
+  cursor: pointer;
+  user-select: none;
+
+  &::-webkit-details-marker {
+    display: none;
+  }
+
+  &:hover {
+    color: var(--cui-text);
+    background: var(--cui-surface-hover);
+  }
+
+  &:focus-visible {
+    @include focus-ring;
+  }
+}
+
+.menu-panel {
+  position: absolute;
+  inset-block-start: calc(100% + var(--cui-space-1));
+  inset-inline-end: 0;
+  width: max-content;
+
+  > form {
+    margin: 0;
+  }
+}
+
+// Narrow screens keep every link and drop the words that only repeat what the logo and avatar say.
+@container cui-navbar (width < 40rem) {
+  .site-brand-name,
+  .menu-handle {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .site-nav {
+    gap: 0;
+
+    .navbar-link {
+      padding-inline: var(--cui-space-2);
+    }
+  }
+}
+
+.footer-link {
+  color: var(--cui-text-3);
+  font-size: var(--cui-text-sm);
+}
+
+// ---- Timelines and beeps -----------------------------------------------------
+
+.feed-title {
+  margin-block-end: var(--cui-space-4);
+  font-size: var(--cui-text-xl);
+}
+
+.beep-list {
+  border-block-start: var(--cui-border-width) solid var(--cui-border);
+}
+
+.beep {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--cui-space-3);
+  padding-block: var(--cui-space-4);
+  border-block-end: var(--cui-border-width) solid var(--cui-border);
+  // Links and redirects land on #beep-…; keep the beep clear of the sticky header.
+  scroll-margin-block-start: calc(var(--cui-navbar-height) + var(--cui-space-4));
+}
+
+.beep-focused {
+  margin-inline: calc(-1 * var(--cui-space-3));
+  padding-inline: var(--cui-space-3);
+  background: var(--cui-surface-2);
+  border-radius: var(--cui-radius);
+
+  .beep-text {
+    font-size: var(--cui-text-lg);
+  }
+}
+
+.beep-avatar {
+  line-height: 0;
+}
+
+.beep-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: var(--cui-space-2);
+  font-size: var(--cui-text-sm);
+}
+
+.beep-author {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: var(--cui-space-1-5);
+  min-width: 0;
+  color: var(--cui-text);
+  text-decoration: none;
+
+  &:hover > .beep-name {
+    text-decoration: underline;
+  }
+}
+
+.beep-name {
+  font-weight: var(--cui-weight-semibold);
+  overflow-wrap: anywhere;
+}
+
+.beep-handle,
+.beep-time {
+  color: var(--cui-text-3);
+}
+
+.beep-time {
+  text-decoration: none;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+.beep-context {
+  margin-block-start: var(--cui-space-1);
+  color: var(--cui-text-3);
+  font-size: var(--cui-text-sm);
+
+  > a {
+    color: inherit;
+  }
+}
+
+.beep-text {
+  margin-block-start: var(--cui-space-1);
+  line-height: var(--beeps-text-leading);
+  overflow-wrap: anywhere;
+
+  > .mention,
+  > .hashtag {
+    color: var(--cui-primary-text);
+    text-decoration: none;
+
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+}
+
+.beep-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--cui-space-6);
+  margin-block-start: var(--cui-space-2);
+
+  > form {
+    margin: 0;
+  }
+}
+
+.beep-action {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--cui-space-1-5);
+  min-height: 2rem;
+  padding: 0;
+  color: var(--cui-text-3);
+  font: inherit;
+  font-size: var(--cui-text-sm);
+  font-variant-numeric: tabular-nums;
+  text-decoration: none;
+  background: none;
+  border: 0;
+  cursor: pointer;
+
+  &:hover {
+    color: var(--cui-primary-text);
+  }
+
+  &:focus-visible {
+    @include focus-ring;
+  }
+
+  &[aria-pressed="true"] {
+    color: var(--cui-danger-text);
+
+    path {
+      fill: currentColor;
+    }
+  }
+
+  &:disabled {
+    opacity: 0.6;
+  }
+}
+
+span.beep-action {
+  cursor: default;
+
+  &:hover {
+    color: var(--cui-text-3);
+  }
+}
+
+// The one destructive action stands apart, at the far end.
+.beep-actions > .beep-delete {
+  margin-inline-start: auto;
+
+  > .beep-action:hover {
+    color: var(--cui-danger-text);
+  }
+}
+
+.beep-icon {
+  flex-shrink: 0;
+  width: 1.125rem;
+  height: 1.125rem;
+}
+
+// ---- Composer ------------------------------------------------------------------
+
+.composer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cui-space-2);
+  margin-block-end: var(--cui-space-6);
+}
+
+.composer-text {
+  min-height: 5rem;
+  resize: vertical;
+  line-height: var(--beeps-text-leading);
+}
+
+.composer-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--cui-space-3);
+}
+
+.composer-count {
+  color: var(--cui-text-3);
+  font-size: var(--cui-text-sm);
+  font-variant-numeric: tabular-nums;
+
+  &[data-over] {
+    color: var(--cui-danger-text);
+    font-weight: var(--cui-weight-semibold);
+  }
+}
+
+.reply-box {
+  padding-block: var(--cui-space-4);
+  border-block-end: var(--cui-border-width) solid var(--cui-border);
+
+  > .composer {
+    margin-block-end: 0;
+  }
+}
+
+.reply-signin {
+  margin: 0;
+  font-size: var(--cui-text-sm);
+}
+
+// ---- Profiles ------------------------------------------------------------------
+
+.profile-id {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.profile-name {
+  font-size: var(--cui-text-2xl);
+  overflow-wrap: anywhere;
+}
+
+.profile-actions {
+  margin-inline-start: auto;
+
+  > form {
+    margin: 0;
+  }
+}
+
+.profile-bio {
+  margin-block-end: var(--cui-space-4);
+  line-height: var(--beeps-text-leading);
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+.profile-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--cui-space-1) var(--cui-space-6);
+  margin: 0 0 var(--cui-space-6);
+  color: var(--cui-text-3);
+  font-size: var(--cui-text-sm);
+
+  > div {
+    display: flex;
+    gap: var(--cui-space-1-5);
+  }
+
+  dd {
+    margin: 0;
+    color: var(--cui-text-2);
+  }
+}
+
+.profile-agents {
+  margin-block-end: var(--cui-space-6);
+}
+
+.profile-section-title {
+  margin-block-end: var(--cui-space-2);
+  font-size: var(--cui-text-base);
+}
+
+.actor-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cui-space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.actor-row {
+  display: flex;
+  align-items: center;
+  gap: var(--cui-space-3);
+  padding: var(--cui-space-2);
+  color: var(--cui-text);
+  text-decoration: none;
+  border-radius: var(--cui-radius);
+
+  &:hover {
+    background: var(--cui-surface-hover);
+  }
+}
+
+.actor-name {
+  font-weight: var(--cui-weight-semibold);
+}
+
+.actor-handle {
+  color: var(--cui-text-3);
+  font-size: var(--cui-text-sm);
+}
+
+.profile-tabs {
+  margin-block-end: var(--cui-space-2);
+}
+
+// ---- Inbox ---------------------------------------------------------------------
+
+.notification-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-block-start: var(--cui-border-width) solid var(--cui-border);
+}
+
+.notification {
+  padding-block-start: var(--cui-space-4);
+  border-block-end: var(--cui-border-width) solid var(--cui-border);
+
+  > .beep {
+    padding-block-start: var(--cui-space-2);
+    border-block-end: 0;
+  }
+}
+
+.notification-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--cui-space-2);
+  color: var(--cui-text-2);
+  font-size: var(--cui-text-sm);
+
+  > time {
+    color: var(--cui-text-3);
+  }
+}
+
+.notification-actor {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--cui-space-2);
+  color: var(--cui-text);
+  font-weight: var(--cui-weight-semibold);
+  text-decoration: none;
+}
+
+// ---- Settings ------------------------------------------------------------------
+
+.settings > h1 {
+  margin-block-end: var(--cui-space-4);
+}
+
+.settings-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cui-space-5);
+  padding-block: var(--cui-space-6);
+  border-block-start: var(--cui-border-width) solid var(--cui-border);
+
+  > h2 {
+    margin: 0;
+    font-size: var(--cui-text-lg);
+  }
+}
+
+.settings-fixed {
+  margin: 0;
+  color: var(--cui-text-2);
+}
+
+.agent-avatar-note {
+  margin-block-start: var(--cui-space-6);
+}

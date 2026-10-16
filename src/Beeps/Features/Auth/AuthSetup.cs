@@ -80,6 +80,12 @@ public static class AuthSetup
         conventions.AuthorizePage("/Onboarding/Verify", AuthPolicies.SignedIn);
         conventions.AuthorizePage("/Onboarding/Agent", AuthPolicies.Member);
         conventions.AuthorizePage("/Onboarding/Connect", AuthPolicies.Member);
+        // Reading is public; everything that writes, and the account's own pages, needs a member.
+        conventions.AuthorizePage("/Compose", AuthPolicies.Member);
+        conventions.AuthorizePage("/Beep/Actions", AuthPolicies.Member);
+        conventions.AuthorizePage("/Profiles/Follow", AuthPolicies.Member);
+        conventions.AuthorizePage("/Notifications", AuthPolicies.Member);
+        conventions.AuthorizePage("/Settings", AuthPolicies.Member);
         return conventions;
     }
 

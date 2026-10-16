@@ -1,0 +1,74 @@
+@using Beeps.Features.Accounts
+@using Beeps.Features.Beeps
+@using Beeps.Features.Site
+@model BeepCard
+@* The one beep markup: timelines, threads, profiles, the inbox, and (stage 5) live updates. *@
+@{
+    var beep = Model.Beep;
+    var author = beep.Author;
+    var profile = SitePaths.Profile(author.Handle ?? "");
+    var permalink = SitePaths.Beep(beep.Id);
+    var returnUrl = $"{Context.Request.Path}{Context.Request.QueryString}";
+    var likeHandler = beep.Liked ? "Unlike" : "Like";
+}
+<article class="beep@(Model.Focused ? " beep-focused" : "")" id="@SitePaths.BeepAnchor(beep.Id)">
+    <a class="beep-avatar" href="@profile" tabindex="-1" aria-hidden="true">
+        <span class="avatar"><img src="@author.AvatarUrl" alt="" width="32" height="32" loading="lazy"></span>
+    </a>
+    <div class="beep-main">
+        <header class="beep-header">
+            <a class="beep-author" href="@profile">
+                <span class="beep-name">@(author.DisplayName ?? author.Handle)</span>
+                <span class="beep-handle">@@@author.Handle</span>
+            </a>
+            @if (author.Kind == ActorKind.Agent)
+            {
+                <span class="badge">@L["Beep.Agent"]</span>
+            }
+            <a class="beep-time" href="@permalink"><utc-time value="beep.CreatedAt" /></a>
+        </header>
+        @if (beep.IsReply)
+        {
+            if (Model.ReplyingTo is not null)
+            {
+                <p class="beep-context"><a href="#@SitePaths.BeepAnchor(beep.ReplyToId!.Value)">@L["Beep.ReplyingTo", Model.ReplyingTo]</a></p>
+            }
+            else if (!Model.InThread)
+            {
+                <p class="beep-context"><a href="@SitePaths.Beep(beep.ReplyToId!.Value)">@L["Beep.InReply"]</a></p>
+            }
+        }
+        <div class="beep-text">@Html.Raw(BeepText.RenderHtml(beep))</div>
+        <footer class="beep-actions">
+            <a class="beep-action" href="@permalink#reply" aria-label="@L["Beep.Replies", beep.ReplyCount]">
+                <svg class="beep-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 5h16v11H9l-5 4z" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round"/></svg>
+                <span class="beep-count" aria-hidden="true">@beep.ReplyCount</span>
+            </a>
+            @if (User.IsMember())
+            {
+                <form class="beep-like" method="post" asp-page="/Beep/Actions" asp-route-id="@beep.Id" asp-page-handler="@likeHandler" asp-route-returnUrl="@returnUrl"
+                      data-like data-like-url="@Url.Page("/Beep/Actions", "Like", new { id = beep.Id, returnUrl })" data-unlike-url="@Url.Page("/Beep/Actions", "Unlike", new { id = beep.Id, returnUrl })">
+                    <button class="beep-action" type="submit" aria-pressed="@(beep.Liked ? "true" : "false")">
+                        <span class="visually-hidden">@L["Beep.Like"]</span>
+                        <svg class="beep-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round"/></svg>
+                        <span class="beep-count" data-like-count>@beep.LikeCount</span>
+                    </button>
+                </form>
+            }
+            else
+            {
+                <span class="beep-action">
+                    <span class="visually-hidden">@L["Beep.Likes", beep.LikeCount]</span>
+                    <svg class="beep-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round"/></svg>
+                    <span class="beep-count" aria-hidden="true">@beep.LikeCount</span>
+                </span>
+            }
+            @if (beep.CanDelete)
+            {
+                <form class="beep-delete" method="post" asp-page="/Beep/Actions" asp-route-id="@beep.Id" asp-page-handler="Delete" asp-route-returnUrl="@returnUrl" data-confirm="@L["Beep.Delete.Confirm"]">
+                    <button class="beep-action" type="submit">@L["Beep.Delete"]</button>
+                </form>
+            }
+        </footer>
+    </div>
+</article>

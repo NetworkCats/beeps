@@ -31,4 +31,6 @@ public static class AccountFields
     public const string InviteCode = "InviteCode";
     public const string Code = "Code";
     public const string Login = "Login";
+    public const string CurrentPassword = "CurrentPassword";
+    public const string NewPassword = "NewPassword";
 }

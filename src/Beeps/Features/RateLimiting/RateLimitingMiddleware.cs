@@ -1,5 +1,7 @@
 using System.Security.Claims;
+using Beeps.Features.Auth;
 using Beeps.Features.Shared.Http;
+using Microsoft.AspNetCore.Diagnostics;
 
 namespace Beeps.Features.RateLimiting;
 
@@ -15,7 +17,10 @@ public sealed class RateLimitingMiddleware(RequestDelegate next)
         ArgumentNullException.ThrowIfNull(context);
         ArgumentNullException.ThrowIfNull(rateLimits);
         var metadata = context.GetEndpoint()?.Metadata;
-        if (metadata?.GetMetadata<SkipRateLimitAttribute>() is not null)
+        // An error page rendered for a request (re-executed) belongs to a request that was counted already.
+        if (metadata?.GetMetadata<SkipRateLimitAttribute>() is not null
+            || context.Features.Get<IStatusCodeReExecuteFeature>() is not null
+            || context.Features.Get<IExceptionHandlerFeature>() is not null)
         {
             await next(context);
             return;
@@ -29,7 +34,17 @@ public sealed class RateLimitingMiddleware(RequestDelegate next)
         var result = await rateLimits.CheckAsync(policy, partition, context.RequestAborted);
         if (!result.IsSuccess)
         {
-            await result.Error.ToHttpResult().ExecuteAsync(context);
+            if (AuthSetup.IsApi(context.Request))
+            {
+                await result.Error.ToHttpResult().ExecuteAsync(context);
+            }
+            else
+            {
+                // No body, so the status code pages render the localized HTML error page.
+                context.Response.StatusCode = StatusCodes.Status429TooManyRequests;
+                context.Response.Headers.RetryAfter = ErrorHttpResult.RetryAfterHeaderValue(result.Error.RetryAfter ?? TimeSpan.Zero);
+            }
+
             return;
         }
 

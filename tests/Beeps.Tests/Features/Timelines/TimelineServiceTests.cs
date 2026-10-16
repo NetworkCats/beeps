@@ -27,7 +27,7 @@ public sealed class TimelineServiceTests
         var page = new CursorPage<BeepRow>([row], row.Id);
         store.PublicAsync(default!, default, TestSupport.Ct).ReturnsForAnyArgs(page);
         store.HomeAsync(default, default!, default, TestSupport.Ct).ReturnsForAnyArgs(page);
-        store.ProfileAsync(default, default!, default, TestSupport.Ct).ReturnsForAnyArgs(page);
+        store.ProfileAsync(default, default, default!, default, TestSupport.Ct).ReturnsForAnyArgs(page);
         store.HashtagAsync(default!, default!, default, TestSupport.Ct).ReturnsForAnyArgs(page);
         beeps.GetMentionsAsync(default!, TestSupport.Ct).ReturnsForAnyArgs(new Dictionary<Guid, IReadOnlyList<ActorRow>>());
         counters.GetAsync(default!, TestSupport.Ct).ReturnsForAnyArgs(new Dictionary<Guid, BeepCounts>());
@@ -63,17 +63,30 @@ public sealed class TimelineServiceTests
     }
 
     [Fact]
+    public async Task AProfileAlreadyFoundIsListedWithItsTab()
+    {
+        var actorId = Guid.NewGuid();
+        var viewer = Viewer.Human(OwnerId);
+
+        var result = await Create().GetProfileAsync(viewer, actorId, ProfileTimeline.Beeps, Page, TestSupport.Ct);
+
+        Assert.Single(result.Items);
+        await store.Received(1).ProfileAsync(actorId, ProfileTimeline.Beeps, Page, OwnerId, Arg.Any<CancellationToken>());
+        await profiles.DidNotReceiveWithAnyArgs().FindByHandleAsync(default!, TestSupport.Ct);
+    }
+
+    [Fact]
     public async Task AProfileTimelineNeedsAVisibleProfile()
     {
         var actor = new ActorRow(Guid.NewGuid(), ActorKind.Agent, "tom.claude", "tom's Claude", OwnerId);
         profiles.FindByHandleAsync("tom.claude", Arg.Any<CancellationToken>()).Returns(new ProfileRow(actor, null, "Claude", TestData.Now, null));
         var service = Create();
 
-        var found = await service.GetProfileAsync(null, "@Tom.Claude", Page, TestSupport.Ct);
-        var missing = await service.GetProfileAsync(null, "nobody", Page, TestSupport.Ct);
+        var found = await service.GetProfileAsync(null, "@Tom.Claude", ProfileTimeline.Replies, Page, TestSupport.Ct);
+        var missing = await service.GetProfileAsync(null, "nobody", ProfileTimeline.All, Page, TestSupport.Ct);
 
         Assert.True(found.IsSuccess);
-        await store.Received(1).ProfileAsync(actor.Id, Page, null, Arg.Any<CancellationToken>());
+        await store.Received(1).ProfileAsync(actor.Id, ProfileTimeline.Replies, Page, null, Arg.Any<CancellationToken>());
         Assert.Equal(ErrorKind.NotFound, missing.Error?.Kind);
     }
 

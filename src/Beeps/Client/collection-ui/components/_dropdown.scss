@@ -1,0 +1,285 @@
+/* Dropdown menus & popovers on the native Popover API (positioned with CSS anchor
+ * positioning; dropdown.js wires `position-anchor` / `position-area` inline, or falls
+ * back to fixed coordinates).
+ *
+ *   <button class="btn dropdown-toggle" popovertarget="m1">Options</button>
+ *   <div id="m1" popover class="dropdown-menu" data-cui-placement="bottom-end" role="menu">
+ *     <div class="dropdown-header">Account</div>
+ *     <a class="dropdown-item" href="…"><span class="icon">person</span> Profile <kbd>P</kbd></a>
+ *     <button class="dropdown-item" role="menuitemcheckbox" aria-checked="true">Compact</button>
+ *     <hr class="dropdown-divider">
+ *     <button class="dropdown-item dropdown-item-danger">Sign out</button>
+ *   </div>
+ *
+ * Static / no-JS fallback (no `popover` attribute):
+ *   <div class="dropdown open"><button class="btn dropdown-toggle">…</button><div class="dropdown-menu">…</div></div>
+ *
+ * Hover card / rich popover:  <div popover class="popover"><div class="popover-title">…</div>…</div>
+ *
+ * Hooks: .dropdown-menu[popover] (+ .dropdown-menu-sm / -lg / -checkable), .dropdown-item
+ * (+ -danger / -active / [aria-current] / [aria-checked] / [disabled] / .disabled), .dropdown-header,
+ * .dropdown-divider, .dropdown-text, .dropdown-user (+ -name / -handle), .dropdown-item > .dropdown-end,
+ * .dropdown (+ .open / .dropdown-end / .dropdown-up), .dropdown-toggle[aria-expanded], .popover (+ -title). */
+@use "../foundation/layers";
+@use "../abstracts" as *;
+
+@layer cui.components {
+  /* ---- Shell shared by menus and popovers -------------------------------- */
+  .#{$prefix}dropdown-menu, .#{$prefix}popover {
+    --_bg: var(--cui-dropdown-bg, var(--cui-surface));
+    --_fg: var(--cui-dropdown-fg, var(--cui-text));
+    --_border: var(--cui-dropdown-border, var(--cui-border));
+    --_shadow: var(--cui-dropdown-shadow, var(--cui-shadow-lg));
+    --_pad: var(--cui-dropdown-pad, var(--cui-space-1));
+    --_min-width: var(--cui-dropdown-min-width, 12rem);
+    --_radius: var(--cui-dropdown-radius, var(--cui-radius-lg));
+
+    margin: 0;
+    inset: auto;
+    padding: var(--_pad);
+    min-width: var(--_min-width);
+    max-width: min(20rem, calc(100vw - 1rem));
+    max-height: min(60vh, 28rem);
+    overflow: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+    font-size: var(--cui-text-sm);
+    line-height: var(--cui-leading-snug);
+    text-align: start;
+    color: var(--_fg);
+    background: var(--_bg);
+    border: var(--cui-border-width) solid var(--_border);
+    border-radius: var(--_radius);
+    box-shadow: var(--_shadow);
+    z-index: var(--cui-z-dropdown);
+  }
+
+  /* As a popover: top layer, anchored, animated. dropdown.js sets `position-anchor`
+   * and `position-area` inline; the block margin is the 4px gap from the invoker.
+   * It grows out of the corner nearest the invoker (transform-origin follows the placement)
+   * and settles with a long ease-out; closing is a quick accelerating fade. The transition on
+   * :popover-open drives the entry, the base one the exit. */
+  :is(.#{$prefix}dropdown-menu, .#{$prefix}popover)[popover] {
+    --_origin-y: top;
+    --_origin-x: left;
+    --_shift: 0 -4px;
+    position: fixed;
+    margin: var(--cui-space-1) 0;
+    position-try-fallbacks: flip-block, flip-inline;
+    transform-origin: var(--_origin-x) var(--_origin-y);
+    opacity: 0;
+    translate: var(--_shift);
+    scale: 0.96;
+    transition:
+      opacity var(--cui-duration-fast) var(--cui-ease-in),
+      translate var(--cui-duration-fast) var(--cui-ease-in),
+      scale var(--cui-duration-fast) var(--cui-ease-in),
+      display var(--cui-duration-fast) allow-discrete,
+      overlay var(--cui-duration-fast) allow-discrete;
+    &:popover-open {
+      opacity: 1;
+      translate: 0 0;
+      scale: 1;
+      transition:
+        opacity var(--cui-duration) var(--cui-ease),
+        translate var(--cui-duration-slow) var(--cui-ease-out),
+        scale var(--cui-duration-slow) var(--cui-ease-out),
+        display var(--cui-duration-slow) allow-discrete,
+        overlay var(--cui-duration-slow) allow-discrete;
+    }
+    @starting-style {
+      &:popover-open { opacity: 0; translate: var(--_shift); scale: 0.96; }
+    }
+    /* Origin per placement (default bottom-start). start / end flip in RTL. */
+    &:is([data-cui-placement$="-end"]) { --_origin-x: right; }
+    &:dir(rtl) { --_origin-x: right; }
+    &:dir(rtl):is([data-cui-placement$="-end"]) { --_origin-x: left; }
+    &:is([data-cui-placement="bottom"], [data-cui-placement="top"]) { --_origin-x: center; }
+    /* Menus opening upwards or sideways slide from the matching edge and gap on that axis. */
+    &[data-cui-placement^="top"] { --_origin-y: bottom; --_shift: 0 4px; }
+    &[data-cui-placement^="left"], &[data-cui-placement^="right"] { margin: 0 var(--cui-space-1); }
+    &[data-cui-placement^="left"] { --_origin-x: right; --_shift: 4px 0; }
+    &[data-cui-placement^="right"] { --_origin-x: left; --_shift: -4px 0; }
+    &:is([data-cui-placement="left"], [data-cui-placement="right"]) { --_origin-y: center; }
+  }
+  .#{$prefix}dropdown-menu[popover] { width: max-content; }
+
+  .#{$prefix}dropdown-menu-sm {
+    --_min-width: 9rem;
+    > .#{$prefix}dropdown-item { padding: var(--cui-space-1-5) var(--cui-space-2-5); font-size: var(--cui-text-xs); }
+  }
+  .#{$prefix}dropdown-menu-lg { --_min-width: 18rem; max-width: min(26rem, calc(100vw - 1rem)); }
+
+  /* ---- Items ------------------------------------------------------------- */
+  .#{$prefix}dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: var(--cui-space-2-5);
+    width: 100%;
+    padding: var(--cui-space-2) var(--cui-space-3);
+    font: inherit;
+    font-size: var(--cui-text-sm);
+    font-weight: var(--cui-weight-normal);
+    line-height: var(--cui-leading-snug);
+    text-align: start;
+    white-space: nowrap;
+    color: var(--cui-text);
+    background: transparent;
+    border: 0;
+    border-radius: var(--cui-radius);
+    text-decoration: none;
+    cursor: pointer;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    transition: background-color var(--cui-transition), color var(--cui-transition);
+
+    &:hover { background: var(--cui-surface-hover); color: var(--cui-text); text-decoration: none; }
+    &:focus-visible { outline: none; background: var(--cui-surface-hover); box-shadow: inset var(--cui-ring); }
+    &:active { background: var(--cui-surface-2); }
+
+    > .#{$prefix}icon { --cui-icon-size: 1.25rem; color: var(--cui-text-3); flex-shrink: 0; }
+    > .#{$prefix}avatar { flex-shrink: 0; }
+    > kbd, > .#{$prefix}kbd { margin-inline-start: auto; flex-shrink: 0; }
+    > .#{$prefix}dropdown-end { margin-inline-start: auto; flex-shrink: 0; font-size: var(--cui-text-xs); color: var(--cui-text-3); }
+    > .#{$prefix}badge, > .#{$prefix}count { margin-inline-start: auto; }
+
+    /* Checked state for role="menuitemradio" / "menuitemcheckbox" */
+    &[aria-checked="true"]::before {
+      @include icon-glyph("check");
+      font-size: 1.125rem;
+      line-height: 1;
+      color: var(--cui-primary);
+      flex-shrink: 0;
+    }
+
+    &[disabled], &:disabled, &[aria-disabled="true"], &.#{$prefix}disabled {
+      opacity: 0.5;
+      pointer-events: none;
+      cursor: default;
+    }
+  }
+  /* Menus with checkable items reserve a gutter so labels line up. */
+  .#{$prefix}dropdown-menu-checkable .#{$prefix}dropdown-item,
+  .#{$prefix}dropdown-menu:has([role="menuitemradio"], [role="menuitemcheckbox"]) .#{$prefix}dropdown-item {
+    position: relative;
+    padding-inline-start: 2rem;
+    &[aria-checked="true"]::before {
+      position: absolute;
+      inset-inline-start: 0.6rem;
+      top: 50%;
+      translate: 0 -50%;
+    }
+  }
+  .#{$prefix}dropdown-item-danger {
+    color: var(--cui-danger-text);
+    > .#{$prefix}icon { color: inherit; }
+    &:hover, &:focus-visible { background: var(--cui-danger-soft); color: var(--cui-danger-text); }
+    &:focus-visible { box-shadow: inset var(--cui-ring-danger); }
+  }
+  .#{$prefix}dropdown-item-active, .#{$prefix}dropdown-item[aria-current]:not([aria-current="false"]) {
+    background: var(--cui-primary-soft);
+    color: var(--cui-primary-text);
+    font-weight: var(--cui-weight-medium);
+    > .#{$prefix}icon { color: inherit; }
+    &:hover, &:focus-visible { background: var(--cui-primary-soft-hover); color: var(--cui-primary-text); }
+  }
+
+  /* ---- Non-item content -------------------------------------------------- */
+  .#{$prefix}dropdown-header {
+    padding: var(--cui-space-2) var(--cui-space-3) var(--cui-space-1);
+    font-size: var(--cui-text-xs);
+    font-weight: var(--cui-weight-semibold);
+    letter-spacing: var(--cui-tracking-wide);
+    text-transform: uppercase;
+    color: var(--cui-text-3);
+    white-space: nowrap;
+  }
+  .#{$prefix}dropdown-divider {
+    height: 0;
+    margin: var(--cui-space-1) calc(-1 * var(--cui-space-1));
+    border: 0;
+    border-block-start: var(--cui-border-width) solid var(--cui-border);
+  }
+  .#{$prefix}dropdown-text {
+    padding: var(--cui-space-2) var(--cui-space-3);
+    font-size: var(--cui-text-sm);
+    color: var(--cui-text-2);
+    white-space: normal;
+  }
+
+  /* Signed-in user header: avatar + name / handle. Add .dropdown-item to make it a link. */
+  .#{$prefix}dropdown-user {
+    display: flex;
+    align-items: center;
+    gap: var(--cui-space-3);
+    min-width: 0;
+    padding: var(--cui-space-2) var(--cui-space-3) var(--cui-space-2-5);
+    > .#{$prefix}avatar { flex-shrink: 0; }
+    > div, > .#{$prefix}dropdown-user-info { display: flex; flex-direction: column; min-width: 0; line-height: var(--cui-leading-snug); }
+  }
+  .#{$prefix}dropdown-user-name {
+    font-size: var(--cui-text-sm);
+    font-weight: var(--cui-weight-semibold);
+    color: var(--cui-text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .#{$prefix}dropdown-user-handle {
+    font-size: var(--cui-text-xs);
+    color: var(--cui-text-3);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .#{$prefix}dropdown-user + .#{$prefix}dropdown-divider { margin-block-start: 0; }
+
+  /* ---- Static wrapper (no popover attribute): absolute under the trigger -- */
+  .#{$prefix}dropdown {
+    position: relative;
+    display: inline-flex;
+    > .#{$prefix}dropdown-menu:not([popover]) {
+      position: absolute;
+      top: calc(100% + var(--cui-space-1));
+      inset-inline-start: 0;
+      display: none;
+      width: max-content;
+    }
+    &.#{$prefix}open > .#{$prefix}dropdown-menu:not([popover]), > .#{$prefix}dropdown-menu.#{$prefix}open:not([popover]) { display: block; }
+  }
+  .#{$prefix}dropdown-end > .#{$prefix}dropdown-menu:not([popover]) { inset-inline-start: auto; inset-inline-end: 0; }
+  .#{$prefix}dropdown-up > .#{$prefix}dropdown-menu:not([popover]) { top: auto; bottom: calc(100% + var(--cui-space-1)); }
+
+  /* ---- Trigger caret ----------------------------------------------------- */
+  .#{$prefix}dropdown-toggle {
+    &::after {
+      @include icon-glyph("expand_more");
+      font-size: 1.125rem;
+      line-height: 1;
+      margin-inline-end: -0.25rem;
+      flex-shrink: 0;
+      transition: rotate var(--cui-duration-slow) var(--cui-ease);
+    }
+    &[aria-expanded="true"]::after { rotate: 180deg; }
+  }
+  .#{$prefix}dropdown-toggle-no-caret::after { content: none; }
+
+  /* ---- Generic popover (hover cards, rich content) ----------------------- */
+  .#{$prefix}popover {
+    --_pad: var(--cui-space-4);
+    --_min-width: 0;
+    width: 20rem;
+    max-width: calc(100vw - 1rem);
+    max-height: min(70vh, 32rem);
+    line-height: var(--cui-leading-base);
+    > :last-child { margin-block-end: 0; }
+  }
+  .#{$prefix}popover-title {
+    margin: 0 0 var(--cui-space-1);
+    font-size: var(--cui-text-sm);
+    font-weight: var(--cui-weight-semibold);
+    color: var(--cui-text);
+  }
+  .#{$prefix}popover-sm { width: 14rem; --_pad: var(--cui-space-3); }
+  .#{$prefix}popover-lg { width: 26rem; }
+}

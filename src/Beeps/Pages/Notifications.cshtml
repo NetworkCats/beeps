@@ -1,0 +1,56 @@
+@page "/notifications"
+@using Beeps.Features.Notifications
+@model NotificationsModel
+@{
+    ViewData["Title"] = L["Notifications.Title"];
+    var items = Model.Notifications.Items;
+}
+<section class="feed">
+    <header class="section-header">
+        <h1>@L["Notifications.Title"]</h1>
+        @if (items.Any(n => !n.Read))
+        {
+            <form method="post" asp-page-handler="Read">
+                <input type="hidden" name="upToId" value="@items[0].Id">
+                <button class="btn btn-sm" type="submit">@L["Notifications.MarkRead"]</button>
+            </form>
+        }
+    </header>
+    @if (items.Count == 0)
+    {
+        <div class="empty empty-bordered">
+            <h2 class="empty-title">@L["Notifications.Empty.Title"]</h2>
+            <p class="empty-text">@L["Notifications.Empty.Text"]</p>
+        </div>
+    }
+    else
+    {
+        <ol class="notification-list">
+            @foreach (var notification in items)
+            {
+                var from = notification.From;
+                <li class="notification@(notification.Read ? "" : " notification-unread")">
+                    <p class="notification-summary">
+                        <a class="notification-actor" href="@SitePaths.Profile(from.Handle!)">
+                            <span class="avatar avatar-sm"><img src="@from.AvatarUrl" alt="" width="24" height="24" loading="lazy"></span>
+                            @(from.DisplayName ?? from.Handle)
+                        </a>
+                        <span>@L[$"Notifications.{notification.Type}"]</span>
+                        <utc-time value="notification.CreatedAt" />
+                        @if (!notification.Read)
+                        {
+                            <span class="badge badge-primary">@L["Notifications.New"]</span>
+                        }
+                    </p>
+                    <partial name="_Beep" model="new BeepCard(notification.Beep)" />
+                </li>
+            }
+        </ol>
+        @if (Model.Notifications.NextCursor is { } next)
+        {
+            <nav class="pager" aria-label="@L["Pager.Label"]">
+                <a class="btn btn-sm" href="?before=@next">@L["Pager.More"]</a>
+            </nav>
+        }
+    }
+</section>

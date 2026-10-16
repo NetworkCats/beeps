@@ -1,0 +1,34 @@
+@page "/beeps/{id:guid}"
+@model DetailsModel
+@{
+    var focus = Model.Focus;
+    ViewData["Title"] = L["Beep.Title", focus.Author.DisplayName ?? focus.Author.Handle ?? ""];
+    // Who each beep on the page is by, so a reply can say whom it answers.
+    var authors = Model.Thread.Items.ToDictionary(b => b.Id, b => b.Author.Handle);
+    var focusShown = Model.Thread.Items.Any(b => b.Id == focus.Id);
+}
+<section class="feed thread">
+    <h1 class="visually-hidden">@ViewData["Title"]</h1>
+    @if (!focusShown)
+    {
+        <partial name="_Beep" model="new BeepCard(focus, Focused: true)" />
+        <partial name="_ReplyBox" model="focus" />
+    }
+    <div class="beep-list">
+        @foreach (var beep in Model.Thread.Items)
+        {
+            var replyingTo = beep.ReplyToId is { } parent && authors.TryGetValue(parent, out var handle) ? handle : null;
+            <partial name="_Beep" model="new BeepCard(beep, beep.Id == focus.Id, InThread: true, replyingTo)" />
+            @if (beep.Id == focus.Id)
+            {
+                <partial name="_ReplyBox" model="focus" />
+            }
+        }
+    </div>
+    @if (Model.Thread.NextCursor is { } next)
+    {
+        <nav class="pager" aria-label="@L["Pager.Label"]">
+            <a class="btn btn-sm" href="@SitePaths.Beep(focus.Id)?after=@next">@L["Pager.MoreReplies"]</a>
+        </nav>
+    }
+</section>

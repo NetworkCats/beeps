@@ -1,0 +1,17 @@
+@page "/compose"
+@model ComposeModel
+@{
+    ViewData["Title"] = Model.ReplyTo is null ? L["Compose.Title"] : L["Compose.ReplyTitle"];
+}
+<section class="feed">
+    <h1 class="feed-title">@ViewData["Title"]</h1>
+    <form-errors />
+    @if (Model.Parent is not null)
+    {
+        <partial name="_Beep" model="new BeepCard(Model.Parent)" />
+    }
+    @if (Model.ReplyTo is null || Model.Parent is not null)
+    {
+        <partial name="_Composer" model="new Composer(Model.ReturnUrl ?? SitePaths.Home, Model.ReplyTo, Model.Text)" />
+    }
+</section>

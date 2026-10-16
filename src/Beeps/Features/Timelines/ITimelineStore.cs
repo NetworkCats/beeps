@@ -3,6 +3,14 @@ using Beeps.Features.Shared;
 
 namespace Beeps.Features.Timelines;
 
+/// <summary>Which beeps of a profile to list: the API shows all of them, the web page splits them into two tabs.</summary>
+public enum ProfileTimeline
+{
+    All,
+    Beeps,
+    Replies,
+}
+
 /// <summary>Read-time timelines (PLAN 6.6, first stage): each is one indexed query over the beeps table.</summary>
 public interface ITimelineStore
 {
@@ -16,8 +24,8 @@ public interface ITimelineStore
     /// </summary>
     Task<CursorPage<BeepRow>> HomeAsync(Guid humanId, PageRequest page, Guid? viewerId, CancellationToken cancellationToken);
 
-    /// <summary>Beeps and replies by the actor and, for a human, by all of their agents.</summary>
-    Task<CursorPage<BeepRow>> ProfileAsync(Guid actorId, PageRequest page, Guid? viewerId, CancellationToken cancellationToken);
+    /// <summary>Beeps by the actor and, for a human, by all of their agents: all of them, or only top-level beeps or replies.</summary>
+    Task<CursorPage<BeepRow>> ProfileAsync(Guid actorId, ProfileTimeline filter, PageRequest page, Guid? viewerId, CancellationToken cancellationToken);
 
     /// <summary>Beeps and replies tagged with the normalized hashtag.</summary>
     Task<CursorPage<BeepRow>> HashtagAsync(string normalizedTag, PageRequest page, Guid? viewerId, CancellationToken cancellationToken);

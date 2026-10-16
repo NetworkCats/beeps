@@ -1,0 +1,15 @@
+@using Beeps.Features.Beeps
+@model Composer
+<form class="composer" method="post" asp-page="/Compose" asp-route-replyTo="@Model.ReplyTo" id="@(Model.ReplyTo is null ? "compose" : "reply")">
+    <input type="hidden" name="ReturnUrl" value="@Model.ReturnUrl">
+    <div class="field">
+        <label class="label visually-hidden" for="text">@L[Model.ReplyTo is null ? "Compose.Label" : "Compose.ReplyLabel"]</label>
+        <textarea class="textarea composer-text" beeps-field="text" rows="3" required placeholder="@L[Model.ReplyTo is null ? "Compose.Placeholder" : "Compose.ReplyPlaceholder"]"
+                  data-composer data-max-length="@BeepText.MaxLength">@Model.Text</textarea>
+        <field-error name="text" />
+    </div>
+    <div class="composer-footer">
+        <span class="composer-count" data-composer-count aria-live="polite"></span>
+        <button class="btn btn-primary btn-sm" type="submit">@L[Model.ReplyTo is null ? "Compose.Submit" : "Compose.Reply"]</button>
+    </div>
+</form>

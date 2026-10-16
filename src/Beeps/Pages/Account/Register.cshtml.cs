@@ -2,10 +2,11 @@ using Beeps.Features.Accounts;
 using Beeps.Features.Auth;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.Extensions.Localization;
 
 namespace Beeps.Pages.Account;
 
-public sealed class RegisterModel(AccountService accounts) : PageModel
+public sealed class RegisterModel(AccountService accounts, IStringLocalizer<SharedResource> localizer) : PageModel
 {
     [BindProperty] public string? Email { get; set; }
 
@@ -32,6 +33,11 @@ public sealed class RegisterModel(AccountService accounts) : PageModel
 
     public async Task<IActionResult> OnPostAsync(CancellationToken cancellationToken)
     {
+        if (User.IsHuman())
+        {
+            return this.AlreadySignedIn(localizer);
+        }
+
         var result = await accounts.RegisterAsync(new RegisterRequest(Email, Username, Password, InviteCode, CaptchaToken), this.Origin(), cancellationToken);
         if (!result.IsSuccess)
         {

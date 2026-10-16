@@ -1,7 +1,9 @@
 using System.Globalization;
 using Beeps.Features.Shared;
 using Beeps.Features.Shared.Http;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.Extensions.Localization;
 
 namespace Beeps.Pages;
 
@@ -14,6 +16,15 @@ public static class PageModelExtensions
         return new RequestOrigin(
             page.HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
             CultureInfo.CurrentUICulture.Name);
+    }
+
+    /// <summary>A sign-in or sign-up form posted by someone already signed in: they stay who they are, and are told so.</summary>
+    public static LocalRedirectResult AlreadySignedIn(this PageModel page, IStringLocalizer<SharedResource> localizer)
+    {
+        ArgumentNullException.ThrowIfNull(page);
+        ArgumentNullException.ThrowIfNull(localizer);
+        page.TempData[Notices.Error] = localizer["Error.AlreadySignedIn", page.User.Identity?.Name ?? ""].Value;
+        return page.LocalRedirect("~/");
     }
 
     /// <summary>

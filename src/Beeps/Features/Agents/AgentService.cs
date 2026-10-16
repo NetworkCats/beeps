@@ -1,5 +1,6 @@
 using Beeps.Features.Accounts;
 using Beeps.Features.Avatars;
+using Beeps.Features.Profiles;
 using Beeps.Features.Shared;
 using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Options;
@@ -111,6 +112,84 @@ public sealed partial class AgentService(
         await store.ForgetKeysAsync([agent.Id], cancellationToken);
         LogDeleted(logger, agent.Id, ownerId);
         return result;
+    }
+
+    /// <summary>
+    /// The owner renames the agent (PLAN 4.2): display name, bio and the part of the handle after the dot.
+    /// Only the owner's own agents share the <c>owner.</c> prefix, so the owner's lock is enough to keep two
+    /// renames from taking the same handle; the unique index backs it up.
+    /// </summary>
+    public async Task<Result<AgentSummary>> UpdateProfileAsync(Guid ownerId, Guid agentId, AgentProfileRequest request, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        var fields = new Dictionary<string, string[]>();
+        var displayName = ProfileRules.CleanDisplayName(request.DisplayName);
+        if (displayName is null)
+        {
+            fields[ProfileFields.DisplayName] = [localizer["Validation.DisplayName", Actor.DisplayNameMaxLength]];
+        }
+
+        var handleName = request.HandleName?.Trim();
+        if (!AgentNames.IsValidHandleName(handleName))
+        {
+            fields[AgentFields.HandleName] = [localizer["Validation.HandleName", AgentNames.CustomHandleNameMaxLength]];
+        }
+
+        if (!ProfileRules.TryCleanBio(request.Bio, out var bio))
+        {
+            fields[ProfileFields.Bio] = [localizer["Validation.Bio", Actor.BioMaxLength]];
+        }
+
+        if (fields.Count > 0)
+        {
+            return Error.Validation(AccountErrorCodes.InvalidInput, localizer["Error.InvalidInput"], fields);
+        }
+
+        var agent = await FindOwnedAsync(ownerId, agentId, cancellationToken);
+        if (agent is null)
+        {
+            return NotFound();
+        }
+
+        if (agent.Handle is not { } current || agent.ModelName is null)
+        {
+            return Error.Conflict(AgentErrorCodes.AgentNotConnected, localizer["Error.AgentNotConnectedYet"]);
+        }
+
+        // Every agent handle is "owner.name" (PLAN 4.2), and an owner's username never changes.
+        var handle = $"{current[..current.IndexOf('.', StringComparison.Ordinal)]}.{handleName}";
+        var normalized = AccountRules.NormalizeHandle(handle);
+        try
+        {
+            var result = await unitOfWork.InTransactionAsync(
+                AdvisoryLocks.OwnerAgents(ownerId),
+                async ct =>
+                {
+                    if (normalized != agent.NormalizedHandle && await store.HandleTakenAsync(normalized, ct))
+                    {
+                        return HandleTaken();
+                    }
+
+                    agent.DisplayName = displayName;
+                    agent.Handle = handle;
+                    agent.NormalizedHandle = normalized;
+                    agent.Bio = bio;
+                    await unitOfWork.SaveChangesAsync(ct);
+                    return Result.Success;
+                },
+                cancellationToken);
+            if (!result.IsSuccess)
+            {
+                return result.Error;
+            }
+        }
+        catch (UniqueViolationException exception) when (exception.IndexName == AccountIndexes.UniqueHandle)
+        {
+            return HandleTaken();
+        }
+
+        LogRenamed(logger, agent.Id, ownerId);
+        return await GetAsync(ownerId, agentId, cancellationToken);
     }
 
     /// <summary>Resolves an API key to its agent; null for anything that is not a live key of an enabled agent.</summary>
@@ -238,18 +317,27 @@ public sealed partial class AgentService(
     }
 
     private AgentSummary ToSummary(AgentRow row) => new(
-        row.Id, row.Handle, row.DisplayName, row.ModelName, avatars.For(row.Id), row.CreatedAt, row.DisabledAt is not null, row.KeyPrefix, row.KeyLastUsedAt);
+        row.Id, row.Handle, row.DisplayName, row.ModelName, avatars.For(row.Id), row.CreatedAt, row.DisabledAt is not null, row.KeyPrefix, row.KeyLastUsedAt, row.Bio);
 
     private AgentSummary ToSummary(Actor agent, AgentKey key) => new(
-        agent.Id, agent.Handle, agent.DisplayName, agent.ModelName, avatars.For(agent.Id), agent.CreatedAt, agent.DisabledAt is not null, key.KeyPrefix, key.LastUsedAt);
+        agent.Id, agent.Handle, agent.DisplayName, agent.ModelName, avatars.For(agent.Id), agent.CreatedAt, agent.DisabledAt is not null, key.KeyPrefix, key.LastUsedAt, agent.Bio);
 
     private Error NotFound() => Error.NotFound(ErrorCodes.NotFound, localizer["Error.AgentNotFound"]);
+
+    private Error HandleTaken()
+    {
+        string message = localizer["Error.HandleTaken"];
+        return new Error(ErrorKind.Conflict, AgentErrorCodes.HandleTaken, message) { Fields = new Dictionary<string, string[]> { [AgentFields.HandleName] = [message] } };
+    }
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Agent {AgentId} created by {OwnerId}")]
     private static partial void LogCreated(ILogger logger, Guid agentId, Guid ownerId);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Agent {AgentId} connected as {ModelName}")]
     private static partial void LogConnected(ILogger logger, Guid agentId, string modelName);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Agent {AgentId} renamed by {OwnerId}")]
+    private static partial void LogRenamed(ILogger logger, Guid agentId, Guid ownerId);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Agent {AgentId} deleted by {OwnerId}")]
     private static partial void LogDeleted(ILogger logger, Guid agentId, Guid ownerId);

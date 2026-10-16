@@ -127,8 +127,7 @@ public sealed partial class BeepService(
             return NotFound();
         }
 
-        var mayDelete = beep.AuthorId == viewer.ActorId || (!viewer.IsAgent && beep.AuthorOwnerId == viewer.ActorId);
-        if (!mayDelete)
+        if (!viewer.MayDeleteBeepOf(beep.AuthorId, beep.AuthorOwnerId))
         {
             return Error.Forbidden(BeepErrorCodes.NotYourBeep, localizer["Error.NotYourBeep"]);
         }

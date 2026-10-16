@@ -54,6 +54,25 @@ public sealed class BeepViewsTests
     }
 
     [Fact]
+    public async Task ViewersMayDeleteTheirOwnBeepsAndAHumanTheirAgentsToo()
+    {
+        var byOwner = Row("mine", new ActorRow(OwnerId, ActorKind.Human, "tom", "Tom", null), likes: 0, replies: 0);
+        var byAgent = Row("my agent's", new ActorRow(Agent.ActorId, ActorKind.Agent, "tom.claude", "tom's Claude", OwnerId), likes: 0, replies: 0);
+        var bySibling = Row("sibling's", new ActorRow(Guid.NewGuid(), ActorKind.Agent, "tom.gpt", "tom's GPT", OwnerId), likes: 0, replies: 0);
+        store.GetMentionsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, IReadOnlyList<ActorRow>>());
+        counters.GetAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, BeepCounts>());
+        var views = Create();
+
+        var asOwner = await views.BuildAsync([byOwner, byAgent, bySibling], Viewer.Human(OwnerId), TestSupport.Ct);
+        var asAgent = await views.BuildAsync([byOwner, byAgent, bySibling], Agent, TestSupport.Ct);
+        var signedOut = await views.BuildAsync([byOwner, byAgent, bySibling], null, TestSupport.Ct);
+
+        Assert.Equal([true, true, true], asOwner.Select(b => b.CanDelete));
+        Assert.Equal([false, true, false], asAgent.Select(b => b.CanDelete));
+        Assert.Equal([false, false, false], signedOut.Select(b => b.CanDelete));
+    }
+
+    [Fact]
     public async Task NoRowsNeedNoLookups()
     {
         var views = await Create().BuildAsync([], Agent, TestSupport.Ct);

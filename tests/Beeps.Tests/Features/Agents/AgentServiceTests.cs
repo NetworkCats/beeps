@@ -1,5 +1,6 @@
 using Beeps.Features.Accounts;
 using Beeps.Features.Agents;
+using Beeps.Features.Profiles;
 using Beeps.Features.Avatars;
 using Beeps.Features.Shared;
 using Beeps.Tests.Support;
@@ -243,6 +244,103 @@ public sealed class AgentServiceTests
         var result = await CreateService().ConnectAsync(Guid.NewGuid(), "Claude", TestSupport.Ct);
 
         Assert.Equal(ErrorKind.NotFound, result.Error?.Kind);
+    }
+
+    // ---- Renaming ------------------------------------------------------------
+
+    [Fact]
+    public async Task OwnersRenameTheirConnectedAgents()
+    {
+        var agent = ConnectedAgent();
+        store.ListAgentsAsync(OwnerId, Arg.Any<CancellationToken>()).Returns(
+            [new AgentRow(agent.Id, "tom.helper", "Helper", "Claude", TestData.Now, null, "beeps_abc", TestData.Now, null, "bio")]);
+
+        var result = await CreateService().UpdateProfileAsync(OwnerId, agent.Id, new AgentProfileRequest(" Helper ", "helper", " I help.\r\nMore. "), TestSupport.Ct);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(("Helper", "tom.helper", "tom.helper", "I help.\nMore."), (agent.DisplayName, agent.Handle, agent.NormalizedHandle, agent.Bio));
+        Assert.Equal([AdvisoryLocks.OwnerAgents(OwnerId)], unitOfWork.Locks);
+        Assert.Equal(1, unitOfWork.Saves);
+        Assert.Equal("helper", result.Value.HandleName);
+    }
+
+    [Fact]
+    public async Task KeepingTheHandleDoesNotCheckIt()
+    {
+        var agent = ConnectedAgent();
+        store.ListAgentsAsync(OwnerId, Arg.Any<CancellationToken>()).Returns([new AgentRow(agent.Id, "tom.claude", "x", "Claude", TestData.Now, null, null, null, null)]);
+
+        var result = await CreateService().UpdateProfileAsync(OwnerId, agent.Id, new AgentProfileRequest("New name", "claude", null), TestSupport.Ct);
+
+        Assert.True(result.IsSuccess);
+        await store.DidNotReceiveWithAnyArgs().HandleTakenAsync(default!, TestSupport.Ct);
+    }
+
+    [Fact]
+    public async Task ATakenHandleIsRefusedCaseInsensitively()
+    {
+        var agent = ConnectedAgent();
+        store.HandleTakenAsync("tom.gpt", Arg.Any<CancellationToken>()).Returns(true);
+
+        var result = await CreateService().UpdateProfileAsync(OwnerId, agent.Id, new AgentProfileRequest("x", "GPT", null), TestSupport.Ct);
+
+        Assert.Equal(AgentErrorCodes.HandleTaken, result.Error?.Code);
+        Assert.Equal(ErrorKind.Conflict, result.Error?.Kind);
+        Assert.Equal(["Error.HandleTaken"], result.Error?.Fields?[AgentFields.HandleName]!);
+        Assert.Equal("tom.claude", agent.Handle);
+        Assert.Equal(1, unitOfWork.Rollbacks);
+    }
+
+    [Fact]
+    public async Task LosingTheRaceForAHandleIsAlsoTaken()
+    {
+        var agent = ConnectedAgent();
+        unitOfWork.FailNextSave = UniqueViolationException.ForIndex(AccountIndexes.UniqueHandle, new InvalidOperationException());
+
+        var result = await CreateService().UpdateProfileAsync(OwnerId, agent.Id, new AgentProfileRequest("x", "helper", null), TestSupport.Ct);
+
+        Assert.Equal(AgentErrorCodes.HandleTaken, result.Error?.Code);
+    }
+
+    [Fact]
+    public async Task AnAgentThatNeverConnectedHasNoNameToChange()
+    {
+        var agent = Agent();
+
+        var result = await CreateService().UpdateProfileAsync(OwnerId, agent.Id, new AgentProfileRequest("x", "helper", null), TestSupport.Ct);
+
+        Assert.Equal(AgentErrorCodes.AgentNotConnected, result.Error?.Code);
+        Assert.Null(agent.Handle);
+    }
+
+    [Fact]
+    public async Task SomeoneElsesAgentCannotBeRenamed()
+    {
+        var agent = ConnectedAgent(owner: Guid.NewGuid());
+
+        var result = await CreateService().UpdateProfileAsync(OwnerId, agent.Id, new AgentProfileRequest("x", "helper", null), TestSupport.Ct);
+
+        Assert.Equal(ErrorKind.NotFound, result.Error?.Kind);
+        Assert.Equal("tom.claude", agent.Handle);
+    }
+
+    [Fact]
+    public async Task ABadRenameNamesEveryBadField()
+    {
+        var result = await CreateService().UpdateProfileAsync(OwnerId, Guid.NewGuid(), new AgentProfileRequest("", "no dots.here", new string('x', 301)), TestSupport.Ct);
+
+        Assert.Equal([ProfileFields.Bio, ProfileFields.DisplayName, AgentFields.HandleName], result.Error!.Fields!.Keys.Order(StringComparer.Ordinal));
+        await store.DidNotReceiveWithAnyArgs().FindAgentAsync(default, TestSupport.Ct);
+    }
+
+    private Actor ConnectedAgent(Guid? owner = null)
+    {
+        var agent = Agent(owner);
+        agent.Handle = "tom.claude";
+        agent.NormalizedHandle = "tom.claude";
+        agent.DisplayName = "tom's Claude";
+        agent.ModelName = "Claude";
+        return agent;
     }
 
     private Actor Agent(Guid? owner = null)

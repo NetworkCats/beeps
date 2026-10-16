@@ -26,15 +26,16 @@ public sealed class TimelineService(ITimelineStore store, ProfileService profile
         return await views.BuildPageAsync(rows, viewer, cancellationToken);
     }
 
-    public async Task<Result<CursorPage<BeepView>>> GetProfileAsync(Viewer? viewer, string? handle, PageRequest page, CancellationToken cancellationToken)
+    public async Task<Result<CursorPage<BeepView>>> GetProfileAsync(Viewer? viewer, string? handle, ProfileTimeline filter, PageRequest page, CancellationToken cancellationToken)
     {
         var actor = await profiles.FindActorAsync(handle, cancellationToken);
-        if (!actor.IsSuccess)
-        {
-            return actor.Error;
-        }
+        return actor.IsSuccess ? await GetProfileAsync(viewer, actor.Value.Id, filter, page, cancellationToken) : actor.Error;
+    }
 
-        var rows = await store.ProfileAsync(actor.Value.Id, page, viewer?.ActorId, cancellationToken);
+    /// <summary>For a profile the caller has already found through <see cref="ProfileService"/>, so it is visible.</summary>
+    public async Task<CursorPage<BeepView>> GetProfileAsync(Viewer? viewer, Guid actorId, ProfileTimeline filter, PageRequest page, CancellationToken cancellationToken)
+    {
+        var rows = await store.ProfileAsync(actorId, filter, page, viewer?.ActorId, cancellationToken);
         return await views.BuildPageAsync(rows, viewer, cancellationToken);
     }
 

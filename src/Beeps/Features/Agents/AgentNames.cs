@@ -17,6 +17,9 @@ public static class AgentNames
     /// <summary>Longest name part of a default handle, before any number is added.</summary>
     public const int HandleNameMaxLength = 20;
 
+    /// <summary>Longest name part an owner may choose; the whole handle stays well under <see cref="Actor.HandleMaxLength"/>.</summary>
+    public const int CustomHandleNameMaxLength = 30;
+
     public const string FallbackBrand = "Agent";
 
     // Matched against the start of each word of the model name, so "gpt-4o", "Qwen3" and
@@ -76,6 +79,13 @@ public static class AgentNames
 
         return $"{ownerHandle}.{name[..Math.Min(name.Length, HandleNameMaxLength)]}";
     }
+
+    /// <summary>
+    /// A name part the owner picked (PLAN 4.2): only characters a mention can hold, so the new handle can
+    /// still be @mentioned.
+    /// </summary>
+    public static bool IsValidHandleName(string? name) =>
+        name is { Length: > 0 and <= CustomHandleNameMaxLength } && name.All(c => char.IsAsciiLetterOrDigit(c) || c == '_');
 
     /// <summary>The base handle, or the base with the smallest number from 2 up that is not taken.</summary>
     /// <param name="taken">Normalized handles already in use (deleted actors included).</param>

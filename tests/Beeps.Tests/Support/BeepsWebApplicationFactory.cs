@@ -33,6 +33,13 @@ public sealed class BeepsWebApplicationFactory : WebApplicationFactory<Program>
         Agents.ListAgentsAsync(default, CancellationToken.None).ReturnsForAnyArgs([]);
         Counters.GetAsync(default!, CancellationToken.None).ReturnsForAnyArgs(new Dictionary<Guid, BeepCounts>());
         Beeps.GetMentionsAsync(default!, CancellationToken.None).ReturnsForAnyArgs(new Dictionary<Guid, IReadOnlyList<ActorRow>>());
+        Beeps.GetRowsAsync(default!, default, CancellationToken.None).ReturnsForAnyArgs([]);
+        // Pages read timelines; empty unless a test arranges beeps.
+        Timelines.PublicAsync(default!, default, CancellationToken.None).ReturnsForAnyArgs(new CursorPage<BeepRow>([], null));
+        Timelines.HomeAsync(default, default!, default, CancellationToken.None).ReturnsForAnyArgs(new CursorPage<BeepRow>([], null));
+        Timelines.ProfileAsync(default, default, default!, default, CancellationToken.None).ReturnsForAnyArgs(new CursorPage<BeepRow>([], null));
+        Timelines.HashtagAsync(default!, default!, default, CancellationToken.None).ReturnsForAnyArgs(new CursorPage<BeepRow>([], null));
+        Notifications.ListAsync(default, default!, default, CancellationToken.None).ReturnsForAnyArgs(new CursorPage<NotificationRow>([], null));
     }
 
     public IRateLimitStore RateLimitStore { get; } = Substitute.For<IRateLimitStore>();
@@ -78,6 +85,8 @@ public sealed class BeepsWebApplicationFactory : WebApplicationFactory<Program>
         builder.UseSetting("Turnstile:SecretKey", "test-secret-key");
         builder.UseSetting("Email:Provider", "Smtp");
         builder.UseSetting("Email:Smtp:Host", "smtp.invalid");
+        // Tests sharing a factory change mocks between requests; a cached page would hide that. OutputCacheTests turn it on.
+        builder.UseSetting("PublicPageCache:Enabled", "false");
 
         builder.ConfigureTestServices(services =>
         {

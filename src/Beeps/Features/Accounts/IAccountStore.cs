@@ -68,3 +68,6 @@ public sealed record AccountState(
     bool IsAdmin,
     bool EmailVerified,
     string Locale);
+
+/// <summary>The account as its owner edits it on the settings page.</summary>
+public sealed record AccountSettings(string Handle, string DisplayName, string? Bio, string Email, string Locale);

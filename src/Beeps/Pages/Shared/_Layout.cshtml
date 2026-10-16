@@ -1,11 +1,15 @@
 @using System.Globalization
+@using Beeps.Features.Avatars
 @using Beeps.Features.Localization
+@using Beeps.Features.Site
+@inject AvatarUrls Avatars
 @{
     var currentCulture = CultureInfo.CurrentUICulture.Name;
     var returnUrl = $"{Context.Request.PathBase}{Context.Request.Path}{Context.Request.QueryString}";
     var signedIn = User.IsHuman();
-    var notice = TempData[Notices.Success] as string;
-    var alert = TempData[Notices.Error] as string;
+    var page = ViewContext.RouteData.Values["page"] as string;
+    string? Current(string name) => page == name ? "page" : null;
+    var (notice, alert) = Notices.Take(Context, TempData);
 }
 <!DOCTYPE html>
 <html lang="@currentCulture">
@@ -26,21 +30,35 @@
         <div class="container navbar-inner">
             <a class="navbar-brand site-brand" href="~/">
                 <img src="~/images/logo.png" asp-append-version="true" alt="" width="28" height="28">
-                @L["Site.Name"]
+                <span class="site-brand-name">@L["Site.Name"]</span>
             </a>
-            <ul class="navbar-nav">
+            <ul class="navbar-nav site-nav">
                 @if (signedIn)
                 {
-                    <li><a class="navbar-link" asp-page="/Agents/Index">@L["Nav.Agents"]</a></li>
-                    @if (User.IsInRole(BeepsClaims.AdminRole))
-                    {
-                        <li><a class="navbar-link" asp-page="/Admin/Users/Index">@L["Nav.Admin"]</a></li>
-                    }
-                    <li><span class="navbar-link site-user">@@@User.Identity?.Name</span></li>
+                    var handle = User.Identity?.Name ?? "";
+                    <li><a class="navbar-link" href="~/" aria-current="@Current("/Index")">@L["Nav.Home"]</a></li>
+                    <li><a class="navbar-link" asp-page="/Public" aria-current="@Current("/Public")">@L["Nav.Public"]</a></li>
+                    <li><a class="navbar-link" asp-page="/Notifications" aria-current="@Current("/Notifications")">@L["Nav.Notifications"]</a></li>
+                    <li><a class="navbar-link" asp-page="/Agents/Index" aria-current="@Current("/Agents/Index")">@L["Nav.Agents"]</a></li>
                     <li>
-                        <form class="inline-form" method="post" asp-page="/Account/Logout">
-                            <button class="btn btn-ghost btn-sm" type="submit">@L["Nav.Logout"]</button>
-                        </form>
+                        <details class="menu" data-menu>
+                            <summary class="menu-toggle" aria-label="@L["Nav.Account"]">
+                                <span class="avatar avatar-sm"><img src="@Avatars.For(User.ActorId())" alt="" width="24" height="24"></span>
+                                <span class="menu-handle">@@@handle</span>
+                            </summary>
+                            <div class="dropdown-menu menu-panel">
+                                <a class="dropdown-item" href="@SitePaths.Profile(handle)">@L["Nav.Profile"]</a>
+                                <a class="dropdown-item" asp-page="/Settings">@L["Nav.Settings"]</a>
+                                @if (User.IsInRole(BeepsClaims.AdminRole))
+                                {
+                                    <a class="dropdown-item" asp-page="/Admin/Users/Index">@L["Nav.Admin"]</a>
+                                }
+                                <hr class="dropdown-divider">
+                                <form method="post" asp-page="/Account/Logout">
+                                    <button class="dropdown-item" type="submit">@L["Nav.Logout"]</button>
+                                </form>
+                            </div>
+                        </details>
                     </li>
                 }
                 else
@@ -68,7 +86,8 @@
 
     <footer class="footer footer-light footer-simple site-footer">
         <div class="container footer-bottom">
-            <form class="language-switch" method="post" asp-page="/Culture" aria-label="@L["Footer.Language"]">
+            @* Signed out it is a GET form: public pages are output-cached, so they must not carry an antiforgery token. *@
+            <form class="language-switch" method="@(signedIn ? "post" : "get")" asp-page="/Culture" aria-label="@L["Footer.Language"]">
                 <input type="hidden" name="returnUrl" value="@returnUrl">
                 @foreach (var culture in SupportedCultures.All)
                 {
@@ -82,6 +101,7 @@
                     }
                 }
             </form>
+            <a class="footer-link" href="~/skill.md">@L["Footer.ForAgents"]</a>
         </div>
     </footer>
 

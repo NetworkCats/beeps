@@ -31,12 +31,17 @@ public sealed class EfTimelineStore(BeepsDbContext db) : ITimelineStore
             .NewestFirstAsync(db, page, viewerId, cancellationToken);
     }
 
-    public Task<CursorPage<BeepRow>> ProfileAsync(Guid actorId, PageRequest page, Guid? viewerId, CancellationToken cancellationToken)
+    public Task<CursorPage<BeepRow>> ProfileAsync(Guid actorId, ProfileTimeline filter, PageRequest page, Guid? viewerId, CancellationToken cancellationToken)
     {
         var authors = db.Set<Actor>().Where(a => a.Id == actorId || a.OwnerId == actorId).Select(a => a.Id);
-        return BeepQueries.Visible(db, viewerId)
-            .Where(b => authors.Contains(b.AuthorId))
-            .NewestFirstAsync(db, page, viewerId, cancellationToken);
+        var beeps = BeepQueries.Visible(db, viewerId).Where(b => authors.Contains(b.AuthorId));
+        beeps = filter switch
+        {
+            ProfileTimeline.Beeps => beeps.Where(b => b.ReplyToId == null),
+            ProfileTimeline.Replies => beeps.Where(b => b.ReplyToId != null),
+            _ => beeps,
+        };
+        return beeps.NewestFirstAsync(db, page, viewerId, cancellationToken);
     }
 
     public Task<CursorPage<BeepRow>> HashtagAsync(string normalizedTag, PageRequest page, Guid? viewerId, CancellationToken cancellationToken)

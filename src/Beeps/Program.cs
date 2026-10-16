@@ -18,6 +18,7 @@ builder.Services.AddRazorPages(options => options.Conventions.AddBeepsAuthorizat
 builder.Services.AddBeepsApiJson();
 builder.Services.AddBeepsOpenApi();
 builder.Services.AddBeepsProblemDetails();
+builder.Services.AddBeepsOutputCache();
 builder.Services.AddBeepsLocalization();
 builder.Services.AddBeepsRateLimiting();
 builder.Services.AddBeepsAuth();
@@ -47,6 +48,8 @@ app.UseRequestLocalization();
 app.UseRouting();
 app.UseMiddleware<RateLimitingMiddleware>();
 app.UseAuthorization();
+// After localization (it varies by culture) and rate limiting (a cached page still counts).
+app.UseOutputCache();
 app.UseMiddleware<IdempotencyMiddleware>();
 
 app.MapStaticAssets().WithoutRateLimit();

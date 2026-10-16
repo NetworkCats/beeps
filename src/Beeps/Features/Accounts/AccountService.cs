@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Security.Cryptography;
 using Beeps.Features.Localization;
+using Beeps.Features.Profiles;
 using Beeps.Features.RateLimiting;
 using Beeps.Features.Shared;
 using Microsoft.AspNetCore.DataProtection;
@@ -428,6 +429,104 @@ public sealed partial class AccountService(
         return Result.Success;
     }
 
+    /// <summary>What the settings page shows and edits.</summary>
+    public async Task<Result<AccountSettings>> GetSettingsAsync(Guid userId, CancellationToken cancellationToken)
+    {
+        var user = await store.FindUserAsync(userId, cancellationToken);
+        return user is null
+            ? AccountNotFound()
+            : new AccountSettings(user.Actor.Handle!, user.Actor.DisplayName!, user.Actor.Bio, user.Email, user.Locale);
+    }
+
+    /// <summary>The human's own display name and bio (PLAN 2.2); the username never changes.</summary>
+    public async Task<Result> UpdateProfileAsync(Guid userId, string? displayName, string? bio, CancellationToken cancellationToken)
+    {
+        var fields = new Dictionary<string, string[]>();
+        var name = ProfileRules.CleanDisplayName(displayName);
+        if (name is null)
+        {
+            fields[ProfileFields.DisplayName] = [localizer["Validation.DisplayName", Actor.DisplayNameMaxLength]];
+        }
+
+        if (!ProfileRules.TryCleanBio(bio, out var cleanBio))
+        {
+            fields[ProfileFields.Bio] = [localizer["Validation.Bio", Actor.BioMaxLength]];
+        }
+
+        if (fields.Count > 0)
+        {
+            return InvalidInput(fields);
+        }
+
+        var user = await store.FindUserAsync(userId, cancellationToken);
+        if (user is null)
+        {
+            return AccountNotFound();
+        }
+
+        user.Actor.DisplayName = name;
+        user.Actor.Bio = cleanBio;
+        await unitOfWork.SaveChangesAsync(cancellationToken);
+        await store.ForgetAccountAsync(user.Id, cancellationToken);
+        return Result.Success;
+    }
+
+    /// <summary>
+    /// Needs the current password. Every other session ends; the one the change was made in stays, since it
+    /// just proved it knows the password. Guesses count against the same limit as signing in to the account.
+    /// </summary>
+    /// <param name="currentSessionId">The session making the change; null ends every session.</param>
+    public async Task<Result> ChangePasswordAsync(Guid userId, Guid? currentSessionId, string? currentPassword, string? newPassword, CancellationToken cancellationToken)
+    {
+        var fields = new Dictionary<string, string[]>();
+        if (string.IsNullOrEmpty(currentPassword))
+        {
+            fields[AccountFields.CurrentPassword] = [localizer["Validation.Required"]];
+        }
+
+        if (!AccountRules.IsValidPassword(newPassword))
+        {
+            fields[AccountFields.NewPassword] = [localizer["Validation.Password", AccountRules.PasswordMinLength, AccountRules.PasswordMaxLength]];
+        }
+
+        if (fields.Count > 0)
+        {
+            return InvalidInput(fields);
+        }
+
+        var user = await store.FindUserAsync(userId, cancellationToken);
+        if (user is null)
+        {
+            return AccountNotFound();
+        }
+
+        var limited = await rateLimits.CheckAsync(RateLimitPolicies.Login, $"login:{user.Actor.NormalizedHandle}", cancellationToken);
+        if (!limited.IsSuccess)
+        {
+            return limited;
+        }
+
+        if (passwordHasher.VerifyHashedPassword(user, user.PasswordHash, currentPassword!) == PasswordVerificationResult.Failed)
+        {
+            return FieldError(ErrorKind.Validation, AccountErrorCodes.InvalidCredentials, "Error.WrongPassword", AccountFields.CurrentPassword);
+        }
+
+        await unitOfWork.InTransactionAsync(
+            null,
+            async ct =>
+            {
+                var now = time.GetUtcNow();
+                user.PasswordHash = passwordHasher.HashPassword(user, newPassword!);
+                await (currentSessionId is { } keep ? sessions.RevokeOthersAsync(user.Id, keep, now, ct) : sessions.RevokeAllAsync(user.Id, now, ct));
+                await unitOfWork.SaveChangesAsync(ct);
+                return Result.Success;
+            },
+            cancellationToken);
+        await sessions.ForgetAllAsync(user.Id, cancellationToken);
+        LogPasswordChanged(logger, user.Id);
+        return Result.Success;
+    }
+
     public Task<RegistrationMode> GetRegistrationModeAsync(CancellationToken cancellationToken) =>
         store.GetRegistrationModeAsync(cancellationToken);
 
@@ -524,4 +623,7 @@ public sealed partial class AccountService(
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Account {UserId} reset its password; all sessions ended")]
     private static partial void LogPasswordReset(ILogger logger, Guid userId);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Account {UserId} changed its password; its other sessions ended")]
+    private static partial void LogPasswordChanged(ILogger logger, Guid userId);
 }

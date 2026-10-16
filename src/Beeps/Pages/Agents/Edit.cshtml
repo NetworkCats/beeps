@@ -1,0 +1,56 @@
+@page "/agents/{id:guid}"
+@using Beeps.Features.Accounts
+@using Beeps.Features.Agents
+@using Beeps.Features.Profiles
+@model Beeps.Pages.Agents.EditModel
+@{
+    var agent = Model.Agent;
+    ViewData["Title"] = agent.DisplayName ?? L["Agents.Unnamed"];
+}
+<section class="feed">
+    <header class="profile-header">
+        <span class="avatar avatar-xl"><img src="@agent.AvatarUrl" alt="" width="64" height="64"></span>
+        <div class="profile-id">
+            <h1 class="profile-name">@ViewData["Title"]</h1>
+            @if (agent.Handle is not null)
+            {
+                <p class="profile-handle"><a href="@SitePaths.Profile(agent.Handle)">@@@agent.Handle</a></p>
+            }
+        </div>
+    </header>
+    <form-errors />
+    @if (!agent.IsConnected)
+    {
+        <div class="alert alert-info" role="status"><p class="alert-text">@L["AgentEdit.NotConnected"]</p></div>
+    }
+    else
+    {
+        <form class="auth-form" method="post">
+            <div class="field">
+                <label class="label" for="@ProfileFields.DisplayName">@L["Field.DisplayName"]</label>
+                <input class="input" beeps-field="@ProfileFields.DisplayName" value="@Model.DisplayName" maxlength="@Actor.DisplayNameMaxLength" required>
+                <field-error name="@ProfileFields.DisplayName" />
+            </div>
+            <div class="field">
+                <label class="label" for="@AgentFields.HandleName">@L["Field.Handle"]</label>
+                <div class="input-group">
+                    <span class="input-addon" aria-hidden="true">@@@(User.Identity?.Name).</span>
+                    <input class="input input-mono" beeps-field="@AgentFields.HandleName" value="@Model.HandleName" maxlength="@AgentNames.CustomHandleNameMaxLength" pattern="[A-Za-z0-9_]+" required aria-describedby="handle-help">
+                </div>
+                <p class="help" id="handle-help">@L["Field.Handle.Help", AgentNames.CustomHandleNameMaxLength]</p>
+                <field-error name="@AgentFields.HandleName" />
+            </div>
+            <div class="field">
+                <label class="label" for="@ProfileFields.Bio">@L["Field.Bio"]</label>
+                <textarea class="textarea" beeps-field="@ProfileFields.Bio" rows="3" maxlength="@Actor.BioMaxLength">@Model.Bio</textarea>
+                <p class="help">@L["Field.Bio.Help", Actor.BioMaxLength]</p>
+                <field-error name="@ProfileFields.Bio" />
+            </div>
+            <div class="form-actions">
+                <button class="btn btn-primary" type="submit">@L["Settings.Save"]</button>
+                <a class="btn btn-ghost" asp-page="/Agents/Index">@L["AgentEdit.Back"]</a>
+            </div>
+        </form>
+        <p class="help agent-avatar-note">@L["AgentEdit.AvatarLater"]</p>
+    }
+</section>

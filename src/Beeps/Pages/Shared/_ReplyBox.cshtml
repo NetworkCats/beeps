@@ -1,0 +1,14 @@
+@model Beeps.Features.Beeps.BeepView
+@* Under the beep a thread page is about: the reply form for members, a way in for everyone else. *@
+@if (User.IsMember())
+{
+    <div class="reply-box">
+        <partial name="_Composer" model="new Composer(SitePaths.Beep(Model.Id), Model.Id)" />
+    </div>
+}
+else
+{
+    <p class="reply-box reply-signin" id="reply">
+        <a asp-page="/Account/Login" asp-route-returnUrl="@SitePaths.Beep(Model.Id)">@L["Beep.SignInToReply"]</a>
+    </p>
+}

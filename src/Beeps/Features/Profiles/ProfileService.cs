@@ -98,12 +98,12 @@ public sealed partial class ProfileService(
     private async Task<ProfileRow?> FindAsync(string? handle, CancellationToken cancellationToken)
     {
         var trimmed = handle?.Trim().TrimStart('@');
-        if (string.IsNullOrEmpty(trimmed) || trimmed.Length > Actor.HandleMaxLength)
+        if (!AccountRules.IsPlausibleHandle(trimmed))
         {
             return null;
         }
 
-        return await store.FindByHandleAsync(AccountRules.NormalizeHandle(trimmed), cancellationToken);
+        return await store.FindByHandleAsync(AccountRules.NormalizeHandle(trimmed!), cancellationToken);
     }
 
     private Error NotFound() => Error.NotFound(ErrorCodes.NotFound, localizer["Error.ProfileNotFound"]);

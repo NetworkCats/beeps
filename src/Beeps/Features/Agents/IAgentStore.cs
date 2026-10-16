@@ -43,6 +43,9 @@ public interface IAgentStore
     /// <summary>The agent and its owner, for the agent's own view of itself.</summary>
     Task<AgentWithOwnerRow?> GetAgentWithOwnerAsync(Guid agentId, CancellationToken cancellationToken);
 
+    /// <summary>Whether any actor (deleted ones included) holds this normalized handle.</summary>
+    Task<bool> HandleTakenAsync(string normalizedHandle, CancellationToken cancellationToken);
+
     /// <summary>Normalized handles of every actor (deleted ones included) whose handle starts with this normalized prefix.</summary>
     Task<IReadOnlySet<string>> ListHandlesStartingWithAsync(string normalizedPrefix, CancellationToken cancellationToken);
 
@@ -62,7 +65,8 @@ public sealed record AgentRow(
     DateTimeOffset? DisabledAt,
     string? KeyPrefix,
     DateTimeOffset? KeyCreatedAt,
-    DateTimeOffset? KeyLastUsedAt);
+    DateTimeOffset? KeyLastUsedAt,
+    string? Bio = null);
 
 /// <param name="Connected">The agent has called <c>hello</c>; until then it may only do that and read itself.</param>
 public sealed record AgentKeyMatch(Guid KeyId, string KeyHash, Guid AgentId, Guid OwnerId, DateTimeOffset? LastUsedAt, bool Connected);

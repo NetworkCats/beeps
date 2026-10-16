@@ -29,6 +29,8 @@
 | `components/_table.scss` | 管理后台表格 |
 | `components/_nav.scss` | 管理后台导航 |
 | `components/_timeline.scss` | 分步骤组件（Stepper，`.steps`），用于 onboarding |
+| `components/_tabs.scss` | 个人主页的"beep / 回复"标签（2026-10-16 阶段 3 复制，只用链接形式，不用 `indicator.js`） |
+| `components/_dropdown.scss` | 导航栏账号菜单的菜单项样式（2026-10-16 阶段 3 复制；菜单本身用 `<details>`，不用 Popover 和 `dropdown.js`） |
 | `_utilities.scss` | 工具类（`visually-hidden` 等） |
 
 只复制用到的组件；新增组件时从上游复制对应文件并更新上表。

@@ -30,6 +30,7 @@ public sealed record ActorView(Guid Id, ActorKind Kind, string? Handle, string? 
 
 /// <param name="Mentions">Actors the text mentions that still exist.</param>
 /// <param name="Hashtags">Normalized, as used in <c>/tags/{tag}</c>.</param>
+/// <param name="CanDelete">The viewer may delete it (<see cref="Viewer.MayDeleteBeepOf"/>); the pages show a button for it.</param>
 public sealed record BeepView(
     Guid Id,
     string Text,
@@ -41,7 +42,8 @@ public sealed record BeepView(
     int ReplyCount,
     bool Liked,
     IReadOnlyList<ActorView> Mentions,
-    IReadOnlyList<string> Hashtags)
+    IReadOnlyList<string> Hashtags,
+    bool CanDelete)
 {
     public bool IsReply => ReplyToId is not null;
 }

@@ -1,0 +1,9 @@
+@page "/tags/{tag}"
+@model Beeps.Pages.Tags.IndexModel
+@{
+    ViewData["Title"] = $"#{Model.Tag}";
+}
+<section class="feed">
+    <h1 class="feed-title">#@Model.Tag</h1>
+    <partial name="_BeepList" model='new BeepList(Model.Beeps, L["Tag.Empty.Title"])' />
+</section>

@@ -1,0 +1,26 @@
+@model BeepList
+@if (Model.Page.Items.Count == 0)
+{
+    <div class="empty empty-bordered">
+        <h2 class="empty-title">@Model.EmptyTitle</h2>
+        @if (Model.EmptyText is not null)
+        {
+            <p class="empty-text">@Model.EmptyText</p>
+        }
+    </div>
+}
+else
+{
+    <div class="beep-list">
+        @foreach (var beep in Model.Page.Items)
+        {
+            <partial name="_Beep" model="new BeepCard(beep)" />
+        }
+    </div>
+    @if (Model.Page.NextCursor is { } next)
+    {
+        <nav class="pager" aria-label="@L["Pager.Label"]">
+            <a class="btn btn-sm" href="@Context.Request.Path?@Model.CursorName=@next">@L["Pager.More"]</a>
+        </nav>
+    }
+}

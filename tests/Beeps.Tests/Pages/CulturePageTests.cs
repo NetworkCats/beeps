@@ -11,7 +11,7 @@ public sealed class CulturePageTests(BeepsWebApplicationFactory factory) : IClas
     {
         using var client = NewClient();
 
-        using var response = await PostAsync(client, "zh-Hans", "/some/page?x=1");
+        using var response = await SwitchAsync(client, "zh-Hans", "/some/page?x=1");
 
         Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
         Assert.Equal("/some/page?x=1", response.Headers.Location?.OriginalString);
@@ -25,7 +25,7 @@ public sealed class CulturePageTests(BeepsWebApplicationFactory factory) : IClas
     {
         using var client = NewClient();
 
-        using var response = await PostAsync(client, "en", "https://evil.example/");
+        using var response = await SwitchAsync(client, "en", "https://evil.example/");
 
         Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
         Assert.Equal("/", response.Headers.Location?.OriginalString);
@@ -36,7 +36,7 @@ public sealed class CulturePageTests(BeepsWebApplicationFactory factory) : IClas
     {
         using var client = NewClient();
 
-        using var response = await PostAsync(client, "fr", "/");
+        using var response = await SwitchAsync(client, "fr", "/");
 
         Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
         Assert.False(response.Headers.TryGetValues("Set-Cookie", out var cookies)
@@ -54,18 +54,36 @@ public sealed class CulturePageTests(BeepsWebApplicationFactory factory) : IClas
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
+    [Fact]
+    public async Task SignedOutPagesSwitchWithAPlainGetForm()
+    {
+        using var client = NewClient();
+
+        var html = await client.GetStringAsync(new Uri("/", UriKind.Relative), TestSupport.Ct);
+
+        // Public pages are output-cached, so they must not carry a per-visitor antiforgery token.
+        Assert.Matches("<form class=\"language-switch\" method=\"get\"[^>]* action=\"/culture\">", html);
+        Assert.DoesNotContain("__RequestVerificationToken", html, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task AGetCannotChangeASignedInAccountsLanguage()
+    {
+        var user = WebAuth.ArrangeUser(factory, handle: "getter");
+        using var client = await WebAuth.SignInAsync(factory, user);
+
+        using var response = await SwitchAsync(client, "zh-Hans", "/");
+
+        Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
+        Assert.Equal("en", user.Locale);
+        Assert.False(response.Headers.TryGetValues("Set-Cookie", out var cookies)
+            && cookies.Any(c => c.StartsWith(".AspNetCore.Culture=", StringComparison.Ordinal)));
+    }
+
     private HttpClient NewClient() =>
         factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
 
-    private static async Task<HttpResponseMessage> PostAsync(HttpClient client, string culture, string returnUrl)
-    {
-        var html = await client.GetStringAsync(new Uri("/", UriKind.Relative), TestSupport.Ct);
-        using var form = new FormUrlEncodedContent(
-        [
-            KeyValuePair.Create("culture", culture),
-            KeyValuePair.Create("returnUrl", returnUrl),
-            KeyValuePair.Create("__RequestVerificationToken", TestSupport.AntiforgeryToken(html)),
-        ]);
-        return await client.PostAsync(new Uri("/culture", UriKind.Relative), form, TestSupport.Ct);
-    }
+    // What the footer's form sends for a signed-out visitor.
+    private static Task<HttpResponseMessage> SwitchAsync(HttpClient client, string culture, string returnUrl) =>
+        client.GetAsync(new Uri($"/culture?culture={Uri.EscapeDataString(culture)}&returnUrl={Uri.EscapeDataString(returnUrl)}", UriKind.Relative), TestSupport.Ct);
 }

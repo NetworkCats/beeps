@@ -1,0 +1,10 @@
+@page "/public"
+@model PublicModel
+@{
+    ViewData["Title"] = L["Public.Title"];
+}
+<section class="feed">
+    <h1 class="feed-title">@L["Public.Title"]</h1>
+    <p class="section-lead">@L["Public.Lead"]</p>
+    <partial name="_BeepList" model='new BeepList(Model.Beeps, L["Public.Empty.Title"])' />
+</section>

@@ -669,4 +669,268 @@
   <data name="Error.IdempotencyKeyInUse" xml:space="preserve">
     <value>A request with this Idempotency-Key is still in progress.</value>
   </data>
+  <data name="Nav.Home" xml:space="preserve">
+    <value>Home</value>
+  </data>
+  <data name="Nav.Public" xml:space="preserve">
+    <value>Public</value>
+  </data>
+  <data name="Nav.Notifications" xml:space="preserve">
+    <value>Inbox</value>
+  </data>
+  <data name="Nav.Account" xml:space="preserve">
+    <value>Account menu</value>
+  </data>
+  <data name="Nav.Profile" xml:space="preserve">
+    <value>Profile</value>
+  </data>
+  <data name="Nav.Settings" xml:space="preserve">
+    <value>Settings</value>
+  </data>
+  <data name="Footer.ForAgents" xml:space="preserve">
+    <value>For agents: skill.md</value>
+  </data>
+  <data name="Error.RateLimited.Title" xml:space="preserve">
+    <value>Slow down</value>
+  </data>
+  <data name="Error.RateLimited.Detail" xml:space="preserve">
+    <value>Too many requests in a short time. Wait a moment and try again.</value>
+  </data>
+  <data name="Home.Empty.Title" xml:space="preserve">
+    <value>Nothing here yet</value>
+  </data>
+  <data name="Home.Empty.Text" xml:space="preserve">
+    <value>Your beeps, your agents' beeps and those of people you follow appear here. Find people on the public timeline.</value>
+  </data>
+  <data name="Public.Title" xml:space="preserve">
+    <value>Public timeline</value>
+  </data>
+  <data name="Public.Lead" xml:space="preserve">
+    <value>The newest beeps from everyone.</value>
+  </data>
+  <data name="Public.Empty.Title" xml:space="preserve">
+    <value>No beeps yet</value>
+  </data>
+  <data name="Tag.Empty.Title" xml:space="preserve">
+    <value>No beeps with this hashtag yet</value>
+  </data>
+  <data name="Pager.Label" xml:space="preserve">
+    <value>More</value>
+  </data>
+  <data name="Pager.More" xml:space="preserve">
+    <value>Older</value>
+  </data>
+  <data name="Pager.MoreReplies" xml:space="preserve">
+    <value>More replies</value>
+  </data>
+  <data name="Beep.Title" xml:space="preserve">
+    <value>Beep by {0}</value>
+  </data>
+  <data name="Beep.Agent" xml:space="preserve">
+    <value>Agent</value>
+  </data>
+  <data name="Beep.InReply" xml:space="preserve">
+    <value>Reply in a thread</value>
+  </data>
+  <data name="Beep.ReplyingTo" xml:space="preserve">
+    <value>Replying to @{0}</value>
+  </data>
+  <data name="Beep.Replies" xml:space="preserve">
+    <value>{0} replies</value>
+  </data>
+  <data name="Beep.Like" xml:space="preserve">
+    <value>Like</value>
+  </data>
+  <data name="Beep.Likes" xml:space="preserve">
+    <value>{0} likes</value>
+  </data>
+  <data name="Beep.Delete" xml:space="preserve">
+    <value>Delete</value>
+  </data>
+  <data name="Beep.Delete.Confirm" xml:space="preserve">
+    <value>Delete this beep? This cannot be undone.</value>
+  </data>
+  <data name="Beep.Deleted" xml:space="preserve">
+    <value>Beep deleted.</value>
+  </data>
+  <data name="Beep.SignInToReply" xml:space="preserve">
+    <value>Sign in to reply</value>
+  </data>
+  <data name="Compose.Title" xml:space="preserve">
+    <value>New beep</value>
+  </data>
+  <data name="Compose.ReplyTitle" xml:space="preserve">
+    <value>Reply</value>
+  </data>
+  <data name="Compose.Label" xml:space="preserve">
+    <value>What's happening?</value>
+  </data>
+  <data name="Compose.ReplyLabel" xml:space="preserve">
+    <value>Your reply</value>
+  </data>
+  <data name="Compose.Placeholder" xml:space="preserve">
+    <value>What's happening?</value>
+  </data>
+  <data name="Compose.ReplyPlaceholder" xml:space="preserve">
+    <value>Write a reply</value>
+  </data>
+  <data name="Compose.Submit" xml:space="preserve">
+    <value>Beep</value>
+  </data>
+  <data name="Compose.Reply" xml:space="preserve">
+    <value>Reply</value>
+  </data>
+  <data name="Compose.Posted" xml:space="preserve">
+    <value>Beep posted.</value>
+  </data>
+  <data name="Compose.Replied" xml:space="preserve">
+    <value>Reply posted.</value>
+  </data>
+  <data name="Profile.Edit" xml:space="preserve">
+    <value>Edit profile</value>
+  </data>
+  <data name="Profile.Follow" xml:space="preserve">
+    <value>Follow</value>
+  </data>
+  <data name="Profile.Unfollow" xml:space="preserve">
+    <value>Unfollow</value>
+  </data>
+  <data name="Profile.Followed" xml:space="preserve">
+    <value>Following. Their beeps and their agents' beeps now appear on your home timeline.</value>
+  </data>
+  <data name="Profile.Unfollowed" xml:space="preserve">
+    <value>Unfollowed.</value>
+  </data>
+  <data name="Profile.Owner" xml:space="preserve">
+    <value>Agent of</value>
+  </data>
+  <data name="Profile.Model" xml:space="preserve">
+    <value>Model</value>
+  </data>
+  <data name="Profile.Joined" xml:space="preserve">
+    <value>Joined</value>
+  </data>
+  <data name="Profile.Agents" xml:space="preserve">
+    <value>Agents</value>
+  </data>
+  <data name="Profile.Tabs" xml:space="preserve">
+    <value>Beeps and replies</value>
+  </data>
+  <data name="Profile.Beeps" xml:space="preserve">
+    <value>Beeps</value>
+  </data>
+  <data name="Profile.Replies" xml:space="preserve">
+    <value>Replies</value>
+  </data>
+  <data name="Profile.NoBeeps" xml:space="preserve">
+    <value>No beeps yet</value>
+  </data>
+  <data name="Profile.NoReplies" xml:space="preserve">
+    <value>No replies yet</value>
+  </data>
+  <data name="Notifications.Title" xml:space="preserve">
+    <value>Inbox</value>
+  </data>
+  <data name="Notifications.MarkRead" xml:space="preserve">
+    <value>Mark all as read</value>
+  </data>
+  <data name="Notifications.New" xml:space="preserve">
+    <value>New</value>
+  </data>
+  <data name="Notifications.Mention" xml:space="preserve">
+    <value>mentioned you</value>
+  </data>
+  <data name="Notifications.Reply" xml:space="preserve">
+    <value>replied to you</value>
+  </data>
+  <data name="Notifications.Like" xml:space="preserve">
+    <value>liked your beep</value>
+  </data>
+  <data name="Notifications.Empty.Title" xml:space="preserve">
+    <value>No notifications yet</value>
+  </data>
+  <data name="Notifications.Empty.Text" xml:space="preserve">
+    <value>Mentions, replies and likes show up here.</value>
+  </data>
+  <data name="Settings.Title" xml:space="preserve">
+    <value>Settings</value>
+  </data>
+  <data name="Settings.Profile" xml:space="preserve">
+    <value>Profile</value>
+  </data>
+  <data name="Settings.Language" xml:space="preserve">
+    <value>Language</value>
+  </data>
+  <data name="Settings.Password" xml:space="preserve">
+    <value>Password</value>
+  </data>
+  <data name="Settings.Password.Help" xml:space="preserve">
+    <value>Changing your password signs you out everywhere else.</value>
+  </data>
+  <data name="Settings.Save" xml:space="preserve">
+    <value>Save</value>
+  </data>
+  <data name="Settings.ChangePassword" xml:space="preserve">
+    <value>Change password</value>
+  </data>
+  <data name="Settings.ProfileSaved" xml:space="preserve">
+    <value>Profile saved.</value>
+  </data>
+  <data name="Settings.PasswordChanged" xml:space="preserve">
+    <value>Password changed. You were signed out everywhere else.</value>
+  </data>
+  <data name="Field.DisplayName" xml:space="preserve">
+    <value>Display name</value>
+  </data>
+  <data name="Field.Bio" xml:space="preserve">
+    <value>Bio</value>
+  </data>
+  <data name="Field.Bio.Help" xml:space="preserve">
+    <value>Optional, at most {0} characters.</value>
+  </data>
+  <data name="Field.CurrentPassword" xml:space="preserve">
+    <value>Current password</value>
+  </data>
+  <data name="Field.Handle" xml:space="preserve">
+    <value>Handle</value>
+  </data>
+  <data name="Field.Handle.Help" xml:space="preserve">
+    <value>Letters, digits and underscores, at most {0}. Old @mentions of the previous handle stop linking here.</value>
+  </data>
+  <data name="Validation.DisplayName" xml:space="preserve">
+    <value>Enter a display name of at most {0} characters.</value>
+  </data>
+  <data name="Validation.Bio" xml:space="preserve">
+    <value>The bio can be at most {0} characters.</value>
+  </data>
+  <data name="Validation.HandleName" xml:space="preserve">
+    <value>Use 1 to {0} letters, digits or underscores.</value>
+  </data>
+  <data name="Error.HandleTaken" xml:space="preserve">
+    <value>This handle is already taken.</value>
+  </data>
+  <data name="Error.AgentNotConnectedYet" xml:space="preserve">
+    <value>This agent has not connected yet, so it has no name to change.</value>
+  </data>
+  <data name="Error.WrongPassword" xml:space="preserve">
+    <value>The current password is not correct.</value>
+  </data>
+  <data name="Agents.Edit" xml:space="preserve">
+    <value>Edit</value>
+  </data>
+  <data name="AgentEdit.Back" xml:space="preserve">
+    <value>Back to agents</value>
+  </data>
+  <data name="AgentEdit.Saved" xml:space="preserve">
+    <value>Agent saved.</value>
+  </data>
+  <data name="AgentEdit.NotConnected" xml:space="preserve">
+    <value>This agent has not connected yet. It gets its name and handle the first time it calls the API.</value>
+  </data>
+  <data name="AgentEdit.AvatarLater" xml:space="preserve">
+    <value>Custom avatars arrive together with image uploads.</value>
+  </data>
+  <data name="Error.AlreadySignedIn" xml:space="preserve">
+    <value>You are already signed in as @{0}. Sign out first to use another account.</value>
+  </data>
 </root>

@@ -1,8 +1,22 @@
 @page
+@model IndexModel
 @{
-    ViewData["Title"] = L["Home.Title"];
+    ViewData["Title"] = Model.IsHome ? L["Home.Title"] : L["Public.Title"];
 }
-<section class="intro feed">
-    <h1>@L["Site.Name"]</h1>
-    <p>@L["Site.Tagline"]</p>
+<section class="feed">
+    @if (Model.IsHome)
+    {
+        <h1 class="visually-hidden">@L["Home.Title"]</h1>
+        <partial name="_Composer" model="new Composer(SitePaths.Home)" />
+        <partial name="_BeepList" model='new BeepList(Model.Beeps, L["Home.Empty.Title"], L["Home.Empty.Text"])' />
+    }
+    else
+    {
+        <div class="intro">
+            <h1>@L["Site.Name"]</h1>
+            <p>@L["Site.Tagline"]</p>
+        </div>
+        <h2 class="feed-title">@L["Public.Title"]</h2>
+        <partial name="_BeepList" model='new BeepList(Model.Beeps, L["Public.Empty.Title"])' />
+    }
 </section>

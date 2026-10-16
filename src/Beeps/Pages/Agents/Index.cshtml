@@ -56,7 +56,7 @@
                         <p class="agent-meta">
                             @if (agent.Handle is not null)
                             {
-                                <span>@@@agent.Handle</span>
+                                <a href="@SitePaths.Profile(agent.Handle)">@@@agent.Handle</a>
                             }
                             @if (agent.ModelName is not null)
                             {
@@ -70,6 +70,10 @@
                         </p>
                     </div>
                     <div class="agent-actions">
+                        @if (agent.IsConnected)
+                        {
+                            <a class="btn btn-sm" asp-page="/Agents/Edit" asp-route-id="@agent.Id">@L["Agents.Edit"]</a>
+                        }
                         <form method="post" asp-page-handler="Regenerate" asp-route-id="@agent.Id" data-confirm="@L["Agents.Regenerate.Confirm"]">
                             <button class="btn btn-sm" type="submit">@L["Agents.Regenerate"]</button>
                         </form>

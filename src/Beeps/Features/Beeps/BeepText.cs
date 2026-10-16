@@ -210,6 +210,17 @@ public static class BeepText
         return html.ToString();
     }
 
+    /// <summary>A beep as shown on pages and in live updates: its hashtags and the mentions that still resolve become links.</summary>
+    public static string RenderHtml(BeepView beep)
+    {
+        ArgumentNullException.ThrowIfNull(beep);
+        var linked = beep.Mentions
+            .Where(m => m.Handle is not null)
+            .Select(m => AccountRules.NormalizeHandle(m.Handle!))
+            .ToHashSet(StringComparer.Ordinal);
+        return RenderHtml(beep.Text, linked);
+    }
+
     private static ParsedBeepText Rejected(string text, BeepTextProblem problem) => new(text, problem, [], []);
 
     private static List<string> Hashtags(IReadOnlyList<BeepTextToken> tokens) =>

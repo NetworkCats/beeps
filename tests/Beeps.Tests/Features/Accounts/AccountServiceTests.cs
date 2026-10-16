@@ -1,4 +1,5 @@
 using Beeps.Features.Accounts;
+using Beeps.Features.Profiles;
 using Beeps.Features.RateLimiting;
 using Beeps.Features.Shared;
 using Beeps.Tests.Support;
@@ -488,6 +489,131 @@ public sealed class AccountServiceTests
         store.GetRegistrationModeAsync(Arg.Any<CancellationToken>()).Returns(RegistrationMode.InviteOnly);
 
         Assert.Equal(RegistrationMode.InviteOnly, await CreateService().GetRegistrationModeAsync(TestSupport.Ct));
+    }
+
+    // ---- Settings ----------------------------------------------------------
+
+    [Fact]
+    public async Task SettingsShowTheAccountAsStored()
+    {
+        var user = TestData.User();
+        user.Actor.Bio = "hello";
+        store.FindUserAsync(user.Id, Arg.Any<CancellationToken>()).Returns(user);
+
+        var settings = await CreateService().GetSettingsAsync(user.Id, TestSupport.Ct);
+        var missing = await CreateService().GetSettingsAsync(Guid.NewGuid(), TestSupport.Ct);
+
+        Assert.Equal(new AccountSettings("tom", "tom", "hello", "tom@example.com", "en"), settings.Value);
+        Assert.Equal(ErrorKind.NotFound, missing.Error?.Kind);
+    }
+
+    [Fact]
+    public async Task UpdatingTheProfileSavesAndDropsTheCachedState()
+    {
+        var user = TestData.User();
+        store.FindUserAsync(user.Id, Arg.Any<CancellationToken>()).Returns(user);
+
+        var result = await CreateService().UpdateProfileAsync(user.Id, "  Tom T.  ", "line 1\r\nline 2", TestSupport.Ct);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(("Tom T.", "line 1\nline 2"), (user.Actor.DisplayName, user.Actor.Bio));
+        Assert.Equal(1, unitOfWork.Saves);
+        await store.Received(1).ForgetAccountAsync(user.Id, Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task AnEmptyBioClearsIt()
+    {
+        var user = TestData.User();
+        user.Actor.Bio = "old";
+        store.FindUserAsync(user.Id, Arg.Any<CancellationToken>()).Returns(user);
+
+        await CreateService().UpdateProfileAsync(user.Id, "Tom", "   ", TestSupport.Ct);
+
+        Assert.Null(user.Actor.Bio);
+    }
+
+    [Fact]
+    public async Task ABadProfileNamesEveryBadField()
+    {
+        var result = await CreateService().UpdateProfileAsync(Guid.NewGuid(), " ", new string('x', 301), TestSupport.Ct);
+
+        Assert.Equal(AccountErrorCodes.InvalidInput, result.Error?.Code);
+        Assert.Equal([ProfileFields.Bio, ProfileFields.DisplayName], result.Error!.Fields!.Keys.Order());
+        await store.DidNotReceiveWithAnyArgs().FindUserAsync(default, TestSupport.Ct);
+    }
+
+    [Fact]
+    public async Task ChangingThePasswordKeepsThisSessionAndEndsTheOthers()
+    {
+        var user = TestData.User(passwordHash: "hashed:old password");
+        store.FindUserAsync(user.Id, Arg.Any<CancellationToken>()).Returns(user);
+        var current = Guid.NewGuid();
+
+        var result = await CreateService().ChangePasswordAsync(user.Id, current, "old password", "new password!", TestSupport.Ct);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal("hashed:new password!", user.PasswordHash);
+        Assert.Equal(1, unitOfWork.Saves);
+        Received.InOrder(() =>
+        {
+            sessions.RevokeOthersAsync(user.Id, current, TestData.Now, Arg.Any<CancellationToken>());
+            sessions.ForgetAllAsync(user.Id, Arg.Any<CancellationToken>());
+        });
+        await sessions.DidNotReceiveWithAnyArgs().RevokeAllAsync(default, default, TestSupport.Ct);
+    }
+
+    [Fact]
+    public async Task WithoutAKnownSessionEverySessionEnds()
+    {
+        var user = TestData.User(passwordHash: "hashed:old password");
+        store.FindUserAsync(user.Id, Arg.Any<CancellationToken>()).Returns(user);
+
+        await CreateService().ChangePasswordAsync(user.Id, null, "old password", "new password!", TestSupport.Ct);
+
+        await sessions.Received(1).RevokeAllAsync(user.Id, TestData.Now, Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task AWrongCurrentPasswordChangesNothing()
+    {
+        var user = TestData.User(passwordHash: "hashed:old password");
+        store.FindUserAsync(user.Id, Arg.Any<CancellationToken>()).Returns(user);
+
+        var result = await CreateService().ChangePasswordAsync(user.Id, Guid.NewGuid(), "guess", "new password!", TestSupport.Ct);
+
+        Assert.Equal(AccountErrorCodes.InvalidCredentials, result.Error?.Code);
+        Assert.Equal(ErrorKind.Validation, result.Error?.Kind);
+        Assert.Equal(["Error.WrongPassword"], result.Error?.Fields?[AccountFields.CurrentPassword]!);
+        Assert.Equal("hashed:old password", user.PasswordHash);
+        await sessions.DidNotReceiveWithAnyArgs().RevokeOthersAsync(default, default, default, TestSupport.Ct);
+    }
+
+    [Fact]
+    public async Task PasswordGuessesShareTheAccountsSignInLimit()
+    {
+        var user = TestData.User(passwordHash: "hashed:old password");
+        store.FindUserAsync(user.Id, Arg.Any<CancellationToken>()).Returns(user);
+        IReadOnlyList<RateLimitCounter>? counted = null;
+        rateLimitStore.TryAcquireAsync(Arg.Do<IReadOnlyList<RateLimitCounter>>(c => counted = c), Arg.Any<CancellationToken>())
+            .Returns(RateLimitDecision.Denied(TimeSpan.FromMinutes(3)));
+
+        var result = await CreateService().ChangePasswordAsync(user.Id, Guid.NewGuid(), "old password", "new password!", TestSupport.Ct);
+
+        Assert.Equal(ErrorKind.RateLimited, result.Error?.Kind);
+        Assert.Equal([RateLimitPolicies.Login], TestData.Policies(counted!));
+        // The same counter a sign-in to "tom" uses (keys hold a hash of the partition).
+        var partition = Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData("login:tom"u8).AsSpan(0, 16));
+        Assert.EndsWith($":{partition}", Assert.Single(counted!).Key, StringComparison.Ordinal);
+        hasher.DidNotReceiveWithAnyArgs().VerifyHashedPassword(default!, default!, default!);
+    }
+
+    [Fact]
+    public async Task ANewPasswordMustFollowThePasswordRules()
+    {
+        var result = await CreateService().ChangePasswordAsync(Guid.NewGuid(), null, "", "short", TestSupport.Ct);
+
+        Assert.Equal([AccountFields.CurrentPassword, AccountFields.NewPassword], result.Error!.Fields!.Keys.Order());
     }
 
     private static RegisterRequest Request(string username = "Tom_1", string? invite = null) =>

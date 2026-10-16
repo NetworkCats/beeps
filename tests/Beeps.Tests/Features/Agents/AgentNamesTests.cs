@@ -5,6 +5,19 @@ namespace Beeps.Tests.Features.Agents;
 public sealed class AgentNamesTests
 {
     [Theory]
+    [InlineData("claude", true)]
+    [InlineData("My_Helper_2", true)]
+    [InlineData("abcdefghijabcdefghijabcdefghij", true)]
+    [InlineData("abcdefghijabcdefghijabcdefghijk", false)]
+    [InlineData("", false)]
+    [InlineData(null, false)]
+    [InlineData("two.dots", false)]
+    [InlineData("with space", false)]
+    [InlineData("助手", false)]
+    public void OwnersPickHandleNamesAMentionCanHold(string? name, bool valid) =>
+        Assert.Equal(valid, AgentNames.IsValidHandleName(name));
+
+    [Theory]
     [InlineData("Claude Opus 4.5", "Claude")]
     [InlineData("claude-sonnet-4-5", "Claude")]
     [InlineData("anthropic/claude-haiku", "Claude")]

@@ -48,6 +48,16 @@ internal sealed class InMemorySessionStore : ISessionStore
         return Task.CompletedTask;
     }
 
+    public Task RevokeOthersAsync(Guid userId, Guid keepSessionId, DateTimeOffset now, CancellationToken cancellationToken)
+    {
+        foreach (var session in sessions.Values.Where(s => s.UserId == userId && s.Id != keepSessionId))
+        {
+            Update(session.TokenHash, s => Revoked(s, now));
+        }
+
+        return Task.CompletedTask;
+    }
+
     public Task ForgetAllAsync(Guid userId, CancellationToken cancellationToken) => Task.CompletedTask;
 
     public Task<int> DeleteEndedAsync(DateTimeOffset cutoff, int batchSize, CancellationToken cancellationToken)

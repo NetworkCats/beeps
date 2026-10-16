@@ -41,6 +41,11 @@ public sealed class EfSessionStore(BeepsDbContext db, HybridCache cache, TimePro
             .Where(s => s.UserId == userId && s.RevokedAt == null)
             .ExecuteUpdateAsync(s => s.SetProperty(x => x.RevokedAt, now), cancellationToken);
 
+    public Task RevokeOthersAsync(Guid userId, Guid keepSessionId, DateTimeOffset now, CancellationToken cancellationToken) =>
+        db.Set<UserSession>()
+            .Where(s => s.UserId == userId && s.Id != keepSessionId && s.RevokedAt == null)
+            .ExecuteUpdateAsync(s => s.SetProperty(x => x.RevokedAt, now), cancellationToken);
+
     public async Task ForgetAllAsync(Guid userId, CancellationToken cancellationToken)
     {
         // Expired sessions are rejected by their expiry anyway; only the rest can still be cached as live.
