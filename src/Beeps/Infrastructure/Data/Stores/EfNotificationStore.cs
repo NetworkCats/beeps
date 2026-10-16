@@ -81,7 +81,7 @@ public sealed class EfNotificationStore(BeepsDbContext db) : INotificationStore
             .Select(x => new NotificationRow(
                 x.n.Id,
                 x.n.Type,
-                new ActorRow(x.a.Id, x.a.Kind, x.a.Handle, x.a.DisplayName, x.a.OwnerId),
+                new ActorRow(x.a.Id, x.a.Kind, x.a.Handle, x.a.DisplayName, x.a.OwnerId, x.a.AvatarMedia == null ? null : x.a.AvatarMedia.StorageKey),
                 x.n.BeepId,
                 x.n.CreatedAt,
                 x.n.ReadAt))

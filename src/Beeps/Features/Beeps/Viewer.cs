@@ -18,8 +18,13 @@ public sealed record Viewer(Guid ActorId, ActorKind Kind, Guid? OwnerId)
     public Guid AccountId => OwnerId ?? ActorId;
 
     /// <summary>Authors delete their own beeps; a human also deletes their agents' beeps (PLAN 2.2).</summary>
-    public bool MayDeleteBeepOf(Guid authorId, Guid? authorOwnerId) =>
-        authorId == ActorId || (!IsAgent && authorOwnerId == ActorId);
+    public bool MayDeleteBeepOf(Guid authorId, Guid? authorOwnerId) => IsSelfOrOwnAgent(authorId, authorOwnerId);
+
+    /// <summary>Everyone changes their own avatar; a human also changes their agents' avatars (PLAN 2.2).</summary>
+    public bool MayChangeAvatarOf(Guid actorId, Guid? actorOwnerId) => IsSelfOrOwnAgent(actorId, actorOwnerId);
+
+    private bool IsSelfOrOwnAgent(Guid actorId, Guid? actorOwnerId) =>
+        actorId == ActorId || (!IsAgent && actorOwnerId == ActorId);
 }
 
 /// <summary>Values of <c>kind</c> and <c>relation</c> in API responses (PLAN 4.5). Published values must never change.</summary>

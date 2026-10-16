@@ -1,8 +1,10 @@
 using Beeps.Features.Accounts;
 using Beeps.Features.Admin;
 using Beeps.Features.Agents;
+using Beeps.Features.Avatars;
 using Beeps.Features.Beeps;
 using Beeps.Features.Email;
+using Beeps.Features.Media;
 using Beeps.Features.Notifications;
 using Beeps.Features.Profiles;
 using Beeps.Features.RateLimiting;
@@ -19,7 +21,7 @@ using Microsoft.Extensions.DependencyInjection;
 namespace Beeps.Tests.Support;
 
 /// <summary>
-/// Hosts the real app with every external dependency (PostgreSQL, Valkey, Turnstile, email) replaced, so
+/// Hosts the real app with every external dependency (PostgreSQL, Valkey, Turnstile, email, object storage) replaced, so
 /// tests never need running services. Interfaces the app's code depends on are NSubstitute mocks; the
 /// Services, pages, endpoints and authentication are the real ones.
 /// </summary>
@@ -34,6 +36,7 @@ public sealed class BeepsWebApplicationFactory : WebApplicationFactory<Program>
         Counters.GetAsync(default!, CancellationToken.None).ReturnsForAnyArgs(new Dictionary<Guid, BeepCounts>());
         Beeps.GetMentionsAsync(default!, CancellationToken.None).ReturnsForAnyArgs(new Dictionary<Guid, IReadOnlyList<ActorRow>>());
         Beeps.GetRowsAsync(default!, default, CancellationToken.None).ReturnsForAnyArgs([]);
+        Beeps.GetMediaAsync(default!, CancellationToken.None).ReturnsForAnyArgs(new Dictionary<Guid, IReadOnlyList<MediaRow>>());
         // Pages read timelines; empty unless a test arranges beeps.
         Timelines.PublicAsync(default!, default, CancellationToken.None).ReturnsForAnyArgs(new CursorPage<BeepRow>([], null));
         Timelines.HomeAsync(default, default!, default, CancellationToken.None).ReturnsForAnyArgs(new CursorPage<BeepRow>([], null));
@@ -68,6 +71,13 @@ public sealed class BeepsWebApplicationFactory : WebApplicationFactory<Program>
 
     public IIdempotencyStore Idempotency { get; } = Substitute.For<IIdempotencyStore>();
 
+    /// <summary>Uploads are decoded by the real SkiaSharp processor; only where they are stored is mocked.</summary>
+    public IMediaStorage Storage { get; } = Substitute.For<IMediaStorage>();
+
+    public IMediaStore Media { get; } = Substitute.For<IMediaStore>();
+
+    public IAvatarStore Avatars { get; } = Substitute.For<IAvatarStore>();
+
     internal ImmediateUnitOfWork UnitOfWork { get; } = new();
 
     internal InMemorySessionStore Sessions { get; } = new();
@@ -85,6 +95,11 @@ public sealed class BeepsWebApplicationFactory : WebApplicationFactory<Program>
         builder.UseSetting("Turnstile:SecretKey", "test-secret-key");
         builder.UseSetting("Email:Provider", "Smtp");
         builder.UseSetting("Email:Smtp:Host", "smtp.invalid");
+        builder.UseSetting("Media:PublicBaseUrl", "https://media.beeps.test");
+        builder.UseSetting("Storage:ServiceUrl", "https://s3.invalid");
+        builder.UseSetting("Storage:Bucket", "beeps-media");
+        builder.UseSetting("Storage:AccessKeyId", "test");
+        builder.UseSetting("Storage:SecretAccessKey", "test");
         // Tests sharing a factory change mocks between requests; a cached page would hide that. OutputCacheTests turn it on.
         builder.UseSetting("PublicPageCache:Enabled", "false");
 
@@ -103,6 +118,9 @@ public sealed class BeepsWebApplicationFactory : WebApplicationFactory<Program>
             Replace(services, Profiles);
             Replace(services, Notifications);
             Replace(services, Idempotency);
+            Replace(services, Storage);
+            Replace(services, Media);
+            Replace(services, Avatars);
             Replace<IUnitOfWork>(services, UnitOfWork);
             Replace<ISessionStore>(services, Sessions);
             services.Configure<KeyManagementOptions>(options => options.XmlRepository = new InMemoryXmlRepository());

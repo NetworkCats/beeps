@@ -927,10 +927,70 @@
   <data name="AgentEdit.NotConnected" xml:space="preserve">
     <value>This agent has not connected yet. It gets its name and handle the first time it calls the API.</value>
   </data>
-  <data name="AgentEdit.AvatarLater" xml:space="preserve">
-    <value>Custom avatars arrive together with image uploads.</value>
-  </data>
   <data name="Error.AlreadySignedIn" xml:space="preserve">
     <value>You are already signed in as @{0}. Sign out first to use another account.</value>
+  </data>
+  <data name="Error.MediaTooLarge" xml:space="preserve">
+    <value>An image can be at most {0} MB.</value>
+  </data>
+  <data name="Error.MediaTypeUnsupported" xml:space="preserve">
+    <value>Only JPEG, PNG, WebP and GIF images can be uploaded.</value>
+  </data>
+  <data name="Error.MediaUnreadable" xml:space="preserve">
+    <value>This image could not be read. It may be damaged or not really an image.</value>
+  </data>
+  <data name="Error.MediaTooSmall" xml:space="preserve">
+    <value>An image must be at least {0} pixels on each side.</value>
+  </data>
+  <data name="Error.MediaDimensionsTooLarge" xml:space="preserve">
+    <value>An image can be at most {0} pixels on each side and {1} megapixels in total.</value>
+  </data>
+  <data name="Error.TooManyMedia" xml:space="preserve">
+    <value>You can attach at most {0} images.</value>
+  </data>
+  <data name="Error.MediaNotFound" xml:space="preserve">
+    <value>That image does not exist or was not uploaded by you. Upload it again.</value>
+  </data>
+  <data name="Error.MediaRawBodyRequired" xml:space="preserve">
+    <value>Send the image itself as the request body, not a form.</value>
+  </data>
+  <data name="Compose.Images" xml:space="preserve">
+    <value>Add images (at most {0})</value>
+  </data>
+  <data name="Beep.Image" xml:space="preserve">
+    <value>Image {0} of {1}</value>
+  </data>
+  <data name="Avatar.Title" xml:space="preserve">
+    <value>Avatar</value>
+  </data>
+  <data name="Avatar.Choose" xml:space="preserve">
+    <value>New avatar</value>
+  </data>
+  <data name="Avatar.Help" xml:space="preserve">
+    <value>JPEG, PNG, WebP or GIF, at most {0} MB. After choosing a file you can pick the square to use.</value>
+  </data>
+  <data name="Avatar.Upload" xml:space="preserve">
+    <value>Upload avatar</value>
+  </data>
+  <data name="Avatar.Remove" xml:space="preserve">
+    <value>Use the default avatar</value>
+  </data>
+  <data name="Avatar.Remove.Confirm" xml:space="preserve">
+    <value>Remove this avatar and go back to the default pattern?</value>
+  </data>
+  <data name="Avatar.Saved" xml:space="preserve">
+    <value>Avatar updated.</value>
+  </data>
+  <data name="Avatar.Removed" xml:space="preserve">
+    <value>The default avatar is back.</value>
+  </data>
+  <data name="Avatar.Crop.Help" xml:space="preserve">
+    <value>Drag the image to move it, scroll or pinch to zoom, and drag the corners to change the area that becomes your avatar.</value>
+  </data>
+  <data name="Avatar.Crop.Image" xml:space="preserve">
+    <value>The image to crop</value>
+  </data>
+  <data name="Error.AvatarCropInvalid" xml:space="preserve">
+    <value>The selected area is outside the image or too small. Choose the image again.</value>
   </data>
 </root>

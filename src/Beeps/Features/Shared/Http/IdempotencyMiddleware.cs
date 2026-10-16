@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using System.Security.Cryptography;
 using System.Text;
 using Beeps.Features.Auth;
 using Microsoft.Extensions.Localization;
@@ -7,14 +8,23 @@ using Microsoft.Net.Http.Headers;
 namespace Beeps.Features.Shared.Http;
 
 /// <summary>Marks a write endpoint as accepting <c>Idempotency-Key</c>.</summary>
+/// <param name="maxBodyBytes">Bodies up to this size are fingerprinted (in memory); larger ones run without replay protection.</param>
 [AttributeUsage(AttributeTargets.Class | AttributeTargets.Method)]
-public sealed class IdempotentAttribute : Attribute;
+public sealed class IdempotentAttribute(int maxBodyBytes = IdempotencyMiddleware.MaxBodyLength) : Attribute
+{
+    public int MaxBodyBytes { get; } = maxBodyBytes;
+}
 
 public static class IdempotencyEndpointExtensions
 {
     public static TBuilder WithIdempotency<TBuilder>(this TBuilder builder)
         where TBuilder : IEndpointConventionBuilder =>
         builder.WithMetadata(new IdempotentAttribute());
+
+    /// <summary>For endpoints with bodies larger than JSON (image uploads).</summary>
+    public static TBuilder WithIdempotency<TBuilder>(this TBuilder builder, int maxBodyBytes)
+        where TBuilder : IEndpointConventionBuilder =>
+        builder.WithMetadata(new IdempotentAttribute(maxBodyBytes));
 }
 
 public static class IdempotencyErrorCodes
@@ -38,7 +48,7 @@ public sealed partial class IdempotencyMiddleware(RequestDelegate next, ILogger<
 
     public const int MaxKeyLength = 255;
 
-    /// <summary>Beep text is at most a few KB; anything bigger is not fingerprinted in memory.</summary>
+    /// <summary>The default: beep text is at most a few KB; anything bigger is not fingerprinted in memory.</summary>
     public const int MaxBodyLength = 64 * 1024;
 
     public static readonly TimeSpan Retention = TimeSpan.FromHours(24);
@@ -52,8 +62,9 @@ public sealed partial class IdempotencyMiddleware(RequestDelegate next, ILogger<
         ArgumentNullException.ThrowIfNull(store);
         ArgumentNullException.ThrowIfNull(localizer);
         var key = context.Request.Headers[HeaderName].ToString();
+        var idempotent = context.GetEndpoint()?.Metadata.GetMetadata<IdempotentAttribute>();
         if (key.Length == 0
-            || context.GetEndpoint()?.Metadata.GetMetadata<IdempotentAttribute>() is null
+            || idempotent is null
             || context.User.FindFirstValue(ClaimTypes.NameIdentifier) is null)
         {
             await next(context);
@@ -66,15 +77,14 @@ public sealed partial class IdempotencyMiddleware(RequestDelegate next, ILogger<
             return;
         }
 
-        var body = await ReadBodyAsync(context.Request);
-        if (body is null)
+        var fingerprint = await FingerprintAsync(context.Request, idempotent.MaxBodyBytes);
+        if (fingerprint is null)
         {
             await next(context);
             return;
         }
 
         var storeKey = $"{context.User.ActorId():N}:{TextHashes.Sha256Hex(key)}";
-        var fingerprint = TextHashes.Sha256Hex($"{context.Request.Method}\n{context.Request.Path}{context.Request.QueryString}\n{body}");
         IdempotencyRecord? existing;
         try
         {
@@ -97,18 +107,38 @@ public sealed partial class IdempotencyMiddleware(RequestDelegate next, ILogger<
         await RunAndRememberAsync(context, store, storeKey, fingerprint);
     }
 
-    private static async Task<string?> ReadBodyAsync(HttpRequest request)
+    /// <summary>
+    /// A hash of the method, path, query and raw body bytes; null when the body is larger than
+    /// <paramref name="maxBodyBytes"/>. The body stays buffered in memory (never on disk) for the endpoint.
+    /// </summary>
+    private static async Task<string?> FingerprintAsync(HttpRequest request, int maxBodyBytes)
     {
-        if (request.ContentLength > MaxBodyLength)
+        if (request.ContentLength > maxBodyBytes)
         {
             return null;
         }
 
-        request.EnableBuffering(MaxBodyLength);
-        using var reader = new StreamReader(request.Body, Encoding.UTF8, detectEncodingFromByteOrderMarks: false, leaveOpen: true);
-        var body = await reader.ReadToEndAsync(request.HttpContext.RequestAborted);
+        var chunk = new byte[16 * 1024];
+        // Room for the one chunk read past the limit, so nothing is ever buffered to a temporary file.
+        request.EnableBuffering(bufferThreshold: maxBodyBytes + chunk.Length);
+        using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
+        hash.AppendData(Encoding.UTF8.GetBytes($"{request.Method}\n{request.Path}{request.QueryString}\n"));
+        long total = 0;
+        int read;
+        while ((read = await request.Body.ReadAsync(chunk, request.HttpContext.RequestAborted)) > 0)
+        {
+            total += read;
+            if (total > maxBodyBytes)
+            {
+                request.Body.Position = 0;
+                return null;
+            }
+
+            hash.AppendData(chunk, 0, read);
+        }
+
         request.Body.Position = 0;
-        return body.Length > MaxBodyLength ? null : body;
+        return Convert.ToHexStringLower(hash.GetHashAndReset());
     }
 
     private static Task AnswerExistingAsync(HttpContext context, IdempotencyRecord existing, string fingerprint, IStringLocalizer<SharedResource> localizer)

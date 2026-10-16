@@ -32,7 +32,7 @@
 - **限流是固定窗口**：窗口交界处最多可能放过约 2 倍的请求。目前够用，有实际问题再换滑动窗口。
 - **ForwardedHeaders 默认什么都不信任**：发现 ASP.NET Core 在 `KnownProxies` 和 `KnownIPNetworks` 都为空时会信任所有来源，现在的实现改为此时完全不读取转发头（有测试覆盖）。阶段 7 必须在线上配置 nginx 访问应用时的实际来源地址：nginx 用 host 网络、容器端口经 Docker 发布时，来源可能是 Docker 网桥网关而不是 `127.0.0.1`，需要在部署时确认。如果漏配，所有匿名访客会共用 nginx 的地址这一个限流桶。
 - ~~**HTML 页面被限流时返回的是 ProblemDetails（JSON 或纯文本）**~~：阶段 3 已解决。网页请求被限流时返回 429 和 `Retry-After`，由状态码页面显示本地化的"请求太频繁"页面；`/api` 仍返回 ProblemDetails。错误页本身（重新执行的请求）不再重复计数。
-- **SeaweedFS 在 `compose.dev.yml` 中没有健康检查**：目前只确认了匿名请求返回 403（凭据生效），实际上传留到阶段 4 验证。
+- ~~**SeaweedFS 在 `compose.dev.yml` 中没有健康检查**~~：阶段 4 已解决。加了健康检查和自动创建 bucket 的 `seaweedfs-init`，实际上传已验证。
 - **Outbox 租约 5 分钟**：处理时间超过租约的消息可能被另一个实例重复处理，所以处理器必须幂等（PLAN 已要求）。没有处理器的消息类型会重试，最终进入死信，这样可以兼容滚动发布时新旧版本并存。
 - **Lua 多 key 脚本假定 Valkey 是单节点**（不是 Cluster 模式），与当前部署方案一致。
 - **HybridCache 已注册但还没有使用者**：key 前缀为 `beeps:v1:cache:`，L1 30 秒、L2 5 分钟。
@@ -88,7 +88,7 @@
 
 ### 阶段 2 遗留问题
 - **实时事件、搜索索引同步、审核任务都还没有接上**（分别在阶段 5、5、6）：PLAN 12 要求发 beep、删除、点赞、通知、agent 连接时发布实时事件；beep 发布和删除写入搜索索引同步任务；每条 beep 在同一事务中写入 `moderation_jobs`。目前 beep 的 `moderation_status` 一直是 `pending`。可见性判断已经集中在 `BeepVisibility` 一处（含 `hidden` 只对作者和主人可见），阶段 6 只需改状态；API 还没有返回"审核中"标记，阶段 6 补上。
-- **skill.md 还没有图片、截图和头像的内容**：上传接口在阶段 4，TODO 阶段 4 已列出"更新 skill.md"。现在 skill.md 写明"上传图片和修改头像暂不可用"。
+- ~~**skill.md 还没有图片、截图和头像的内容**~~：阶段 4 已解决。
 - ~~**需要确认：时间线是否包含回复**~~：已确认，按 Twitter 的做法。公共时间线只显示顶层 beep；首页和主人首页时间线额外显示回复，但只限被回复的 beep 也出自首页范围内的账号（自己、自己的 agent、关注的人和他们的 agent），且该 beep 仍可见；个人主页和话题页包含全部回复。阶段 3 的网页个人主页再分"beep"和"回复"两个标签页。
 - **需要确认：话题标签和 @提及的细节规则**（PLAN 只规定了结尾）：`#` 和 `@` 前面必须是开头或非文字字符，所以 `今天#天气`、`page#2`、`a@b.com` 都不算；`&`、`/` 后面的也不算（HTML 实体、URL 片段）；标签至少含一个字母（`#123` 不算）。超过 10 个标签、单个标签超过 50 字符、@ 超过 10 个账号时直接拒绝（400），而不是忽略多出的部分；@ 上限 10 是自定的，PLAN 没有规定。不存在的 @ 账号不报错，只是不链接、不通知。
 - ~~**需要确认：PLAN 7 是否补上 `GET /api/v1/openapi.json`**~~：已确认，PLAN 7 已补上。OpenAPI 文档用官方的 `Microsoft.AspNetCore.OpenApi` 10.0.13（MIT，带入 `Microsoft.OpenApi` 2.12.2，MIT），匿名可访问，只包含 `/api/v1/` 下的接口，带 Bearer 认证说明。
@@ -130,11 +130,34 @@
 - **"审核中"标记**仍在阶段 6：作者本人看到自己被隐藏的 beep 时还没有标记。
 
 ## 阶段 4：图片
-- [ ] `POST /api/v1/media`：魔数判断、尺寸检查、SkiaSharp 重新编码 WebP、去元数据、生成缩略图
-- [ ] S3 存储接口（本地 SeaweedFS，线上 R2）
-- [ ] beep 附图（最多 4 张）
-- [ ] 自定义头像（人类和 agent），删除后恢复默认头像
-- [ ] 更新 skill.md：修改头像、附带截图及截图检查要求
+- [x] `POST /api/v1/media`：魔数判断、尺寸检查、SkiaSharp 重新编码 WebP、去元数据、生成缩略图
+- [x] S3 存储接口（本地 SeaweedFS，线上 R2）
+- [x] beep 附图（最多 4 张）
+- [x] 自定义头像（人类和 agent），删除后恢复默认头像
+- [x] 更新 skill.md：修改头像、附带截图及截图检查要求
+
+### 阶段 4 遗留问题
+- **需要确认：图片尺寸上限**：单个文件 5 MB；每边 16–8192 像素，总像素不超过 4096 × 4096（约 16.7 百万像素，PLAN 6.11 的示例值），所以 12 MP 手机照片、4K / 5K 截图可以上传，24 MP 以上的手机原图会被拒绝。解码前先从文件头读宽高。这些上限是 `MediaRules` 里的常量而不是配置项，因为请求体上限要写在特性（attribute）上。
+- **需要确认：存储的尺寸与 `media.kind`**：原图最长边缩到 2048（WebP 质量 85）、缩略图 800（质量 80）、头像从中间裁成 256 × 256 的正方形。每次上传都生成这三种，所以同一张图既能配图也能做头像，PLAN 8 里 `media` 的 `kind` 列因此没有加。对象名是随机的 128 位十六进制（`{key}/full.webp` 等），与 media ID 无关，不能从 ID 猜出地址。
+- **图片在上传请求里同步处理**（解码、转正、缩放、编码），没有走 PLAN 6.8 说的"图片后处理"Outbox；Outbox 只用来删除对象。每张图解码最多占 64 MB 内存，单实例的并发解码数没有限制，阶段 7 压测时看是否需要加上限。
+- **EXIF 方向会先转正再去掉元数据**（PLAN 没写；不转的话手机竖拍的照片去掉 EXIF 后会横过来），颜色按 ICC 转成 sRGB。截断、解码不完整的文件直接拒绝；文件头格式与魔数不一致的也拒绝。
+- **需要确认：允许只有图片、没有文字的 beep**（按 Twitter 的做法；没有图片时仍然要求有文字）。阶段 6 的 AI 审核首发只审文字，所以纯图片的 beep 实际上不经过 AI 审核，只能靠举报。
+- **图片的归属**：只能使用自己上传的图片（按上传者，不按主人）。主人在网页上给 agent 换头像时，上传者是主人，所以 agent 不能拿这张图发 beep，反过来主人也不能用 agent 上传的图。同一张图可以用在多条 beep 里。
+- **未使用的上传**：发帖或设头像都没用到的图片（包括被替换下来的旧头像）在 24 小时（`Media:UnusedRetention`）后由定时任务 `media.cleanup` 每小时清理：数据库行和"删除对象"的 Outbox 消息在同一事务里，对象由 Outbox 处理器删除（可重试、幂等）。发帖和设头像时在事务里用 `FOR KEY SHARE` 锁住图片，清理用 `FOR UPDATE SKIP LOCKED` 跳过它们，避免正要用的图被清理掉。网页发帖时先检查文字和图片数量再上传，其余失败（回复的 beep 不存在、限流）留下的上传由清理任务回收。
+- **被删除的 beep 的图片仍然保留**（审计需要，PLAN 3.6），知道直链的人仍能访问。阶段 6 管理后台的"删除图片"需要真正删除对象（并考虑 Cloudflare 缓存）。
+- **API 上传用原始请求体，不用 multipart**：`curl --data-binary @a.png`，Content-Type 被忽略（PLAN 6.11）；发 multipart 会得到 `media_raw_body_required`。原因是 multipart 每次的分隔符不同，带同一个 `Idempotency-Key` 重试会被当成不同的请求。幂等中间件改为按原始字节计算指纹，上传接口的指纹上限放宽到 5 MB + 64 KB（只在内存中缓冲），其他接口仍是 64 KB。
+- **需要确认：请求体上限和 nginx**：API 上传 5 MB + 64 KB，头像表单同样，网页发帖表单 4 × 5 MB + 64 KB ≈ 20 MB（没有脚本也能用，四张图在同一个表单里提交）。所以阶段 7 nginx 的 `client_max_body_size` 要约 21 MB，而不是 PLAN 9.2 写的"略大于 5 MB"；如果坚持 5 MB，网页就要改成用脚本逐张上传。表单全部在内存里解析，不落盘（实测 ASP.NET 临时目录没有出现文件）。
+- **超限的返回码**：API 超过请求体上限返回 413（异常处理现在使用 `BadHttpRequestException` 自带的状态码，之前会变成 500）；新增 `ErrorKind.TooLarge` 和通用错误码 `too_large`。网页表单超限返回 400 而不是 413：防伪校验读表单时失败，被当成无效请求。正常浏览器有前端检查（数量、单个大小），碰不到这种情况。
+- **媒体域名的响应头**：对象写入时带 `Content-Type: image/webp` 和一年的 `immutable` 缓存头；`X-Content-Type-Options: nosniff`（PLAN 6.11）无法通过 R2 对象元数据设置，阶段 7 的上线清单要在 Cloudflare 用响应头转换规则给 `media.beeps.sh` 加上。本地 SeaweedFS 不返回这个头。
+- **R2 没有实际验证过**：只在本地 SeaweedFS 上跑通。针对 R2 关闭了 AWS SDK 新版默认的校验和（`WHEN_REQUIRED`），HTTPS 下不签 payload（R2 不支持流式 SigV4；SDK 只允许在 HTTPS 下这样做，本地 HTTP 照常签名）。上线前要对 R2 实际上传和删除一次。
+- **线上必填配置新增**：`Media__PublicBaseUrl`（默认 `https://media.beeps.sh`）、`Storage__ServiceUrl`、`Storage__Bucket`、`Storage__AccessKeyId`、`Storage__SecretAccessKey`，缺失时拒绝启动；`Storage__Region`（R2 用默认的 `auto`）、`Media__UnusedRetention` 可选。阶段 7 写入 `.env.example`。
+- **本地 SeaweedFS**：`dev/seaweedfs-s3.json` 定义开发密钥，并允许匿名读取 `beeps-media`（模拟公开的媒体域名）；`seaweedfs-init` 一次性创建 bucket。删除对象后 SeaweedFS 会留下空目录，S3 语义下不存在，不影响使用。
+- **新依赖**：`SkiaSharp` 4.153.1 和 `SkiaSharp.NativeAssets.Linux.NoDependencies`（MIT），`AWSSDK.S3` 4.0.104.1（Apache-2.0）。Linux 原生库已在 `mcr.microsoft.com/dotnet/sdk:10.0` 容器里跑通全部图片和 API 测试，阶段 7 的镜像不需要额外安装 fontconfig。
+- **头像裁切（按要求追加，PLAN 6.11 已同步）**：设置页和 agent 页选好文件后显示 Cropper.js 1.6.2（MIT；1.7.0 和 2.x 发布不到两周，没有用）的 1:1 选区，选区显示为圆形。表单只多提交 `Crop.X`、`Crop.Y`、`Crop.Size`（转正后的原图像素），原图照常上传，服务器校验后裁切（`MediaRules.FitCrop`，超出 2 像素以上或小于 16 像素返回 `avatar_crop_invalid`）。文件头的宽高改为按 EXIF 转正后的值，和浏览器显示的一致。Cropper 只在这两个页面加载（`dist/avatar-crop.js`、`dist/avatar-crop.css`，约 40 KB），没有脚本时退回中间裁切。用 puppeteer-core 驱动真实 Chrome 端到端验证过：EXIF 方向为 6 的照片在浏览器里选左上角，服务器裁出的正是那一块；滚轮缩放、拖动后的参数始终在图片内；agent 页同样可用；禁用脚本时取中间；375 px 下没有横向滚动，没有脚本错误。
+- **agent 的 API 换头像仍然取中间的正方形**：`PUT /api/v1/agent/me/avatar` 只接收 media ID，没有裁切参数。agent 需要的话可以先自己裁好再上传；如果要在 API 上加裁切参数，需要从已存的原图（已缩到 2048）重新生成头像。
+- **实时事件仍未接上**（阶段 5）：带图 beep、头像变化都还没有发布实时事件。
+- **图片的替代文字**只有"第 n 张图片，共 m 张"，作者不能写描述。以后可以加 alt 文本字段（API 和网页都要改）。
+- **自动化测试覆盖不到的部分**（EF 查询、`FOR KEY SHARE` / `DELETE … RETURNING` 原生 SQL、S3 实际读写、浏览器渲染）已在本地 PostgreSQL + Valkey + SeaweedFS 上冒烟验证：注册到 agent 连接、各格式上传（EXIF 方向转正、GPS 标记被去掉、动图取首帧、宽图缩到 2048、缩略图和头像尺寸）、拒绝过小 / 过大 / 伪装 / 截断 / 超过 5 MB（带和不带 Content-Length）/ multipart、幂等重放和同一 key 换图片、四图 / 纯图片 / 回复带图的 beep、超过 4 张和用不存在的图片、agent 设置和删除头像、网页发帖带图（包括四张 4.9 MB）、设置页和 agent 页换头像、清理任务（删掉 11 条未使用记录及其对象，用到的保留，Outbox 无死信）。还用 headless Chrome 截图检查了桌面和 375 px 下的图片网格、设置页和 agent 页的头像区，修正了"改用默认头像"按钮被拉伸的问题。冒烟数据已从本地数据库、Valkey 和 SeaweedFS 清除，MailHog 里留有测试邮件。
 
 ## 阶段 5：实时与搜索
 - [ ] SSE 端点（仅登录用户和 agent）、Redis Stream 跨实例、`Last-Event-ID` 补发、心跳

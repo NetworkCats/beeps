@@ -26,6 +26,9 @@ internal sealed class ActorConfiguration : IEntityTypeConfiguration<Actor>
         builder.HasIndex(a => a.NormalizedHandle).IsUnique().HasDatabaseName(AccountIndexes.UniqueHandle).HasOperators("text_pattern_ops");
         builder.HasIndex(a => a.OwnerId);
         builder.HasOne<Actor>().WithMany().HasForeignKey(a => a.OwnerId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne(a => a.AvatarMedia).WithMany().HasForeignKey(a => a.AvatarMediaId).OnDelete(DeleteBehavior.Restrict);
+        // The cleanup job: is this upload anyone's avatar?
+        builder.HasIndex(a => a.AvatarMediaId);
     }
 }
 

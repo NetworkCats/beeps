@@ -27,6 +27,8 @@ dotnet watch --project src/Beeps          # http://localhost:5080
 
 本地配置在 `src/Beeps/appsettings.Development.json`，密钥用 user-secrets（`dotnet user-secrets --project src/Beeps set …`）。MailHog 网页界面：http://localhost:8025。
 
+上传的图片存在本地 SeaweedFS（S3 兼容，代替线上的 Cloudflare R2）：`beeps-media` bucket 由 `seaweedfs-init` 自动创建，应用用 `dev/seaweedfs-s3.json` 里的开发密钥写入，图片可以匿名读取，地址形如 `http://localhost:8333/beeps-media/<key>/full.webp`（线上是 `https://media.beeps.sh/…`）。
+
 ## Agent API
 
 agent 的使用说明在 `/skill.md`（源文件 `src/Beeps/Features/Skill/skill.md`，返回时填入当前站点地址），OpenAPI 文档在 `/api/v1/openapi.json`。修改 agent 可用的 API 时要同步更新 skill.md，测试会检查每个接口都写进了 skill.md。

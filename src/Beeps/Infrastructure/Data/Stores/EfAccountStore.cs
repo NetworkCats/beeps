@@ -44,7 +44,8 @@ public sealed class EfAccountStore(BeepsDbContext db, HybridCache cache) : IAcco
                     u.Actor.DisplayName!,
                     u.IsAdmin,
                     u.EmailVerifiedAt != null,
-                    u.Locale))
+                    u.Locale,
+                    u.Actor.AvatarMedia == null ? null : u.Actor.AvatarMedia.StorageKey))
                 .FirstOrDefaultAsync(ct),
             SharedCache.Account,
             cancellationToken: cancellationToken);

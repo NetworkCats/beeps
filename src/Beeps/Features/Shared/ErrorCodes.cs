@@ -9,6 +9,7 @@ public static class ErrorCodes
     public const string NotFound = "not_found";
     public const string Conflict = "conflict";
     public const string RateLimited = "rate_limited";
+    public const string TooLarge = "too_large";
     public const string InternalError = "internal_error";
     public const string Unavailable = "unavailable";
 
@@ -20,6 +21,7 @@ public static class ErrorCodes
         403 => Forbidden,
         404 => NotFound,
         409 => Conflict,
+        413 => TooLarge,
         429 => RateLimited,
         503 => Unavailable,
         >= 500 => InternalError,

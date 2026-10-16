@@ -28,6 +28,10 @@ namespace Beeps.Infrastructure.Data.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
+                    b.Property<Guid?>("AvatarMediaId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("avatar_media_id");
+
                     b.Property<string>("Bio")
                         .HasMaxLength(300)
                         .HasColumnType("character varying(300)")
@@ -77,6 +81,9 @@ namespace Beeps.Infrastructure.Data.Migrations
 
                     b.HasKey("Id")
                         .HasName("pk_actors");
+
+                    b.HasIndex("AvatarMediaId")
+                        .HasDatabaseName("ix_actors_avatar_media_id");
 
                     b.HasIndex("NormalizedHandle")
                         .IsUnique()
@@ -561,6 +568,73 @@ namespace Beeps.Infrastructure.Data.Migrations
                     b.ToTable("mentions", (string)null);
                 });
 
+            modelBuilder.Entity("Beeps.Features.Media.BeepMedia", b =>
+                {
+                    b.Property<Guid>("BeepId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("beep_id");
+
+                    b.Property<Guid>("MediaId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("media_id");
+
+                    b.Property<int>("Position")
+                        .HasColumnType("integer")
+                        .HasColumnName("position");
+
+                    b.HasKey("BeepId", "MediaId")
+                        .HasName("pk_beep_media");
+
+                    b.HasIndex("MediaId")
+                        .HasDatabaseName("ix_beep_media_media_id");
+
+                    b.ToTable("beep_media", (string)null);
+                });
+
+            modelBuilder.Entity("Beeps.Features.Media.MediaItem", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<int>("Height")
+                        .HasColumnType("integer")
+                        .HasColumnName("height");
+
+                    b.Property<Guid>("OwnerActorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("owner_actor_id");
+
+                    b.Property<string>("StorageKey")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("storage_key");
+
+                    b.Property<int>("Width")
+                        .HasColumnType("integer")
+                        .HasColumnName("width");
+
+                    b.HasKey("Id")
+                        .HasName("pk_media");
+
+                    b.HasIndex("CreatedAt")
+                        .HasDatabaseName("ix_media_created_at");
+
+                    b.HasIndex("OwnerActorId")
+                        .HasDatabaseName("ix_media_owner_actor_id");
+
+                    b.HasIndex("StorageKey")
+                        .IsUnique()
+                        .HasDatabaseName("ix_media_storage_key");
+
+                    b.ToTable("media", (string)null);
+                });
+
             modelBuilder.Entity("Beeps.Features.Notifications.Notification", b =>
                 {
                     b.Property<Guid>("Id")
@@ -803,11 +877,19 @@ namespace Beeps.Infrastructure.Data.Migrations
 
             modelBuilder.Entity("Beeps.Features.Accounts.Actor", b =>
                 {
+                    b.HasOne("Beeps.Features.Media.MediaItem", "AvatarMedia")
+                        .WithMany()
+                        .HasForeignKey("AvatarMediaId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_actors_media_item_avatar_media_id");
+
                     b.HasOne("Beeps.Features.Accounts.Actor", null)
                         .WithMany()
                         .HasForeignKey("OwnerId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .HasConstraintName("fk_actors_actors_owner_id");
+
+                    b.Navigation("AvatarMedia");
                 });
 
             modelBuilder.Entity("Beeps.Features.Accounts.Invite", b =>
@@ -942,6 +1024,33 @@ namespace Beeps.Infrastructure.Data.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_mentions_beeps_beep_id");
+                });
+
+            modelBuilder.Entity("Beeps.Features.Media.BeepMedia", b =>
+                {
+                    b.HasOne("Beeps.Features.Beeps.Beep", null)
+                        .WithMany()
+                        .HasForeignKey("BeepId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_beep_media_beeps_beep_id");
+
+                    b.HasOne("Beeps.Features.Media.MediaItem", null)
+                        .WithMany()
+                        .HasForeignKey("MediaId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_beep_media_media_item_media_id");
+                });
+
+            modelBuilder.Entity("Beeps.Features.Media.MediaItem", b =>
+                {
+                    b.HasOne("Beeps.Features.Accounts.Actor", null)
+                        .WithMany()
+                        .HasForeignKey("OwnerActorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_media_actors_owner_actor_id");
                 });
 
             modelBuilder.Entity("Beeps.Features.Notifications.Notification", b =>

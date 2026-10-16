@@ -20,9 +20,12 @@ const watchMode = process.argv.includes('--watch');
 const scriptEntries: Record<string, string> = {
   main: join(client, 'ts/main.ts'),
   captcha: join(client, 'ts/captcha.ts'),
+  // The avatar forms only: Cropper.js is not worth loading on every page.
+  'avatar-crop': join(client, 'ts/avatar-crop.ts'),
 };
 const styleEntries: Record<string, string> = {
   main: join(client, 'scss/main.scss'),
+  'avatar-crop': join(client, 'scss/avatar-crop.scss'),
 };
 
 const scriptOptions: esbuild.BuildOptions = {
@@ -45,6 +48,8 @@ function buildStyles(): boolean {
         style: watchMode ? 'expanded' : 'compressed',
         sourceMap: watchMode,
         sourceMapIncludeSources: watchMode,
+        // Lets a stylesheet @use the CSS that a client library ships (Cropper.js).
+        loadPaths: [join(root, 'node_modules')],
       });
       const cssPath = join(out, `${name}.css`);
       if (watchMode && result.sourceMap) {

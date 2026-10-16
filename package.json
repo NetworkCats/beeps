@@ -22,5 +22,8 @@
   "allowScripts": {
     "esbuild": false,
     "@parcel/watcher": false
+  },
+  "dependencies": {
+    "cropperjs": "1.6.2"
   }
 }

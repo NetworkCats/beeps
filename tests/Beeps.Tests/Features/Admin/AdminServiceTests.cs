@@ -300,7 +300,7 @@ public sealed class AdminServiceTests
 
     private AdminService CreateService()
     {
-        var avatars = new AvatarUrls(TestData.Site);
+        var avatars = TestData.Avatars;
         var localizer = new TestLocalizer();
         var agentService = new AgentService(agents, unitOfWork, avatars, Options.Create(new AgentOptions()), TestData.Time(), localizer, NullLogger<AgentService>.Instance);
         return new AdminService(store, accounts, sessions, agents, agentService, unitOfWork, avatars, TestData.Time(), localizer, NullLogger<AdminService>.Instance);

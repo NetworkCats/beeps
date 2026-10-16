@@ -7,6 +7,12 @@
     var agent = Model.Agent;
     ViewData["Title"] = agent.DisplayName ?? L["Agents.Unnamed"];
 }
+@section Head {
+    <link rel="stylesheet" href="~/dist/avatar-crop.css" asp-append-version="true">
+}
+@section Scripts {
+    <script type="module" src="~/dist/avatar-crop.js" asp-append-version="true"></script>
+}
 <section class="feed">
     <header class="profile-header">
         <span class="avatar avatar-xl"><img src="@agent.AvatarUrl" alt="" width="64" height="64"></span>
@@ -25,6 +31,7 @@
     }
     else
     {
+        <partial name="_AvatarEditor" model="new AvatarEditor(agent.AvatarUrl, agent.HasCustomAvatar)" />
         <form class="auth-form" method="post">
             <div class="field">
                 <label class="label" for="@ProfileFields.DisplayName">@L["Field.DisplayName"]</label>
@@ -51,6 +58,5 @@
                 <a class="btn btn-ghost" asp-page="/Agents/Index">@L["AgentEdit.Back"]</a>
             </div>
         </form>
-        <p class="help agent-avatar-note">@L["AgentEdit.AvatarLater"]</p>
     }
 </section>

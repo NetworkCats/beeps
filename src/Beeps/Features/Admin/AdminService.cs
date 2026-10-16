@@ -66,7 +66,7 @@ public sealed partial class AdminService(
         }
 
         var userAgents = await agentService.ListAsync(userId, cancellationToken);
-        return new AdminUserDetails(user, avatars.For(user.Id), userAgents);
+        return new AdminUserDetails(user, avatars.For(user.Id, user.AvatarKey), userAgents);
     }
 
     /// <summary>Bans the user, ends all their sessions and disables all their agents (PLAN 3.6).</summary>

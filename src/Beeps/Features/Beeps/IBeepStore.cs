@@ -1,3 +1,4 @@
+using Beeps.Features.Media;
 using Beeps.Features.Shared;
 
 namespace Beeps.Features.Beeps;
@@ -17,6 +18,9 @@ public interface IBeepStore
     /// <summary>The visible actors each beep mentions, keyed by beep id (beeps without any are left out).</summary>
     Task<IReadOnlyDictionary<Guid, IReadOnlyList<ActorRow>>> GetMentionsAsync(IReadOnlyCollection<Guid> beepIds, CancellationToken cancellationToken);
 
+    /// <summary>The images attached to each beep, in order, keyed by beep id (beeps without any are left out).</summary>
+    Task<IReadOnlyDictionary<Guid, IReadOnlyList<MediaRow>>> GetMediaAsync(IReadOnlyCollection<Guid> beepIds, CancellationToken cancellationToken);
+
     /// <summary>A thread oldest first: every visible beep with this root (the root included), after the cursor.</summary>
     Task<CursorPage<BeepRow>> ListThreadAsync(Guid rootId, Guid? after, int limit, Guid? viewerId, CancellationToken cancellationToken);
 
@@ -28,6 +32,9 @@ public interface IBeepStore
 
     /// <summary>Stages the beep with its mention and hashtag rows.</summary>
     void AddBeep(Beep beep, IReadOnlyCollection<Guid> mentionedActorIds, IReadOnlyCollection<Guid> hashtagIds);
+
+    /// <summary>Stages the beep's images, in this order.</summary>
+    void AttachMedia(Guid beepId, IReadOnlyList<Guid> mediaIds);
 
     /// <summary>Soft-deletes the beep. Runs immediately; false if it was already deleted.</summary>
     Task<bool> DeleteAsync(Guid beepId, DateTimeOffset now, CancellationToken cancellationToken);

@@ -45,7 +45,8 @@ public sealed record AdminUserRow(
     bool EmailVerified,
     DateTimeOffset CreatedAt,
     DateTimeOffset? BannedAt,
-    DateTimeOffset? DeletedAt);
+    DateTimeOffset? DeletedAt,
+    string? AvatarKey = null);
 
 public sealed record AuditLogRow(
     Guid Id,

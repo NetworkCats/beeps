@@ -1,6 +1,8 @@
 using Beeps.Features.Accounts;
 using Beeps.Features.Auth;
+using Beeps.Features.Avatars;
 using Beeps.Features.Localization;
+using Beeps.Features.Media;
 using Beeps.Features.Shared;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
@@ -8,8 +10,10 @@ using Microsoft.Extensions.Localization;
 
 namespace Beeps.Pages;
 
-/// <summary>The account's own settings: profile, language and password (PLAN 2.2, 6.12).</summary>
-public sealed class SettingsModel(AccountService accounts, IStringLocalizer<SharedResource> localizer) : PageModel
+/// <summary>The account's own settings: avatar, profile, language and password (PLAN 2.2, 3.4, 6.12).</summary>
+[RequestSizeLimit(MediaRules.MaxImageRequestBytes)]
+[RequestFormLimits(MultipartBodyLengthLimit = MediaRules.MaxImageRequestBytes, MemoryBufferThreshold = MediaRules.MaxImageRequestBytes)]
+public sealed class SettingsModel(AccountService accounts, AvatarService avatars, IStringLocalizer<SharedResource> localizer) : PageModel
 {
     public AccountSettings Settings { get; private set; } = null!;
 
@@ -23,6 +27,10 @@ public sealed class SettingsModel(AccountService accounts, IStringLocalizer<Shar
 
     [BindProperty] public string? NewPassword { get; set; }
 
+    [BindProperty] public IFormFile? Avatar { get; set; }
+
+    [BindProperty] public AvatarCropForm Crop { get; set; } = new();
+
     public async Task<IActionResult> OnGetAsync(CancellationToken cancellationToken)
     {
         if (!await LoadAsync(cancellationToken))
@@ -33,6 +41,12 @@ public sealed class SettingsModel(AccountService accounts, IStringLocalizer<Shar
         (DisplayName, Bio) = (Settings.DisplayName, Settings.Bio);
         return Page();
     }
+
+    public async Task<IActionResult> OnPostAvatarAsync(CancellationToken cancellationToken) =>
+        await DoneAsync(await avatars.UploadAsync(User.Viewer(), User.ActorId(), Avatar.ToMediaContent(), Crop.ToCrop(), cancellationToken), "Avatar.Saved", cancellationToken);
+
+    public async Task<IActionResult> OnPostRemoveAvatarAsync(CancellationToken cancellationToken) =>
+        await DoneAsync(await avatars.RemoveAsync(User.Viewer(), User.ActorId(), cancellationToken), "Avatar.Removed", cancellationToken);
 
     public async Task<IActionResult> OnPostProfileAsync(CancellationToken cancellationToken) =>
         await DoneAsync(await accounts.UpdateProfileAsync(User.ActorId(), DisplayName, Bio, cancellationToken), "Settings.ProfileSaved", cancellationToken);

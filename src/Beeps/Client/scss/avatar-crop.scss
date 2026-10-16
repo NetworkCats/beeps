@@ -1,0 +1,45 @@
+// The avatar cropper (ts/avatar-crop.ts), loaded only by the pages with an avatar form. Cropper.js's own
+// styles first, then beeps' look on top: the selection is round, as avatars are shown as circles.
+@use "cropperjs/dist/cropper";
+
+.avatar-crop {
+  display: flex;
+  flex-direction: column;
+  align-self: stretch;
+  gap: var(--cui-space-2);
+}
+
+// Cropper sizes itself to this box; the image inside must not overflow it before Cropper takes over.
+.avatar-crop-stage {
+  width: 100%;
+  max-width: 24rem;
+  height: 18rem;
+  overflow: hidden;
+  background: var(--cui-surface-2);
+  border-radius: var(--cui-radius-lg);
+
+  > img {
+    display: block;
+    max-width: 100%;
+  }
+
+  .cropper-view-box,
+  .cropper-face {
+    border-radius: 50%;
+  }
+
+  .cropper-view-box {
+    outline: 2px solid var(--cui-primary);
+    outline-color: var(--cui-primary);
+  }
+
+  .cropper-line,
+  .cropper-point {
+    background-color: var(--cui-primary);
+  }
+
+  .cropper-modal {
+    background-color: rgb(0 0 0 / 55%);
+    opacity: 1;
+  }
+}

@@ -9,7 +9,8 @@ namespace Beeps.Infrastructure.Data.Stores;
 /// <summary>The building blocks every store uses to read beeps, so visibility and the row shape are applied the same way everywhere.</summary>
 internal static class BeepQueries
 {
-    public static readonly Expression<Func<Actor, ActorRow>> ToActorRow = a => new ActorRow(a.Id, a.Kind, a.Handle, a.DisplayName, a.OwnerId);
+    public static readonly Expression<Func<Actor, ActorRow>> ToActorRow =
+        a => new ActorRow(a.Id, a.Kind, a.Handle, a.DisplayName, a.OwnerId, a.AvatarMedia == null ? null : a.AvatarMedia.StorageKey);
 
     /// <summary>Beeps the viewer may see (<see cref="BeepVisibility"/>), untracked.</summary>
     public static IQueryable<Beep> Visible(BeepsDbContext db, Guid? viewerId) =>
@@ -22,7 +23,13 @@ internal static class BeepQueries
         beeps.Select(b => new BeepRow(
             b.Id,
             b.Text,
-            new ActorRow(b.Author.Id, b.Author.Kind, b.Author.Handle, b.Author.DisplayName, b.Author.OwnerId),
+            new ActorRow(
+                b.Author.Id,
+                b.Author.Kind,
+                b.Author.Handle,
+                b.Author.DisplayName,
+                b.Author.OwnerId,
+                b.Author.AvatarMedia == null ? null : b.Author.AvatarMedia.StorageKey),
             b.ReplyToId,
             b.RootId,
             b.CreatedAt,

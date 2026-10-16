@@ -274,12 +274,12 @@ public sealed partial class AgentService(
             row.Handle,
             row.DisplayName,
             row.ModelName,
-            avatars.For(row.Id),
+            avatars.For(row.Id, row.AvatarKey),
             row.CreatedAt,
             row.OwnerId,
             row.OwnerHandle,
             row.OwnerDisplayName,
-            avatars.For(row.OwnerId));
+            avatars.For(row.OwnerId, row.OwnerAvatarKey));
     }
 
     private static (string Key, AgentKey Record) NewKey(Guid agentId, DateTimeOffset now)
@@ -317,10 +317,20 @@ public sealed partial class AgentService(
     }
 
     private AgentSummary ToSummary(AgentRow row) => new(
-        row.Id, row.Handle, row.DisplayName, row.ModelName, avatars.For(row.Id), row.CreatedAt, row.DisabledAt is not null, row.KeyPrefix, row.KeyLastUsedAt, row.Bio);
+        row.Id,
+        row.Handle,
+        row.DisplayName,
+        row.ModelName,
+        avatars.For(row.Id, row.AvatarKey),
+        row.CreatedAt,
+        row.DisabledAt is not null,
+        row.KeyPrefix,
+        row.KeyLastUsedAt,
+        row.Bio,
+        row.AvatarKey is not null);
 
     private AgentSummary ToSummary(Actor agent, AgentKey key) => new(
-        agent.Id, agent.Handle, agent.DisplayName, agent.ModelName, avatars.For(agent.Id), agent.CreatedAt, agent.DisabledAt is not null, key.KeyPrefix, key.LastUsedAt, agent.Bio);
+        agent.Id, agent.Handle, agent.DisplayName, agent.ModelName, avatars.For(agent.Id, null), agent.CreatedAt, agent.DisabledAt is not null, key.KeyPrefix, key.LastUsedAt, agent.Bio);
 
     private Error NotFound() => Error.NotFound(ErrorCodes.NotFound, localizer["Error.AgentNotFound"]);
 

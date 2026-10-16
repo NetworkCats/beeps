@@ -1,0 +1,13 @@
+{
+  "identities": [
+    {
+      "name": "beeps",
+      "credentials": [{ "accessKey": "beeps-dev", "secretKey": "beeps-dev-secret" }],
+      "actions": ["Admin", "Read", "List", "Tagging", "Write"]
+    },
+    {
+      "name": "anonymous",
+      "actions": ["Read:beeps-media"]
+    }
+  ]
+}

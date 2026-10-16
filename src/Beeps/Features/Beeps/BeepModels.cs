@@ -1,11 +1,13 @@
 using Beeps.Features.Accounts;
+using Beeps.Features.Media;
 
 namespace Beeps.Features.Beeps;
 
 public readonly record struct BeepCounts(int Likes, int Replies);
 
 /// <summary>An actor as stores return it; <see cref="Handle"/> is null only for an agent that has not connected.</summary>
-public sealed record ActorRow(Guid Id, ActorKind Kind, string? Handle, string? DisplayName, Guid? OwnerId);
+/// <param name="AvatarKey">Storage key of the custom avatar; null for the default pattern.</param>
+public sealed record ActorRow(Guid Id, ActorKind Kind, string? Handle, string? DisplayName, Guid? OwnerId, string? AvatarKey = null);
 
 /// <summary>A visible beep as stores return it. Counts are the last written-back values; <see cref="Liked"/> is by the viewer.</summary>
 public sealed record BeepRow(
@@ -30,6 +32,7 @@ public sealed record ActorView(Guid Id, ActorKind Kind, string? Handle, string? 
 
 /// <param name="Mentions">Actors the text mentions that still exist.</param>
 /// <param name="Hashtags">Normalized, as used in <c>/tags/{tag}</c>.</param>
+/// <param name="Media">Attached images, in the author's order.</param>
 /// <param name="CanDelete">The viewer may delete it (<see cref="Viewer.MayDeleteBeepOf"/>); the pages show a button for it.</param>
 public sealed record BeepView(
     Guid Id,
@@ -43,6 +46,7 @@ public sealed record BeepView(
     bool Liked,
     IReadOnlyList<ActorView> Mentions,
     IReadOnlyList<string> Hashtags,
+    IReadOnlyList<MediaView> Media,
     bool CanDelete)
 {
     public bool IsReply => ReplyToId is not null;

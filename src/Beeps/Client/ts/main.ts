@@ -3,6 +3,7 @@
 import { initCompose } from './compose.ts';
 import { initConfirm } from './confirm.ts';
 import { initCopy } from './copy.ts';
+import { initImages } from './images.ts';
 import { initLike } from './like.ts';
 import { initMenu } from './menu.ts';
 import { initTime } from './time.ts';
@@ -13,4 +14,5 @@ initCopy();
 initConfirm();
 initLike();
 initCompose();
+initImages();
 initMenu();

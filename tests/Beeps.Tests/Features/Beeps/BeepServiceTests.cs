@@ -2,6 +2,7 @@ using System.Text.Json.Serialization.Metadata;
 using Beeps.Features.Accounts;
 using Beeps.Features.Avatars;
 using Beeps.Features.Beeps;
+using Beeps.Features.Media;
 using Beeps.Features.Moderation;
 using Beeps.Features.Notifications;
 using Beeps.Features.RateLimiting;
@@ -23,6 +24,7 @@ public sealed class BeepServiceTests
     private readonly IOutbox outbox = Substitute.For<IOutbox>();
     private readonly IRateLimitStore rateLimitStore = Substitute.For<IRateLimitStore>();
     private readonly ImmediateUnitOfWork unitOfWork = new();
+    private readonly MediaServiceParts media;
     private readonly List<string[]> checkedPolicies = [];
     private Beep? added;
     private RateLimitDecision decision = RateLimitDecision.Allowed;
@@ -30,6 +32,7 @@ public sealed class BeepServiceTests
 
     public BeepServiceTests()
     {
+        media = new MediaServiceParts { UnitOfWork = unitOfWork };
         rateLimitStore.TryAcquireAsync(default!, TestSupport.Ct).ReturnsForAnyArgs(ci =>
         {
             checkedPolicies.Add(TestData.Policies(ci.Arg<IReadOnlyList<RateLimitCounter>>()));
@@ -41,6 +44,7 @@ public sealed class BeepServiceTests
         store.GetRowsAsync(default!, default, TestSupport.Ct).ReturnsForAnyArgs(ci =>
             added is null ? [] : [Row(added.Id, added.AuthorId)]);
         store.GetMentionsAsync(default!, TestSupport.Ct).ReturnsForAnyArgs(new Dictionary<Guid, IReadOnlyList<ActorRow>>());
+        store.GetMediaAsync(default!, TestSupport.Ct).ReturnsForAnyArgs(new Dictionary<Guid, IReadOnlyList<MediaRow>>());
         counters.GetAsync(default!, TestSupport.Ct).ReturnsForAnyArgs(new Dictionary<Guid, BeepCounts>());
     }
 
@@ -53,7 +57,7 @@ public sealed class BeepServiceTests
         store.EnsureHashtagsAsync(Arg.Is<IReadOnlyCollection<string>>(h => h.Single() == "beeps"), TestData.Now, Arg.Any<CancellationToken>())
             .Returns(new Dictionary<string, Guid> { ["beeps"] = tagId });
 
-        var result = await CreateService().PostAsync(Human, "  hi @Alice #Beeps ", null, TestSupport.Ct);
+        var result = await CreateService().PostAsync(Human, "  hi @Alice #Beeps ", null, [], TestSupport.Ct);
 
         Assert.True(result.IsSuccess);
         Assert.NotNull(added);
@@ -73,7 +77,7 @@ public sealed class BeepServiceTests
     {
         moderationEnabled = false;
 
-        var result = await CreateService().PostAsync(Human, "hi", null, TestSupport.Ct);
+        var result = await CreateService().PostAsync(Human, "hi", null, [], TestSupport.Ct);
 
         Assert.True(result.IsSuccess);
         Assert.Equal(ModerationStatus.Allowed, added?.ModerationStatus);
@@ -82,7 +86,7 @@ public sealed class BeepServiceTests
     [Fact]
     public async Task AnAgentsBeepCountsAgainstItsOwnAndItsOwnersQuota()
     {
-        var result = await CreateService().PostAsync(Agent, "hello", null, TestSupport.Ct);
+        var result = await CreateService().PostAsync(Agent, "hello", null, [], TestSupport.Ct);
 
         Assert.True(result.IsSuccess);
         Assert.Equal([[RateLimitPolicies.AgentPost, RateLimitPolicies.OwnerAgentsPost]], checkedPolicies);
@@ -96,7 +100,7 @@ public sealed class BeepServiceTests
     {
         var parent = Ref(Guid.NewGuid(), root: Guid.NewGuid(), likes: 4, replies: 2);
 
-        var result = await CreateService().PostAsync(Agent, "same here", parent.Id, TestSupport.Ct);
+        var result = await CreateService().PostAsync(Agent, "same here", parent.Id, [], TestSupport.Ct);
 
         Assert.True(result.IsSuccess);
         Assert.Equal(parent.Id, added?.ReplyToId);
@@ -109,7 +113,7 @@ public sealed class BeepServiceTests
     [Fact]
     public async Task InvalidTextIsRejectedBeforeAnythingElse()
     {
-        var result = await CreateService().PostAsync(Human, " ", Guid.NewGuid(), TestSupport.Ct);
+        var result = await CreateService().PostAsync(Human, " ", Guid.NewGuid(), [], TestSupport.Ct);
 
         Assert.Equal(BeepErrorCodes.TextEmpty, result.Error?.Code);
         Assert.Equal(["Error.BeepEmpty"], result.Error!.Fields![BeepFields.Text]);
@@ -120,7 +124,7 @@ public sealed class BeepServiceTests
     [Fact]
     public async Task TooLongTextSaysTheLimit()
     {
-        var result = await CreateService().PostAsync(Human, new string('a', 501), null, TestSupport.Ct);
+        var result = await CreateService().PostAsync(Human, new string('a', 501), null, [], TestSupport.Ct);
 
         Assert.Equal(BeepErrorCodes.TextTooLong, result.Error?.Code);
         Assert.Equal("Error.BeepTooLong(500)", result.Error?.Detail);
@@ -129,7 +133,7 @@ public sealed class BeepServiceTests
     [Fact]
     public async Task ReplyingToAMissingBeepIsNotFound()
     {
-        var result = await CreateService().PostAsync(Human, "hi", Guid.NewGuid(), TestSupport.Ct);
+        var result = await CreateService().PostAsync(Human, "hi", Guid.NewGuid(), [], TestSupport.Ct);
 
         Assert.Equal(ErrorKind.NotFound, result.Error?.Kind);
         store.DidNotReceiveWithAnyArgs().AddBeep(default!, default!, default!);
@@ -140,7 +144,7 @@ public sealed class BeepServiceTests
     {
         decision = RateLimitDecision.Denied(TimeSpan.FromMinutes(5));
 
-        var result = await CreateService().PostAsync(Human, "hi", null, TestSupport.Ct);
+        var result = await CreateService().PostAsync(Human, "hi", null, [], TestSupport.Ct);
 
         Assert.Equal(ErrorKind.RateLimited, result.Error?.Kind);
         Assert.Equal(TimeSpan.FromMinutes(5), result.Error?.RetryAfter);
@@ -153,7 +157,7 @@ public sealed class BeepServiceTests
         var parent = Ref(Guid.NewGuid());
         counters.AddAsync(default, default, default, TestSupport.Ct).ReturnsForAnyArgs(Task.FromException(new InvalidOperationException("down")));
 
-        var result = await CreateService().PostAsync(Human, "hi", parent.Id, TestSupport.Ct);
+        var result = await CreateService().PostAsync(Human, "hi", parent.Id, [], TestSupport.Ct);
 
         Assert.True(result.IsSuccess);
     }
@@ -301,6 +305,93 @@ public sealed class BeepServiceTests
         Assert.Equal(ErrorKind.NotFound, missing.Error?.Kind);
     }
 
+    [Fact]
+    public async Task ImagesAreAttachedInTheGivenOrderAndMayStandWithoutText()
+    {
+        media.OwnEverything();
+        Guid[] images = [Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid()];
+
+        var result = await CreateService().PostAsync(Agent, "", null, [.. images, images[0]], TestSupport.Ct);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal("", added!.Text);
+        // A repeated id counts once; the images are locked in the same transaction as the beep is written.
+        await media.Store.Received(1).LockOwnedAsync(Agent.ActorId, Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.SequenceEqual(images)), Arg.Any<CancellationToken>());
+        store.Received(1).AttachMedia(added.Id, Arg.Is<IReadOnlyList<Guid>>(ids => ids.SequenceEqual(images)));
+        Assert.Equal(1, unitOfWork.Saves);
+    }
+
+    [Fact]
+    public async Task ImagesSomeoneElseUploadedAreNotFoundAndNothingIsPosted()
+    {
+        var mine = Guid.NewGuid();
+        media.Store.LockOwnedAsync(Human.ActorId, Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>()).Returns([mine]);
+
+        var result = await CreateService().PostAsync(Human, "hi", null, [mine, Guid.NewGuid()], TestSupport.Ct);
+
+        Assert.Equal(MediaErrorCodes.NotFound, result.Error?.Code);
+        Assert.Contains(MediaFields.MediaIds, result.Error!.Fields!.Keys);
+        store.DidNotReceiveWithAnyArgs().AddBeep(default!, default!, default!);
+        Assert.Equal(0, unitOfWork.Saves);
+        Assert.Equal(1, unitOfWork.Rollbacks);
+    }
+
+    [Fact]
+    public async Task MoreThanFourImagesAreRejectedBeforeAnythingElse()
+    {
+        var result = await CreateService().PostAsync(Human, "hi", null, [.. Enumerable.Range(0, 5).Select(_ => Guid.NewGuid())], TestSupport.Ct);
+
+        Assert.Equal(MediaErrorCodes.TooMany, result.Error?.Code);
+        Assert.Empty(checkedPolicies);
+        await media.Store.DidNotReceiveWithAnyArgs().LockOwnedAsync(default, default!, TestSupport.Ct);
+    }
+
+    [Fact]
+    public async Task WithoutImagesTheTextIsStillRequired()
+    {
+        var result = await CreateService().PostAsync(Human, "  ", null, [], TestSupport.Ct);
+
+        Assert.Equal(BeepErrorCodes.TextEmpty, result.Error?.Code);
+    }
+
+    [Fact]
+    public async Task AWebPostChecksTheTextBeforeUploadingAnything()
+    {
+        var result = await CreateService().PostWithUploadsAsync(Human, new string('a', 501), null, [TestImages.Content(TestImages.Png())], TestSupport.Ct);
+
+        Assert.Equal(BeepErrorCodes.TextTooLong, result.Error?.Code);
+        media.Images.DidNotReceiveWithAnyArgs().Encode(default);
+        await media.Storage.DidNotReceiveWithAnyArgs().PutAsync(default!, default, default!, TestSupport.Ct);
+    }
+
+    [Fact]
+    public async Task AWebPostWithTooManyFilesUploadsNothing()
+    {
+        var files = Enumerable.Range(0, 5).Select(_ => TestImages.Content(TestImages.Png())).ToList();
+
+        var result = await CreateService().PostWithUploadsAsync(Human, "hi", null, files, TestSupport.Ct);
+
+        Assert.Equal(MediaErrorCodes.TooMany, result.Error?.Code);
+        Assert.Contains(MediaFields.Images, result.Error!.Fields!.Keys);
+        media.Images.DidNotReceiveWithAnyArgs().ReadHeader(default);
+    }
+
+    [Fact]
+    public async Task AWebPostUploadsItsImagesThenPostsThem()
+    {
+        media.OwnEverything();
+        media.Images.ReadHeader(default).ReturnsForAnyArgs(new ImageHeader(ImageFormat.Png, 64, 48));
+        media.Images.Encode(default).ReturnsForAnyArgs(new ImageVariants([1], 64, 48, [2], [3]));
+
+        var result = await CreateService().PostWithUploadsAsync(Human, "", null, [TestImages.Content(TestImages.Png()), TestImages.Content(TestImages.Png())], TestSupport.Ct);
+
+        Assert.True(result.IsSuccess);
+        await media.RateLimits.ReceivedWithAnyArgs(2).TryAcquireAsync(default!, TestSupport.Ct);
+        Assert.Equal([[RateLimitPolicies.HumanPost]], checkedPolicies);
+        store.Received(1).AttachMedia(added!.Id, Arg.Is<IReadOnlyList<Guid>>(ids => ids.Count == 2));
+        media.Store.Received(2).AddMedia(Arg.Is<MediaItem>(m => m.OwnerActorId == Human.ActorId));
+    }
+
     private BeepRef Ref(Guid id, Guid? author = null, Guid? authorOwner = null, Guid? root = null, Guid? replyTo = null, int likes = 0, int replies = 0)
     {
         var beep = new BeepRef(id, author ?? Guid.NewGuid(), authorOwner, root ?? id, replyTo, likes, replies);
@@ -314,10 +405,12 @@ public sealed class BeepServiceTests
     private BeepService CreateService()
     {
         var localizer = new TestLocalizer();
-        var views = new BeepViews(store, counters, new AvatarUrls(TestData.Site), NullLogger<BeepViews>.Instance);
+        var views = new BeepViews(store, counters, TestData.Avatars, TestData.Media, NullLogger<BeepViews>.Instance);
         return new BeepService(
             store,
             counters,
+            media.Store,
+            media.Create(),
             views,
             unitOfWork,
             outbox,

@@ -66,7 +66,8 @@ public sealed record AgentRow(
     string? KeyPrefix,
     DateTimeOffset? KeyCreatedAt,
     DateTimeOffset? KeyLastUsedAt,
-    string? Bio = null);
+    string? Bio = null,
+    string? AvatarKey = null);
 
 /// <param name="Connected">The agent has called <c>hello</c>; until then it may only do that and read itself.</param>
 public sealed record AgentKeyMatch(Guid KeyId, string KeyHash, Guid AgentId, Guid OwnerId, DateTimeOffset? LastUsedAt, bool Connected);
@@ -79,4 +80,6 @@ public sealed record AgentWithOwnerRow(
     DateTimeOffset CreatedAt,
     Guid OwnerId,
     string OwnerHandle,
-    string OwnerDisplayName);
+    string OwnerDisplayName,
+    string? AvatarKey = null,
+    string? OwnerAvatarKey = null);

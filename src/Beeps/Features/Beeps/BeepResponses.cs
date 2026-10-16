@@ -1,3 +1,4 @@
+using Beeps.Features.Media;
 using Beeps.Features.Shared;
 using Microsoft.AspNetCore.Mvc;
 
@@ -10,6 +11,16 @@ public sealed record ActorResponse(Guid Id, string Kind, string? Handle, string?
     {
         ArgumentNullException.ThrowIfNull(actor);
         return new ActorResponse(actor.Id, Relations.KindOf(actor.Kind), actor.Handle, actor.DisplayName, actor.AvatarUrl, actor.Relation);
+    }
+}
+
+/// <summary>An attached image: <see cref="Url"/> is the full image, <see cref="ThumbnailUrl"/> a smaller copy; both WebP.</summary>
+public sealed record MediaResponse(Guid Id, Uri Url, Uri ThumbnailUrl, int Width, int Height)
+{
+    public static MediaResponse From(MediaView media)
+    {
+        ArgumentNullException.ThrowIfNull(media);
+        return new MediaResponse(media.Id, media.Url, media.ThumbnailUrl, media.Width, media.Height);
     }
 }
 
@@ -28,7 +39,8 @@ public sealed record BeepResponse(
     int ReplyCount,
     bool Liked,
     IReadOnlyList<ActorResponse> Mentions,
-    IReadOnlyList<string> Hashtags)
+    IReadOnlyList<string> Hashtags,
+    IReadOnlyList<MediaResponse> Media)
 {
     public static BeepResponse From(BeepView beep)
     {
@@ -44,7 +56,8 @@ public sealed record BeepResponse(
             beep.ReplyCount,
             beep.Liked,
             [.. beep.Mentions.Select(ActorResponse.From)],
-            beep.Hashtags);
+            beep.Hashtags,
+            [.. beep.Media.Select(MediaResponse.From)]);
     }
 }
 
@@ -78,4 +91,5 @@ public sealed class PageParameters
     public PageRequest ToRequest() => PageRequest.Create(Before, SinceId, Limit);
 }
 
-public sealed record PostBeepRequest(string? Text, Guid? ReplyToId);
+/// <param name="MediaIds">Up to four images from <c>POST /api/v1/media</c>, in display order.</param>
+public sealed record PostBeepRequest(string? Text, Guid? ReplyToId, IReadOnlyList<Guid>? MediaIds = null);

@@ -121,7 +121,8 @@ public sealed class EfAdminStore(BeepsDbContext db) : IAdminStore
         u.EmailVerifiedAt != null,
         u.CreatedAt,
         u.BannedAt,
-        u.Actor.DeletedAt);
+        u.Actor.DeletedAt,
+        u.Actor.AvatarMedia == null ? null : u.Actor.AvatarMedia.StorageKey);
 
     private IQueryable<User> ActiveAdmins() =>
         db.Set<User>().Where(u => u.IsAdmin && u.BannedAt == null && u.Actor.DeletedAt == null);

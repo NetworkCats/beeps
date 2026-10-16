@@ -1,4 +1,5 @@
 using Beeps.Features.Avatars;
+using Beeps.Features.Media;
 using Beeps.Features.Shared;
 
 namespace Beeps.Features.Beeps;
@@ -7,15 +8,15 @@ namespace Beeps.Features.Beeps;
 /// Turns stored rows into what a viewer sees: relations, avatar URLs, mentions, hashtags and live counts.
 /// Shared by every feature that shows beeps, so they all look the same.
 /// </summary>
-public sealed partial class BeepViews(IBeepStore store, IBeepCounterStore counters, AvatarUrls avatars, ILogger<BeepViews> logger)
+public sealed partial class BeepViews(IBeepStore store, IBeepCounterStore counters, AvatarUrls avatars, MediaUrls media, ILogger<BeepViews> logger)
 {
     public ActorView Actor(ActorRow actor, Viewer? viewer)
     {
         ArgumentNullException.ThrowIfNull(actor);
-        return new ActorView(actor.Id, actor.Kind, actor.Handle, actor.DisplayName, avatars.For(actor.Id), Relations.Of(viewer, actor.Id, actor.OwnerId));
+        return new ActorView(actor.Id, actor.Kind, actor.Handle, actor.DisplayName, avatars.For(actor.Id, actor.AvatarKey), Relations.Of(viewer, actor.Id, actor.OwnerId));
     }
 
-    /// <summary>Same order as <paramref name="rows"/>. One query for mentions and one Valkey call for counts, however many rows.</summary>
+    /// <summary>Same order as <paramref name="rows"/>. One query each for mentions and images and one Valkey call for counts, however many rows.</summary>
     public async Task<IReadOnlyList<BeepView>> BuildAsync(IReadOnlyList<BeepRow> rows, Viewer? viewer, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(rows);
@@ -26,11 +27,13 @@ public sealed partial class BeepViews(IBeepStore store, IBeepCounterStore counte
 
         var ids = rows.Select(r => r.Id).ToList();
         var mentions = await store.GetMentionsAsync(ids, cancellationToken);
+        var attached = await store.GetMediaAsync(ids, cancellationToken);
         var live = await LiveCountsAsync(ids, cancellationToken);
         return [.. rows.Select(row =>
         {
             var counts = live.TryGetValue(row.Id, out var current) ? current : new BeepCounts(row.LikeCount, row.ReplyCount);
             IReadOnlyList<ActorView> mentioned = mentions.TryGetValue(row.Id, out var actors) ? [.. actors.Select(a => Actor(a, viewer))] : [];
+            IReadOnlyList<MediaView> images = attached.TryGetValue(row.Id, out var items) ? [.. items.Select(media.View)] : [];
             return new BeepView(
                 row.Id,
                 row.Text,
@@ -43,6 +46,7 @@ public sealed partial class BeepViews(IBeepStore store, IBeepCounterStore counte
                 row.Liked,
                 mentioned,
                 BeepText.Hashtags(row.Text),
+                images,
                 viewer?.MayDeleteBeepOf(row.Author.Id, row.Author.OwnerId) ?? false);
         })];
     }

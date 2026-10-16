@@ -43,7 +43,7 @@
                     <li>
                         <details class="menu" data-menu>
                             <summary class="menu-toggle" aria-label="@L["Nav.Account"]">
-                                <span class="avatar avatar-sm"><img src="@Avatars.For(User.ActorId())" alt="" width="24" height="24"></span>
+                                <span class="avatar avatar-sm"><img src="@Avatars.For(User.ActorId(), User.AvatarKey())" alt="" width="24" height="24"></span>
                                 <span class="menu-handle">@@@handle</span>
                             </summary>
                             <div class="dropdown-menu menu-panel">

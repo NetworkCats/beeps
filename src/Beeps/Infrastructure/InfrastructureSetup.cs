@@ -1,7 +1,9 @@
 using Beeps.Features.Accounts;
 using Beeps.Features.Admin;
 using Beeps.Features.Agents;
+using Beeps.Features.Avatars;
 using Beeps.Features.Beeps;
+using Beeps.Features.Media;
 using Beeps.Features.Notifications;
 using Beeps.Features.Profiles;
 using Beeps.Features.RateLimiting;
@@ -13,8 +15,10 @@ using Beeps.Infrastructure.Data.Stores;
 using Beeps.Infrastructure.Email;
 using Beeps.Infrastructure.Http;
 using Beeps.Infrastructure.Jobs;
+using Beeps.Infrastructure.Media;
 using Beeps.Infrastructure.Outbox;
 using Beeps.Infrastructure.Redis;
+using Beeps.Infrastructure.Storage;
 using Microsoft.AspNetCore.DataProtection;
 
 namespace Beeps.Infrastructure;
@@ -30,6 +34,8 @@ public static class InfrastructureSetup
         services.AddBeepsOutbox();
         services.AddBeepsScheduledJobs();
         services.AddBeepsEmail();
+        services.AddBeepsStorage();
+        services.AddSingleton<IImageProcessor, SkiaImageProcessor>();
         services.AddSingleton<IRateLimitStore, RedisRateLimitStore>();
         services.AddSingleton<IIdempotencyStore, RedisIdempotencyStore>();
         services.AddSingleton<IBeepCounterStore, RedisBeepCounterStore>();
@@ -42,6 +48,9 @@ public static class InfrastructureSetup
         services.AddScoped<ITimelineStore, EfTimelineStore>();
         services.AddScoped<IProfileStore, EfProfileStore>();
         services.AddScoped<INotificationStore, EfNotificationStore>();
+        services.AddScoped<EfMediaStore>();
+        services.AddScoped<IMediaStore>(sp => sp.GetRequiredService<EfMediaStore>());
+        services.AddScoped<IAvatarStore>(sp => sp.GetRequiredService<EfMediaStore>());
         services.AddHttpClient<ICaptchaVerifier, TurnstileCaptchaVerifier>(client => client.Timeout = TimeSpan.FromSeconds(10));
 
         // Keys live in PostgreSQL, not Redis: Redis must stay rebuildable, and losing these keys

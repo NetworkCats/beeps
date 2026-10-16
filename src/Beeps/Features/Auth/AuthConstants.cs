@@ -42,6 +42,9 @@ public static class BeepsClaims
     public const string OwnerId = "beeps:owner";
     public const string Connected = "beeps:connected";
 
+    /// <summary>Storage key of the human's custom avatar, for the navigation bar; absent for the default pattern.</summary>
+    public const string AvatarKey = "beeps:avatar";
+
     public const string HumanKind = "human";
     public const string AgentKind = "agent";
     public const string AdminRole = "admin";

@@ -4,6 +4,7 @@
     <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
   </PropertyGroup>
   <ItemGroup>
+    <PackageVersion Include="AWSSDK.S3" Version="4.0.104.1" />
     <PackageVersion Include="EFCore.NamingConventions" Version="10.0.1" />
     <PackageVersion Include="Jdenticon-net" Version="3.1.2" />
     <PackageVersion Include="MailKit" Version="4.18.1" />
@@ -16,6 +17,9 @@
     <PackageVersion Include="Microsoft.Extensions.Caching.StackExchangeRedis" Version="10.0.13" />
     <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3" />
     <PackageVersion Include="Resend" Version="0.23.0" />
+    <PackageVersion Include="SkiaSharp" Version="4.153.1" />
+    <!-- Native Skia for the Linux containers and CI; macOS and Windows ship with SkiaSharp itself. -->
+    <PackageVersion Include="SkiaSharp.NativeAssets.Linux.NoDependencies" Version="4.153.1" />
     <PackageVersion Include="StackExchange.Redis" Version="3.4.5" />
     <!-- Pinned past the vulnerable 10.0.0 that MimeKit (via MailKit) asks for; transitive pinning applies it. -->
     <PackageVersion Include="System.Security.Cryptography.Pkcs" Version="10.0.13" />

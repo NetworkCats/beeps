@@ -353,7 +353,7 @@ public sealed class AgentServiceTests
     private AgentService CreateService() => new(
         store,
         unitOfWork,
-        new AvatarUrls(TestData.Site),
+        TestData.Avatars,
         Options.Create(options),
         TestData.Time(),
         new TestLocalizer(),

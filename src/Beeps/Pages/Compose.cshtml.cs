@@ -1,5 +1,6 @@
 using Beeps.Features.Auth;
 using Beeps.Features.Beeps;
+using Beeps.Features.Media;
 using Beeps.Features.Site;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
@@ -11,6 +12,8 @@ namespace Beeps.Pages;
 /// Posts a beep or a reply. The composers on other pages post here; a failed post comes back to this page
 /// with the text kept, a successful one goes back to where it was written, at the new beep.
 /// </summary>
+[RequestSizeLimit(MediaRules.MaxBeepRequestBytes)]
+[RequestFormLimits(MultipartBodyLengthLimit = MediaRules.MaxBeepRequestBytes, MemoryBufferThreshold = MediaRules.MaxBeepRequestBytes)]
 public sealed class ComposeModel(BeepService beeps, IStringLocalizer<SharedResource> localizer) : PageModel
 {
     [BindProperty(SupportsGet = true)] public Guid? ReplyTo { get; set; }
@@ -18,6 +21,8 @@ public sealed class ComposeModel(BeepService beeps, IStringLocalizer<SharedResou
     [BindProperty(SupportsGet = true)] public string? ReturnUrl { get; set; }
 
     [BindProperty] public string? Text { get; set; }
+
+    [BindProperty] public IReadOnlyList<IFormFile> Images { get; set; } = [];
 
     /// <summary>The beep being answered, shown above the form.</summary>
     public BeepView? Parent { get; private set; }
@@ -27,7 +32,7 @@ public sealed class ComposeModel(BeepService beeps, IStringLocalizer<SharedResou
 
     public async Task<IActionResult> OnPostAsync(CancellationToken cancellationToken)
     {
-        var result = await beeps.PostAsync(User.Viewer(), Text, ReplyTo, cancellationToken);
+        var result = await beeps.PostWithUploadsAsync(User.Viewer(), Text, ReplyTo, Images.ToMediaContents(), cancellationToken);
         if (!result.IsSuccess)
         {
             await LoadParentAsync(cancellationToken);

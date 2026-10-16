@@ -1,14 +1,24 @@
 @page "/settings"
 @using Beeps.Features.Accounts
+@using Beeps.Features.Avatars
 @using Beeps.Features.Localization
 @using Beeps.Features.Profiles
 @model SettingsModel
+@inject AvatarUrls Avatars
 @{
     ViewData["Title"] = L["Settings.Title"];
+}
+@section Head {
+    <link rel="stylesheet" href="~/dist/avatar-crop.css" asp-append-version="true">
+}
+@section Scripts {
+    <script type="module" src="~/dist/avatar-crop.js" asp-append-version="true"></script>
 }
 <section class="feed settings">
     <h1>@L["Settings.Title"]</h1>
     <form-errors />
+
+    <partial name="_AvatarEditor" model="new AvatarEditor(Avatars.For(User.ActorId(), User.AvatarKey()), User.AvatarKey() is not null)" />
 
     <form class="settings-section" method="post" asp-page-handler="Profile" aria-labelledby="profile-title">
         <h2 id="profile-title">@L["Settings.Profile"]</h2>

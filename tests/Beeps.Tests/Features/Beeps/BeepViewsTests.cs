@@ -1,6 +1,7 @@
 using Beeps.Features.Accounts;
 using Beeps.Features.Avatars;
 using Beeps.Features.Beeps;
+using Beeps.Features.Media;
 using Beeps.Features.Shared;
 using Beeps.Tests.Support;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -37,6 +38,25 @@ public sealed class BeepViewsTests
         Assert.Empty(views[1].Mentions);
         Assert.Equal(["beeps"], views[0].Hashtags);
         Assert.Equal(new Uri($"https://beeps.test/avatars/{OwnerId:D}.svg"), views[0].Author.AvatarUrl);
+    }
+
+    [Fact]
+    public async Task ImagesAndCustomAvatarsBecomeMediaUrls()
+    {
+        var withImages = Row("look", new ActorRow(OwnerId, ActorKind.Human, "tom", "Tom", null, AvatarKey: "face"), likes: 0, replies: 0);
+        var plain = Row("plain", new ActorRow(OwnerId, ActorKind.Human, "tom", "Tom", null, AvatarKey: "face"), likes: 0, replies: 0);
+        store.GetMentionsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, IReadOnlyList<ActorRow>>());
+        store.GetMediaAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, IReadOnlyList<MediaRow>> { [withImages.Id] = [new(Guid.NewGuid(), "first", 800, 600), new(Guid.NewGuid(), "second", 20, 30)] });
+        counters.GetAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, BeepCounts>());
+
+        var views = await Create().BuildAsync([withImages, plain], null, TestSupport.Ct);
+
+        Assert.Equal(new Uri("https://media.beeps.test/face/avatar.webp"), views[0].Author.AvatarUrl);
+        Assert.Equal([new Uri("https://media.beeps.test/first/full.webp"), new Uri("https://media.beeps.test/second/full.webp")], views[0].Media.Select(m => m.Url));
+        Assert.Equal(new Uri("https://media.beeps.test/first/thumb.webp"), views[0].Media[0].ThumbnailUrl);
+        Assert.Equal((800, 600), (views[0].Media[0].Width, views[0].Media[0].Height));
+        Assert.Empty(views[1].Media);
     }
 
     [Fact]
@@ -88,5 +108,5 @@ public sealed class BeepViewsTests
         return new BeepRow(id, text, author, null, id, TestData.Now, likes, replies, false);
     }
 
-    private BeepViews Create() => new(store, counters, new AvatarUrls(TestData.Site), NullLogger<BeepViews>.Instance);
+    private BeepViews Create() => new(store, counters, TestData.Avatars, TestData.Media, NullLogger<BeepViews>.Instance);
 }

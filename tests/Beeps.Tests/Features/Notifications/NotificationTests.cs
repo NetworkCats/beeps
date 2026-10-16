@@ -114,5 +114,5 @@ public sealed class NotificationTests
         new(Guid.NewGuid(), LikeNotificationRequest.MessageType, JsonSerializer.Serialize(payload, NotificationsJsonContext.Default.LikeNotificationRequest), 1, TestData.Now);
 
     private NotificationService CreateService() =>
-        new(store, beeps, new BeepViews(beeps, counters, new AvatarUrls(TestData.Site), NullLogger<BeepViews>.Instance), TestData.Time());
+        new(store, beeps, new BeepViews(beeps, counters, TestData.Avatars, TestData.Media, NullLogger<BeepViews>.Instance), TestData.Time());
 }

@@ -1,3 +1,4 @@
+using Beeps.Features.Media;
 using Beeps.Features.Moderation;
 using Beeps.Features.Notifications;
 using Beeps.Features.RateLimiting;
@@ -11,6 +12,8 @@ namespace Beeps.Features.Beeps;
 public sealed partial class BeepService(
     IBeepStore store,
     IBeepCounterStore counters,
+    IMediaStore mediaStore,
+    MediaService media,
     BeepViews views,
     IUnitOfWork unitOfWork,
     IOutbox outbox,
@@ -21,13 +24,20 @@ public sealed partial class BeepService(
     ILogger<BeepService> logger)
 {
     /// <summary>
-    /// Posts a beep, or a reply when <paramref name="replyToId"/> is set. Mentions resolve to actors that
-    /// exist right now; hashtags, mentions and the notification job commit together with the beep.
+    /// Posts a beep, or a reply when <paramref name="replyToId"/> is set, with up to four images the author
+    /// uploaded (<paramref name="mediaIds"/>; with images the text may be empty). Mentions resolve to actors
+    /// that exist right now; hashtags, mentions, images and the notification job commit together with the beep.
     /// </summary>
-    public async Task<Result<BeepView>> PostAsync(Viewer author, string? text, Guid? replyToId, CancellationToken cancellationToken)
+    public async Task<Result<BeepView>> PostAsync(Viewer author, string? text, Guid? replyToId, IReadOnlyList<Guid>? mediaIds, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(author);
-        var parsed = BeepText.Parse(text);
+        IReadOnlyList<Guid> images = mediaIds is null ? [] : [.. mediaIds.Distinct()];
+        if (images.Count > MediaRules.MaxImagesPerBeep)
+        {
+            return media.TooMany(MediaFields.MediaIds);
+        }
+
+        var parsed = BeepText.Parse(text, allowEmpty: images.Count > 0);
         if (!parsed.IsValid)
         {
             return TextError(parsed.Problem);
@@ -65,14 +75,25 @@ public sealed partial class BeepService(
             ModerationStatus = moderation.Value.Enabled ? ModerationStatus.Pending : ModerationStatus.Allowed,
             CreatedAt = now,
         };
-        await unitOfWork.InTransactionAsync(
+        var saved = await unitOfWork.InTransactionAsync(
             null,
             async ct =>
             {
+                // Locked until commit, so the cleanup of unused uploads cannot take them meanwhile.
+                if (images.Count > 0 && (await mediaStore.LockOwnedAsync(author.ActorId, images, ct)).Count != images.Count)
+                {
+                    return media.NotFound(MediaFields.MediaIds);
+                }
+
                 IReadOnlyDictionary<string, Guid> hashtags = parsed.Hashtags.Count == 0
                     ? new Dictionary<string, Guid>()
                     : await store.EnsureHashtagsAsync(parsed.Hashtags, now, ct);
                 store.AddBeep(beep, [.. mentioned.Select(m => m.Id)], [.. hashtags.Values]);
+                if (images.Count > 0)
+                {
+                    store.AttachMedia(id, images);
+                }
+
                 if (parent is not null || mentioned.Count > 0)
                 {
                     outbox.Enqueue(BeepNotificationsRequest.MessageType, new BeepNotificationsRequest(id), NotificationsJsonContext.Default.BeepNotificationsRequest);
@@ -82,14 +103,40 @@ public sealed partial class BeepService(
                 return Result.Success;
             },
             cancellationToken);
+        if (!saved.IsSuccess)
+        {
+            return saved.Error;
+        }
 
         if (parent is not null)
         {
             await CountAsync(parent, new BeepCounts(0, 1), cancellationToken);
         }
 
-        LogPosted(logger, id, author.ActorId, parent?.Id);
+        LogPosted(logger, id, author.ActorId, parent?.Id, images.Count);
         return await GetAsync(author, id, cancellationToken);
+    }
+
+    /// <summary>
+    /// A beep written on the web, with its image files: they are uploaded, then posted with the text. The
+    /// text and the number of images are checked first, so a beep that cannot be posted uploads nothing.
+    /// </summary>
+    public async Task<Result<BeepView>> PostWithUploadsAsync(Viewer author, string? text, Guid? replyToId, IReadOnlyList<MediaContent> files, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(files);
+        if (files.Count > MediaRules.MaxImagesPerBeep)
+        {
+            return media.TooMany(MediaFields.Images);
+        }
+
+        var parsed = BeepText.Parse(text, allowEmpty: files.Count > 0);
+        if (!parsed.IsValid)
+        {
+            return TextError(parsed.Problem);
+        }
+
+        var uploaded = await media.UploadAllAsync(author, files, cancellationToken);
+        return uploaded.IsSuccess ? await PostAsync(author, text, replyToId, uploaded.Value, cancellationToken) : uploaded.Error;
     }
 
     public async Task<Result<BeepView>> GetAsync(Viewer? viewer, Guid beepId, CancellationToken cancellationToken)
@@ -264,8 +311,8 @@ public sealed partial class BeepService(
 
     private Error NotFound() => Error.NotFound(ErrorCodes.NotFound, localizer["Error.BeepNotFound"]);
 
-    [LoggerMessage(Level = LogLevel.Information, Message = "Beep {BeepId} posted by {ActorId} (reply to {ReplyToId})")]
-    private static partial void LogPosted(ILogger logger, Guid beepId, Guid actorId, Guid? replyToId);
+    [LoggerMessage(Level = LogLevel.Information, Message = "Beep {BeepId} posted by {ActorId} (reply to {ReplyToId}, {ImageCount} images)")]
+    private static partial void LogPosted(ILogger logger, Guid beepId, Guid actorId, Guid? replyToId, int imageCount);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Beep {BeepId} deleted by {ActorId}")]
     private static partial void LogDeleted(ILogger logger, Guid beepId, Guid actorId);

@@ -9,6 +9,9 @@ public enum ErrorKind
     NotFound,
     Conflict,
     RateLimited,
+
+    /// <summary>The request carried more data than allowed (an oversized upload).</summary>
+    TooLarge,
 }
 
 /// <summary>

@@ -927,10 +927,70 @@
   <data name="AgentEdit.NotConnected" xml:space="preserve">
     <value>这个 agent 还没有连接。它第一次调用 API 时会获得名称和用户名。</value>
   </data>
-  <data name="AgentEdit.AvatarLater" xml:space="preserve">
-    <value>自定义头像将随图片上传功能一起提供。</value>
-  </data>
   <data name="Error.AlreadySignedIn" xml:space="preserve">
     <value>你已经以 @{0} 的身份登录。要使用其他账号，请先退出登录。</value>
+  </data>
+  <data name="Error.MediaTooLarge" xml:space="preserve">
+    <value>图片最大 {0} MB。</value>
+  </data>
+  <data name="Error.MediaTypeUnsupported" xml:space="preserve">
+    <value>只能上传 JPEG、PNG、WebP 或 GIF 图片。</value>
+  </data>
+  <data name="Error.MediaUnreadable" xml:space="preserve">
+    <value>无法读取这张图片，它可能已损坏，或者并不是图片。</value>
+  </data>
+  <data name="Error.MediaTooSmall" xml:space="preserve">
+    <value>图片每边至少 {0} 像素。</value>
+  </data>
+  <data name="Error.MediaDimensionsTooLarge" xml:space="preserve">
+    <value>图片每边最多 {0} 像素，总共最多 {1} 百万像素。</value>
+  </data>
+  <data name="Error.TooManyMedia" xml:space="preserve">
+    <value>最多只能附带 {0} 张图片。</value>
+  </data>
+  <data name="Error.MediaNotFound" xml:space="preserve">
+    <value>这张图片不存在，或者不是你上传的，请重新上传。</value>
+  </data>
+  <data name="Error.MediaRawBodyRequired" xml:space="preserve">
+    <value>请直接把图片作为请求体发送，不要用表单。</value>
+  </data>
+  <data name="Compose.Images" xml:space="preserve">
+    <value>添加图片（最多 {0} 张）</value>
+  </data>
+  <data name="Beep.Image" xml:space="preserve">
+    <value>第 {0} 张图片，共 {1} 张</value>
+  </data>
+  <data name="Avatar.Title" xml:space="preserve">
+    <value>头像</value>
+  </data>
+  <data name="Avatar.Choose" xml:space="preserve">
+    <value>新头像</value>
+  </data>
+  <data name="Avatar.Help" xml:space="preserve">
+    <value>JPEG、PNG、WebP 或 GIF，最大 {0} MB。选好文件后可以选择用作头像的正方形区域。</value>
+  </data>
+  <data name="Avatar.Upload" xml:space="preserve">
+    <value>上传头像</value>
+  </data>
+  <data name="Avatar.Remove" xml:space="preserve">
+    <value>改用默认头像</value>
+  </data>
+  <data name="Avatar.Remove.Confirm" xml:space="preserve">
+    <value>删除这个头像，恢复默认图案吗？</value>
+  </data>
+  <data name="Avatar.Saved" xml:space="preserve">
+    <value>头像已更新。</value>
+  </data>
+  <data name="Avatar.Removed" xml:space="preserve">
+    <value>已恢复默认头像。</value>
+  </data>
+  <data name="Avatar.Crop.Help" xml:space="preserve">
+    <value>拖动图片调整位置，滚动或双指缩放，拖动四角改变作为头像的区域。</value>
+  </data>
+  <data name="Avatar.Crop.Image" xml:space="preserve">
+    <value>要裁切的图片</value>
+  </data>
+  <data name="Error.AvatarCropInvalid" xml:space="preserve">
+    <value>选择的区域超出了图片范围或太小，请重新选择图片。</value>
   </data>
 </root>

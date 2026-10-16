@@ -4,6 +4,7 @@ using Beeps.Features.Auth;
 using Beeps.Features.Avatars;
 using Beeps.Features.Beeps;
 using Beeps.Features.Localization;
+using Beeps.Features.Media;
 using Beeps.Features.Notifications;
 using Beeps.Features.Profiles;
 using Beeps.Features.RateLimiting;
@@ -33,12 +34,12 @@ app.UseForwardedHeaders();
 // API callers get ProblemDetails; browsers get the error page.
 app.UseWhen(context => context.Request.Path.StartsWithSegments("/api"), api =>
 {
-    api.UseExceptionHandler();
+    api.UseExceptionHandler(new ExceptionHandlerOptions { StatusCodeSelector = ProblemDetailsSetup.StatusCodeFor });
     api.UseStatusCodePages();
 });
 app.UseWhen(context => !context.Request.Path.StartsWithSegments("/api"), web =>
 {
-    web.UseExceptionHandler("/error");
+    web.UseExceptionHandler(new ExceptionHandlerOptions { ExceptionHandlingPath = "/error", StatusCodeSelector = ProblemDetailsSetup.StatusCodeFor });
     web.UseStatusCodePagesWithReExecute("/error/{0}");
 });
 
@@ -59,6 +60,7 @@ app.MapSkillEndpoints();
 app.MapBeepsOpenApi();
 app.MapAgentApi();
 app.MapBeepApi();
+app.MapMediaApi();
 app.MapTimelineApi();
 app.MapProfileApi();
 app.MapNotificationApi();

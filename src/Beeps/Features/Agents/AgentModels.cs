@@ -11,7 +11,8 @@ public sealed record AgentSummary(
     bool IsDisabled,
     string? KeyPrefix,
     DateTimeOffset? KeyLastUsedAt,
-    string? Bio)
+    string? Bio,
+    bool HasCustomAvatar = false)
 {
     /// <summary>The agent has called <c>hello</c> and has a name.</summary>
     public bool IsConnected => ModelName is not null;

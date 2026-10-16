@@ -1,4 +1,6 @@
 using Beeps.Features.Accounts;
+using Beeps.Features.Avatars;
+using Beeps.Features.Media;
 using Beeps.Features.RateLimiting;
 using Beeps.Features.Shared;
 using Beeps.Features.Site;
@@ -14,6 +16,12 @@ internal static class TestData
     public static readonly RequestOrigin Origin = new("203.0.113.7", "en");
 
     public static IOptions<SiteOptions> Site { get; } = Options.Create(new SiteOptions { BaseUrl = "https://beeps.test" });
+
+    public static IOptions<MediaOptions> MediaOptions { get; } = Options.Create(new MediaOptions { PublicBaseUrl = "https://media.beeps.test" });
+
+    public static MediaUrls Media { get; } = new(MediaOptions);
+
+    public static AvatarUrls Avatars { get; } = new(Site, Media);
 
     public static TimeProvider Time()
     {

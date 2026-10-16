@@ -3,6 +3,7 @@ using Beeps.Features.Admin;
 using Beeps.Features.Agents;
 using Beeps.Features.Avatars;
 using Beeps.Features.Beeps;
+using Beeps.Features.Media;
 using Beeps.Features.Moderation;
 using Beeps.Features.Notifications;
 using Beeps.Features.Profiles;
@@ -21,7 +22,9 @@ public static class FeaturesSetup
         services.AddOptions<CaptchaOptions>().BindConfiguration(CaptchaOptions.SectionName).ValidateDataAnnotations().ValidateOnStart();
         services.AddOptions<AgentOptions>().BindConfiguration(AgentOptions.SectionName).ValidateDataAnnotations().ValidateOnStart();
         services.AddOptions<ModerationOptions>().BindConfiguration(ModerationOptions.SectionName);
+        services.AddOptions<MediaOptions>().BindConfiguration(MediaOptions.SectionName).ValidateDataAnnotations().ValidateOnStart();
 
+        services.AddSingleton<MediaUrls>();
         services.AddSingleton<AvatarUrls>();
         services.AddSingleton<IPasswordHasher<User>, PasswordHasher<User>>();
         services.AddScoped<AccountService>();
@@ -33,11 +36,15 @@ public static class FeaturesSetup
         services.AddScoped<TimelineService>();
         services.AddScoped<ProfileService>();
         services.AddScoped<NotificationService>();
+        services.AddScoped<MediaService>();
+        services.AddScoped<AvatarService>();
         services.AddScoped<IOutboxHandler, AccountCodeEmailHandler>();
         services.AddScoped<IOutboxHandler, BeepNotificationsHandler>();
         services.AddScoped<IOutboxHandler, LikeNotificationHandler>();
+        services.AddScoped<IOutboxHandler, DeleteMediaObjectsHandler>();
         services.AddScoped<IScheduledJob, AccountCleanupJob>();
         services.AddScoped<IScheduledJob, BeepCounterFlushJob>();
+        services.AddScoped<IScheduledJob, MediaCleanupJob>();
         return services;
     }
 }

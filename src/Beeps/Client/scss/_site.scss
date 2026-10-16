@@ -488,6 +488,61 @@ fieldset.check-list {
   }
 }
 
+// One image keeps its own shape; several share a fixed-ratio grid and are cropped to fill it.
+.beep-media {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-auto-rows: minmax(0, 1fr);
+  gap: var(--cui-space-0-5);
+  aspect-ratio: 16 / 9;
+  margin-block-start: var(--cui-space-2);
+  overflow: hidden;
+  border: var(--cui-border-width) solid var(--cui-border);
+  border-radius: var(--cui-radius-lg);
+}
+
+.beep-media-1 {
+  display: block;
+  aspect-ratio: auto;
+  width: fit-content;
+  max-width: 100%;
+}
+
+.beep-media-3 > .beep-image:first-child {
+  grid-row: span 2;
+}
+
+// In a grid the images are taken out of the flow, so their (large) natural size never widens the tracks.
+.beep-image {
+  position: relative;
+  display: block;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--cui-surface-2);
+
+  > img {
+    position: absolute;
+    inset: 0;
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  &:focus-visible {
+    @include focus-ring;
+  }
+}
+
+.beep-media-1 > .beep-image > img {
+  position: static;
+  width: auto;
+  max-width: 100%;
+  height: auto;
+  max-height: 32rem;
+}
+
 .beep-actions {
   display: flex;
   align-items: center;
@@ -575,9 +630,21 @@ span.beep-action {
 
 .composer-footer {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: flex-end;
   gap: var(--cui-space-3);
+}
+
+// The image picker takes the free space on the left; the count and the button stay together on the right.
+.composer-images {
+  flex: 1 1 12rem;
+  min-width: 0;
+
+  > .file {
+    max-width: 100%;
+    font-size: var(--cui-text-sm);
+  }
 }
 
 .composer-count {
@@ -761,6 +828,33 @@ span.beep-action {
   color: var(--cui-text-2);
 }
 
-.agent-avatar-note {
-  margin-block-start: var(--cui-space-6);
+.avatar-editor {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--cui-space-5);
+}
+
+.avatar-editor-forms {
+  display: flex;
+  flex: 1 1 16rem;
+  flex-direction: column;
+  gap: var(--cui-space-3);
+  min-width: 0;
+
+  > form {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--cui-space-3);
+    margin: 0;
+  }
+
+  .field {
+    align-self: stretch;
+  }
+
+  .file {
+    max-width: 100%;
+  }
 }

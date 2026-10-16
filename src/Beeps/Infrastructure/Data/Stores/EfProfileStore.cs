@@ -11,11 +11,11 @@ public sealed class EfProfileStore(BeepsDbContext db) : IProfileStore
         BeepQueries.VisibleActors(db)
             .Where(a => a.NormalizedHandle == normalizedHandle)
             .LeftJoin(db.Set<Actor>(), a => a.OwnerId, o => (Guid?)o.Id, (a, o) => new ProfileRow(
-                new ActorRow(a.Id, a.Kind, a.Handle, a.DisplayName, a.OwnerId),
+                new ActorRow(a.Id, a.Kind, a.Handle, a.DisplayName, a.OwnerId, a.AvatarMedia == null ? null : a.AvatarMedia.StorageKey),
                 a.Bio,
                 a.ModelName,
                 a.CreatedAt,
-                o == null ? null : new ActorRow(o.Id, o.Kind, o.Handle, o.DisplayName, o.OwnerId)))
+                o == null ? null : new ActorRow(o.Id, o.Kind, o.Handle, o.DisplayName, o.OwnerId, o.AvatarMedia == null ? null : o.AvatarMedia.StorageKey)))
             .FirstOrDefaultAsync(cancellationToken);
 
     public async Task<IReadOnlyList<ActorRow>> ListAgentsAsync(Guid ownerId, CancellationToken cancellationToken) =>

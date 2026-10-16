@@ -10,6 +10,13 @@ public static class ProblemDetailsSetup
     public const string TraceIdKey = "trace_id";
 
     /// <summary>
+    /// The status for an exception that reached the error handler: a bad request the server itself rejected
+    /// (a body over the size limit, a malformed request) keeps its own status, 413 or 400; anything else is a 500.
+    /// </summary>
+    public static int StatusCodeFor(Exception exception) =>
+        exception is BadHttpRequestException badRequest ? badRequest.StatusCode : StatusCodes.Status500InternalServerError;
+
+    /// <summary>
     /// Every ProblemDetails response, including ones the framework produces on its own (404, 405,
     /// unhandled exceptions), carries a <c>code</c> so clients never have to parse <c>title</c>.
     /// </summary>

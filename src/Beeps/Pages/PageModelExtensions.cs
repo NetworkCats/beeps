@@ -1,4 +1,5 @@
 using System.Globalization;
+using Beeps.Features.Media;
 using Beeps.Features.Shared;
 using Beeps.Features.Shared.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -17,6 +18,17 @@ public static class PageModelExtensions
             page.HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
             CultureInfo.CurrentUICulture.Name);
     }
+
+    /// <summary>
+    /// Uploaded files for the media Services. A file input left empty still sends a nameless, empty part;
+    /// it is no image, so it is left out.
+    /// </summary>
+    public static IReadOnlyList<MediaContent> ToMediaContents(this IEnumerable<IFormFile>? files) =>
+        files is null ? [] : [.. files.Where(f => f.Length > 0).Select(f => new MediaContent(f.OpenReadStream(), f.Length))];
+
+    /// <summary>One uploaded file; a form sent without one gives an empty upload, which the Service rejects.</summary>
+    public static MediaContent ToMediaContent(this IFormFile? file) =>
+        file is { Length: > 0 } ? new MediaContent(file.OpenReadStream(), file.Length) : new MediaContent(Stream.Null, 0);
 
     /// <summary>A sign-in or sign-up form posted by someone already signed in: they stay who they are, and are told so.</summary>
     public static LocalRedirectResult AlreadySignedIn(this PageModel page, IStringLocalizer<SharedResource> localizer)

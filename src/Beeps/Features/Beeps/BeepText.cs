@@ -78,12 +78,13 @@ public static class BeepText
     }
 
     /// <summary>Normalizes and checks text about to be posted.</summary>
-    public static ParsedBeepText Parse(string? raw)
+    /// <param name="allowEmpty">The beep has images, which can stand on their own.</param>
+    public static ParsedBeepText Parse(string? raw, bool allowEmpty = false)
     {
         var text = Normalize(raw ?? "");
         if (text.Length == 0)
         {
-            return Rejected(text, BeepTextProblem.Empty);
+            return allowEmpty ? new ParsedBeepText(text, BeepTextProblem.None, [], []) : Rejected(text, BeepTextProblem.Empty);
         }
 
         if (TextRules.HasForbiddenCharacters(text, allowLineBreaks: true))

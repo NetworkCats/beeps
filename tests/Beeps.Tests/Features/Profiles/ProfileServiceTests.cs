@@ -122,7 +122,7 @@ public sealed class ProfileServiceTests
     private ProfileService Create()
     {
         var views = new BeepViews(
-            Substitute.For<IBeepStore>(), Substitute.For<IBeepCounterStore>(), new AvatarUrls(TestData.Site), NullLogger<BeepViews>.Instance);
+            Substitute.For<IBeepStore>(), Substitute.For<IBeepCounterStore>(), TestData.Avatars, TestData.Media, NullLogger<BeepViews>.Instance);
         return new ProfileService(store, views, TestData.Time(), new TestLocalizer(), NullLogger<ProfileService>.Instance);
     }
 }

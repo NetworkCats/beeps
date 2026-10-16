@@ -48,17 +48,30 @@ services:
       timeout: 3s
       retries: 10
 
-  # S3-compatible object storage standing in for Cloudflare R2.
+  # S3-compatible object storage standing in for Cloudflare R2. The app writes with the beeps-dev key;
+  # anyone may read the beeps-media bucket, as anyone may read media.beeps.sh in production.
   seaweedfs:
     image: chrislusf/seaweedfs:4.48
-    command: ["server", "-dir=/data", "-s3", "-s3.port=8333", "-ip.bind=0.0.0.0"]
-    environment:
-      AWS_ACCESS_KEY_ID: beeps-dev
-      AWS_SECRET_ACCESS_KEY: beeps-dev-secret
+    command: ["server", "-dir=/data", "-s3", "-s3.port=8333", "-s3.config=/etc/seaweedfs/s3.json", "-ip.bind=0.0.0.0"]
     ports:
       - "127.0.0.1:8333:8333"
     volumes:
       - seaweedfs-data:/data
+      - ./dev/seaweedfs-s3.json:/etc/seaweedfs/s3.json:ro
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO /dev/null http://localhost:8333/healthz || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  # Creates the media bucket once SeaweedFS is up; creating it again changes nothing.
+  seaweedfs-init:
+    image: chrislusf/seaweedfs:4.48
+    depends_on:
+      seaweedfs:
+        condition: service_healthy
+    entrypoint: ["/bin/sh", "-c", "echo 's3.bucket.create -name beeps-media' | weed shell -master=seaweedfs:9333"]
+    restart: "no"
 
   mailhog:
     image: mailhog/mailhog:v1.0.1

@@ -1,4 +1,5 @@
 using Beeps.Features.Beeps;
+using Beeps.Features.Media;
 using Beeps.Features.Shared;
 using Microsoft.EntityFrameworkCore;
 
@@ -30,10 +31,25 @@ public sealed class EfBeepStore(BeepsDbContext db) : IBeepStore
             .Join(BeepQueries.VisibleActors(db), m => m.ActorId, a => a.Id, (m, a) => new
             {
                 m.BeepId,
-                Actor = new ActorRow(a.Id, a.Kind, a.Handle, a.DisplayName, a.OwnerId),
+                Actor = new ActorRow(a.Id, a.Kind, a.Handle, a.DisplayName, a.OwnerId, a.AvatarMedia == null ? null : a.AvatarMedia.StorageKey),
             })
             .ToListAsync(cancellationToken);
         return rows.GroupBy(r => r.BeepId).ToDictionary(g => g.Key, g => (IReadOnlyList<ActorRow>)[.. g.Select(r => r.Actor)]);
+    }
+
+    public async Task<IReadOnlyDictionary<Guid, IReadOnlyList<MediaRow>>> GetMediaAsync(IReadOnlyCollection<Guid> beepIds, CancellationToken cancellationToken)
+    {
+        if (beepIds.Count == 0)
+        {
+            return new Dictionary<Guid, IReadOnlyList<MediaRow>>();
+        }
+
+        var rows = await db.Set<BeepMedia>()
+            .AsNoTracking()
+            .Where(bm => beepIds.Contains(bm.BeepId))
+            .Join(db.Set<MediaItem>(), bm => bm.MediaId, m => m.Id, (bm, m) => new { bm.BeepId, bm.Position, Media = new MediaRow(m.Id, m.StorageKey, m.Width, m.Height) })
+            .ToListAsync(cancellationToken);
+        return rows.GroupBy(r => r.BeepId).ToDictionary(g => g.Key, g => (IReadOnlyList<MediaRow>)[.. g.OrderBy(r => r.Position).Select(r => r.Media)]);
     }
 
     public async Task<CursorPage<BeepRow>> ListThreadAsync(Guid rootId, Guid? after, int limit, Guid? viewerId, CancellationToken cancellationToken)
@@ -80,6 +96,12 @@ public sealed class EfBeepStore(BeepsDbContext db) : IBeepStore
         db.Set<Beep>().Add(beep);
         db.Set<Mention>().AddRange(mentionedActorIds.Select(id => new Mention { BeepId = beep.Id, ActorId = id }));
         db.Set<BeepHashtag>().AddRange(hashtagIds.Select(id => new BeepHashtag { BeepId = beep.Id, HashtagId = id, CreatedAt = beep.CreatedAt }));
+    }
+
+    public void AttachMedia(Guid beepId, IReadOnlyList<Guid> mediaIds)
+    {
+        ArgumentNullException.ThrowIfNull(mediaIds);
+        db.Set<BeepMedia>().AddRange(mediaIds.Select((id, position) => new BeepMedia { BeepId = beepId, MediaId = id, Position = position }));
     }
 
     public async Task<bool> DeleteAsync(Guid beepId, DateTimeOffset now, CancellationToken cancellationToken) =>

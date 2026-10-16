@@ -134,7 +134,7 @@ public sealed class BeepTextTests
     public void ABeepRendersWithLinksForTheMentionsThatResolved()
     {
         var tom = new ActorView(Guid.NewGuid(), ActorKind.Human, "Tom", "Tom", new Uri("https://beeps.test/a.svg"), Relations.Other);
-        var beep = new BeepView(Guid.NewGuid(), "@tom @ghost #x", tom, null, Guid.NewGuid(), TestData.Now, 0, 0, false, [tom], ["x"], false);
+        var beep = new BeepView(Guid.NewGuid(), "@tom @ghost #x", tom, null, Guid.NewGuid(), TestData.Now, 0, 0, false, [tom], ["x"], [], false);
 
         Assert.Equal(
             "<a class=\"mention\" href=\"/tom\">@tom</a> @ghost <a class=\"hashtag\" href=\"/tags/x\">#x</a>",

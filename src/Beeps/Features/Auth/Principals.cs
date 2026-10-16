@@ -25,6 +25,11 @@ public static class Principals
             claims.Add(new Claim(BeepsClaims.SessionId, id.ToString("D")));
         }
 
+        if (account.AvatarKey is { } avatarKey)
+        {
+            claims.Add(new Claim(BeepsClaims.AvatarKey, avatarKey));
+        }
+
         if (account.IsAdmin)
         {
             claims.Add(new Claim(ClaimTypes.Role, BeepsClaims.AdminRole));
@@ -69,6 +74,9 @@ public static class Principals
     /// <summary>The viewer for pages that signed-out visitors can read too; null when signed out.</summary>
     public static Viewer? OptionalViewer(this ClaimsPrincipal principal) =>
         principal.IsHuman() || principal?.FindFirstValue(BeepsClaims.Kind) == BeepsClaims.AgentKind ? principal!.Viewer() : null;
+
+    /// <summary>Storage key of the signed-in human's custom avatar; null for the default pattern.</summary>
+    public static string? AvatarKey(this ClaimsPrincipal principal) => principal?.FindFirstValue(BeepsClaims.AvatarKey);
 
     public static bool IsHuman(this ClaimsPrincipal principal) =>
         principal?.FindFirstValue(BeepsClaims.Kind) == BeepsClaims.HumanKind;
