@@ -2,6 +2,7 @@ using Beeps.Features.Live;
 using Beeps.Features.Media;
 using Beeps.Features.Moderation;
 using Beeps.Features.Notifications;
+using Beeps.Features.Profiles;
 using Beeps.Features.RateLimiting;
 using Beeps.Features.Search;
 using Beeps.Features.Shared;
@@ -19,6 +20,7 @@ public sealed partial class BeepService(
     BeepViews views,
     IUnitOfWork unitOfWork,
     IOutbox outbox,
+    IModerationJobs moderationJobs,
     RateLimitService rateLimits,
     LiveUpdates live,
     IOptions<ModerationOptions> moderation,
@@ -29,7 +31,8 @@ public sealed partial class BeepService(
     /// <summary>
     /// Posts a beep, or a reply when <paramref name="replyToId"/> is set, with up to four images the author
     /// uploaded (<paramref name="mediaIds"/>; with images the text may be empty). Mentions resolve to actors
-    /// that exist right now; hashtags, mentions, images and the notification job commit together with the beep.
+    /// that exist right now; hashtags, mentions, images, the notification job and the review (PLAN 6.20)
+    /// commit together with the beep. Nobody replies to someone who blocked them.
     /// </summary>
     public async Task<Result<BeepView>> PostAsync(Viewer author, string? text, Guid? replyToId, IReadOnlyList<Guid>? mediaIds, CancellationToken cancellationToken)
     {
@@ -54,6 +57,11 @@ public sealed partial class BeepService(
             {
                 return NotFound();
             }
+
+            if (await BlockedByAuthorAsync(author, parent, cancellationToken))
+            {
+                return Blocked();
+            }
         }
 
         var limited = await rateLimits.CheckAsync(PostLimits(author, parent), cancellationToken);
@@ -67,6 +75,9 @@ public sealed partial class BeepService(
             : await store.FindActorsByHandlesAsync(parsed.MentionHandles, cancellationToken);
         var now = time.GetUtcNow();
         var id = Guid.CreateVersion7(now);
+        // Only text is reviewed (PLAN 6.20), so a beep of images alone has nothing to wait for; with moderation
+        // off (local development) nothing will ever review it. Neither is left pending.
+        var review = moderation.Value.Enabled && parsed.Text.Length > 0;
         var beep = new Beep
         {
             Id = id,
@@ -74,8 +85,7 @@ public sealed partial class BeepService(
             Text = parsed.Text,
             ReplyToId = parent?.Id,
             RootId = parent?.RootId ?? id,
-            // With moderation off (local development) nothing will ever review it, so it is not left pending.
-            ModerationStatus = moderation.Value.Enabled ? ModerationStatus.Pending : ModerationStatus.Allowed,
+            ModerationStatus = review ? ModerationStatus.Pending : ModerationStatus.Allowed,
             CreatedAt = now,
         };
         var saved = await unitOfWork.InTransactionAsync(
@@ -103,6 +113,10 @@ public sealed partial class BeepService(
                 }
 
                 outbox.SyncBeepToSearch(id);
+                if (review)
+                {
+                    moderationJobs.Enqueue(id);
+                }
 
                 await unitOfWork.SaveChangesAsync(ct);
                 return Result.Success;
@@ -231,7 +245,10 @@ public sealed partial class BeepService(
         return Result.Success;
     }
 
-    /// <summary>Liking twice is the same as liking once; only the first like notifies the author.</summary>
+    /// <summary>
+    /// Liking twice is the same as liking once; only the first like notifies the author. Nobody likes the beeps
+    /// of someone who blocked them.
+    /// </summary>
     public async Task<Result> LikeAsync(Viewer viewer, Guid beepId, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(viewer);
@@ -239,6 +256,11 @@ public sealed partial class BeepService(
         if (beep is null)
         {
             return NotFound();
+        }
+
+        if (await BlockedByAuthorAsync(viewer, beep, cancellationToken))
+        {
+            return Blocked();
         }
 
         var limited = await rateLimits.CheckAsync(RateLimitPolicies.Like, ActorPartition(viewer.ActorId), cancellationToken);
@@ -292,6 +314,25 @@ public sealed partial class BeepService(
         }
 
         return Result.Success;
+    }
+
+    /// <summary>
+    /// A reply was hidden by moderation or shown again by an admin: the reply count of the beep it answers
+    /// follows, as it does when a reply is posted or deleted.
+    /// </summary>
+    public async Task ReplyVisibilityChangedAsync(Guid parentId, bool visible, CancellationToken cancellationToken)
+    {
+        if (await store.FindVisibleAsync(parentId, null, cancellationToken) is { } parent)
+        {
+            await CountAsync(parent, new BeepCounts(0, visible ? 1 : -1), cancellationToken);
+        }
+    }
+
+    /// <summary>Whether the human behind the beep's author blocked the actor, or the actor's owner (PLAN 5.1).</summary>
+    private async Task<bool> BlockedByAuthorAsync(Viewer actor, BeepRef beep, CancellationToken cancellationToken)
+    {
+        var authorAccount = beep.AuthorOwnerId ?? beep.AuthorId;
+        return authorAccount != actor.AccountId && await store.IsBlockedByAsync(authorAccount, actor.ActorId, actor.AccountId, cancellationToken);
     }
 
     /// <summary>
@@ -351,6 +392,8 @@ public sealed partial class BeepService(
     }
 
     private Error NotFound() => Error.NotFound(ErrorCodes.NotFound, localizer["Error.BeepNotFound"]);
+
+    private Error Blocked() => Error.Forbidden(ProfileErrorCodes.Blocked, localizer["Error.Blocked"]);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Beep {BeepId} posted by {ActorId} (reply to {ReplyToId}, {ImageCount} images)")]
     private static partial void LogPosted(ILogger logger, Guid beepId, Guid actorId, Guid? replyToId, int imageCount);

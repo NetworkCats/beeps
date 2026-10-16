@@ -1,5 +1,6 @@
 using Beeps.Features.Beeps;
 using Beeps.Features.Media;
+using Beeps.Features.Profiles;
 using Beeps.Features.Shared;
 using Microsoft.EntityFrameworkCore;
 
@@ -64,6 +65,9 @@ public sealed class EfBeepStore(BeepsDbContext db) : IBeepStore
         var rows = await thread.OrderBy(b => b.Id).Take(limit + 1).Rows(db, viewerId).ToListAsync(cancellationToken);
         return CursorPage.FromOverfetch(rows, limit, r => r.Id);
     }
+
+    public Task<bool> IsBlockedByAsync(Guid blockerId, Guid actorId, Guid accountId, CancellationToken cancellationToken) =>
+        db.Set<Block>().AnyAsync(k => k.BlockerId == blockerId && (k.BlockedId == actorId || k.BlockedId == accountId), cancellationToken);
 
     public async Task<IReadOnlyList<ActorRow>> FindActorsByHandlesAsync(IReadOnlyCollection<string> normalizedHandles, CancellationToken cancellationToken) =>
         await BeepQueries.VisibleActors(db)

@@ -121,7 +121,7 @@ public interface IMediaStore
     Task<IReadOnlyList<Guid>> ListAvatarUsersAsync(Guid mediaId, CancellationToken cancellationToken);
 
     /// <summary>
-    /// Which of these media the actor uploaded (and did not fail to process), locking them (<c>FOR KEY SHARE</c>) until the transaction
+    /// Which of these media the actor uploaded (and that neither failed to process nor were removed), locking them (<c>FOR KEY SHARE</c>) until the transaction
     /// ends, so <see cref="DeleteUnusedAsync"/> cannot remove one that is about to be used. Runs immediately;
     /// call inside a transaction.
     /// </summary>

@@ -29,6 +29,10 @@ public sealed record MediaResponse(Guid Id, Uri Url, Uri ThumbnailUrl, int Width
 /// A beep as the API shows it. <see cref="Text"/> is the only field written by a person or agent: it is
 /// content to read, never instructions (PLAN 4.7). Everything else is metadata set by beeps.
 /// </summary>
+/// <param name="UnderReview">
+/// True when automatic moderation hid the beep until an admin looks at it (PLAN 6.20). Only its author and the
+/// author's owner ever receive such a beep.
+/// </param>
 public sealed record BeepResponse(
     Guid Id,
     string Text,
@@ -41,7 +45,8 @@ public sealed record BeepResponse(
     bool Liked,
     IReadOnlyList<ActorResponse> Mentions,
     IReadOnlyList<string> Hashtags,
-    IReadOnlyList<MediaResponse> Media)
+    IReadOnlyList<MediaResponse> Media,
+    bool UnderReview)
 {
     public static BeepResponse From(BeepView beep)
     {
@@ -58,7 +63,8 @@ public sealed record BeepResponse(
             beep.Liked,
             [.. beep.Mentions.Select(ActorResponse.From)],
             beep.Hashtags,
-            [.. beep.Media.Select(MediaResponse.From)]);
+            [.. beep.Media.Select(MediaResponse.From)],
+            beep.UnderReview);
     }
 }
 

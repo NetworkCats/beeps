@@ -6,6 +6,7 @@ using Beeps.Features.Beeps;
 using Beeps.Features.Email;
 using Beeps.Features.Live;
 using Beeps.Features.Media;
+using Beeps.Features.Moderation;
 using Beeps.Features.Notifications;
 using Beeps.Features.Profiles;
 using Beeps.Features.RateLimiting;
@@ -89,6 +90,14 @@ public sealed class BeepsWebApplicationFactory : WebApplicationFactory<Program>
 
     public ISearchStore SearchStore { get; } = Substitute.For<ISearchStore>();
 
+    public IModerationStore Moderation { get; } = Substitute.For<IModerationStore>();
+
+    public IModerationJobs ModerationJobs { get; } = Substitute.For<IModerationJobs>();
+
+    public IContentModerator Moderator { get; } = Substitute.For<IContentModerator>();
+
+    public ISystemStore System { get; } = Substitute.For<ISystemStore>();
+
     internal ImmediateUnitOfWork UnitOfWork { get; } = new();
 
     internal InMemorySessionStore Sessions { get; } = new();
@@ -101,6 +110,8 @@ public sealed class BeepsWebApplicationFactory : WebApplicationFactory<Program>
         builder.UseSetting("ConnectionStrings:Redis", "redis.invalid:6379");
         builder.UseSetting("Outbox:Enabled", "false");
         builder.UseSetting("ScheduledJobs:Enabled", "false");
+        builder.UseSetting("Moderation:WorkerEnabled", "false");
+        builder.UseSetting("OpenRouter:ApiKey", "test");
         builder.UseSetting("Live:Enabled", "false");
         builder.UseSetting("Search:Url", "http://meilisearch.invalid");
         builder.UseSetting("Search:ApiKey", "test");
@@ -139,6 +150,10 @@ public sealed class BeepsWebApplicationFactory : WebApplicationFactory<Program>
             Replace<ILiveEventFeed>(services, LiveFeed);
             Replace(services, SearchIndex);
             Replace(services, SearchStore);
+            Replace(services, Moderation);
+            Replace(services, ModerationJobs);
+            Replace(services, Moderator);
+            Replace(services, System);
             Replace<IUnitOfWork>(services, UnitOfWork);
             Replace<ISessionStore>(services, Sessions);
             services.Configure<KeyManagementOptions>(options => options.XmlRepository = new InMemoryXmlRepository());

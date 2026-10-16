@@ -1,5 +1,6 @@
 using Beeps.Features.Accounts;
 using Beeps.Features.Admin;
+using Beeps.Features.Agents;
 using Beeps.Features.Media;
 using Beeps.Features.Shared;
 using Beeps.Features.Site;
@@ -47,6 +48,40 @@ public sealed class EfAdminStore(BeepsDbContext db) : IAdminStore
     public Task<User?> FindUserAsync(Guid userId, CancellationToken cancellationToken) =>
         db.Set<User>().Include(u => u.Actor).FirstOrDefaultAsync(u => u.Id == userId && u.Actor.DeletedAt == null, cancellationToken);
 
+    public async Task<CursorPage<AdminAgentRow>> ListAgentsAsync(string? handlePrefix, Guid? before, int limit, CancellationToken cancellationToken)
+    {
+        var agents = db.Set<Actor>().AsNoTracking().Where(a => a.Kind == ActorKind.Agent);
+        if (handlePrefix is not null)
+        {
+            agents = agents.Where(a => EF.Functions.Like(a.NormalizedHandle!, SqlLike.Prefix(handlePrefix), SqlLike.Escape));
+        }
+
+        if (before is { } cursor)
+        {
+            agents = agents.Where(a => a.Id < cursor);
+        }
+
+        var rows = await agents
+            .OrderByDescending(a => a.Id)
+            .Take(limit + 1)
+            .Join(db.Set<Actor>(), a => a.OwnerId, o => (Guid?)o.Id, (a, o) => new { a, o })
+            .OrderByDescending(x => x.a.Id)
+            .Select(x => new AdminAgentRow(
+                x.a.Id,
+                x.a.Handle,
+                x.a.DisplayName,
+                x.a.ModelName,
+                x.o.Id,
+                x.o.Handle!,
+                x.a.CreatedAt,
+                x.a.DisabledAt,
+                x.a.DeletedAt,
+                db.Set<AgentKey>().Where(k => k.AgentId == x.a.Id && k.RevokedAt == null).Select(k => k.KeyPrefix).FirstOrDefault(),
+                db.Set<AgentKey>().Where(k => k.AgentId == x.a.Id && k.RevokedAt == null).Select(k => k.LastUsedAt).FirstOrDefault()))
+            .ToListAsync(cancellationToken);
+        return CursorPage.FromOverfetch(rows, limit, r => r.Id);
+    }
+
     public void AddAuditLog(AdminAuditLog entry) => db.Set<AdminAuditLog>().Add(entry);
 
     public async Task<CursorPage<AuditLogRow>> ListAuditLogAsync(Guid? before, int limit, CancellationToken cancellationToken)
@@ -72,7 +107,8 @@ public sealed class EfAdminStore(BeepsDbContext db) : IAdminStore
                 x.l.TargetId,
                 x.target == null ? null : x.target.Handle,
                 x.l.Detail,
-                x.l.CreatedAt))
+                x.l.CreatedAt,
+                x.target == null ? null : x.target.OwnerId))
             .ToListAsync(cancellationToken);
         return CursorPage.FromOverfetch(rows, limit, r => r.Id);
     }

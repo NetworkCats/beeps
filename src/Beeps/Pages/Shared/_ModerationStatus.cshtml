@@ -1,0 +1,12 @@
+@using Beeps.Features.Beeps
+@model ModerationStatus
+@{
+    var tone = Model switch
+    {
+        ModerationStatus.Hidden => " badge-danger",
+        ModerationStatus.Failed => " badge-warning",
+        ModerationStatus.HumanAllowed => " badge-success",
+        _ => "",
+    };
+}
+<span class="badge@(tone)">@L[$"Moderation.Status.{Model}"]</span>

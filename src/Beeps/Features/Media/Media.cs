@@ -37,6 +37,9 @@ public enum MediaStatus
 
     /// <summary>Decoding failed (a truncated or corrupt file): there is nothing to show, ever. It cannot be attached.</summary>
     Failed,
+
+    /// <summary>Taken down by an admin (PLAN 3.6): its objects are deleted; never shown or attached again. The row stays for audit.</summary>
+    Removed,
 }
 
 /// <summary>

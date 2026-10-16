@@ -52,6 +52,11 @@ public sealed class AdminServiceTests
             (await service.CreateInviteAsync(outsider, TestSupport.Ct)).Error,
             (await service.RevokeInviteAsync(outsider, target, TestSupport.Ct)).Error,
             (await service.ListAuditLogAsync(outsider, null, TestSupport.Ct)).Error,
+            (await service.ListAgentsAsync(outsider, null, null, TestSupport.Ct)).Error,
+            (await service.DisableAgentAsync(outsider, target, TestSupport.Ct)).Error,
+            (await service.EnableAgentAsync(outsider, target, TestSupport.Ct)).Error,
+            (await service.RevokeAgentKeyAsync(outsider, target, TestSupport.Ct)).Error,
+            (await service.DeleteAgentAsync(outsider, target, TestSupport.Ct)).Error,
         ];
 
         Assert.All(errors, e => Assert.Equal(AdminErrorCodes.NotAdmin, e?.Code));
@@ -317,6 +322,127 @@ public sealed class AdminServiceTests
         return user;
     }
 
+    [Theory]
+    [InlineData(null, null)]
+    [InlineData(" @Tom.C ", "tom.c")]
+    public async Task AgentsAreSearchedByHandlePrefix(string? query, string? prefix)
+    {
+        var before = Guid.NewGuid();
+        store.ListAgentsAsync(default, default, default, TestSupport.Ct).ReturnsForAnyArgs(new CursorPage<AdminAgentRow>([], null));
+
+        var result = await CreateService().ListAgentsAsync(AdminId, query, before, TestSupport.Ct);
+
+        Assert.True(result.IsSuccess);
+        await store.Received(1).ListAgentsAsync(prefix, before, AdminService.PageSize, Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task DisablingAnAgentIsRecordedAndTakesEffectAtOnce()
+    {
+        var agent = Agent();
+
+        var result = await CreateService().DisableAgentAsync(AdminId, agent.Id, TestSupport.Ct);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(TestData.Now, agent.DisabledAt);
+        var entry = Assert.Single(audit);
+        Assert.Equal((AuditActions.DisableAgent, AuditTargets.Agent, agent.Id), (entry.Action, entry.TargetType, entry.TargetId));
+        Assert.Equal(1, unitOfWork.Saves);
+        await agents.Received(1).ForgetKeysAsync(Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Single() == agent.Id), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task DisablingADisabledAgentRecordsNothing()
+    {
+        var agent = Agent();
+        agent.DisabledAt = TestData.Now.AddDays(-1);
+
+        var result = await CreateService().DisableAgentAsync(AdminId, agent.Id, TestSupport.Ct);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(TestData.Now.AddDays(-1), agent.DisabledAt);
+        Assert.Empty(audit);
+    }
+
+    [Fact]
+    public async Task AnAgentOfABannedOwnerStaysDisabled()
+    {
+        var owner = TestData.User("eve");
+        owner.BannedAt = TestData.Now;
+        var agent = Agent(owner.Id);
+        agent.DisabledAt = TestData.Now;
+        store.FindUserAsync(owner.Id, Arg.Any<CancellationToken>()).Returns(owner);
+
+        var result = await CreateService().EnableAgentAsync(AdminId, agent.Id, TestSupport.Ct);
+
+        Assert.Equal(AdminErrorCodes.UserBanned, result.Error?.Code);
+        Assert.NotNull(agent.DisabledAt);
+        Assert.Empty(audit);
+        Assert.Equal(1, unitOfWork.Rollbacks);
+    }
+
+    [Fact]
+    public async Task EnablingAnAgentTurnsItBackOn()
+    {
+        var agent = Agent();
+        agent.DisabledAt = TestData.Now;
+
+        var result = await CreateService().EnableAgentAsync(AdminId, agent.Id, TestSupport.Ct);
+
+        Assert.True(result.IsSuccess);
+        Assert.Null(agent.DisabledAt);
+        Assert.Equal(AuditActions.EnableAgent, Assert.Single(audit).Action);
+    }
+
+    [Fact]
+    public async Task RevokingAKeyIssuesNoNewOne()
+    {
+        var agent = Agent();
+
+        var result = await CreateService().RevokeAgentKeyAsync(AdminId, agent.Id, TestSupport.Ct);
+
+        Assert.True(result.IsSuccess);
+        await agents.Received(1).RevokeKeysAsync(agent.Id, TestData.Now, Arg.Any<CancellationToken>());
+        agents.DidNotReceiveWithAnyArgs().AddKey(default!);
+        Assert.Equal(AuditActions.RevokeAgentKey, Assert.Single(audit).Action);
+    }
+
+    [Fact]
+    public async Task DeletingAnAgentRevokesItsKeysAndDropsItFromSearch()
+    {
+        var agent = Agent();
+
+        var result = await CreateService().DeleteAgentAsync(AdminId, agent.Id, TestSupport.Ct);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(TestData.Now, agent.DeletedAt);
+        await agents.Received(1).RevokeKeysAsync(agent.Id, TestData.Now, Arg.Any<CancellationToken>());
+        outbox.Received(1).Enqueue(SearchAccountSyncRequest.MessageType, new SearchAccountSyncRequest(agent.Id, true), Arg.Any<System.Text.Json.Serialization.Metadata.JsonTypeInfo<SearchAccountSyncRequest>>());
+        Assert.Equal(AuditActions.DeleteAgent, Assert.Single(audit).Action);
+    }
+
+    [Fact]
+    public async Task OnlyAgentsAreManagedAsAgents()
+    {
+        var human = new Actor { Id = Guid.NewGuid(), Kind = ActorKind.Human };
+        agents.FindAgentAsync(human.Id, Arg.Any<CancellationToken>()).Returns(human);
+        var service = CreateService();
+
+        var notAnAgent = await service.DisableAgentAsync(AdminId, human.Id, TestSupport.Ct);
+        var missing = await service.DeleteAgentAsync(AdminId, Guid.NewGuid(), TestSupport.Ct);
+
+        Assert.Equal(ErrorKind.NotFound, notAnAgent.Error?.Kind);
+        Assert.Equal(ErrorKind.NotFound, missing.Error?.Kind);
+        Assert.Null(human.DisabledAt);
+    }
+
+    private Actor Agent(Guid? ownerId = null)
+    {
+        var agent = new Actor { Id = Guid.NewGuid(), Kind = ActorKind.Agent, OwnerId = ownerId ?? Guid.NewGuid(), CreatedAt = TestData.Now };
+        agents.FindAgentAsync(agent.Id, Arg.Any<CancellationToken>()).Returns(agent);
+        return agent;
+    }
+
     private static AdminUserRow Row(Guid id) => new(id, "tom", "Tom", "tom@example.com", false, true, TestData.Now, null, null);
 
     private AdminService CreateService()
@@ -325,6 +451,7 @@ public sealed class AdminServiceTests
         var localizer = new TestLocalizer();
         var agentService = new AgentService(
             agents, unitOfWork, outbox, TestData.Live(Substitute.For<ILiveEventStore>()), avatars, Options.Create(new AgentOptions()), TestData.Time(), localizer, NullLogger<AgentService>.Instance);
-        return new AdminService(store, accounts, sessions, agents, agentService, unitOfWork, outbox, avatars, TestData.Time(), localizer, NullLogger<AdminService>.Instance);
+        var access = new AdminAccess(store, TestData.Time(), localizer);
+        return new AdminService(store, accounts, sessions, agents, agentService, access, unitOfWork, outbox, avatars, TestData.Time(), localizer, NullLogger<AdminService>.Instance);
     }
 }

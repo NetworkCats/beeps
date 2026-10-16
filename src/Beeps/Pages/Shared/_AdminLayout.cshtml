@@ -5,7 +5,11 @@
 }
 <div class="admin">
     <nav class="nav nav-horizontal admin-nav" aria-label="@L["Admin.Nav"]">
+        <a class="nav-item" asp-page="/Admin/Index" aria-current="@(page == "/Admin/Index" ? "page" : null)">@L["Admin.Overview"]</a>
+        <a class="nav-item" asp-page="/Admin/Review/Index" aria-current="@Current("/Admin/Review")">@L["Admin.Review"]</a>
         <a class="nav-item" asp-page="/Admin/Users/Index" aria-current="@Current("/Admin/Users")">@L["Admin.Users"]</a>
+        <a class="nav-item" asp-page="/Admin/Agents/Index" aria-current="@Current("/Admin/Agents")">@L["Admin.Agents"]</a>
+        <a class="nav-item" asp-page="/Admin/System" aria-current="@Current("/Admin/System")">@L["Admin.System"]</a>
         <a class="nav-item" asp-page="/Admin/Settings" aria-current="@Current("/Admin/Settings")">@L["Admin.Settings"]</a>
         <a class="nav-item" asp-page="/Admin/AuditLog" aria-current="@Current("/Admin/AuditLog")">@L["Admin.AuditLog"]</a>
     </nav>

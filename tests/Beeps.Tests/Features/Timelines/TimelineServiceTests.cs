@@ -106,7 +106,7 @@ public sealed class TimelineServiceTests
     private TimelineService Create()
     {
         var views = new BeepViews(beeps, counters, TestData.Avatars, TestData.Media, NullLogger<BeepViews>.Instance);
-        var profileService = new ProfileService(profiles, views, TestData.Time(), new TestLocalizer(), NullLogger<ProfileService>.Instance);
+        var profileService = new ProfileService(profiles, views, new ImmediateUnitOfWork(), TestData.Time(), new TestLocalizer(), NullLogger<ProfileService>.Instance);
         return new TimelineService(store, profileService, views, new TestLocalizer());
     }
 }

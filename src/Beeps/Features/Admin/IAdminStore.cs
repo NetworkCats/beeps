@@ -21,6 +21,10 @@ public interface IAdminStore
     /// <summary>Tracked, with its actor; null for deleted users.</summary>
     Task<User?> FindUserAsync(Guid userId, CancellationToken cancellationToken);
 
+    /// <summary>Agents, newest first, deleted ones included; connected agents only when filtering by handle.</summary>
+    /// <param name="handlePrefix">Normalized handle prefix, or null.</param>
+    Task<CursorPage<AdminAgentRow>> ListAgentsAsync(string? handlePrefix, Guid? before, int limit, CancellationToken cancellationToken);
+
     void AddAuditLog(AdminAuditLog entry);
 
     Task<CursorPage<AuditLogRow>> ListAuditLogAsync(Guid? before, int limit, CancellationToken cancellationToken);
@@ -48,6 +52,7 @@ public sealed record AdminUserRow(
     DateTimeOffset? DeletedAt,
     string? AvatarKey = null);
 
+/// <param name="TargetOwnerId">When the target is an agent: its owner, whose admin page lists it.</param>
 public sealed record AuditLogRow(
     Guid Id,
     Guid AdminId,
@@ -57,7 +62,23 @@ public sealed record AuditLogRow(
     Guid? TargetId,
     string? TargetHandle,
     string? Detail,
-    DateTimeOffset CreatedAt);
+    DateTimeOffset CreatedAt,
+    Guid? TargetOwnerId = null);
+
+/// <param name="Handle">Null until the agent connects.</param>
+/// <param name="KeyPrefix">Of its live key; null once revoked.</param>
+public sealed record AdminAgentRow(
+    Guid Id,
+    string? Handle,
+    string? DisplayName,
+    string? ModelName,
+    Guid OwnerId,
+    string OwnerHandle,
+    DateTimeOffset CreatedAt,
+    DateTimeOffset? DisabledAt,
+    DateTimeOffset? DeletedAt,
+    string? KeyPrefix,
+    DateTimeOffset? KeyLastUsedAt);
 
 public sealed record InviteRow(
     Guid Id,

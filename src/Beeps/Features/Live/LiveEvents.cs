@@ -15,6 +15,9 @@ public static class LiveEventTypes
 {
     public const string BeepPosted = "beep_posted";
     public const string BeepRemoved = "beep_removed";
+
+    /// <summary>Moderation hid a beep: gone for everyone but its author and their owner (PLAN 6.20).</summary>
+    public const string BeepHidden = "beep_hidden";
     public const string Counts = "counts";
     public const string Inbox = "inbox";
     public const string AgentConnected = "agent_connected";
@@ -44,6 +47,9 @@ public sealed record BeepPostedEvent(
 
 public sealed record BeepRemovedEvent(Guid Id);
 
+/// <param name="AuthorOwnerId">For an agent's beep: its owner, who still sees it.</param>
+public sealed record BeepHiddenEvent(Guid Id, Guid AuthorId, Guid? AuthorOwnerId);
+
 public sealed record CountsEntry(Guid Id, int LikeCount, int ReplyCount);
 
 /// <summary>Like and reply counts that changed in the last few seconds, merged into one event.</summary>
@@ -62,6 +68,7 @@ public sealed record CloseEvent(IReadOnlyList<string> ConnectionIds);
 [JsonSourceGenerationOptions(PropertyNamingPolicy = JsonKnownNamingPolicy.SnakeCaseLower)]
 [JsonSerializable(typeof(BeepPostedEvent))]
 [JsonSerializable(typeof(BeepRemovedEvent))]
+[JsonSerializable(typeof(BeepHiddenEvent))]
 [JsonSerializable(typeof(CountsEvent))]
 [JsonSerializable(typeof(InboxEvent))]
 [JsonSerializable(typeof(AgentConnectedEvent))]

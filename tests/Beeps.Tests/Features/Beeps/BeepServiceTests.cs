@@ -6,6 +6,7 @@ using Beeps.Features.Live;
 using Beeps.Features.Media;
 using Beeps.Features.Moderation;
 using Beeps.Features.Notifications;
+using Beeps.Features.Profiles;
 using Beeps.Features.RateLimiting;
 using Beeps.Features.Search;
 using Beeps.Features.Shared;
@@ -24,6 +25,7 @@ public sealed class BeepServiceTests
     private readonly IBeepStore store = Substitute.For<IBeepStore>();
     private readonly IBeepCounterStore counters = Substitute.For<IBeepCounterStore>();
     private readonly IOutbox outbox = Substitute.For<IOutbox>();
+    private readonly IModerationJobs moderationJobs = Substitute.For<IModerationJobs>();
     private readonly ILiveEventStore liveEvents = Substitute.For<ILiveEventStore>();
     private readonly IRateLimitStore rateLimitStore = Substitute.For<IRateLimitStore>();
     private readonly ImmediateUnitOfWork unitOfWork = new();
@@ -69,6 +71,8 @@ public sealed class BeepServiceTests
         Assert.Equal(added.Id, added.RootId);
         Assert.Null(added.ReplyToId);
         Assert.Equal(ModerationStatus.Pending, added.ModerationStatus);
+        // Reviewed after posting (PLAN 6.20), queued in the same transaction.
+        moderationJobs.Received(1).Enqueue(added.Id);
         store.Received(1).AddBeep(added, Arg.Is<IReadOnlyCollection<Guid>>(m => m.Single() == alice.Id), Arg.Is<IReadOnlyCollection<Guid>>(t => t.Single() == tagId));
         outbox.Received(1).Enqueue(BeepNotificationsRequest.MessageType, Arg.Is<BeepNotificationsRequest>(r => r.BeepId == added.Id), Arg.Any<JsonTypeInfo<BeepNotificationsRequest>>());
         // Searchable once committed, in the same transaction (PLAN 12), and announced to open pages afterwards.
@@ -89,6 +93,63 @@ public sealed class BeepServiceTests
 
         Assert.True(result.IsSuccess);
         Assert.Equal(ModerationStatus.Allowed, added?.ModerationStatus);
+        moderationJobs.DidNotReceiveWithAnyArgs().Enqueue(default);
+    }
+
+    [Fact]
+    public async Task ABeepOfImagesAloneHasNothingToReview()
+    {
+        media.OwnEverything();
+
+        var result = await CreateService().PostAsync(Human, "", null, [Guid.NewGuid()], TestSupport.Ct);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(ModerationStatus.Allowed, added?.ModerationStatus);
+        moderationJobs.DidNotReceiveWithAnyArgs().Enqueue(default);
+    }
+
+    [Fact]
+    public async Task NobodyRepliesToOrLikesTheBeepsOfSomeoneWhoBlockedThem()
+    {
+        var blocker = Guid.NewGuid();
+        var parent = Ref(Guid.NewGuid(), author: Guid.NewGuid(), authorOwner: blocker);
+        store.IsBlockedByAsync(blocker, Agent.ActorId, OwnerId, Arg.Any<CancellationToken>()).Returns(true);
+        var service = CreateService();
+
+        var reply = await service.PostAsync(Agent, "hi", parent.Id, [], TestSupport.Ct);
+        var like = await service.LikeAsync(Agent, parent.Id, TestSupport.Ct);
+
+        Assert.Equal((ErrorKind.Forbidden, ProfileErrorCodes.Blocked), (reply.Error?.Kind, reply.Error?.Code));
+        Assert.Equal(ProfileErrorCodes.Blocked, like.Error?.Code);
+        Assert.Null(added);
+        await store.DidNotReceiveWithAnyArgs().AddLikeAsync(default, default, default, TestSupport.Ct);
+    }
+
+    [Fact]
+    public async Task OwnBeepsAreNeverCheckedForBlocks()
+    {
+        var parent = Ref(Guid.NewGuid(), author: Agent.ActorId, authorOwner: OwnerId);
+
+        var result = await CreateService().PostAsync(Human, "hi", parent.Id, [], TestSupport.Ct);
+
+        Assert.True(result.IsSuccess);
+        await store.DidNotReceiveWithAnyArgs().IsBlockedByAsync(default, default, default, TestSupport.Ct);
+    }
+
+    [Fact]
+    public async Task AReplyHiddenOrShownAgainMovesItsParentsCount()
+    {
+        var parent = Ref(Guid.NewGuid(), likes: 2, replies: 5);
+        var service = CreateService();
+
+        await service.ReplyVisibilityChangedAsync(parent.Id, visible: false, TestSupport.Ct);
+        await service.ReplyVisibilityChangedAsync(parent.Id, visible: true, TestSupport.Ct);
+        await service.ReplyVisibilityChangedAsync(Guid.NewGuid(), visible: false, TestSupport.Ct);
+
+        await counters.Received(1).AddAsync(parent.Id, new BeepCounts(2, 5), new BeepCounts(0, -1), Arg.Any<CancellationToken>());
+        await counters.Received(1).AddAsync(parent.Id, new BeepCounts(2, 5), new BeepCounts(0, 1), Arg.Any<CancellationToken>());
+        await counters.ReceivedWithAnyArgs(2).AddAsync(default, default, default, TestSupport.Ct);
+        await store.Received(2).FindVisibleAsync(parent.Id, null, Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -459,6 +520,7 @@ public sealed class BeepServiceTests
             views,
             unitOfWork,
             outbox,
+            moderationJobs,
             TestData.RateLimits(rateLimitStore),
             TestData.Live(liveEvents, counters),
             Options.Create(new ModerationOptions { Enabled = moderationEnabled }),

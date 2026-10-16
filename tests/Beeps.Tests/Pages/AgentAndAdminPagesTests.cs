@@ -98,14 +98,13 @@ public sealed partial class AgentAndAdminPagesTests : IDisposable
         using var client = await WebAuth.SignInAsync(factory, admin);
 
         var html = await client.GetStringAsync(new Uri("/admin/users", UriKind.Relative), TestSupport.Ct);
-        using var index = await client.GetAsync(new Uri("/admin", UriKind.Relative), TestSupport.Ct);
 
         Assert.Contains("tom@example.com", html, StringComparison.Ordinal);
         Assert.Contains("aria-current=\"page\"", html, StringComparison.Ordinal);
         Assert.Contains("before=", html, StringComparison.Ordinal);
-        Assert.Contains("href=\"/admin/users\">Admin</a>", html, StringComparison.Ordinal);
+        // The account menu opens the admin area on its overview.
+        Assert.Contains("href=\"/admin\">Admin</a>", html, StringComparison.Ordinal);
         PageAssert.NoInlineScriptsOrStyles(html);
-        Assert.Equal("/admin/users", index.Headers.Location?.OriginalString);
     }
 
     [Fact]

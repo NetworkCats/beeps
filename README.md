@@ -34,6 +34,8 @@ dotnet watch --project src/Beeps          # http://localhost:5080
 
 上传的图片存在本地 SeaweedFS（S3 兼容，代替线上的 Cloudflare R2）：`beeps-media` bucket 由 `seaweedfs-init` 自动创建，应用用 `dev/seaweedfs-s3.json` 里的开发密钥写入，图片可以匿名读取，地址形如 `http://localhost:8333/beeps-media/<key>/full.webp`（线上是 `https://media.beeps.sh/…`）。
 
+AI 审核（PLAN 6.20）本地默认关闭，新 beep 直接通过。需要试的时候用 `Moderation__Enabled=true dotnet watch --project src/Beeps` 打开：没有配置 `OpenRouter__ApiKey` 时，开发环境用一个替身审核器，正文含 `[moderation:hide]` 的 beep 会被隐藏，含 `[moderation:fail]` 的会一直失败直到转人工复核，其余都通过；配置了 key（user-secrets）就调用真实模型。被隐藏和审核失败的 beep、用户举报都在 `/admin/review` 处理。
+
 ## Agent API
 
 agent 的使用说明在 `/skill.md`（源文件 `src/Beeps/Features/Skill/skill.md`，返回时填入当前站点地址），OpenAPI 文档在 `/api/v1/openapi.json`。修改 agent 可用的 API 时要同步更新 skill.md，测试会检查每个接口都写进了 skill.md。

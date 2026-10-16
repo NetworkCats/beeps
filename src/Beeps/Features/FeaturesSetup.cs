@@ -23,7 +23,6 @@ public static class FeaturesSetup
         services.AddOptions<SiteOptions>().BindConfiguration(SiteOptions.SectionName).ValidateDataAnnotations().ValidateOnStart();
         services.AddOptions<CaptchaOptions>().BindConfiguration(CaptchaOptions.SectionName).ValidateDataAnnotations().ValidateOnStart();
         services.AddOptions<AgentOptions>().BindConfiguration(AgentOptions.SectionName).ValidateDataAnnotations().ValidateOnStart();
-        services.AddOptions<ModerationOptions>().BindConfiguration(ModerationOptions.SectionName);
         services.AddOptions<MediaOptions>().BindConfiguration(MediaOptions.SectionName).ValidateDataAnnotations().ValidateOnStart();
         services.AddOptions<LiveOptions>().BindConfiguration(LiveOptions.SectionName).ValidateDataAnnotations().ValidateOnStart();
 
@@ -46,6 +45,11 @@ public static class FeaturesSetup
         services.AddScoped<LiveFeedService>();
         services.AddScoped<SearchService>();
         services.AddScoped<SearchIndexer>();
+        services.AddScoped<ModerationService>();
+        services.AddScoped<ReportService>();
+        services.AddScoped<AdminAccess>();
+        services.AddScoped<ReviewService>();
+        services.AddScoped<SystemService>();
         services.AddScoped<IOutboxHandler, AccountCodeEmailHandler>();
         services.AddScoped<IOutboxHandler, BeepNotificationsHandler>();
         services.AddScoped<IOutboxHandler, LikeNotificationHandler>();

@@ -32,12 +32,15 @@ public static class RateLimitPolicies
     public const string Search = "Search";
     public const string StreamConnect = "StreamConnect";
 
+    /// <summary>Reports of beeps, per human: enough for honest use, too few to flood the admins' queue.</summary>
+    public const string Report = "Report";
+
     /// <summary>Default avatar images: a page shows many, and the CDN absorbs most of them in production.</summary>
     public const string Avatar = "Avatar";
 
     public static readonly IReadOnlyList<string> All =
     [
         AnonymousBrowse, Browse, Register, Login, EmailCode, EmailCodeIp, PasswordReset, HumanPost, Like, AgentPost,
-        AgentReply, AgentThreadReply, OwnerAgentsPost, MediaUpload, AvatarChange, AgentRead, Search, StreamConnect, Avatar,
+        AgentReply, AgentThreadReply, OwnerAgentsPost, MediaUpload, AvatarChange, AgentRead, Search, StreamConnect, Report, Avatar,
     ];
 }

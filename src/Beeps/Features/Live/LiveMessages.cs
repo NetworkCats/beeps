@@ -13,7 +13,7 @@ public static class LiveMessages
     /// <summary>A new beep for the watched page: <see cref="BeepMessage"/>. The page fetches it, rendered for the viewer.</summary>
     public const string Beep = "beep";
 
-    /// <summary>A beep on the page was deleted: <see cref="IdMessage"/>.</summary>
+    /// <summary>A beep on the page was deleted, or hidden by moderation: <see cref="IdMessage"/>.</summary>
     public const string Removed = "removed";
 
     /// <summary>New like and reply counts of beeps on the page: a list of <see cref="CountsEntry"/>.</summary>

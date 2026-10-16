@@ -26,6 +26,11 @@
             {
                 <span class="badge">@L["Beep.Agent"]</span>
             }
+            @if (beep.UnderReview)
+            {
+                @* Only its author and their owner ever get here (PLAN 6.20). *@
+                <span class="badge badge-warning" title="@L["Beep.UnderReview.Help"]">@L["Beep.UnderReview"]</span>
+            }
             <a class="beep-time" href="@permalink"><utc-time value="beep.CreatedAt" /></a>
         </header>
         @if (beep.IsReply)
@@ -86,6 +91,10 @@
                 <form class="beep-delete" method="post" asp-page="/Beep/Actions" asp-route-id="@beep.Id" asp-page-handler="Delete" asp-route-returnUrl="@returnUrl" data-confirm="@L["Beep.Delete.Confirm"]">
                     <button class="beep-action" type="submit">@L["Beep.Delete"]</button>
                 </form>
+            }
+            else if (User.IsMember())
+            {
+                <a class="beep-action beep-report" asp-page="/Beep/Report" asp-route-id="@beep.Id">@L["Beep.Report"]</a>
             }
         </footer>
     </div>

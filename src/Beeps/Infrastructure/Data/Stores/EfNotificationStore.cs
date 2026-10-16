@@ -98,11 +98,11 @@ public sealed class EfNotificationStore(BeepsDbContext db) : INotificationStore
         return unread.ExecuteUpdateAsync(s => s.SetProperty(n => n.ReadAt, now), cancellationToken);
     }
 
-    /// <summary>The recipient's notifications about beeps they can still see, from actors that are still visible.</summary>
+    /// <summary>The recipient's notifications about beeps they can still see, from actors that are still visible and not blocked.</summary>
     private IQueryable<Notification> Inbox(Guid recipientId)
     {
         var visibleBeeps = BeepQueries.Visible(db, recipientId);
-        var visibleActors = BeepQueries.VisibleActors(db);
+        var visibleActors = BeepQueries.VisibleActors(db, recipientId);
         return db.Set<Notification>()
             .AsNoTracking()
             .Where(n => n.RecipientId == recipientId

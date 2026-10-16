@@ -207,7 +207,9 @@
     &:hover { border-color: color-mix(in oklch, var(--cui-control-border) 55%, var(--cui-text-3)); }
     &:active:not(:disabled) { scale: 0.92; }
     &:focus-visible { outline: none; box-shadow: var(--cui-shadow-well), var(--cui-ring); }
-    &:checked, &:indeterminate {
+    /* Only a checkbox can be set indeterminate on purpose; a radio matches :indeterminate whenever
+     * nothing in its group is picked yet, and must then look unchecked. */
+    &:checked, &[type="checkbox"]:indeterminate {
       background-color: var(--cui-primary-solid);
       border-color: var(--cui-primary-edge);
       box-shadow: inset 0 1px 0 oklch(100% 0 0 / 0.18);

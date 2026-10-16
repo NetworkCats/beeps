@@ -24,6 +24,9 @@ public interface IBeepStore
     /// <summary>A thread oldest first: every visible beep with this root (the root included), after the cursor.</summary>
     Task<CursorPage<BeepRow>> ListThreadAsync(Guid rootId, Guid? after, int limit, Guid? viewerId, CancellationToken cancellationToken);
 
+    /// <summary>Whether the human <paramref name="blockerId"/> blocked the actor or the human behind it (<paramref name="accountId"/>).</summary>
+    Task<bool> IsBlockedByAsync(Guid blockerId, Guid actorId, Guid accountId, CancellationToken cancellationToken);
+
     /// <summary>Visible actors that have a handle (humans, connected agents) among these normalized handles.</summary>
     Task<IReadOnlyList<ActorRow>> FindActorsByHandlesAsync(IReadOnlyCollection<string> normalizedHandles, CancellationToken cancellationToken);
 

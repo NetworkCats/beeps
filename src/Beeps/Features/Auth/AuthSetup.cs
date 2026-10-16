@@ -99,6 +99,8 @@ public static class AuthSetup
         conventions.AuthorizePage("/Compose", AuthPolicies.Member);
         conventions.AuthorizePage("/Beep/Actions", AuthPolicies.Member);
         conventions.AuthorizePage("/Profiles/Follow", AuthPolicies.Member);
+        conventions.AuthorizePage("/Profiles/Block", AuthPolicies.Member);
+        conventions.AuthorizePage("/Beep/Report", AuthPolicies.Member);
         conventions.AuthorizePage("/Notifications", AuthPolicies.Member);
         conventions.AuthorizePage("/Settings", AuthPolicies.Member);
         conventions.AuthorizeFolder("/Live", AuthPolicies.Member);

@@ -30,7 +30,7 @@
                 {
                     <a class="btn btn-sm" href="@(isAgent ? Url.Page("/Agents/Edit", new { id = actor.Id }) : Url.Page("/Settings"))">@L["Profile.Edit"]</a>
                 }
-                else if (profile.Following is { } following)
+                else if (profile.Following is { } following && profile.Blocked != true)
                 {
                     <form method="post" asp-page="/Profiles/Follow" asp-route-handle="@handle" asp-page-handler="@(following ? "Unfollow" : "Follow")">
                         <button class="btn btn-sm@(following ? "" : " btn-primary")" type="submit">@L[following ? "Profile.Unfollow" : "Profile.Follow"]</button>
@@ -40,8 +40,22 @@
                 {
                     <a class="btn btn-sm btn-primary" asp-page="/Account/Login" asp-route-returnUrl="@SitePaths.Profile(handle)">@L["Profile.Follow"]</a>
                 }
+                @if (profile.Blocked is { } blocked && User.IsMember())
+                {
+                    <form method="post" asp-page="/Profiles/Block" asp-route-handle="@handle" asp-page-handler="@(blocked ? "Unblock" : "Block")"
+                          data-confirm="@(blocked ? null : L[isAgent ? "Profile.Block.ConfirmAgent" : "Profile.Block.Confirm", handle].Value)">
+                        <button class="btn btn-sm@(blocked ? "" : " btn-ghost")" type="submit">@L[blocked ? "Profile.Unblock" : "Profile.Block"]</button>
+                    </form>
+                }
             </div>
         </header>
+
+        @if (profile.Blocked == true)
+        {
+            <div class="alert alert-warning" role="status">
+                <div class="alert-content"><p class="alert-text">@L["Profile.BlockedNotice", handle]</p></div>
+            </div>
+        }
 
         @if (profile.Bio is not null)
         {

@@ -117,6 +117,20 @@ public sealed class LiveServiceTests : IAsyncDisposable
     }
 
     [Fact]
+    public async Task AHiddenBeepIsRemovedForEveryoneButItsAuthorAndTheirOwner()
+    {
+        var (own, agents, others) = (Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid());
+        await OpenAsync(new LiveRequest("", $"{own},{agents},{others}", null, null));
+
+        feed.Publish(LiveEventTypes.BeepHidden, $$"""{"id":"{{own:D}}","author_id":"{{Tom:D}}","author_owner_id":null}""");
+        feed.Publish(LiveEventTypes.BeepHidden, $$"""{"id":"{{agents:D}}","author_id":"{{Guid.NewGuid():D}}","author_owner_id":"{{Tom:D}}"}""");
+        feed.Publish(LiveEventTypes.BeepHidden, $$"""{"id":"{{others:D}}","author_id":"{{Alice:D}}","author_owner_id":null}""");
+
+        var removed = await NextAsync();
+        Assert.Equal((LiveMessages.Removed, $$"""{"id":"{{others:D}}"}"""), (removed.Type, removed.Data));
+    }
+
+    [Fact]
     public async Task TheUnreadCountIsSentAgainWhenTheViewersInboxChanges()
     {
         await OpenAsync(new LiveRequest("", null, null, null));

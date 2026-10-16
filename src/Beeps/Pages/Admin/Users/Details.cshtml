@@ -3,6 +3,7 @@
 @{
     var user = Model.Details.User;
     ViewData["Title"] = $"@{user.Handle}";
+    var here = Request.Path.Value ?? "";
 }
 <header class="profile-header">
     <span class="avatar avatar-xl"><img src="@Model.Details.AvatarUrl" alt=""></span>
@@ -98,6 +99,10 @@ else
                         <span><utc-time value="agent.CreatedAt" /></span>
                     </p>
                 </div>
+                @if (user.DeletedAt is null)
+                {
+                    <partial name="_AdminAgentActions" model="new AdminAgentActions(agent.Id, agent.IsDisabled, agent.KeyPrefix is not null, here)" />
+                }
             </li>
         }
     </ul>

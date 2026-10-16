@@ -47,7 +47,8 @@ public sealed partial class BeepViews(IBeepStore store, IBeepCounterStore counte
                 mentioned,
                 BeepText.Hashtags(row.Text),
                 images,
-                viewer?.MayDeleteBeepOf(row.Author.Id, row.Author.OwnerId) ?? false);
+                viewer?.MayDeleteBeepOf(row.Author.Id, row.Author.OwnerId) ?? false,
+                row.UnderReview);
         })];
     }
 

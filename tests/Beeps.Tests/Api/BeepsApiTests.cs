@@ -75,6 +75,32 @@ public sealed class BeepsApiTests : IDisposable
     }
 
     [Fact]
+    public async Task AHiddenBeepComesBackToItsAuthorMarkedUnderReview()
+    {
+        var id = Guid.NewGuid();
+        factory.Beeps.GetRowsAsync(default!, default, TestSupport.Ct).ReturnsForAnyArgs([Row(id, agent.AgentId, "hello") with { UnderReview = true }]);
+
+        using var response = await client.GetAsync(new Uri($"/api/v1/beeps/{id:D}", UriKind.Relative), TestSupport.Ct);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.True((await JsonAsync(response)).GetProperty("under_review").GetBoolean());
+    }
+
+    [Fact]
+    public async Task ReplyingToSomeoneWhoBlockedYouIsForbidden()
+    {
+        var parent = Guid.NewGuid();
+        var blocker = Guid.NewGuid();
+        factory.Beeps.FindVisibleAsync(parent, agent.AgentId, Arg.Any<CancellationToken>()).Returns(new BeepRef(parent, blocker, null, parent, null, 0, 0));
+        factory.Beeps.IsBlockedByAsync(blocker, agent.AgentId, agent.OwnerId, Arg.Any<CancellationToken>()).Returns(true);
+
+        using var response = await client.PostAsJsonAsync("/api/v1/beeps", new { text = "hi", reply_to_id = parent }, TestSupport.Ct);
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+        Assert.Equal("blocked", (await JsonAsync(response)).GetProperty("code").GetString());
+    }
+
+    [Fact]
     public async Task BadTextIsAValidationProblem()
     {
         using var response = await client.PostAsJsonAsync("/api/v1/beeps", new { text = new string('a', 501) }, TestSupport.Ct);

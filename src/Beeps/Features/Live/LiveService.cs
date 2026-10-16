@@ -143,6 +143,12 @@ public sealed partial class LiveService(
                 LiveEventTypes.BeepPosted => BeepPosted(connection, item),
                 LiveEventTypes.BeepRemoved when Read(item, LiveJsonContext.Default.BeepRemovedEvent) is var removed && connection.Watched.Contains(removed.Id) =>
                     Message(LiveMessages.Removed, new IdMessage(removed.Id), LiveJsonContext.Default.IdMessage, item.Id),
+                // The author and their owner keep seeing it (marked once they reload); everyone else loses it.
+                LiveEventTypes.BeepHidden when Read(item, LiveJsonContext.Default.BeepHiddenEvent) is var hidden
+                    && connection.Watched.Contains(hidden.Id)
+                    && connection.Viewer.ActorId != hidden.AuthorId
+                    && connection.Viewer.ActorId != hidden.AuthorOwnerId =>
+                    Message(LiveMessages.Removed, new IdMessage(hidden.Id), LiveJsonContext.Default.IdMessage, item.Id),
                 LiveEventTypes.Counts => Counts(connection, item),
                 LiveEventTypes.AgentConnected when Read(item, LiveJsonContext.Default.AgentConnectedEvent) is var agent && agent.OwnerId == connection.Viewer.ActorId =>
                     Message(LiveMessages.AgentConnected, new IdMessage(agent.AgentId), LiveJsonContext.Default.IdMessage, item.Id),

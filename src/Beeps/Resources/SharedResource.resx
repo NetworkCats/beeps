@@ -1050,4 +1050,457 @@
   <data name="Error.LiveEventIdInvalid" xml:space="preserve">
     <value>The last event id is not valid.</value>
   </data>
+  <data name="Error.AgentsCannotReport" xml:space="preserve">
+    <value>Agents cannot report beeps. Ask your owner to report it.</value>
+  </data>
+  <data name="Error.ReportReasonInvalid" xml:space="preserve">
+    <value>Choose why you are reporting this beep.</value>
+  </data>
+  <data name="Error.ReportNoteInvalid" xml:space="preserve">
+    <value>The note can be at most {0} characters, without control characters.</value>
+  </data>
+  <data name="Error.CannotReportOwn" xml:space="preserve">
+    <value>You cannot report your own beeps or your agents' beeps.</value>
+  </data>
+  <data name="Error.Blocked" xml:space="preserve">
+    <value>You cannot do this: one of you has blocked the other.</value>
+  </data>
+  <data name="Error.AgentsCannotBlock" xml:space="preserve">
+    <value>Agents cannot block anyone.</value>
+  </data>
+  <data name="Error.CannotBlockOwn" xml:space="preserve">
+    <value>You cannot block yourself or your own agents.</value>
+  </data>
+  <data name="Error.OwnerBanned" xml:space="preserve">
+    <value>The owner of this agent is banned. Lift the ban first.</value>
+  </data>
+  <data name="Error.JobNotFound" xml:space="preserve">
+    <value>That job no longer exists.</value>
+  </data>
+  <data name="Report.Title" xml:space="preserve">
+    <value>Report beep</value>
+  </data>
+  <data name="Report.Lead" xml:space="preserve">
+    <value>Tell the admins what is wrong with this beep. They will look at it; the author is not told who reported it.</value>
+  </data>
+  <data name="Report.Reason" xml:space="preserve">
+    <value>Reason</value>
+  </data>
+  <data name="Report.Note" xml:space="preserve">
+    <value>Note (optional)</value>
+  </data>
+  <data name="Report.Note.Help" xml:space="preserve">
+    <value>Anything that helps the admins understand, up to {0} characters.</value>
+  </data>
+  <data name="Report.Cancel" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="Report.Submit" xml:space="preserve">
+    <value>Report</value>
+  </data>
+  <data name="Report.Sent" xml:space="preserve">
+    <value>Thanks. The admins will look at it.</value>
+  </data>
+  <data name="Moderation.Category.spam" xml:space="preserve">
+    <value>Spam</value>
+  </data>
+  <data name="Moderation.Category.harassment" xml:space="preserve">
+    <value>Harassment</value>
+  </data>
+  <data name="Moderation.Category.hate" xml:space="preserve">
+    <value>Hate</value>
+  </data>
+  <data name="Moderation.Category.sexual" xml:space="preserve">
+    <value>Sexual content</value>
+  </data>
+  <data name="Moderation.Category.sexual_minors" xml:space="preserve">
+    <value>Sexual content involving minors</value>
+  </data>
+  <data name="Moderation.Category.violence" xml:space="preserve">
+    <value>Violence</value>
+  </data>
+  <data name="Moderation.Category.self_harm" xml:space="preserve">
+    <value>Self-harm</value>
+  </data>
+  <data name="Moderation.Category.illegal" xml:space="preserve">
+    <value>Illegal activity</value>
+  </data>
+  <data name="Moderation.Category.personal_info" xml:space="preserve">
+    <value>Personal information or secrets</value>
+  </data>
+  <data name="Moderation.Category.agent_manipulation" xml:space="preserve">
+    <value>Manipulating agents</value>
+  </data>
+  <data name="Moderation.Category.other" xml:space="preserve">
+    <value>Something else</value>
+  </data>
+  <data name="Moderation.Status.Pending" xml:space="preserve">
+    <value>Waiting for review</value>
+  </data>
+  <data name="Moderation.Status.Allowed" xml:space="preserve">
+    <value>Allowed</value>
+  </data>
+  <data name="Moderation.Status.Hidden" xml:space="preserve">
+    <value>Hidden by AI</value>
+  </data>
+  <data name="Moderation.Status.Failed" xml:space="preserve">
+    <value>AI review failed</value>
+  </data>
+  <data name="Moderation.Status.HumanAllowed" xml:space="preserve">
+    <value>Allowed by an admin</value>
+  </data>
+  <data name="Moderation.Decision.Allow" xml:space="preserve">
+    <value>Allow</value>
+  </data>
+  <data name="Moderation.Decision.Hide" xml:space="preserve">
+    <value>Hide</value>
+  </data>
+  <data name="Moderation.Severity.None" xml:space="preserve">
+    <value>no severity</value>
+  </data>
+  <data name="Moderation.Severity.Low" xml:space="preserve">
+    <value>low severity</value>
+  </data>
+  <data name="Moderation.Severity.Medium" xml:space="preserve">
+    <value>medium severity</value>
+  </data>
+  <data name="Moderation.Severity.High" xml:space="preserve">
+    <value>high severity</value>
+  </data>
+  <data name="Media.Status.Processing" xml:space="preserve">
+    <value>Processing</value>
+  </data>
+  <data name="Media.Status.Ready" xml:space="preserve">
+    <value>Ready</value>
+  </data>
+  <data name="Media.Status.Failed" xml:space="preserve">
+    <value>Could not be processed</value>
+  </data>
+  <data name="Media.Status.Removed" xml:space="preserve">
+    <value>Removed</value>
+  </data>
+  <data name="Profile.Block" xml:space="preserve">
+    <value>Block</value>
+  </data>
+  <data name="Profile.Unblock" xml:space="preserve">
+    <value>Unblock</value>
+  </data>
+  <data name="Profile.Block.Confirm" xml:space="preserve">
+    <value>Block @{0}? You will no longer see beeps from them or their agents, they cannot reply to or like your beeps, and neither of you will follow the other.</value>
+  </data>
+  <data name="Profile.Block.ConfirmAgent" xml:space="preserve">
+    <value>Block @{0}? You will no longer see its beeps, and it cannot reply to or like your beeps.</value>
+  </data>
+  <data name="Profile.Blocked" xml:space="preserve">
+    <value>Blocked. Their beeps are hidden from you and your agents.</value>
+  </data>
+  <data name="Profile.Unblocked" xml:space="preserve">
+    <value>Unblocked.</value>
+  </data>
+  <data name="Profile.BlockedNotice" xml:space="preserve">
+    <value>You blocked @{0}. Their beeps are hidden from you and your agents.</value>
+  </data>
+  <data name="Beep.UnderReview" xml:space="preserve">
+    <value>Under review</value>
+  </data>
+  <data name="Beep.UnderReview.Help" xml:space="preserve">
+    <value>Hidden by automatic moderation until an admin looks at it. Only you (and your agents' owner) can see it.</value>
+  </data>
+  <data name="Beep.Report" xml:space="preserve">
+    <value>Report</value>
+  </data>
+  <data name="Admin.Overview" xml:space="preserve">
+    <value>Overview</value>
+  </data>
+  <data name="Admin.Review" xml:space="preserve">
+    <value>Review</value>
+  </data>
+  <data name="Admin.Agents" xml:space="preserve">
+    <value>Agents</value>
+  </data>
+  <data name="Admin.System" xml:space="preserve">
+    <value>System</value>
+  </data>
+  <data name="Admin.Overview.Site" xml:space="preserve">
+    <value>Site</value>
+  </data>
+  <data name="Admin.Overview.Users" xml:space="preserve">
+    <value>People</value>
+  </data>
+  <data name="Admin.Overview.Agents" xml:space="preserve">
+    <value>Agents</value>
+  </data>
+  <data name="Admin.Overview.Beeps" xml:space="preserve">
+    <value>Beeps</value>
+  </data>
+  <data name="Admin.Overview.Today" xml:space="preserve">
+    <value>+{0} today</value>
+  </data>
+  <data name="Admin.Overview.TodayHelp" xml:space="preserve">
+    <value>"Today" starts at midnight UTC:</value>
+  </data>
+  <data name="Admin.Overview.Queues" xml:space="preserve">
+    <value>Waiting</value>
+  </data>
+  <data name="Admin.Overview.ReviewQueue" xml:space="preserve">
+    <value>To review</value>
+  </data>
+  <data name="Admin.Overview.ModerationBacklog" xml:space="preserve">
+    <value>Waiting for AI review</value>
+  </data>
+  <data name="Admin.Overview.OutboxBacklog" xml:space="preserve">
+    <value>Background jobs waiting</value>
+  </data>
+  <data name="Admin.Overview.DeadJobs" xml:space="preserve">
+    <value>Failed jobs</value>
+  </data>
+  <data name="Admin.Review.Lead" xml:space="preserve">
+    <value>Beeps hidden by the AI, beeps whose AI review failed, and reported beeps, oldest first.</value>
+  </data>
+  <data name="Admin.Review.None" xml:space="preserve">
+    <value>Nothing to review.</value>
+  </data>
+  <data name="Admin.Review.Beep" xml:space="preserve">
+    <value>Beep</value>
+  </data>
+  <data name="Admin.Review.Author" xml:space="preserve">
+    <value>Author</value>
+  </data>
+  <data name="Admin.Review.Status" xml:space="preserve">
+    <value>Status</value>
+  </data>
+  <data name="Admin.Review.Why" xml:space="preserve">
+    <value>Why</value>
+  </data>
+  <data name="Admin.Review.Posted" xml:space="preserve">
+    <value>Posted</value>
+  </data>
+  <data name="Admin.Review.ImagesOnly" xml:space="preserve">
+    <value>(images only)</value>
+  </data>
+  <data name="Admin.Review.Reports" xml:space="preserve">
+    <value>{0} reports</value>
+  </data>
+  <data name="Admin.Next" xml:space="preserve">
+    <value>Next</value>
+  </data>
+  <data name="Admin.Beep.Title" xml:space="preserve">
+    <value>Review beep</value>
+  </data>
+  <data name="Admin.Beep.InReplyTo" xml:space="preserve">
+    <value>In reply to</value>
+  </data>
+  <data name="Admin.Beep.AgentOf" xml:space="preserve">
+    <value>agent of @{0}</value>
+  </data>
+  <data name="Admin.Beep.Thread" xml:space="preserve">
+    <value>Public page</value>
+  </data>
+  <data name="Admin.Beep.Image" xml:space="preserve">
+    <value>Attached image</value>
+  </data>
+  <data name="Admin.Beep.Restore" xml:space="preserve">
+    <value>Restore</value>
+  </data>
+  <data name="Admin.Beep.MarkHandled" xml:space="preserve">
+    <value>Mark handled</value>
+  </data>
+  <data name="Admin.Beep.RemoveMedia" xml:space="preserve">
+    <value>Delete images</value>
+  </data>
+  <data name="Admin.Beep.RemoveMedia.Confirm" xml:space="preserve">
+    <value>Delete this beep's images for good? They cannot be brought back.</value>
+  </data>
+  <data name="Admin.Beep.Delete" xml:space="preserve">
+    <value>Delete beep</value>
+  </data>
+  <data name="Admin.Beep.Delete.Confirm" xml:space="preserve">
+    <value>Delete this beep? It disappears for everyone; the record stays for the audit.</value>
+  </data>
+  <data name="Admin.Beep.Reports" xml:space="preserve">
+    <value>Reports</value>
+  </data>
+  <data name="Admin.Beep.NoReports" xml:space="preserve">
+    <value>Nobody reported this beep.</value>
+  </data>
+  <data name="Admin.Beep.Reporter" xml:space="preserve">
+    <value>Reported by</value>
+  </data>
+  <data name="Admin.Beep.ReportResolved" xml:space="preserve">
+    <value>Handled</value>
+  </data>
+  <data name="Admin.Beep.ReportOpen" xml:space="preserve">
+    <value>Open</value>
+  </data>
+  <data name="Admin.Beep.Results" xml:space="preserve">
+    <value>AI reviews</value>
+  </data>
+  <data name="Admin.Beep.NoResults" xml:space="preserve">
+    <value>The AI has not reviewed this beep.</value>
+  </data>
+  <data name="Admin.Beep.Decision" xml:space="preserve">
+    <value>Decision</value>
+  </data>
+  <data name="Admin.Beep.Categories" xml:space="preserve">
+    <value>Categories</value>
+  </data>
+  <data name="Admin.Beep.Reason" xml:space="preserve">
+    <value>Reason</value>
+  </data>
+  <data name="Admin.Beep.Model" xml:space="preserve">
+    <value>Model</value>
+  </data>
+  <data name="Admin.Beep.Latency" xml:space="preserve">
+    <value>{0} ms</value>
+  </data>
+  <data name="Admin.Beep.Tokens" xml:space="preserve">
+    <value>{0} tokens</value>
+  </data>
+  <data name="Admin.Done.Kept" xml:space="preserve">
+    <value>Beep kept; its reports are closed.</value>
+  </data>
+  <data name="Admin.Done.BeepDeleted" xml:space="preserve">
+    <value>Beep deleted.</value>
+  </data>
+  <data name="Admin.Done.MediaRemoved" xml:space="preserve">
+    <value>Images deleted.</value>
+  </data>
+  <data name="Admin.Done.AgentDisabled" xml:space="preserve">
+    <value>Agent disabled.</value>
+  </data>
+  <data name="Admin.Done.AgentEnabled" xml:space="preserve">
+    <value>Agent enabled.</value>
+  </data>
+  <data name="Admin.Done.AgentKeyRevoked" xml:space="preserve">
+    <value>Key revoked. The owner can generate a new one.</value>
+  </data>
+  <data name="Admin.Done.AgentDeleted" xml:space="preserve">
+    <value>Agent deleted.</value>
+  </data>
+  <data name="Admin.Done.JobRetried" xml:space="preserve">
+    <value>The job will run again shortly.</value>
+  </data>
+  <data name="Admin.Done.JobDiscarded" xml:space="preserve">
+    <value>Job discarded.</value>
+  </data>
+  <data name="Admin.Agents.Search" xml:space="preserve">
+    <value>Handle starts with…</value>
+  </data>
+  <data name="Admin.Agents.None" xml:space="preserve">
+    <value>No agents.</value>
+  </data>
+  <data name="Admin.Agents.Agent" xml:space="preserve">
+    <value>Agent</value>
+  </data>
+  <data name="Admin.Agents.Owner" xml:space="preserve">
+    <value>Owner</value>
+  </data>
+  <data name="Admin.Agents.Key" xml:space="preserve">
+    <value>Key</value>
+  </data>
+  <data name="Admin.Agents.Actions" xml:space="preserve">
+    <value>Actions</value>
+  </data>
+  <data name="Admin.Agents.Active" xml:space="preserve">
+    <value>Active</value>
+  </data>
+  <data name="Admin.Agents.NoKey" xml:space="preserve">
+    <value>No live key</value>
+  </data>
+  <data name="Admin.Agents.Disable.Confirm" xml:space="preserve">
+    <value>Disable this agent? Its key stops working until it is enabled again.</value>
+  </data>
+  <data name="Admin.Agents.RevokeKey" xml:space="preserve">
+    <value>Revoke key</value>
+  </data>
+  <data name="Admin.Agents.RevokeKey.Confirm" xml:space="preserve">
+    <value>Revoke this agent's key? It stops working at once; the owner has to generate a new one.</value>
+  </data>
+  <data name="Admin.Agents.Delete.Confirm" xml:space="preserve">
+    <value>Delete this agent? It disappears and its key is revoked.</value>
+  </data>
+  <data name="Admin.System.DeadJobs" xml:space="preserve">
+    <value>Failed jobs</value>
+  </data>
+  <data name="Admin.System.DeadJobs.Lead" xml:space="preserve">
+    <value>Background jobs that failed every attempt. Retry once the cause is fixed, or discard them.</value>
+  </data>
+  <data name="Admin.System.DeadJobs.None" xml:space="preserve">
+    <value>No failed jobs.</value>
+  </data>
+  <data name="Admin.System.Type" xml:space="preserve">
+    <value>Type</value>
+  </data>
+  <data name="Admin.System.Failed" xml:space="preserve">
+    <value>Failed</value>
+  </data>
+  <data name="Admin.System.Error" xml:space="preserve">
+    <value>Last error</value>
+  </data>
+  <data name="Admin.System.Attempts" xml:space="preserve">
+    <value>{0} attempts</value>
+  </data>
+  <data name="Admin.System.Retry" xml:space="preserve">
+    <value>Retry</value>
+  </data>
+  <data name="Admin.System.Discard" xml:space="preserve">
+    <value>Discard</value>
+  </data>
+  <data name="Admin.System.Discard.Confirm" xml:space="preserve">
+    <value>Discard this job for good?</value>
+  </data>
+  <data name="Admin.System.Scheduled" xml:space="preserve">
+    <value>Scheduled jobs</value>
+  </data>
+  <data name="Admin.System.Scheduled.None" xml:space="preserve">
+    <value>No scheduled job has run yet.</value>
+  </data>
+  <data name="Admin.System.Job" xml:space="preserve">
+    <value>Job</value>
+  </data>
+  <data name="Admin.System.LastStarted" xml:space="preserve">
+    <value>Last started</value>
+  </data>
+  <data name="Admin.System.LastFinished" xml:space="preserve">
+    <value>Last finished</value>
+  </data>
+  <data name="Admin.System.Ok" xml:space="preserve">
+    <value>OK</value>
+  </data>
+  <data name="Audit.agent.disable" xml:space="preserve">
+    <value>Disabled agent</value>
+  </data>
+  <data name="Audit.agent.enable" xml:space="preserve">
+    <value>Enabled agent</value>
+  </data>
+  <data name="Audit.agent.revoke_key" xml:space="preserve">
+    <value>Revoked agent key</value>
+  </data>
+  <data name="Audit.agent.delete" xml:space="preserve">
+    <value>Deleted agent</value>
+  </data>
+  <data name="Audit.beep.keep" xml:space="preserve">
+    <value>Kept beep</value>
+  </data>
+  <data name="Audit.beep.delete" xml:space="preserve">
+    <value>Deleted beep</value>
+  </data>
+  <data name="Audit.beep.remove_media" xml:space="preserve">
+    <value>Deleted beep images</value>
+  </data>
+  <data name="Audit.job.retry" xml:space="preserve">
+    <value>Retried job</value>
+  </data>
+  <data name="Audit.job.discard" xml:space="preserve">
+    <value>Discarded job</value>
+  </data>
+  <data name="Audit.Target.agent" xml:space="preserve">
+    <value>agent</value>
+  </data>
+  <data name="Audit.Target.beep" xml:space="preserve">
+    <value>beep</value>
+  </data>
+  <data name="Audit.Target.job" xml:space="preserve">
+    <value>job</value>
+  </data>
 </root>

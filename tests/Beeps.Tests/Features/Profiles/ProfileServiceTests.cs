@@ -15,6 +15,7 @@ public sealed class ProfileServiceTests
     private static readonly ActorRow Alice = new(Guid.NewGuid(), ActorKind.Human, "alice", "Alice", null);
 
     private readonly IProfileStore store = Substitute.For<IProfileStore>();
+    private readonly ImmediateUnitOfWork unitOfWork = new();
 
     public ProfileServiceTests()
     {
@@ -119,10 +120,86 @@ public sealed class ProfileServiceTests
         await store.DidNotReceiveWithAnyArgs().RemoveFollowAsync(default, default, TestSupport.Ct);
     }
 
+    [Fact]
+    public async Task AProfileSaysWhetherTheViewingHumanBlockedIt()
+    {
+        store.IsBlockingAsync(Alice.Id, TomsAgent.Id, Arg.Any<CancellationToken>()).Returns(true);
+        var service = Create();
+
+        var blocked = await service.GetAsync(Viewer.Human(Alice.Id), "tom.claude", TestSupport.Ct);
+        var own = await service.GetAsync(Viewer.Human(Tom.Id), "tom.claude", TestSupport.Ct);
+        var signedOut = await service.GetAsync(null, "tom.claude", TestSupport.Ct);
+
+        Assert.True(blocked.Value.Blocked);
+        Assert.Null(own.Value.Blocked);
+        Assert.Null(signedOut.Value.Blocked);
+    }
+
+    [Fact]
+    public async Task BlockingAHumanEndsFollowingBothWays()
+    {
+        store.AddBlockAsync(Alice.Id, Tom.Id, TestData.Now, Arg.Any<CancellationToken>()).Returns(true);
+
+        var result = await Create().BlockAsync(Viewer.Human(Alice.Id), "@tom", TestSupport.Ct);
+
+        Assert.True(result.IsSuccess);
+        await store.Received(1).AddBlockAsync(Alice.Id, Tom.Id, TestData.Now, Arg.Any<CancellationToken>());
+        await store.Received(1).RemoveFollowAsync(Alice.Id, Tom.Id, Arg.Any<CancellationToken>());
+        await store.Received(1).RemoveFollowAsync(Tom.Id, Alice.Id, Arg.Any<CancellationToken>());
+        Assert.Equal([null], unitOfWork.Locks);
+    }
+
+    [Fact]
+    public async Task BlockingAnAgentLeavesFollowingAlone()
+    {
+        var result = await Create().BlockAsync(Viewer.Human(Alice.Id), "tom.claude", TestSupport.Ct);
+
+        Assert.True(result.IsSuccess);
+        await store.Received(1).AddBlockAsync(Alice.Id, TomsAgent.Id, TestData.Now, Arg.Any<CancellationToken>());
+        await store.DidNotReceiveWithAnyArgs().RemoveFollowAsync(default, default, TestSupport.Ct);
+    }
+
+    [Fact]
+    public async Task NobodyBlocksThemselvesTheirAgentsOrAsAnAgent()
+    {
+        var service = Create();
+
+        var self = await service.BlockAsync(Viewer.Human(Tom.Id), "tom", TestSupport.Ct);
+        var ownAgent = await service.BlockAsync(Viewer.Human(Tom.Id), "tom.claude", TestSupport.Ct);
+        var asAgent = await service.BlockAsync(Viewer.Agent(TomsAgent.Id, Tom.Id), "alice", TestSupport.Ct);
+        var missing = await service.UnblockAsync(Viewer.Human(Tom.Id), "nobody", TestSupport.Ct);
+
+        Assert.Equal(ProfileErrorCodes.CannotBlockOwn, self.Error?.Code);
+        Assert.Equal(ProfileErrorCodes.CannotBlockOwn, ownAgent.Error?.Code);
+        Assert.Equal(ProfileErrorCodes.AgentsCannotBlock, asAgent.Error?.Code);
+        Assert.Equal(ErrorKind.NotFound, missing.Error?.Kind);
+        await store.DidNotReceiveWithAnyArgs().AddBlockAsync(default, default, default, TestSupport.Ct);
+    }
+
+    [Fact]
+    public async Task UnblockingRemovesTheBlock()
+    {
+        var result = await Create().UnblockAsync(Viewer.Human(Alice.Id), "tom", TestSupport.Ct);
+
+        Assert.True(result.IsSuccess);
+        await store.Received(1).RemoveBlockAsync(Alice.Id, Tom.Id, Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task NobodyFollowsAcrossABlock()
+    {
+        store.AnyBlockBetweenAsync(Alice.Id, Tom.Id, Arg.Any<CancellationToken>()).Returns(true);
+
+        var result = await Create().FollowAsync(Viewer.Human(Alice.Id), "tom", TestSupport.Ct);
+
+        Assert.Equal((ErrorKind.Forbidden, ProfileErrorCodes.Blocked), (result.Error?.Kind, result.Error?.Code));
+        await store.DidNotReceiveWithAnyArgs().AddFollowAsync(default, default, default, TestSupport.Ct);
+    }
+
     private ProfileService Create()
     {
         var views = new BeepViews(
             Substitute.For<IBeepStore>(), Substitute.For<IBeepCounterStore>(), TestData.Avatars, TestData.Media, NullLogger<BeepViews>.Instance);
-        return new ProfileService(store, views, TestData.Time(), new TestLocalizer(), NullLogger<ProfileService>.Instance);
+        return new ProfileService(store, views, unitOfWork, TestData.Time(), new TestLocalizer(), NullLogger<ProfileService>.Instance);
     }
 }

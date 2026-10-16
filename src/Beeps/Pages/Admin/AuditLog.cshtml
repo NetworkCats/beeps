@@ -1,4 +1,5 @@
 @page "/admin/audit"
+@using Beeps.Features.Admin
 @model Beeps.Pages.Admin.AuditLogModel
 @{
     ViewData["Title"] = L["Admin.AuditLog"];
@@ -29,13 +30,21 @@ else
                         <td data-label="@L["Admin.AuditLog.Who"]"><a asp-page="/Admin/Users/Details" asp-route-id="@entry.AdminId">@@@entry.AdminHandle</a></td>
                         <td data-label="@L["Admin.AuditLog.What"]">@L[$"Audit.{entry.Action}"]</td>
                         <td data-label="@L["Admin.AuditLog.Target"]">
-                            @if (entry.TargetHandle is not null)
+                            @switch (entry.TargetType)
                             {
-                                <a asp-page="/Admin/Users/Details" asp-route-id="@entry.TargetId">@@@entry.TargetHandle</a>
-                            }
-                            else
-                            {
-                                @L[$"Audit.Target.{entry.TargetType}"]
+                                case AuditTargets.User when entry.TargetHandle is not null:
+                                    <a asp-page="/Admin/Users/Details" asp-route-id="@entry.TargetId">@@@entry.TargetHandle</a>
+                                    break;
+                                @* An agent is listed on its owner's page. *@
+                                case AuditTargets.Agent when entry.TargetOwnerId is not null:
+                                    <a asp-page="/Admin/Users/Details" asp-route-id="@entry.TargetOwnerId">@(entry.TargetHandle is null ? L["Audit.Target.agent"].Value : $"@{entry.TargetHandle}")</a>
+                                    break;
+                                case AuditTargets.Beep when entry.TargetId is not null:
+                                    <a asp-page="/Admin/Review/Beep" asp-route-id="@entry.TargetId">@L["Audit.Target.beep"]</a>
+                                    break;
+                                default:
+                                    @L[$"Audit.Target.{entry.TargetType}"]
+                                    break;
                             }
                         </td>
                         <td data-label="@L["Admin.AuditLog.Detail"]">@entry.Detail</td>

@@ -264,6 +264,100 @@
   }
 }
 
+// Buttons for one row of a table: they wrap, and add no space below.
+.admin-actions-inline {
+  margin-block-end: 0;
+}
+
+// The overview's numbers: a figure per tile, the label above it.
+.stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr));
+  gap: var(--cui-space-3);
+  margin: 0 0 var(--cui-space-3);
+}
+
+.stat {
+  padding: var(--cui-space-4);
+  border: var(--cui-border-width) solid var(--cui-border);
+  border-radius: var(--cui-radius);
+
+  > dt {
+    color: var(--cui-text-3);
+    font-size: var(--cui-text-sm);
+  }
+
+  > dd {
+    margin: 0;
+    font-size: var(--cui-text-2xl);
+    font-variant-numeric: tabular-nums;
+  }
+
+  > .stat-note {
+    color: var(--cui-text-3);
+    font-size: var(--cui-text-sm);
+  }
+}
+
+// Something waits for an admin.
+.stat-attention {
+  border-color: var(--cui-warning);
+}
+
+// User-written text in the review pages: shown as written, line breaks and all, never as HTML.
+.review-text,
+.review-note {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.review-text {
+  margin-block-end: var(--cui-space-4);
+}
+
+.review-context {
+  margin-block-end: var(--cui-space-6);
+  padding-inline-start: var(--cui-space-4);
+  border-inline-start: 2px solid var(--cui-border);
+
+  > .review-text {
+    color: var(--cui-text-3);
+  }
+}
+
+.review-excerpt {
+  display: -webkit-box;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+}
+
+.review-media {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--cui-space-2);
+  margin: 0 0 var(--cui-space-6);
+  padding: 0;
+  list-style: none;
+
+  img {
+    display: block;
+    width: auto;
+    max-width: 10rem;
+    height: 10rem;
+    object-fit: cover;
+    border-radius: var(--cui-radius);
+  }
+}
+
+.report-form {
+  display: grid;
+  gap: var(--cui-space-4);
+  margin-block-start: var(--cui-space-6);
+}
+
 fieldset.check-list {
   margin: 0;
   padding: 0;
@@ -624,6 +718,11 @@ span.beep-action {
   }
 }
 
+// Reporting sits where deleting would on one's own beeps: apart, at the far end.
+.beep-actions > .beep-report {
+  margin-inline-start: auto;
+}
+
 .beep-icon {
   flex-shrink: 0;
   width: 1.125rem;
@@ -702,6 +801,10 @@ span.beep-action {
 }
 
 .profile-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--cui-space-2);
   margin-inline-start: auto;
 
   > form {

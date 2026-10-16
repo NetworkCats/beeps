@@ -1,5 +1,6 @@
 using System.Linq.Expressions;
 using Beeps.Features.Accounts;
+using Beeps.Features.Profiles;
 
 namespace Beeps.Features.Beeps;
 
@@ -20,13 +21,31 @@ public static class BeepVisibility
         actors.Where(ActorIsVisible(users));
 
     /// <summary>
-    /// Beeps the viewer may see: not deleted, by a visible author, and not hidden by moderation, except
-    /// that the author and the author's owner still see their own hidden beeps.
+    /// Leaves out the actors the viewer blocked (PLAN 5.1); blocking a human leaves out their agents too. Blocks
+    /// belong to humans, so an agent reads with its owner's. Signed out, nobody is left out.
+    /// </summary>
+    /// <param name="all">Every actor, to find the viewer's owner.</param>
+    public static IQueryable<Actor> NotBlockedBy(this IQueryable<Actor> actors, Guid? viewerId, IQueryable<Actor> all, IQueryable<Block> blocks)
+    {
+        if (viewerId is not { } viewer)
+        {
+            return actors;
+        }
+
+        var blocked = blocks
+            .Where(k => k.BlockerId == viewer || k.BlockerId == all.Where(v => v.Id == viewer).Select(v => v.OwnerId).FirstOrDefault())
+            .Select(k => k.BlockedId);
+        return actors.Where(a => !blocked.Contains(a.Id) && (a.OwnerId == null || !blocked.Contains(a.OwnerId.Value)));
+    }
+
+    /// <summary>
+    /// Beeps the viewer may see: not deleted, by a visible author the viewer has not blocked, and not hidden by
+    /// moderation, except that the author and the author's owner still see their own hidden beeps.
     /// </summary>
     /// <param name="viewerId">The reading human or agent; null when signed out.</param>
-    public static IQueryable<Beep> VisibleTo(this IQueryable<Beep> beeps, Guid? viewerId, IQueryable<Actor> actors, IQueryable<User> users)
+    public static IQueryable<Beep> VisibleTo(this IQueryable<Beep> beeps, Guid? viewerId, IQueryable<Actor> actors, IQueryable<User> users, IQueryable<Block> blocks)
     {
-        var authors = actors.VisibleActors(users);
+        var authors = actors.VisibleActors(users).NotBlockedBy(viewerId, actors, blocks);
         return beeps.Where(b =>
             b.DeletedAt == null
             && authors.Any(a => a.Id == b.AuthorId)

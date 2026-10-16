@@ -39,11 +39,11 @@ public sealed class EfMediaStore(BeepsDbContext db) : IMediaStore, IAvatarStore
     public async Task<IReadOnlyList<Guid>> LockOwnedAsync(Guid ownerActorId, IReadOnlyCollection<Guid> mediaIds, CancellationToken cancellationToken)
     {
         var ids = mediaIds.ToArray();
-        var failed = EnumText.ToValue(MediaStatus.Failed);
+        string[] usable = [EnumText.ToValue(MediaStatus.Processing), EnumText.ToValue(MediaStatus.Ready)];
         // KEY SHARE: the weakest lock that still blocks a delete, and the one a foreign key check takes anyway.
         // Media still processing can be used; they are shown once ready.
         return await db.Database
-            .SqlQuery<Guid>($"""SELECT id AS "Value" FROM media WHERE id = ANY({ids}) AND owner_actor_id = {ownerActorId} AND status <> {failed} FOR KEY SHARE""")
+            .SqlQuery<Guid>($"""SELECT id AS "Value" FROM media WHERE id = ANY({ids}) AND owner_actor_id = {ownerActorId} AND status = ANY({usable}) FOR KEY SHARE""")
             .ToListAsync(cancellationToken);
     }
 

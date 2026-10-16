@@ -40,4 +40,20 @@ public sealed class EfProfileStore(BeepsDbContext db) : IProfileStore
 
     public async Task<bool> RemoveFollowAsync(Guid followerId, Guid followeeId, CancellationToken cancellationToken) =>
         await db.Set<Follow>().Where(f => f.FollowerId == followerId && f.FolloweeId == followeeId).ExecuteDeleteAsync(cancellationToken) == 1;
+
+    public Task<bool> IsBlockingAsync(Guid blockerId, Guid blockedId, CancellationToken cancellationToken) =>
+        db.Set<Block>().AnyAsync(k => k.BlockerId == blockerId && k.BlockedId == blockedId, cancellationToken);
+
+    public Task<bool> AnyBlockBetweenAsync(Guid humanId, Guid otherHumanId, CancellationToken cancellationToken) =>
+        db.Set<Block>().AnyAsync(
+            k => (k.BlockerId == humanId && k.BlockedId == otherHumanId) || (k.BlockerId == otherHumanId && k.BlockedId == humanId),
+            cancellationToken);
+
+    public async Task<bool> AddBlockAsync(Guid blockerId, Guid blockedId, DateTimeOffset now, CancellationToken cancellationToken) =>
+        await db.Database.ExecuteSqlAsync(
+            $"INSERT INTO blocks (blocker_id, blocked_id, created_at) VALUES ({blockerId}, {blockedId}, {now}) ON CONFLICT DO NOTHING",
+            cancellationToken) == 1;
+
+    public async Task<bool> RemoveBlockAsync(Guid blockerId, Guid blockedId, CancellationToken cancellationToken) =>
+        await db.Set<Block>().Where(k => k.BlockerId == blockerId && k.BlockedId == blockedId).ExecuteDeleteAsync(cancellationToken) == 1;
 }

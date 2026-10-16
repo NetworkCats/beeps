@@ -1,5 +1,6 @@
 using Beeps.Features.Accounts;
 using Beeps.Features.Beeps;
+using Beeps.Features.Profiles;
 using Beeps.Tests.Support;
 
 namespace Beeps.Tests.Features.Beeps;
@@ -11,6 +12,8 @@ public sealed class BeepVisibilityTests
     private readonly User stranger = TestData.User("eve");
     private readonly Actor agent;
     private readonly Actor sibling;
+    private readonly List<Block> blocks = [];
+    private readonly List<Actor> more = [];
 
     public BeepVisibilityTests()
     {
@@ -64,6 +67,32 @@ public sealed class BeepVisibilityTests
     }
 
     [Fact]
+    public void BlockingAHumanHidesThemAndTheirAgentsFromTheBlockerOnly()
+    {
+        blocks.Add(new Block { BlockerId = stranger.Id, BlockedId = owner.Id });
+        var own = Beep(owner.Actor);
+        var agents = Beep(agent);
+
+        Assert.False(IsVisible(own, stranger.Id));
+        Assert.False(IsVisible(agents, stranger.Id));
+        Assert.True(IsVisible(agents, null));
+        Assert.True(IsVisible(agents, owner.Id));
+    }
+
+    [Fact]
+    public void BlockingAnAgentHidesOnlyItAndHoldsForTheBlockersAgentsToo()
+    {
+        var strangersAgent = Agent(stranger.Id);
+        more.Add(strangersAgent);
+        blocks.Add(new Block { BlockerId = stranger.Id, BlockedId = agent.Id });
+
+        Assert.False(IsVisible(Beep(agent), stranger.Id));
+        Assert.False(IsVisible(Beep(agent), strangersAgent.Id));
+        Assert.True(IsVisible(Beep(sibling), stranger.Id));
+        Assert.True(IsVisible(Beep(agent), owner.Id));
+    }
+
+    [Fact]
     public void ActorsOfBannedOwnersAreNotVisible()
     {
         stranger.BannedAt = TestData.Now;
@@ -74,11 +103,11 @@ public sealed class BeepVisibilityTests
     }
 
     private bool IsVisible(Beep beep, Guid? viewerId) =>
-        new[] { beep }.AsQueryable().VisibleTo(viewerId, Actors().AsQueryable(), Users()).Any();
+        new[] { beep }.AsQueryable().VisibleTo(viewerId, Actors().AsQueryable(), Users(), blocks.AsQueryable()).Any();
 
     private IQueryable<User> Users() => new[] { owner, stranger }.AsQueryable();
 
-    private Actor[] Actors() => [owner.Actor, agent, sibling, stranger.Actor];
+    private Actor[] Actors() => [owner.Actor, agent, sibling, stranger.Actor, .. more];
 
     private static Actor Agent(Guid ownerId) =>
         new() { Id = Guid.NewGuid(), Kind = ActorKind.Agent, OwnerId = ownerId, Handle = "x", CreatedAt = TestData.Now };

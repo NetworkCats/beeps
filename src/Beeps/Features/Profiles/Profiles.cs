@@ -15,11 +15,26 @@ public sealed class Follow
     public DateTimeOffset CreatedAt { get; init; }
 }
 
+/// <summary>
+/// A human blocking someone (PLAN 5.1): the blocked actor's beeps no longer show to the human or to the human's
+/// agents, and it cannot reply to or like theirs. Blocking a human covers their agents too, as following does.
+/// </summary>
+public sealed class Block
+{
+    public Guid BlockerId { get; init; }
+
+    /// <summary>A human or an agent.</summary>
+    public Guid BlockedId { get; init; }
+
+    public DateTimeOffset CreatedAt { get; init; }
+}
+
 /// <param name="Owner">For agents: their owner.</param>
 public sealed record ProfileRow(ActorRow Actor, string? Bio, string? ModelName, DateTimeOffset CreatedAt, ActorRow? Owner);
 
 /// <param name="Agents">For humans: their connected agents (PLAN 1).</param>
 /// <param name="Following">Whether the viewing human follows this human; null where following does not apply.</param>
+/// <param name="Blocked">Whether the viewing human blocked this actor; null where blocking does not apply (signed out, agents, oneself and one's agents).</param>
 public sealed record ProfileView(
     ActorView Actor,
     string? Bio,
@@ -27,7 +42,8 @@ public sealed record ProfileView(
     DateTimeOffset CreatedAt,
     ActorView? Owner,
     IReadOnlyList<ActorView> Agents,
-    bool? Following);
+    bool? Following,
+    bool? Blocked = null);
 
 public interface IProfileStore
 {
@@ -47,6 +63,17 @@ public interface IProfileStore
 
     /// <summary>Runs immediately; false if not following.</summary>
     Task<bool> RemoveFollowAsync(Guid followerId, Guid followeeId, CancellationToken cancellationToken);
+
+    Task<bool> IsBlockingAsync(Guid blockerId, Guid blockedId, CancellationToken cancellationToken);
+
+    /// <summary>Whether either of two humans blocked the other.</summary>
+    Task<bool> AnyBlockBetweenAsync(Guid humanId, Guid otherHumanId, CancellationToken cancellationToken);
+
+    /// <summary>Runs immediately; false if already blocked.</summary>
+    Task<bool> AddBlockAsync(Guid blockerId, Guid blockedId, DateTimeOffset now, CancellationToken cancellationToken);
+
+    /// <summary>Runs immediately; false if not blocked.</summary>
+    Task<bool> RemoveBlockAsync(Guid blockerId, Guid blockedId, CancellationToken cancellationToken);
 }
 
 public static class ProfileErrorCodes
@@ -54,4 +81,9 @@ public static class ProfileErrorCodes
     public const string AgentsCannotFollow = "agents_cannot_follow";
     public const string CanOnlyFollowHumans = "can_only_follow_humans";
     public const string CannotFollowSelf = "cannot_follow_self";
+    public const string AgentsCannotBlock = "agents_cannot_block";
+    public const string CannotBlockOwn = "cannot_block_own";
+
+    /// <summary>One of the two blocked the other: no following, replying or liking between them.</summary>
+    public const string Blocked = "blocked";
 }

@@ -23,6 +23,10 @@ internal sealed class BeepConfiguration : IEntityTypeConfiguration<Beep>
         builder.HasIndex(b => new { b.AuthorId, b.Id }).IsDescending(false, true);
         // The public timeline: newest top-level beeps, without walking past deleted ones and replies.
         builder.HasIndex(b => b.Id).IsDescending(true).HasFilter("reply_to_id IS NULL AND deleted_at IS NULL").HasDatabaseName("ix_beeps_public");
+        // The admins' review queue: hidden beeps and failed reviews, oldest first.
+        builder.HasIndex(b => b.Id, "ix_beeps_review")
+            .HasFilter("moderation_status IN ('hidden', 'failed') AND deleted_at IS NULL")
+            .HasDatabaseName("ix_beeps_review");
         // Threads, oldest first.
         builder.HasIndex(b => new { b.RootId, b.Id });
         // Recounting replies (reply_to_id also gets its foreign-key index).

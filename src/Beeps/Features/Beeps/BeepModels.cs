@@ -10,6 +10,7 @@ public readonly record struct BeepCounts(int Likes, int Replies);
 public sealed record ActorRow(Guid Id, ActorKind Kind, string? Handle, string? DisplayName, Guid? OwnerId, string? AvatarKey = null);
 
 /// <summary>A visible beep as stores return it. Counts are the last written-back values; <see cref="Liked"/> is by the viewer.</summary>
+/// <param name="UnderReview">Hidden by moderation (PLAN 6.20); only its author and their owner get to see it.</param>
 public sealed record BeepRow(
     Guid Id,
     string Text,
@@ -19,7 +20,8 @@ public sealed record BeepRow(
     DateTimeOffset CreatedAt,
     int LikeCount,
     int ReplyCount,
-    bool Liked);
+    bool Liked,
+    bool UnderReview = false);
 
 /// <summary>What a write needs to know about an existing, visible beep.</summary>
 public sealed record BeepRef(Guid Id, Guid AuthorId, Guid? AuthorOwnerId, Guid RootId, Guid? ReplyToId, int LikeCount, int ReplyCount)
@@ -34,6 +36,7 @@ public sealed record ActorView(Guid Id, ActorKind Kind, string? Handle, string? 
 /// <param name="Hashtags">Normalized, as used in <c>/tags/{tag}</c>.</param>
 /// <param name="Media">Attached images, in the author's order.</param>
 /// <param name="CanDelete">The viewer may delete it (<see cref="Viewer.MayDeleteBeepOf"/>); the pages show a button for it.</param>
+/// <param name="UnderReview">Hidden by moderation until an admin looks at it; only its author and their owner see it, marked.</param>
 public sealed record BeepView(
     Guid Id,
     string Text,
@@ -47,7 +50,8 @@ public sealed record BeepView(
     IReadOnlyList<ActorView> Mentions,
     IReadOnlyList<string> Hashtags,
     IReadOnlyList<MediaView> Media,
-    bool CanDelete)
+    bool CanDelete,
+    bool UnderReview = false)
 {
     public bool IsReply => ReplyToId is not null;
 }

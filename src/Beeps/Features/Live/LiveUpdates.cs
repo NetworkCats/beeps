@@ -19,6 +19,9 @@ public sealed partial class LiveUpdates(ILiveEventStore store, IBeepCounterStore
     public Task BeepRemovedAsync(Guid beepId, CancellationToken cancellationToken) =>
         AppendAsync(LiveEventTypes.BeepRemoved, new BeepRemovedEvent(beepId), LiveJsonContext.Default.BeepRemovedEvent, cancellationToken);
 
+    public Task BeepHiddenAsync(Guid beepId, Guid authorId, Guid? authorOwnerId, CancellationToken cancellationToken) =>
+        AppendAsync(LiveEventTypes.BeepHidden, new BeepHiddenEvent(beepId, authorId, authorOwnerId), LiveJsonContext.Default.BeepHiddenEvent, cancellationToken);
+
     public Task InboxChangedAsync(IReadOnlyList<Guid> recipientIds, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(recipientIds);

@@ -17,6 +17,7 @@ public sealed partial class AdminService(
     ISessionStore sessions,
     IAgentStore agents,
     AgentService agentService,
+    AdminAccess access,
     IUnitOfWork unitOfWork,
     IOutbox outbox,
     AvatarUrls avatars,
@@ -186,6 +187,72 @@ public sealed partial class AdminService(
         return result;
     }
 
+    /// <param name="query">A handle prefix, with or without <c>@</c>; empty lists every agent.</param>
+    public async Task<Result<CursorPage<AdminAgentRow>>> ListAgentsAsync(Guid adminId, string? query, Guid? before, CancellationToken cancellationToken)
+    {
+        if (await RequireAdminAsync(adminId, cancellationToken) is { } denied)
+        {
+            return denied;
+        }
+
+        query = query?.Trim().TrimStart('@');
+        if (query is { Length: > MaxQueryLength })
+        {
+            query = query[..MaxQueryLength];
+        }
+
+        return await store.ListAgentsAsync(string.IsNullOrEmpty(query) ? null : AccountRules.NormalizeHandle(query), before, PageSize, cancellationToken);
+    }
+
+    /// <summary>Switches an agent off (PLAN 3.6): its key stops working at once. Its owner can switch it back on.</summary>
+    public Task<Result> DisableAgentAsync(Guid adminId, Guid agentId, CancellationToken cancellationToken) =>
+        ChangeAgentAsync(adminId, agentId, AuditActions.DisableAgent, (agent, now, _) =>
+        {
+            if (agent.DisabledAt is not null)
+            {
+                return Task.FromResult(Result.Of(false));
+            }
+
+            agent.DisabledAt = now;
+            return Task.FromResult(Result.Of(true));
+        }, cancellationToken);
+
+    /// <summary>Not for the agents of a banned owner: lifting the ban comes first.</summary>
+    public Task<Result> EnableAgentAsync(Guid adminId, Guid agentId, CancellationToken cancellationToken) =>
+        ChangeAgentAsync(adminId, agentId, AuditActions.EnableAgent, async (agent, _, ct) =>
+        {
+            if (agent.DisabledAt is null)
+            {
+                return false;
+            }
+
+            if (agent.OwnerId is { } ownerId && await store.FindUserAsync(ownerId, ct) is { BannedAt: not null })
+            {
+                return Error.Conflict(AdminErrorCodes.UserBanned, localizer["Error.OwnerBanned"]);
+            }
+
+            agent.DisabledAt = null;
+            return true;
+        }, cancellationToken);
+
+    /// <summary>Revokes the agent's key (PLAN 3.6) without issuing a new one; its owner generates the next.</summary>
+    public Task<Result> RevokeAgentKeyAsync(Guid adminId, Guid agentId, CancellationToken cancellationToken) =>
+        ChangeAgentAsync(adminId, agentId, AuditActions.RevokeAgentKey, async (agent, now, ct) =>
+        {
+            await agents.RevokeKeysAsync(agent.Id, now, ct);
+            return true;
+        }, cancellationToken);
+
+    /// <summary>Soft-deletes the agent as its owner would: it disappears, its keys are revoked, the record stays.</summary>
+    public Task<Result> DeleteAgentAsync(Guid adminId, Guid agentId, CancellationToken cancellationToken) =>
+        ChangeAgentAsync(adminId, agentId, AuditActions.DeleteAgent, async (agent, now, ct) =>
+        {
+            agent.DeletedAt = now;
+            await agents.RevokeKeysAsync(agent.Id, now, ct);
+            outbox.SyncAccountToSearch(agent.Id, beeps: true);
+            return true;
+        }, cancellationToken);
+
     public async Task<Result<RegistrationMode>> GetRegistrationModeAsync(Guid adminId, CancellationToken cancellationToken) =>
         await RequireAdminAsync(adminId, cancellationToken) is { } denied
             ? denied
@@ -283,11 +350,7 @@ public sealed partial class AdminService(
         return await store.ListAuditLogAsync(before, PageSize, cancellationToken);
     }
 
-    /// <summary>The admin check, done here rather than trusted from the page: revoking admin takes effect at once.</summary>
-    private async Task<Error?> RequireAdminAsync(Guid adminId, CancellationToken cancellationToken) =>
-        await store.IsActiveAdminAsync(adminId, cancellationToken)
-            ? null
-            : Error.Forbidden(AdminErrorCodes.NotAdmin, localizer["Error.NotAdmin"]);
+    private Task<Error?> RequireAdminAsync(Guid adminId, CancellationToken cancellationToken) => access.RequireAdminAsync(adminId, cancellationToken);
 
     /// <summary>Runs a change to another user under the admin lock, so the last-admin rule cannot be raced.</summary>
     private async Task<Result> ChangeUserAsync(
@@ -328,6 +391,57 @@ public sealed partial class AdminService(
     }
 
     /// <summary>
+    /// Runs a change to an agent in one transaction with its audit entry, then drops the cached key lookups so
+    /// the change applies to the agent's very next request. <paramref name="change"/> answers whether there was
+    /// anything to change: nothing to change is a success without an audit entry.
+    /// </summary>
+    private async Task<Result> ChangeAgentAsync(
+        Guid adminId,
+        Guid agentId,
+        string action,
+        Func<Actor, DateTimeOffset, CancellationToken, Task<Result<bool>>> change,
+        CancellationToken cancellationToken)
+    {
+        if (await RequireAdminAsync(adminId, cancellationToken) is { } denied)
+        {
+            return denied;
+        }
+
+        var agent = await agents.FindAgentAsync(agentId, cancellationToken);
+        if (agent is not { Kind: ActorKind.Agent })
+        {
+            return Error.NotFound(ErrorCodes.NotFound, localizer["Error.AgentNotFound"]);
+        }
+
+        var result = await unitOfWork.InTransactionAsync(
+            null,
+            async ct =>
+            {
+                var changed = await change(agent, time.GetUtcNow(), ct);
+                if (!changed.IsSuccess)
+                {
+                    return changed.Error;
+                }
+
+                if (changed.Value)
+                {
+                    Audit(adminId, action, AuditTargets.Agent, agent.Id, null);
+                    await unitOfWork.SaveChangesAsync(ct);
+                    LogAgentChanged(logger, agent.Id, action, adminId);
+                }
+
+                return Result.Success;
+            },
+            cancellationToken);
+        if (result.IsSuccess)
+        {
+            await agents.ForgetKeysAsync([agent.Id], cancellationToken);
+        }
+
+        return result;
+    }
+
+    /// <summary>
     /// After a committed change: drops the cached account state, so the change applies to the user's very
     /// next request, and with <paramref name="endSessions"/> the cached copies of their revoked sessions.
     /// </summary>
@@ -352,23 +466,15 @@ public sealed partial class AdminService(
             ? Error.Conflict(AdminErrorCodes.LastAdmin, localizer["Error.LastAdmin"])
             : null;
 
-    private void Audit(Guid adminId, string action, string targetType, Guid? targetId, string? detail)
-    {
-        var now = time.GetUtcNow();
-        store.AddAuditLog(new AdminAuditLog
-        {
-            Id = Guid.CreateVersion7(now),
-            AdminId = adminId,
-            Action = action,
-            TargetType = targetType,
-            TargetId = targetId,
-            Detail = detail,
-            CreatedAt = now,
-        });
-    }
+    private void Audit(Guid adminId, string action, string targetType, Guid? targetId, string? detail) =>
+        access.Audit(adminId, action, targetType, targetId, detail);
 
     private Error UserNotFound() => Error.NotFound(ErrorCodes.NotFound, localizer["Error.AccountNotFound"]);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Admin rights of {UserId} set to {IsAdmin} by {AdminId}")]
     private static partial void LogAdminChanged(ILogger logger, Guid userId, bool isAdmin, Guid adminId);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Agent {AgentId}: {Action} by {AdminId}")]
+    private static partial void LogAgentChanged(ILogger logger, Guid agentId, string action, Guid adminId);
+
 }

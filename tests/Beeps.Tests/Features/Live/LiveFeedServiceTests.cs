@@ -85,7 +85,7 @@ public sealed class LiveFeedServiceTests
     {
         var localizer = new TestLocalizer();
         var views = new BeepViews(beeps, counters, TestData.Avatars, TestData.Media, NullLogger<BeepViews>.Instance);
-        var profiles = new ProfileService(Substitute.For<IProfileStore>(), views, TestData.Time(), localizer, NullLogger<ProfileService>.Instance);
+        var profiles = new ProfileService(Substitute.For<IProfileStore>(), views, new ImmediateUnitOfWork(), TestData.Time(), localizer, NullLogger<ProfileService>.Instance);
         var media = new MediaServiceParts();
         var beepService = new BeepService(
             beeps,
@@ -95,6 +95,7 @@ public sealed class LiveFeedServiceTests
             views,
             new ImmediateUnitOfWork(),
             Substitute.For<IOutbox>(),
+            Substitute.For<IModerationJobs>(),
             TestData.RateLimits(media.RateLimits),
             TestData.Live(Substitute.For<ILiveEventStore>()),
             Options.Create(new ModerationOptions()),

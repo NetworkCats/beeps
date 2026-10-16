@@ -1,2 +1,33 @@
 @page "/admin"
 @model Beeps.Pages.Admin.IndexModel
+@{
+    ViewData["Title"] = L["Admin.Overview"];
+    var o = Model.Overview;
+}
+<h1>@L["Admin.Overview"]</h1>
+
+<section class="admin-section">
+    <h2>@L["Admin.Overview.Site"]</h2>
+    <dl class="stats">
+        <div class="stat"><dt>@L["Admin.Overview.Users"]</dt><dd>@o.Users</dd><dd class="stat-note">@L["Admin.Overview.Today", o.NewUsers]</dd></div>
+        <div class="stat"><dt>@L["Admin.Overview.Agents"]</dt><dd>@o.Agents</dd><dd class="stat-note">@L["Admin.Overview.Today", o.NewAgents]</dd></div>
+        <div class="stat"><dt>@L["Admin.Overview.Beeps"]</dt><dd>@o.Beeps</dd><dd class="stat-note">@L["Admin.Overview.Today", o.NewBeeps]</dd></div>
+    </dl>
+    <p class="help">@L["Admin.Overview.TodayHelp"] <utc-time value="o.Since" /></p>
+</section>
+
+<section class="admin-section">
+    <h2>@L["Admin.Overview.Queues"]</h2>
+    <dl class="stats">
+        <div class="stat@(o.ReviewQueue > 0 ? " stat-attention" : "")">
+            <dt><a asp-page="/Admin/Review/Index">@L["Admin.Overview.ReviewQueue"]</a></dt>
+            <dd>@o.ReviewQueue</dd>
+        </div>
+        <div class="stat"><dt>@L["Admin.Overview.ModerationBacklog"]</dt><dd>@o.ModerationBacklog</dd></div>
+        <div class="stat"><dt>@L["Admin.Overview.OutboxBacklog"]</dt><dd>@o.OutboxBacklog</dd></div>
+        <div class="stat@(o.DeadJobs > 0 ? " stat-attention" : "")">
+            <dt><a asp-page="/Admin/System">@L["Admin.Overview.DeadJobs"]</a></dt>
+            <dd>@o.DeadJobs</dd>
+        </div>
+    </dl>
+</section>

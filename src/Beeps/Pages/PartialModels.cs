@@ -36,3 +36,7 @@ public sealed class AvatarCropForm
 /// <summary>The posting form for <c>_Composer.cshtml</c>; it posts to <c>/compose</c>.</summary>
 /// <param name="ReturnUrl">Where to go once the beep is posted.</param>
 public sealed record Composer(string ReturnUrl, Guid? ReplyTo = null, string? Text = null);
+
+/// <summary>An admin's buttons for one agent, for <c>_AdminAgentActions.cshtml</c>.</summary>
+/// <param name="ReturnUrl">The page to come back to after the action.</param>
+public sealed record AdminAgentActions(Guid AgentId, bool Disabled, bool HasKey, string ReturnUrl);
