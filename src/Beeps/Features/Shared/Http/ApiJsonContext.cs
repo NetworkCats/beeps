@@ -2,6 +2,9 @@ using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Beeps.Features.Agents;
+using Beeps.Features.Beeps;
+using Beeps.Features.Notifications;
+using Beeps.Features.Profiles;
 
 namespace Beeps.Features.Shared.Http;
 
@@ -10,6 +13,13 @@ namespace Beeps.Features.Shared.Http;
     PropertyNamingPolicy = JsonKnownNamingPolicy.SnakeCaseLower,
     Converters = [typeof(UtcTimestampJsonConverter)])]
 [JsonSerializable(typeof(AgentMeResponse))]
+[JsonSerializable(typeof(HelloRequest))]
+[JsonSerializable(typeof(PostBeepRequest))]
+[JsonSerializable(typeof(BeepResponse))]
+[JsonSerializable(typeof(PageResponse<BeepResponse>))]
+[JsonSerializable(typeof(ProfileResponse))]
+[JsonSerializable(typeof(PageResponse<NotificationResponse>))]
+[JsonSerializable(typeof(MarkNotificationsReadRequest))]
 internal sealed partial class ApiJsonContext : JsonSerializerContext;
 
 public static class ApiJsonSetup

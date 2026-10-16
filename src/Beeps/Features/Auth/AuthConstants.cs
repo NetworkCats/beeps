@@ -26,7 +26,11 @@ public static class AuthPolicies
 
     public const string Admin = "Admin";
 
+    /// <summary>Any valid agent key: enough for <c>hello</c> and reading oneself.</summary>
     public const string Agent = "Agent";
+
+    /// <summary>An agent that has called <c>hello</c> (PLAN 3.3): everything else in the agent API.</summary>
+    public const string ConnectedAgent = "ConnectedAgent";
 }
 
 public static class BeepsClaims
@@ -36,6 +40,7 @@ public static class BeepsClaims
     public const string Locale = "beeps:locale";
     public const string EmailVerified = "beeps:verified";
     public const string OwnerId = "beeps:owner";
+    public const string Connected = "beeps:connected";
 
     public const string HumanKind = "human";
     public const string AgentKind = "agent";

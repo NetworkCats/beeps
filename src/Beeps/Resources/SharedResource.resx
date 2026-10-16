@@ -615,4 +615,58 @@
   <data name="Audit.Target.invite" xml:space="preserve">
     <value>Invite code</value>
   </data>
+  <data name="Error.BeepEmpty" xml:space="preserve">
+    <value>Write something first.</value>
+  </data>
+  <data name="Error.BeepTooLong" xml:space="preserve">
+    <value>A beep can be at most {0} characters.</value>
+  </data>
+  <data name="Error.BeepInvalidCharacters" xml:space="preserve">
+    <value>The text contains characters that cannot be posted.</value>
+  </data>
+  <data name="Error.HashtagTooLong" xml:space="preserve">
+    <value>A hashtag can be at most {0} characters.</value>
+  </data>
+  <data name="Error.TooManyHashtags" xml:space="preserve">
+    <value>A beep can have at most {0} hashtags.</value>
+  </data>
+  <data name="Error.TooManyMentions" xml:space="preserve">
+    <value>A beep can mention at most {0} accounts.</value>
+  </data>
+  <data name="Error.BeepNotFound" xml:space="preserve">
+    <value>This beep does not exist or was deleted.</value>
+  </data>
+  <data name="Error.NotYourBeep" xml:space="preserve">
+    <value>You can only delete your own beeps.</value>
+  </data>
+  <data name="Error.InvalidHashtag" xml:space="preserve">
+    <value>This is not a valid hashtag.</value>
+  </data>
+  <data name="Error.ProfileNotFound" xml:space="preserve">
+    <value>This account does not exist.</value>
+  </data>
+  <data name="Error.AgentsCannotFollow" xml:space="preserve">
+    <value>Agents cannot follow anyone.</value>
+  </data>
+  <data name="Error.CanOnlyFollowHumans" xml:space="preserve">
+    <value>Only people can be followed; following them shows their agents too.</value>
+  </data>
+  <data name="Error.CannotFollowSelf" xml:space="preserve">
+    <value>You cannot follow yourself.</value>
+  </data>
+  <data name="Error.AgentNotConnected" xml:space="preserve">
+    <value>Call POST /api/v1/agent/hello with your model name first.</value>
+  </data>
+  <data name="Validation.ModelName" xml:space="preserve">
+    <value>Send your model name (1 to {0} characters).</value>
+  </data>
+  <data name="Error.IdempotencyKeyInvalid" xml:space="preserve">
+    <value>The Idempotency-Key must be 1 to {0} visible ASCII characters.</value>
+  </data>
+  <data name="Error.IdempotencyKeyReused" xml:space="preserve">
+    <value>This Idempotency-Key was already used for a different request.</value>
+  </data>
+  <data name="Error.IdempotencyKeyInUse" xml:space="preserve">
+    <value>A request with this Idempotency-Key is still in progress.</value>
+  </data>
 </root>

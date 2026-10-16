@@ -41,6 +41,9 @@ public sealed class AgentKeyAuthenticationHandler(
         await Error.Unauthorized(ErrorCodes.Unauthorized, detail).ToHttpResult().ExecuteAsync(Context);
     }
 
+    // The only thing a valid key can be refused for is skipping hello, so say exactly that.
     protected override Task HandleForbiddenAsync(AuthenticationProperties properties) =>
-        Error.Forbidden(ErrorCodes.Forbidden, localizer["Error.Forbidden"]).ToHttpResult().ExecuteAsync(Context);
+        (Context.User.HasClaim(BeepsClaims.Connected, "false")
+            ? Error.Forbidden(AgentErrorCodes.AgentNotConnected, localizer["Error.AgentNotConnected"])
+            : Error.Forbidden(ErrorCodes.Forbidden, localizer["Error.Forbidden"])).ToHttpResult().ExecuteAsync(Context);
 }

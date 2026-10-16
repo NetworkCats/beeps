@@ -402,6 +402,248 @@ namespace Beeps.Infrastructure.Data.Migrations
                     b.ToTable("agent_keys", (string)null);
                 });
 
+            modelBuilder.Entity("Beeps.Features.Beeps.Beep", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("AuthorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("author_id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<int>("LikeCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("like_count");
+
+                    b.Property<string>("ModerationStatus")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("moderation_status");
+
+                    b.Property<int>("ReplyCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("reply_count");
+
+                    b.Property<Guid?>("ReplyToId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("reply_to_id");
+
+                    b.Property<Guid>("RootId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("root_id");
+
+                    b.Property<string>("Text")
+                        .IsRequired()
+                        .HasMaxLength(8000)
+                        .HasColumnType("character varying(8000)")
+                        .HasColumnName("text");
+
+                    b.HasKey("Id")
+                        .HasName("pk_beeps");
+
+                    b.HasIndex("Id")
+                        .IsDescending()
+                        .HasDatabaseName("ix_beeps_public")
+                        .HasFilter("reply_to_id IS NULL AND deleted_at IS NULL");
+
+                    b.HasIndex("ReplyToId")
+                        .HasDatabaseName("ix_beeps_reply_to_id");
+
+                    b.HasIndex("AuthorId", "Id")
+                        .IsDescending(false, true)
+                        .HasDatabaseName("ix_beeps_author_id_id");
+
+                    b.HasIndex("RootId", "Id")
+                        .HasDatabaseName("ix_beeps_root_id_id");
+
+                    b.ToTable("beeps", (string)null);
+                });
+
+            modelBuilder.Entity("Beeps.Features.Beeps.BeepHashtag", b =>
+                {
+                    b.Property<Guid>("BeepId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("beep_id");
+
+                    b.Property<Guid>("HashtagId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("hashtag_id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.HasKey("BeepId", "HashtagId")
+                        .HasName("pk_beep_hashtags");
+
+                    b.HasIndex("HashtagId", "BeepId")
+                        .IsDescending(false, true)
+                        .HasDatabaseName("ix_beep_hashtags_hashtag_id_beep_id");
+
+                    b.ToTable("beep_hashtags", (string)null);
+                });
+
+            modelBuilder.Entity("Beeps.Features.Beeps.Hashtag", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(400)
+                        .HasColumnType("character varying(400)")
+                        .HasColumnName("name");
+
+                    b.HasKey("Id")
+                        .HasName("pk_hashtags");
+
+                    b.HasIndex("Name")
+                        .IsUnique()
+                        .HasDatabaseName("ux_hashtags_name");
+
+                    b.ToTable("hashtags", (string)null);
+                });
+
+            modelBuilder.Entity("Beeps.Features.Beeps.Like", b =>
+                {
+                    b.Property<Guid>("BeepId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("beep_id");
+
+                    b.Property<Guid>("ActorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("actor_id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.HasKey("BeepId", "ActorId")
+                        .HasName("pk_likes");
+
+                    b.HasIndex("ActorId")
+                        .HasDatabaseName("ix_likes_actor_id");
+
+                    b.ToTable("likes", (string)null);
+                });
+
+            modelBuilder.Entity("Beeps.Features.Beeps.Mention", b =>
+                {
+                    b.Property<Guid>("BeepId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("beep_id");
+
+                    b.Property<Guid>("ActorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("actor_id");
+
+                    b.HasKey("BeepId", "ActorId")
+                        .HasName("pk_mentions");
+
+                    b.HasIndex("ActorId")
+                        .HasDatabaseName("ix_mentions_actor_id");
+
+                    b.ToTable("mentions", (string)null);
+                });
+
+            modelBuilder.Entity("Beeps.Features.Notifications.Notification", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("BeepId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("beep_id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("FromActorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("from_actor_id");
+
+                    b.Property<DateTimeOffset?>("ReadAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("read_at");
+
+                    b.Property<Guid>("RecipientId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("recipient_id");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("type");
+
+                    b.HasKey("Id")
+                        .HasName("pk_notifications");
+
+                    b.HasIndex("BeepId")
+                        .HasDatabaseName("ix_notifications_beep_id");
+
+                    b.HasIndex("FromActorId")
+                        .HasDatabaseName("ix_notifications_from_actor_id");
+
+                    b.HasIndex(new[] { "RecipientId", "Id" }, "ix_notifications_inbox")
+                        .IsDescending(false, true)
+                        .HasDatabaseName("ix_notifications_inbox");
+
+                    b.HasIndex(new[] { "RecipientId", "Id" }, "ix_notifications_unread")
+                        .IsDescending(false, true)
+                        .HasDatabaseName("ix_notifications_unread")
+                        .HasFilter("read_at IS NULL");
+
+                    b.HasIndex(new[] { "RecipientId", "Type", "FromActorId", "BeepId" }, "ux_notifications_once")
+                        .IsUnique()
+                        .HasDatabaseName("ux_notifications_once");
+
+                    b.ToTable("notifications", (string)null);
+                });
+
+            modelBuilder.Entity("Beeps.Features.Profiles.Follow", b =>
+                {
+                    b.Property<Guid>("FollowerId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("follower_id");
+
+                    b.Property<Guid>("FolloweeId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("followee_id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.HasKey("FollowerId", "FolloweeId")
+                        .HasName("pk_follows");
+
+                    b.HasIndex("FolloweeId")
+                        .HasDatabaseName("ix_follows_followee_id");
+
+                    b.ToTable("follows", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_follows_not_self", "follower_id <> followee_id");
+                        });
+                });
+
             modelBuilder.Entity("Beeps.Features.Site.SiteSetting", b =>
                 {
                     b.Property<string>("Key")
@@ -624,6 +866,123 @@ namespace Beeps.Infrastructure.Data.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_agent_keys_actors_agent_id");
+                });
+
+            modelBuilder.Entity("Beeps.Features.Beeps.Beep", b =>
+                {
+                    b.HasOne("Beeps.Features.Accounts.Actor", "Author")
+                        .WithMany()
+                        .HasForeignKey("AuthorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_beeps_actors_author_id");
+
+                    b.HasOne("Beeps.Features.Beeps.Beep", null)
+                        .WithMany()
+                        .HasForeignKey("ReplyToId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_beeps_beeps_reply_to_id");
+
+                    b.HasOne("Beeps.Features.Beeps.Beep", null)
+                        .WithMany()
+                        .HasForeignKey("RootId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_beeps_beeps_root_id");
+
+                    b.Navigation("Author");
+                });
+
+            modelBuilder.Entity("Beeps.Features.Beeps.BeepHashtag", b =>
+                {
+                    b.HasOne("Beeps.Features.Beeps.Beep", null)
+                        .WithMany()
+                        .HasForeignKey("BeepId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_beep_hashtags_beeps_beep_id");
+
+                    b.HasOne("Beeps.Features.Beeps.Hashtag", null)
+                        .WithMany()
+                        .HasForeignKey("HashtagId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_beep_hashtags_hashtag_hashtag_id");
+                });
+
+            modelBuilder.Entity("Beeps.Features.Beeps.Like", b =>
+                {
+                    b.HasOne("Beeps.Features.Accounts.Actor", null)
+                        .WithMany()
+                        .HasForeignKey("ActorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_likes_actors_actor_id");
+
+                    b.HasOne("Beeps.Features.Beeps.Beep", null)
+                        .WithMany()
+                        .HasForeignKey("BeepId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_likes_beeps_beep_id");
+                });
+
+            modelBuilder.Entity("Beeps.Features.Beeps.Mention", b =>
+                {
+                    b.HasOne("Beeps.Features.Accounts.Actor", null)
+                        .WithMany()
+                        .HasForeignKey("ActorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_mentions_actors_actor_id");
+
+                    b.HasOne("Beeps.Features.Beeps.Beep", null)
+                        .WithMany()
+                        .HasForeignKey("BeepId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_mentions_beeps_beep_id");
+                });
+
+            modelBuilder.Entity("Beeps.Features.Notifications.Notification", b =>
+                {
+                    b.HasOne("Beeps.Features.Beeps.Beep", null)
+                        .WithMany()
+                        .HasForeignKey("BeepId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_notifications_beeps_beep_id");
+
+                    b.HasOne("Beeps.Features.Accounts.Actor", null)
+                        .WithMany()
+                        .HasForeignKey("FromActorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_notifications_actors_from_actor_id");
+
+                    b.HasOne("Beeps.Features.Accounts.Actor", null)
+                        .WithMany()
+                        .HasForeignKey("RecipientId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_notifications_actors_recipient_id");
+                });
+
+            modelBuilder.Entity("Beeps.Features.Profiles.Follow", b =>
+                {
+                    b.HasOne("Beeps.Features.Accounts.User", null)
+                        .WithMany()
+                        .HasForeignKey("FolloweeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_follows_user_followee_id");
+
+                    b.HasOne("Beeps.Features.Accounts.User", null)
+                        .WithMany()
+                        .HasForeignKey("FollowerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_follows_user_follower_id");
                 });
 #pragma warning restore 612, 618
         }

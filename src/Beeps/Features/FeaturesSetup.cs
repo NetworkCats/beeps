@@ -2,8 +2,12 @@ using Beeps.Features.Accounts;
 using Beeps.Features.Admin;
 using Beeps.Features.Agents;
 using Beeps.Features.Avatars;
+using Beeps.Features.Beeps;
+using Beeps.Features.Notifications;
+using Beeps.Features.Profiles;
 using Beeps.Features.Shared;
 using Beeps.Features.Site;
+using Beeps.Features.Timelines;
 using Microsoft.AspNetCore.Identity;
 
 namespace Beeps.Features;
@@ -22,8 +26,16 @@ public static class FeaturesSetup
         services.AddScoped<SessionService>();
         services.AddScoped<AgentService>();
         services.AddScoped<AdminService>();
+        services.AddScoped<BeepViews>();
+        services.AddScoped<BeepService>();
+        services.AddScoped<TimelineService>();
+        services.AddScoped<ProfileService>();
+        services.AddScoped<NotificationService>();
         services.AddScoped<IOutboxHandler, AccountCodeEmailHandler>();
+        services.AddScoped<IOutboxHandler, BeepNotificationsHandler>();
+        services.AddScoped<IOutboxHandler, LikeNotificationHandler>();
         services.AddScoped<IScheduledJob, AccountCleanupJob>();
+        services.AddScoped<IScheduledJob, BeepCounterFlushJob>();
         return services;
     }
 }

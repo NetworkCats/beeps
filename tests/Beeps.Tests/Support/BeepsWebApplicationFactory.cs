@@ -1,9 +1,13 @@
 using Beeps.Features.Accounts;
 using Beeps.Features.Admin;
 using Beeps.Features.Agents;
+using Beeps.Features.Beeps;
 using Beeps.Features.Email;
+using Beeps.Features.Notifications;
+using Beeps.Features.Profiles;
 using Beeps.Features.RateLimiting;
 using Beeps.Features.Shared;
+using Beeps.Features.Timelines;
 using Microsoft.AspNetCore.DataProtection.KeyManagement;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -27,6 +31,8 @@ public sealed class BeepsWebApplicationFactory : WebApplicationFactory<Program>
         Captcha.VerifyAsync(default, default!, CancellationToken.None).ReturnsForAnyArgs(true);
         Accounts.GetRegistrationModeAsync(CancellationToken.None).ReturnsForAnyArgs(RegistrationMode.Open);
         Agents.ListAgentsAsync(default, CancellationToken.None).ReturnsForAnyArgs([]);
+        Counters.GetAsync(default!, CancellationToken.None).ReturnsForAnyArgs(new Dictionary<Guid, BeepCounts>());
+        Beeps.GetMentionsAsync(default!, CancellationToken.None).ReturnsForAnyArgs(new Dictionary<Guid, IReadOnlyList<ActorRow>>());
     }
 
     public IRateLimitStore RateLimitStore { get; } = Substitute.For<IRateLimitStore>();
@@ -42,6 +48,18 @@ public sealed class BeepsWebApplicationFactory : WebApplicationFactory<Program>
     public IEmailSender Email { get; } = Substitute.For<IEmailSender>();
 
     public IOutbox Outbox { get; } = Substitute.For<IOutbox>();
+
+    public IBeepStore Beeps { get; } = Substitute.For<IBeepStore>();
+
+    public IBeepCounterStore Counters { get; } = Substitute.For<IBeepCounterStore>();
+
+    public ITimelineStore Timelines { get; } = Substitute.For<ITimelineStore>();
+
+    public IProfileStore Profiles { get; } = Substitute.For<IProfileStore>();
+
+    public INotificationStore Notifications { get; } = Substitute.For<INotificationStore>();
+
+    public IIdempotencyStore Idempotency { get; } = Substitute.For<IIdempotencyStore>();
 
     internal ImmediateUnitOfWork UnitOfWork { get; } = new();
 
@@ -70,6 +88,12 @@ public sealed class BeepsWebApplicationFactory : WebApplicationFactory<Program>
             Replace(services, Captcha);
             Replace(services, Email);
             Replace(services, Outbox);
+            Replace(services, Beeps);
+            Replace(services, Counters);
+            Replace(services, Timelines);
+            Replace(services, Profiles);
+            Replace(services, Notifications);
+            Replace(services, Idempotency);
             Replace<IUnitOfWork>(services, UnitOfWork);
             Replace<ISessionStore>(services, Sessions);
             services.Configure<KeyManagementOptions>(options => options.XmlRepository = new InMemoryXmlRepository());

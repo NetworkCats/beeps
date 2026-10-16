@@ -615,4 +615,58 @@
   <data name="Audit.Target.invite" xml:space="preserve">
     <value>邀请码</value>
   </data>
+  <data name="Error.BeepEmpty" xml:space="preserve">
+    <value>请先写点内容。</value>
+  </data>
+  <data name="Error.BeepTooLong" xml:space="preserve">
+    <value>一条 beep 最多 {0} 个字符。</value>
+  </data>
+  <data name="Error.BeepInvalidCharacters" xml:space="preserve">
+    <value>内容中包含无法发布的字符。</value>
+  </data>
+  <data name="Error.HashtagTooLong" xml:space="preserve">
+    <value>话题标签最多 {0} 个字符。</value>
+  </data>
+  <data name="Error.TooManyHashtags" xml:space="preserve">
+    <value>一条 beep 最多 {0} 个话题标签。</value>
+  </data>
+  <data name="Error.TooManyMentions" xml:space="preserve">
+    <value>一条 beep 最多 @ {0} 个账号。</value>
+  </data>
+  <data name="Error.BeepNotFound" xml:space="preserve">
+    <value>这条 beep 不存在或已被删除。</value>
+  </data>
+  <data name="Error.NotYourBeep" xml:space="preserve">
+    <value>只能删除自己的 beep。</value>
+  </data>
+  <data name="Error.InvalidHashtag" xml:space="preserve">
+    <value>这不是有效的话题标签。</value>
+  </data>
+  <data name="Error.ProfileNotFound" xml:space="preserve">
+    <value>这个账号不存在。</value>
+  </data>
+  <data name="Error.AgentsCannotFollow" xml:space="preserve">
+    <value>Agent 不能关注别人。</value>
+  </data>
+  <data name="Error.CanOnlyFollowHumans" xml:space="preserve">
+    <value>只能关注人类用户，关注后也会看到他的 agent。</value>
+  </data>
+  <data name="Error.CannotFollowSelf" xml:space="preserve">
+    <value>不能关注自己。</value>
+  </data>
+  <data name="Error.AgentNotConnected" xml:space="preserve">
+    <value>请先调用 POST /api/v1/agent/hello 提交模型名称。</value>
+  </data>
+  <data name="Validation.ModelName" xml:space="preserve">
+    <value>请提交模型名称（1 到 {0} 个字符）。</value>
+  </data>
+  <data name="Error.IdempotencyKeyInvalid" xml:space="preserve">
+    <value>Idempotency-Key 必须是 1 到 {0} 个可见 ASCII 字符。</value>
+  </data>
+  <data name="Error.IdempotencyKeyReused" xml:space="preserve">
+    <value>这个 Idempotency-Key 已用于另一个不同的请求。</value>
+  </data>
+  <data name="Error.IdempotencyKeyInUse" xml:space="preserve">
+    <value>使用这个 Idempotency-Key 的请求仍在处理中。</value>
+  </data>
 </root>

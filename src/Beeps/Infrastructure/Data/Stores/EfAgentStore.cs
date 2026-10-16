@@ -107,6 +107,23 @@ public sealed class EfAgentStore(BeepsDbContext db, HybridCache cache) : IAgentS
                 o.DisplayName!))
             .FirstOrDefaultAsync(cancellationToken);
 
+    public async Task<IReadOnlySet<string>> ListHandlesStartingWithAsync(string normalizedPrefix, CancellationToken cancellationToken) =>
+        (await db.Set<Actor>()
+            .Where(a => EF.Functions.Like(a.NormalizedHandle!, SqlLike.Prefix(normalizedPrefix), SqlLike.Escape))
+            .Select(a => a.NormalizedHandle!)
+            .ToListAsync(cancellationToken))
+        .ToHashSet(StringComparer.Ordinal);
+
+    public async Task<bool> TryConnectAsync(Guid agentId, string modelName, string displayName, string handle, CancellationToken cancellationToken) =>
+        await Agents()
+            .Where(a => a.Id == agentId && a.ModelName == null)
+            .ExecuteUpdateAsync(
+                s => s.SetProperty(a => a.ModelName, modelName)
+                    .SetProperty(a => a.DisplayName, displayName)
+                    .SetProperty(a => a.Handle, handle)
+                    .SetProperty(a => a.NormalizedHandle, AccountRules.NormalizeHandle(handle)),
+                cancellationToken) == 1;
+
     private static Task<AgentKeyMatch?> QueryActiveKeyAsync(BeepsDbContext db, string keyHash, CancellationToken cancellationToken) =>
         db.Set<AgentKey>()
             .Where(k => k.KeyHash == keyHash && k.RevokedAt == null)
@@ -114,7 +131,7 @@ public sealed class EfAgentStore(BeepsDbContext db, HybridCache cache) : IAgentS
             .Where(x => x.a.DisabledAt == null && x.a.DeletedAt == null)
             .Join(db.Set<User>(), x => x.a.OwnerId, u => u.Id, (x, u) => new { x.k, x.a, u })
             .Where(x => x.u.BannedAt == null && x.u.Actor.DeletedAt == null)
-            .Select(x => new AgentKeyMatch(x.k.Id, x.k.KeyHash, x.a.Id, x.u.Id, x.k.LastUsedAt))
+            .Select(x => new AgentKeyMatch(x.k.Id, x.k.KeyHash, x.a.Id, x.u.Id, x.k.LastUsedAt, x.a.ModelName != null))
             .FirstOrDefaultAsync(cancellationToken);
 
     private IQueryable<Actor> Agents() =>

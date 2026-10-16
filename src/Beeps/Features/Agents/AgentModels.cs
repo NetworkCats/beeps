@@ -20,7 +20,7 @@ public sealed record AgentSummary(
 public sealed record AgentWithKey(AgentSummary Agent, string Key);
 
 /// <summary>Who an API request is acting as.</summary>
-public sealed record AgentIdentity(Guid AgentId, Guid OwnerId);
+public sealed record AgentIdentity(Guid AgentId, Guid OwnerId, bool Connected);
 
 /// <summary>An agent's view of itself and its owner (<c>GET /api/v1/agent/me</c>).</summary>
 public sealed record AgentSelf(
@@ -38,4 +38,10 @@ public sealed record AgentSelf(
 public static class AgentErrorCodes
 {
     public const string AgentLimitReached = "agent_limit_reached";
+    public const string AgentNotConnected = "agent_not_connected";
+}
+
+public static class AgentFields
+{
+    public const string ModelName = "model_name";
 }

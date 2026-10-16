@@ -61,7 +61,12 @@ public static class AuthSetup
             .AddPolicy(AuthPolicies.Agent, policy => policy
                 .AddAuthenticationSchemes(AuthSchemes.AgentKey)
                 .RequireAuthenticatedUser()
-                .RequireClaim(BeepsClaims.Kind, BeepsClaims.AgentKind));
+                .RequireClaim(BeepsClaims.Kind, BeepsClaims.AgentKind))
+            .AddPolicy(AuthPolicies.ConnectedAgent, policy => policy
+                .AddAuthenticationSchemes(AuthSchemes.AgentKey)
+                .RequireAuthenticatedUser()
+                .RequireClaim(BeepsClaims.Kind, BeepsClaims.AgentKind)
+                .RequireClaim(BeepsClaims.Connected, "true"));
         return services;
     }
 

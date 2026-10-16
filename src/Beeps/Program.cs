@@ -2,15 +2,21 @@ using Beeps.Features;
 using Beeps.Features.Agents;
 using Beeps.Features.Auth;
 using Beeps.Features.Avatars;
+using Beeps.Features.Beeps;
 using Beeps.Features.Localization;
+using Beeps.Features.Notifications;
+using Beeps.Features.Profiles;
 using Beeps.Features.RateLimiting;
 using Beeps.Features.Shared.Http;
+using Beeps.Features.Skill;
+using Beeps.Features.Timelines;
 using Beeps.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddRazorPages(options => options.Conventions.AddBeepsAuthorization());
 builder.Services.AddBeepsApiJson();
+builder.Services.AddBeepsOpenApi();
 builder.Services.AddBeepsProblemDetails();
 builder.Services.AddBeepsLocalization();
 builder.Services.AddBeepsRateLimiting();
@@ -41,11 +47,18 @@ app.UseRequestLocalization();
 app.UseRouting();
 app.UseMiddleware<RateLimitingMiddleware>();
 app.UseAuthorization();
+app.UseMiddleware<IdempotencyMiddleware>();
 
 app.MapStaticAssets().WithoutRateLimit();
 app.MapRazorPages().WithStaticAssets();
 app.MapAvatarEndpoints();
+app.MapSkillEndpoints();
+app.MapBeepsOpenApi();
 app.MapAgentApi();
+app.MapBeepApi();
+app.MapTimelineApi();
+app.MapProfileApi();
+app.MapNotificationApi();
 
 app.Run();
 

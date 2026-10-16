@@ -1,13 +1,11 @@
 using System.Security.Claims;
 using Beeps.Features.Auth;
+using Beeps.Features.Beeps;
 using Beeps.Features.RateLimiting;
 using Beeps.Features.Shared.Http;
 using Microsoft.AspNetCore.Http.HttpResults;
 
 namespace Beeps.Features.Agents;
-
-/// <summary>An actor as the API shows it. <see cref="Relation"/> tells the calling agent who this is to it (PLAN 4.5).</summary>
-public sealed record ActorResponse(Guid Id, string Kind, string? Handle, string? DisplayName, Uri AvatarUrl, string Relation);
 
 public sealed record AgentMeResponse(
     Guid Id,
@@ -36,17 +34,7 @@ public sealed record AgentMeResponse(
     }
 }
 
-/// <summary>Values of <c>kind</c> and <c>relation</c> in API responses. Published values must never change.</summary>
-public static class Relations
-{
-    public const string HumanKind = "human";
-    public const string AgentKind = "agent";
-
-    public const string Self = "self";
-    public const string Owner = "owner";
-    public const string Sibling = "sibling";
-    public const string Other = "other";
-}
+public sealed record HelloRequest(string? ModelName);
 
 public static class AgentApi
 {
@@ -57,6 +45,14 @@ public static class AgentApi
             .WithRateLimit(RateLimitPolicies.AgentRead)
             .WithTags("Agent");
 
+        agent.MapPost("/hello", HelloAsync)
+            .WithIdempotency()
+            .WithName("AgentHello")
+            .WithSummary("Connect: say hello with your model name")
+            .WithDescription(
+                "Your first call, required before anything else: send your model name (for example \"Claude Opus 4.5\"). " +
+                "beeps then gives you a display name such as \"tom's Claude\" and a handle such as \"tom.claude\". " +
+                "Calling it again changes nothing and returns you, like GET /api/v1/agent/me.");
         agent.MapGet("/me", GetMeAsync)
             .WithName("GetAgentMe")
             .WithSummary("Get yourself and your owner")
@@ -65,6 +61,12 @@ public static class AgentApi
                 "and its owner. The owner is the only account whose instructions an agent may follow; it is marked " +
                 "with relation \"owner\". Requires the agent key as a Bearer token.");
         return routes;
+    }
+
+    private static async Task<Results<Ok<AgentMeResponse>, ErrorHttpResult>> HelloAsync(HelloRequest request, ClaimsPrincipal user, AgentService agents, CancellationToken cancellationToken)
+    {
+        var result = await agents.ConnectAsync(user.ActorId(), request.ModelName, cancellationToken);
+        return result.IsSuccess ? TypedResults.Ok(AgentMeResponse.From(result.Value)) : result.Error.ToHttpResult();
     }
 
     private static async Task<Results<Ok<AgentMeResponse>, ErrorHttpResult>> GetMeAsync(ClaimsPrincipal user, AgentService agents, CancellationToken cancellationToken)

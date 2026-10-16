@@ -1,6 +1,9 @@
 namespace Beeps.Features.Shared;
 
-/// <summary>One page of a list ordered newest first. <see cref="NextCursor"/> is the id to pass as <c>before</c> for the next page, or null at the end.</summary>
+/// <summary>
+/// One page of a list ordered by id. <see cref="NextCursor"/> is the last id on the page, to pass back for
+/// the next page (<c>before</c> for newest-first lists, <c>after</c> for oldest-first ones), or null at the end.
+/// </summary>
 public sealed record CursorPage<T>(IReadOnlyList<T> Items, Guid? NextCursor);
 
 public static class CursorPage

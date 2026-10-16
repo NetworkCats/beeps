@@ -103,7 +103,7 @@ public sealed class AgentApiTests : IDisposable
         var agentId = Guid.NewGuid();
         var ownerId = Guid.NewGuid();
         factory.Agents.FindActiveKeyAsync(AgentKeys.Hash(key), Arg.Any<CancellationToken>())
-            .Returns(new AgentKeyMatch(Guid.NewGuid(), AgentKeys.Hash(key), agentId, ownerId, DateTimeOffset.UtcNow));
+            .Returns(new AgentKeyMatch(Guid.NewGuid(), AgentKeys.Hash(key), agentId, ownerId, DateTimeOffset.UtcNow, Connected: true));
         factory.Agents.GetAgentWithOwnerAsync(agentId, Arg.Any<CancellationToken>())
             .Returns(new AgentWithOwnerRow(agentId, "tom.claude", "tom's Claude", "Claude Opus 4.5", TestData.Now, ownerId, "tom", "Tom"));
         return (key, agentId, ownerId);

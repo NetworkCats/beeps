@@ -1,6 +1,8 @@
 using Beeps.Features.Accounts;
+using Beeps.Features.RateLimiting;
 using Beeps.Features.Shared;
 using Beeps.Features.Site;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 
 namespace Beeps.Tests.Support;
@@ -19,6 +21,21 @@ internal static class TestData
         time.GetUtcNow().Returns(Now);
         return time;
     }
+
+    /// <summary>A real rate-limit service over a mocked store: every policy configured, the store decides.</summary>
+    public static RateLimitService RateLimits(IRateLimitStore store)
+    {
+        var limits = Substitute.For<IOptionsMonitor<RateLimitOptions>>();
+        limits.CurrentValue.Returns(new RateLimitOptions
+        {
+            Policies = RateLimitPolicies.All.ToDictionary(p => p, _ => new RateLimitPolicyOptions { Rules = [new RateLimitRuleOptions { PermitLimit = 1, Window = TimeSpan.FromMinutes(1) }] }),
+        });
+        return new RateLimitService(store, limits, new TestLocalizer(), NullLogger<RateLimitService>.Instance);
+    }
+
+    /// <summary>The policies a rate-limit check counted, from the counter keys (<c>{policy}:{window}:{partition}</c>).</summary>
+    public static string[] Policies(IReadOnlyList<RateLimitCounter> counters) =>
+        [.. counters.Select(c => c.Key[..c.Key.IndexOf(':', StringComparison.Ordinal)])];
 
     public static User User(string handle = "tom", bool admin = false, bool verified = true, string? passwordHash = "hash")
     {

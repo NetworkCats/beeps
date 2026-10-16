@@ -1,0 +1,119 @@
+using Beeps.Features.Accounts;
+using Beeps.Features.Beeps;
+using Beeps.Features.Notifications;
+using Beeps.Features.Profiles;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
+
+namespace Beeps.Infrastructure.Data.Configurations;
+
+internal sealed class BeepConfiguration : IEntityTypeConfiguration<Beep>
+{
+    public void Configure(EntityTypeBuilder<Beep> builder)
+    {
+        builder.ToTable("beeps");
+        builder.HasKey(b => b.Id);
+        builder.Property(b => b.Id).ValueGeneratedNever();
+        builder.Property(b => b.Text).HasMaxLength(BeepText.MaxStorageLength);
+        builder.Property(b => b.ModerationStatus).HasConversion(EnumText.Converter<ModerationStatus>()).HasMaxLength(16);
+        builder.HasOne(b => b.Author).WithMany().HasForeignKey(b => b.AuthorId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne<Beep>().WithMany().HasForeignKey(b => b.ReplyToId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne<Beep>().WithMany().HasForeignKey(b => b.RootId).OnDelete(DeleteBehavior.Restrict);
+        // Profile and home timelines: newest beeps of a set of authors.
+        builder.HasIndex(b => new { b.AuthorId, b.Id }).IsDescending(false, true);
+        // The public timeline: newest top-level beeps, without walking past deleted ones and replies.
+        builder.HasIndex(b => b.Id).IsDescending(true).HasFilter("reply_to_id IS NULL AND deleted_at IS NULL").HasDatabaseName("ix_beeps_public");
+        // Threads, oldest first.
+        builder.HasIndex(b => new { b.RootId, b.Id });
+        // Recounting replies (reply_to_id also gets its foreign-key index).
+        builder.HasIndex(b => b.ReplyToId);
+    }
+}
+
+internal sealed class LikeConfiguration : IEntityTypeConfiguration<Like>
+{
+    public void Configure(EntityTypeBuilder<Like> builder)
+    {
+        builder.ToTable("likes");
+        // Also answers "did the viewer like this beep" and recounts a beep's likes.
+        builder.HasKey(l => new { l.BeepId, l.ActorId });
+        builder.HasOne<Beep>().WithMany().HasForeignKey(l => l.BeepId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne<Actor>().WithMany().HasForeignKey(l => l.ActorId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasIndex(l => l.ActorId);
+    }
+}
+
+internal sealed class MentionConfiguration : IEntityTypeConfiguration<Mention>
+{
+    public void Configure(EntityTypeBuilder<Mention> builder)
+    {
+        builder.ToTable("mentions");
+        builder.HasKey(m => new { m.BeepId, m.ActorId });
+        builder.HasOne<Beep>().WithMany().HasForeignKey(m => m.BeepId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne<Actor>().WithMany().HasForeignKey(m => m.ActorId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasIndex(m => m.ActorId);
+    }
+}
+
+internal sealed class HashtagConfiguration : IEntityTypeConfiguration<Hashtag>
+{
+    public const string UniqueName = "ux_hashtags_name";
+
+    public void Configure(EntityTypeBuilder<Hashtag> builder)
+    {
+        builder.ToTable("hashtags");
+        builder.HasKey(h => h.Id);
+        builder.Property(h => h.Id).ValueGeneratedNever();
+        builder.Property(h => h.Name).HasMaxLength(BeepText.MaxHashtagStorageLength);
+        builder.HasIndex(h => h.Name).IsUnique().HasDatabaseName(UniqueName);
+    }
+}
+
+internal sealed class BeepHashtagConfiguration : IEntityTypeConfiguration<BeepHashtag>
+{
+    public void Configure(EntityTypeBuilder<BeepHashtag> builder)
+    {
+        builder.ToTable("beep_hashtags");
+        builder.HasKey(t => new { t.BeepId, t.HashtagId });
+        builder.HasOne<Beep>().WithMany().HasForeignKey(t => t.BeepId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne<Hashtag>().WithMany().HasForeignKey(t => t.HashtagId).OnDelete(DeleteBehavior.Restrict);
+        // Hashtag pages (PLAN 8): newest beeps with the tag.
+        builder.HasIndex(t => new { t.HashtagId, t.BeepId }).IsDescending(false, true);
+    }
+}
+
+internal sealed class FollowConfiguration : IEntityTypeConfiguration<Follow>
+{
+    public void Configure(EntityTypeBuilder<Follow> builder)
+    {
+        builder.ToTable("follows", table => table.HasCheckConstraint("ck_follows_not_self", "follower_id <> followee_id"));
+        builder.HasKey(f => new { f.FollowerId, f.FolloweeId });
+        // To users, not actors: both sides must be humans (PLAN 8).
+        builder.HasOne<User>().WithMany().HasForeignKey(f => f.FollowerId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne<User>().WithMany().HasForeignKey(f => f.FolloweeId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasIndex(f => f.FolloweeId);
+    }
+}
+
+internal sealed class NotificationConfiguration : IEntityTypeConfiguration<Notification>
+{
+    public void Configure(EntityTypeBuilder<Notification> builder)
+    {
+        builder.ToTable("notifications");
+        builder.HasKey(n => n.Id);
+        builder.Property(n => n.Id).ValueGeneratedNever();
+        builder.Property(n => n.Type).HasConversion(EnumText.Converter<NotificationType>()).HasMaxLength(16);
+        builder.HasOne<Actor>().WithMany().HasForeignKey(n => n.RecipientId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne<Actor>().WithMany().HasForeignKey(n => n.FromActorId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne<Beep>().WithMany().HasForeignKey(n => n.BeepId).OnDelete(DeleteBehavior.Restrict);
+        // The inbox, newest first; the unique index also makes generating notifications idempotent.
+        builder.HasIndex(n => new { n.RecipientId, n.Id }, "ix_notifications_inbox").IsDescending(false, true).HasDatabaseName("ix_notifications_inbox");
+        builder.HasIndex(n => new { n.RecipientId, n.Type, n.FromActorId, n.BeepId }, "ux_notifications_once").IsUnique().HasDatabaseName("ux_notifications_once");
+        builder.HasIndex(n => new { n.RecipientId, n.Id }, "ix_notifications_unread")
+            .IsDescending(false, true)
+            .HasFilter("read_at IS NULL")
+            .HasDatabaseName("ix_notifications_unread");
+        builder.HasIndex(n => n.FromActorId);
+        builder.HasIndex(n => n.BeepId);
+    }
+}

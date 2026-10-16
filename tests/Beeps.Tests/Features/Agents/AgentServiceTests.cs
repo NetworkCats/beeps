@@ -130,12 +130,12 @@ public sealed class AgentServiceTests
     public async Task ALiveKeyIdentifiesItsAgentAndOwner()
     {
         var key = AgentKeys.Generate();
-        var match = new AgentKeyMatch(Guid.NewGuid(), AgentKeys.Hash(key), Guid.NewGuid(), OwnerId, TestData.Now.AddMinutes(-1));
+        var match = new AgentKeyMatch(Guid.NewGuid(), AgentKeys.Hash(key), Guid.NewGuid(), OwnerId, TestData.Now.AddMinutes(-1), Connected: true);
         store.FindActiveKeyAsync(match.KeyHash, Arg.Any<CancellationToken>()).Returns(match);
 
         var identity = await CreateService().AuthenticateAsync(key, TestSupport.Ct);
 
-        Assert.Equal(new AgentIdentity(match.AgentId, OwnerId), identity);
+        Assert.Equal(new AgentIdentity(match.AgentId, OwnerId, Connected: true), identity);
         await store.DidNotReceiveWithAnyArgs().TouchKeyAsync(default!, default, TestSupport.Ct);
     }
 
@@ -143,7 +143,7 @@ public sealed class AgentServiceTests
     public async Task LastUsedIsRecordedAtMostEveryFewMinutes()
     {
         var key = AgentKeys.Generate();
-        var match = new AgentKeyMatch(Guid.NewGuid(), AgentKeys.Hash(key), Guid.NewGuid(), OwnerId, TestData.Now - AgentService.LastUsedResolution);
+        var match = new AgentKeyMatch(Guid.NewGuid(), AgentKeys.Hash(key), Guid.NewGuid(), OwnerId, TestData.Now - AgentService.LastUsedResolution, Connected: false);
         store.FindActiveKeyAsync(match.KeyHash, Arg.Any<CancellationToken>()).Returns(match);
 
         await CreateService().AuthenticateAsync(key, TestSupport.Ct);
@@ -180,6 +180,69 @@ public sealed class AgentServiceTests
         Assert.Equal("tom", self.Value.OwnerHandle);
         Assert.Equal(new Uri($"https://beeps.test/avatars/{OwnerId:D}.svg"), self.Value.OwnerAvatarUrl);
         Assert.Equal(ErrorKind.NotFound, missing.Error?.Kind);
+    }
+
+    [Fact]
+    public async Task ConnectingNamesTheAgentAfterItsOwnerAndModel()
+    {
+        var row = new AgentWithOwnerRow(Guid.NewGuid(), null, null, null, TestData.Now, OwnerId, "tom", "Tom");
+        store.GetAgentWithOwnerAsync(row.Id, Arg.Any<CancellationToken>()).Returns(row);
+        store.ListHandlesStartingWithAsync("tom.claude", Arg.Any<CancellationToken>()).Returns(new HashSet<string> { "tom.claude", "tom.claude3" });
+        store.TryConnectAsync(default, default!, default!, default!, TestSupport.Ct).ReturnsForAnyArgs(true);
+
+        var result = await CreateService().ConnectAsync(row.Id, "  Claude Opus 4.5 ", TestSupport.Ct);
+
+        Assert.True(result.IsSuccess);
+        await store.Received(1).TryConnectAsync(row.Id, "Claude Opus 4.5", "tom's Claude", "tom.claude2", Arg.Any<CancellationToken>());
+        await store.Received(1).ForgetKeysAsync(Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Single() == row.Id), Arg.Any<CancellationToken>());
+        Assert.Equal([AdvisoryLocks.OwnerAgents(OwnerId)], unitOfWork.Locks);
+    }
+
+    [Fact]
+    public async Task ConnectingAgainChangesNothing()
+    {
+        var row = new AgentWithOwnerRow(Guid.NewGuid(), "tom.claude", "tom's Claude", "Claude Opus 4.5", TestData.Now, OwnerId, "tom", "Tom");
+        store.GetAgentWithOwnerAsync(row.Id, Arg.Any<CancellationToken>()).Returns(row);
+
+        var result = await CreateService().ConnectAsync(row.Id, "GPT-5", TestSupport.Ct);
+
+        Assert.Equal("Claude Opus 4.5", result.Value.ModelName);
+        await store.DidNotReceiveWithAnyArgs().TryConnectAsync(default, default!, default!, default!, TestSupport.Ct);
+        Assert.Empty(unitOfWork.Locks);
+    }
+
+    [Fact]
+    public async Task LosingTheRaceToConnectKeepsTheWinnersNames()
+    {
+        var row = new AgentWithOwnerRow(Guid.NewGuid(), null, null, null, TestData.Now, OwnerId, "tom", "Tom");
+        store.GetAgentWithOwnerAsync(row.Id, Arg.Any<CancellationToken>()).Returns(row);
+        store.ListHandlesStartingWithAsync(default!, TestSupport.Ct).ReturnsForAnyArgs(new HashSet<string>());
+
+        var result = await CreateService().ConnectAsync(row.Id, "Claude", TestSupport.Ct);
+
+        Assert.True(result.IsSuccess);
+        await store.DidNotReceiveWithAnyArgs().ForgetKeysAsync(default!, TestSupport.Ct);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("   ")]
+    [InlineData("bad\u0007name")]
+    public async Task ConnectingNeedsAModelName(string? modelName)
+    {
+        var result = await CreateService().ConnectAsync(Guid.NewGuid(), modelName, TestSupport.Ct);
+
+        Assert.Equal(AccountErrorCodes.InvalidInput, result.Error?.Code);
+        Assert.Equal(["Validation.ModelName(100)"], result.Error!.Fields![AgentFields.ModelName]);
+        await store.DidNotReceiveWithAnyArgs().GetAgentWithOwnerAsync(default, TestSupport.Ct);
+    }
+
+    [Fact]
+    public async Task ConnectingAMissingAgentIsNotFound()
+    {
+        var result = await CreateService().ConnectAsync(Guid.NewGuid(), "Claude", TestSupport.Ct);
+
+        Assert.Equal(ErrorKind.NotFound, result.Error?.Kind);
     }
 
     private Actor Agent(Guid? owner = null)

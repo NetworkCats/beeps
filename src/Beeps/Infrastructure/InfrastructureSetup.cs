@@ -1,8 +1,12 @@
 using Beeps.Features.Accounts;
 using Beeps.Features.Admin;
 using Beeps.Features.Agents;
+using Beeps.Features.Beeps;
+using Beeps.Features.Notifications;
+using Beeps.Features.Profiles;
 using Beeps.Features.RateLimiting;
 using Beeps.Features.Shared;
+using Beeps.Features.Timelines;
 using Beeps.Infrastructure.Captcha;
 using Beeps.Infrastructure.Data;
 using Beeps.Infrastructure.Data.Stores;
@@ -27,11 +31,17 @@ public static class InfrastructureSetup
         services.AddBeepsScheduledJobs();
         services.AddBeepsEmail();
         services.AddSingleton<IRateLimitStore, RedisRateLimitStore>();
+        services.AddSingleton<IIdempotencyStore, RedisIdempotencyStore>();
+        services.AddSingleton<IBeepCounterStore, RedisBeepCounterStore>();
         services.AddScoped<IUnitOfWork, EfUnitOfWork>();
         services.AddScoped<IAccountStore, EfAccountStore>();
         services.AddScoped<ISessionStore, EfSessionStore>();
         services.AddScoped<IAgentStore, EfAgentStore>();
         services.AddScoped<IAdminStore, EfAdminStore>();
+        services.AddScoped<IBeepStore, EfBeepStore>();
+        services.AddScoped<ITimelineStore, EfTimelineStore>();
+        services.AddScoped<IProfileStore, EfProfileStore>();
+        services.AddScoped<INotificationStore, EfNotificationStore>();
         services.AddHttpClient<ICaptchaVerifier, TurnstileCaptchaVerifier>(client => client.Timeout = TimeSpan.FromSeconds(10));
 
         // Keys live in PostgreSQL, not Redis: Redis must stay rebuildable, and losing these keys

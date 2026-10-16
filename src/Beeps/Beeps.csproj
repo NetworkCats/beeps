@@ -10,6 +10,7 @@
     <PackageReference Include="Jdenticon-net" />
     <PackageReference Include="MailKit" />
     <PackageReference Include="Microsoft.AspNetCore.DataProtection.EntityFrameworkCore" />
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" PrivateAssets="all" />
     <PackageReference Include="Microsoft.Extensions.Caching.Hybrid" />
     <PackageReference Include="Microsoft.Extensions.Caching.StackExchangeRedis" />
@@ -20,6 +21,11 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="Beeps.Tests" />
+  </ItemGroup>
+
+  <!-- Served at /skill.md with the site's address filled in. -->
+  <ItemGroup>
+    <EmbeddedResource Include="Features/Skill/skill.md" LogicalName="Beeps.skill.md" />
   </ItemGroup>
 
   <!-- Client sources are built by npm into wwwroot/dist; keep them out of the content/publish set. -->

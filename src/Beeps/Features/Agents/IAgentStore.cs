@@ -42,6 +42,15 @@ public interface IAgentStore
 
     /// <summary>The agent and its owner, for the agent's own view of itself.</summary>
     Task<AgentWithOwnerRow?> GetAgentWithOwnerAsync(Guid agentId, CancellationToken cancellationToken);
+
+    /// <summary>Normalized handles of every actor (deleted ones included) whose handle starts with this normalized prefix.</summary>
+    Task<IReadOnlySet<string>> ListHandlesStartingWithAsync(string normalizedPrefix, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Records the first connection: model name, display name and handle, only if the agent has not
+    /// connected yet. Runs immediately; false if it already had.
+    /// </summary>
+    Task<bool> TryConnectAsync(Guid agentId, string modelName, string displayName, string handle, CancellationToken cancellationToken);
 }
 
 public sealed record AgentRow(
@@ -55,7 +64,8 @@ public sealed record AgentRow(
     DateTimeOffset? KeyCreatedAt,
     DateTimeOffset? KeyLastUsedAt);
 
-public sealed record AgentKeyMatch(Guid KeyId, string KeyHash, Guid AgentId, Guid OwnerId, DateTimeOffset? LastUsedAt);
+/// <param name="Connected">The agent has called <c>hello</c>; until then it may only do that and read itself.</param>
+public sealed record AgentKeyMatch(Guid KeyId, string KeyHash, Guid AgentId, Guid OwnerId, DateTimeOffset? LastUsedAt, bool Connected);
 
 public sealed record AgentWithOwnerRow(
     Guid Id,

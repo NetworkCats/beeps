@@ -133,7 +133,53 @@ public sealed partial class AgentService(
             await store.TouchKeyAsync(match, now, cancellationToken);
         }
 
-        return new AgentIdentity(match.AgentId, match.OwnerId);
+        return new AgentIdentity(match.AgentId, match.OwnerId, match.Connected);
+    }
+
+    /// <summary>
+    /// The agent's first call (PLAN 3.3): records its model name and gives it its default display name and
+    /// handle. Later calls change nothing and just return the agent. The handle is picked under the owner's
+    /// lock, since only the owner's agents share its <c>owner.</c> prefix.
+    /// </summary>
+    public async Task<Result<AgentSelf>> ConnectAsync(Guid agentId, string? modelName, CancellationToken cancellationToken)
+    {
+        var model = AgentNames.CleanModelName(modelName);
+        if (model is null)
+        {
+            string message = localizer["Validation.ModelName", Actor.ModelNameMaxLength];
+            return Error.Validation(AccountErrorCodes.InvalidInput, message, new Dictionary<string, string[]> { [AgentFields.ModelName] = [message] });
+        }
+
+        var agent = await store.GetAgentWithOwnerAsync(agentId, cancellationToken);
+        if (agent is null)
+        {
+            return NotFound();
+        }
+
+        if (agent.ModelName is not null)
+        {
+            return await GetSelfAsync(agentId, cancellationToken);
+        }
+
+        var brand = AgentNames.Brand(model);
+        var connected = await unitOfWork.InTransactionAsync(
+            AdvisoryLocks.OwnerAgents(agent.OwnerId),
+            async ct =>
+            {
+                var baseHandle = AgentNames.BaseHandle(agent.OwnerHandle, brand);
+                var taken = await store.ListHandlesStartingWithAsync(AccountRules.NormalizeHandle(baseHandle), ct);
+                var handle = AgentNames.PickHandle(baseHandle, taken);
+                return Result.Of(await store.TryConnectAsync(agentId, model, AgentNames.DisplayName(agent.OwnerHandle, brand), handle, ct));
+            },
+            cancellationToken);
+        if (connected.Value)
+        {
+            // The cached key lookup says "not connected"; drop it so the agent can use the API at once.
+            await store.ForgetKeysAsync([agentId], cancellationToken);
+            LogConnected(logger, agentId, model);
+        }
+
+        return await GetSelfAsync(agentId, cancellationToken);
     }
 
     public async Task<Result<AgentSelf>> GetSelfAsync(Guid agentId, CancellationToken cancellationToken)
@@ -201,6 +247,9 @@ public sealed partial class AgentService(
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Agent {AgentId} created by {OwnerId}")]
     private static partial void LogCreated(ILogger logger, Guid agentId, Guid ownerId);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Agent {AgentId} connected as {ModelName}")]
+    private static partial void LogConnected(ILogger logger, Guid agentId, string modelName);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Agent {AgentId} deleted by {OwnerId}")]
     private static partial void LogDeleted(ILogger logger, Guid agentId, Guid ownerId);

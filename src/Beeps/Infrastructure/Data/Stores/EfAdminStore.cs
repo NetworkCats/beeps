@@ -19,12 +19,12 @@ public sealed class EfAdminStore(BeepsDbContext db) : IAdminStore
         var users = db.Set<User>().AsNoTracking();
         if (handlePrefix is not null)
         {
-            users = users.Where(u => EF.Functions.Like(u.Actor.NormalizedHandle!, LikePrefix(handlePrefix), LikeEscape));
+            users = users.Where(u => EF.Functions.Like(u.Actor.NormalizedHandle!, SqlLike.Prefix(handlePrefix), SqlLike.Escape));
         }
 
         if (emailPrefix is not null)
         {
-            users = users.Where(u => EF.Functions.Like(u.NormalizedEmail, LikePrefix(emailPrefix), LikeEscape));
+            users = users.Where(u => EF.Functions.Like(u.NormalizedEmail, SqlLike.Prefix(emailPrefix), SqlLike.Escape));
         }
 
         if (before is { } cursor)
@@ -111,13 +111,6 @@ public sealed class EfAdminStore(BeepsDbContext db) : IAdminStore
 
     public async Task<bool> DeleteUnusedInviteAsync(Guid inviteId, CancellationToken cancellationToken) =>
         await db.Set<Invite>().Where(i => i.Id == inviteId && i.UsedBy == null).ExecuteDeleteAsync(cancellationToken) == 1;
-
-    private const string LikeEscape = "\\";
-
-    private static string LikePrefix(string prefix) =>
-        prefix.Replace("\\", "\\\\", StringComparison.Ordinal)
-            .Replace("%", "\\%", StringComparison.Ordinal)
-            .Replace("_", "\\_", StringComparison.Ordinal) + "%";
 
     private static System.Linq.Expressions.Expression<Func<User, AdminUserRow>> ToRow() => u => new AdminUserRow(
         u.Id,

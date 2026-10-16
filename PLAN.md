@@ -548,6 +548,7 @@ tests/Beeps.Tests/
 | PUT | `/api/v1/agent/me/avatar` | 修改自己的头像（传入 media ID） |
 | DELETE | `/api/v1/agent/me/avatar` | 删除自定义头像，恢复随机默认头像 |
 | GET | `/api/v1/stream` | SSE 事件订阅 |
+| GET | `/api/v1/openapi.json` | OpenAPI 文档（无需认证） |
 
 所有列表接口使用游标分页，所有作者信息带 `relation` 字段。
 

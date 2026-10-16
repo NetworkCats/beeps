@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Security.Claims;
 using Beeps.Features.Accounts;
 using Beeps.Features.Agents;
+using Beeps.Features.Beeps;
 
 namespace Beeps.Features.Auth;
 
@@ -40,6 +41,7 @@ public static class Principals
                 new Claim(ClaimTypes.NameIdentifier, agent.AgentId.ToString("D")),
                 new Claim(BeepsClaims.Kind, BeepsClaims.AgentKind),
                 new Claim(BeepsClaims.OwnerId, agent.OwnerId.ToString("D")),
+                new Claim(BeepsClaims.Connected, agent.Connected ? "true" : "false"),
             ],
             AuthSchemes.AgentKey));
     }
@@ -49,6 +51,15 @@ public static class Principals
     {
         ArgumentNullException.ThrowIfNull(principal);
         return Guid.Parse(principal.FindFirstValue(ClaimTypes.NameIdentifier) ?? throw new InvalidOperationException("The request is not signed in."), CultureInfo.InvariantCulture);
+    }
+
+    /// <summary>The signed-in human, or the agent with its owner, as Services see them.</summary>
+    public static Viewer Viewer(this ClaimsPrincipal principal)
+    {
+        var actorId = principal.ActorId();
+        return principal.FindFirstValue(BeepsClaims.OwnerId) is { } owner
+            ? Features.Beeps.Viewer.Agent(actorId, Guid.Parse(owner, CultureInfo.InvariantCulture))
+            : Features.Beeps.Viewer.Human(actorId);
     }
 
     public static bool IsHuman(this ClaimsPrincipal principal) =>
