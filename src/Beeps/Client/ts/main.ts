@@ -1,6 +1,7 @@
 // Site-wide entry, loaded on every page. Modules find their elements by tag, class or data-*
 // attribute and initialise themselves; pages never call into this code.
 import { initAuthSync } from './auth-sync.ts';
+import { initBack } from './back.ts';
 import { initBeepLink } from './beep-link.ts';
 import { initCompose } from './compose.ts';
 import { initConfirm } from './confirm.ts';
@@ -23,4 +24,5 @@ initMenu();
 initToasts();
 initBeepLink();
 initShare();
+initBack();
 initAuthSync();
