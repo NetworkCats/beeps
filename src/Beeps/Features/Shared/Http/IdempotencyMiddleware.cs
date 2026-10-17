@@ -92,7 +92,8 @@ public sealed partial class IdempotencyMiddleware(RequestDelegate next, ILogger<
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
-            // Same trade-off as rate limiting: a Valkey outage must not stop all writes.
+            // The store is PostgreSQL, which the write itself needs too; this only lets a write through that would
+            // most likely fail on its own anyway.
             LogStoreFailed(logger, exception);
             await next(context);
             return;

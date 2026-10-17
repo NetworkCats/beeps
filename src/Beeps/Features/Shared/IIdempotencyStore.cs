@@ -2,8 +2,7 @@ namespace Beeps.Features.Shared;
 
 /// <summary>
 /// Remembers write requests sent with an <c>Idempotency-Key</c> (PLAN 12) and what they answered, so a
-/// retry gets the same answer instead of doing the write twice. Kept in Valkey: losing it only means a
-/// retry after the loss runs again.
+/// retry gets the same answer instead of doing the write twice. Kept in PostgreSQL, so it holds through a Valkey outage.
 /// </summary>
 public interface IIdempotencyStore
 {
@@ -18,6 +17,9 @@ public interface IIdempotencyStore
 
     /// <summary>Drops the claim, so the request can be retried (it failed or was not worth remembering).</summary>
     Task ReleaseAsync(string key, CancellationToken cancellationToken);
+
+    /// <summary>Deletes up to <paramref name="batchSize"/> claims and responses that expired before <paramref name="now"/>; returns how many.</summary>
+    Task<int> DeleteExpiredAsync(DateTimeOffset now, int batchSize, CancellationToken cancellationToken);
 }
 
 /// <param name="Fingerprint">Hash of the method, path and body: one key must not be reused for another request.</param>

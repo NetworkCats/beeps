@@ -46,7 +46,7 @@ public static class InfrastructureSetup
         services.AddBeepsModeration();
         services.AddSingleton<IImageProcessor, SkiaImageProcessor>();
         services.AddSingleton<IRateLimitStore, RedisRateLimitStore>();
-        services.AddSingleton<IIdempotencyStore, RedisIdempotencyStore>();
+        services.AddSingleton<IIdempotencyStore, PostgresIdempotencyStore>();
         services.AddSingleton<IBeepCounterStore, RedisBeepCounterStore>();
         services.AddScoped<IUnitOfWork, EfUnitOfWork>();
         services.AddScoped<IAccountStore, EfAccountStore>();

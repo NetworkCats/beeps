@@ -58,6 +58,7 @@ public static class FeaturesSetup
         services.AddScoped<IOutboxHandler, SearchBeepSyncHandler>();
         services.AddScoped<IOutboxHandler, SearchAccountSyncHandler>();
         services.AddScoped<IScheduledJob, AccountCleanupJob>();
+        services.AddScoped<IScheduledJob, IdempotencyCleanupJob>();
         services.AddScoped<IScheduledJob, BeepCounterFlushJob>();
         services.AddScoped<IScheduledJob, MediaCleanupJob>();
         return services;
