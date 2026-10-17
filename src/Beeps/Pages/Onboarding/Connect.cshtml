@@ -6,5 +6,9 @@
     // Drawn again as soon as the agent says hello; gone (deleted), the page is shown anew.
     var props = new ConnectProps(new LiveProps(Subject: $"actor:{Model.Agent.Id:D}", Actors: [Model.Agent.Id]), AgentRowProps.From(Model.Agent));
 }
-@* Members only, so signed in: Client/app/pages/Onboarding.tsx draws the page from these props. *@
-<island name="connect" props="props" />
+<section class="auth">
+    <partial name="_OnboardingSteps" model="5" />
+    <h1>@L["Connect.Title"]</h1>
+    @* Members only, so signed in: Client/app/pages/Onboarding.tsx draws whether the agent has connected, from these props. *@
+    <island name="connect" props="props" />
+</section>
