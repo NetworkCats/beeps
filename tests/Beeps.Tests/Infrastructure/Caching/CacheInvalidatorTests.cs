@@ -97,17 +97,17 @@ public sealed class CacheInvalidatorTests : IAsyncDisposable
     }
 
     [Fact]
-    public async Task ARemovedBeepEvictsItsThreadItsAuthorsAndOwnersProfilesItsHashtagsAndThePublicTimeline()
+    public async Task ANewBeepEvictsThePagesItBelongsOnItsThreadItsAuthorsAndOwnersProfilesItsHashtagsAndThePublicTimeline()
     {
         await invalidator.StartAsync(stop.Token);
         Put(CacheKinds.Beep, Root, Beep(Root, Agent, null, "hello #Weather and #天气"));
         Put(CacheKinds.Actor, Agent, AgentOf(Owner));
         Put(CacheKinds.Actor, Owner, Human(Owner));
 
-        invalidator.Invalidate([CacheChange.BeepRemoved(Root)]);
+        invalidator.Invalidate([CacheChange.BeepPosted(Root)]);
 
         var message = await PublishedAsync();
-        Assert.Equal([CacheKinds.Beep.Key(Root)], message.Keys);
+        Assert.Empty(message.Keys);
         Assert.Equal(
             [PageTags.Actor(Owner), PageTags.Actor(Agent), PageTags.Public, PageTags.Hashtag("weather"), PageTags.Hashtag("天气"), PageTags.Thread(Root)],
             message.PageTags.Order(StringComparer.Ordinal));
@@ -115,41 +115,77 @@ public sealed class CacheInvalidatorTests : IAsyncDisposable
     }
 
     [Fact]
-    public async Task AHiddenReplyEvictsItsPagesButKeepsItsEntry()
+    public async Task ARemovedBeepEvictsItsEntryAndOnlyThePagesShowingItWithoutReadingAnything()
+    {
+        await invalidator.StartAsync(stop.Token);
+
+        invalidator.Invalidate([CacheChange.BeepRemoved(Root)]);
+
+        var message = await PublishedAsync();
+        Assert.Equal([CacheKinds.Beep.Key(Root)], message.Keys);
+        Assert.Equal([PageTags.Beep(Root)], message.PageTags);
+        Assert.Empty(shared.Gets);
+    }
+
+    [Fact]
+    public async Task AHiddenBeepEvictsThePagesShowingItButKeepsItsEntry()
     {
         await invalidator.StartAsync(stop.Token);
         Put(CacheKinds.Beep, Reply, Beep(Reply, Owner, Root, "a reply"));
-        Put(CacheKinds.Actor, Owner, Human(Owner));
 
-        invalidator.Invalidate([CacheChange.BeepPages(Reply)]);
+        invalidator.Invalidate([CacheChange.BeepHidden(Reply)]);
 
         var message = await PublishedAsync();
         Assert.Empty(message.Keys);
-        Assert.Equal([PageTags.Actor(Owner), PageTags.Thread(Root)], message.PageTags.Order(StringComparer.Ordinal));
+        Assert.Equal([PageTags.Beep(Reply)], message.PageTags);
         Assert.True(shared.Entries.ContainsKey(CacheKinds.Beep.Key(Reply)));
     }
 
     [Fact]
-    public async Task ARenamedAgentEvictsItsProfileAndItsOwnersAndDropsTheAccountState()
+    public async Task ChangedCountsEvictThePagesShowingTheBeepAndNothingElse()
     {
         await invalidator.StartAsync(stop.Token);
-        Put(CacheKinds.Actor, Agent, AgentOf(Owner));
-        Put(CacheKinds.Actor, Owner, Human(Owner));
+
+        invalidator.Invalidate([CacheChange.BeepCounts(Root)]);
+
+        var message = await PublishedAsync();
+        Assert.Empty(message.Keys);
+        Assert.Equal([PageTags.Beep(Root)], message.PageTags);
+    }
+
+    [Fact]
+    public async Task ARenamedActorEvictsThePagesShowingItAndDropsTheAccountState()
+    {
+        await invalidator.StartAsync(stop.Token);
 
         invalidator.Invalidate([CacheChange.Actor(Agent)]);
 
         var message = await PublishedAsync();
         Assert.Equal([CacheKinds.Actor.Key(Agent)], message.Keys);
-        Assert.Equal([PageTags.Actor(Owner), PageTags.Actor(Agent)], message.PageTags.Order(StringComparer.Ordinal));
+        Assert.Equal([PageTags.Shows(Agent)], message.PageTags);
+        Assert.Empty(shared.Gets);
         await hybrid.Received().RemoveAsync(Arg.Is<IEnumerable<string>>(keys => keys.Single() == $"account:{Agent:D}"), Arg.Any<CancellationToken>());
     }
 
     [Fact]
-    public async Task ABanEvictsEveryCachedPageWithoutReadingAnything()
+    public async Task ABanEvictsThePagesShowingTheHumanOrTheirAgents()
+    {
+        await invalidator.StartAsync(stop.Token);
+        Put(CacheKinds.Agents, Owner, (IReadOnlyList<Guid>)[Agent]);
+
+        invalidator.Invalidate([CacheChange.ActorVisibility(Owner)]);
+
+        var message = await PublishedAsync();
+        Assert.Equal([CacheKinds.Actor.Key(Owner)], message.Keys);
+        Assert.Equal([PageTags.Shows(Owner), PageTags.Shows(Agent)], message.PageTags.Order(StringComparer.Ordinal));
+    }
+
+    [Fact]
+    public async Task LiftingABanEvictsEveryCachedPage()
     {
         await invalidator.StartAsync(stop.Token);
 
-        invalidator.Invalidate([CacheChange.ActorVisibility(Owner)]);
+        invalidator.Invalidate([CacheChange.ActorRestored(Owner)]);
 
         var message = await PublishedAsync();
         Assert.Equal([PageTags.All], message.PageTags);

@@ -30,7 +30,7 @@ namespace Beeps.Infrastructure;
 
 public static class InfrastructureSetup
 {
-    public static IServiceCollection AddBeepsInfrastructure(this IServiceCollection services)
+    public static IServiceCollection AddBeepsInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
         services.AddSingleton(TimeProvider.System);
         services.AddBeepsForwardedHeaders();
@@ -68,7 +68,8 @@ public static class InfrastructureSetup
         // would sign everyone out and invalidate every antiforgery token.
         services.AddDataProtection()
             .SetApplicationName("beeps")
-            .PersistKeysToDbContext<BeepsDbContext>();
+            .PersistKeysToDbContext<BeepsDbContext>()
+            .ProtectWithConfiguredCertificate(configuration);
         return services;
     }
 }

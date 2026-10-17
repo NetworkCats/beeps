@@ -131,10 +131,23 @@ public sealed partial class CacheInvalidator(
         change.Kind switch
         {
             CacheChangeKind.Beep or CacheChangeKind.BeepRemoved => [CacheKinds.Beep.Key(change.Id)],
-            CacheChangeKind.Actor or CacheChangeKind.ActorVisibility => [CacheKinds.Actor.Key(change.Id)],
+            CacheChangeKind.Actor or CacheChangeKind.ActorVisibility or CacheChangeKind.ActorRestored => [CacheKinds.Actor.Key(change.Id)],
             CacheChangeKind.Handle => [CacheKinds.Handle.Key(change.Name!)],
             CacheChangeKind.Following => [CacheKinds.Following.Key(change.Id)],
             CacheChangeKind.Agents => [CacheKinds.Agents.Key(change.Id)],
+            _ => [],
+        };
+
+    /// <summary>The cached pages a change affects that are known without reading anything (<see cref="PageTags"/>).</summary>
+    private static IEnumerable<string> PageTagsOf(CacheChange change) =>
+        change.Kind switch
+        {
+            // Pages showing the beep: its images, its counts, or whether it is there at all changed.
+            CacheChangeKind.Beep or CacheChangeKind.BeepRemoved or CacheChangeKind.BeepHidden or CacheChangeKind.BeepCounts => [PageTags.Beep(change.Id)],
+            // Pages showing the actor, wherever: its beeps, mentions of it, its profile, its owner's or agents' profiles.
+            CacheChangeKind.Actor or CacheChangeKind.ActorVisibility => [PageTags.Shows(change.Id)],
+            // Its beeps come back, on pages that never showed them.
+            CacheChangeKind.ActorRestored => [PageTags.All],
             _ => [],
         };
 
@@ -182,38 +195,38 @@ public sealed partial class CacheInvalidator(
         foreach (var change in unresolved)
         {
             keys.UnionWith(KeysOf(change));
-            if (change.Kind is CacheChangeKind.Actor or CacheChangeKind.ActorVisibility)
+            if (change.Kind is CacheChangeKind.Actor or CacheChangeKind.ActorVisibility or CacheChangeKind.ActorRestored)
             {
                 // A human's navigation bar shows their name and avatar from the cached account state.
                 accounts.Add(change.Id);
             }
         }
 
-        if (unresolved.Any(c => c.Kind == CacheChangeKind.ActorVisibility))
+        foreach (var change in unresolved)
         {
-            tags.Add(PageTags.All);
+            tags.UnionWith(PageTagsOf(change));
         }
-        else if (unresolved.Any(c => c.Kind is CacheChangeKind.BeepRemoved or CacheChangeKind.BeepPages or CacheChangeKind.Actor))
+
+        if (!tags.Contains(PageTags.All) && unresolved.Any(c => c.Kind is CacheChangeKind.BeepPosted or CacheChangeKind.ActorVisibility))
         {
             await using var scope = scopes.CreateAsyncScope();
             var reads = scope.ServiceProvider.GetRequiredService<ContentReads>();
-            tags.UnionWith(await BeepPageTagsAsync(reads, unresolved, cancellationToken));
-            tags.UnionWith(await ProfilePageTagsAsync(reads, unresolved, cancellationToken));
+            tags.UnionWith(await NewBeepPageTagsAsync(reads, unresolved, cancellationToken));
+            tags.UnionWith(await HiddenAgentPageTagsAsync(reads, unresolved, cancellationToken));
         }
 
         return new Resolved([.. keys], [.. tags], [.. accounts]);
     }
 
-    /// <summary>Where a new, removed or hidden beep is (or belongs) on a cached page: its thread, its author's (and owner's) profile, its hashtags, the public timeline.</summary>
-    private static async Task<IEnumerable<string>> BeepPageTagsAsync(ContentReads reads, List<CacheChange> changes, CancellationToken cancellationToken)
+    /// <summary>Where a new beep belongs on a cached page: its thread, its author's (and owner's) profile, its hashtags, the public timeline.</summary>
+    private static async Task<IEnumerable<string>> NewBeepPageTagsAsync(ContentReads reads, List<CacheChange> changes, CancellationToken cancellationToken)
     {
-        var ids = changes.Where(c => c.Kind is CacheChangeKind.BeepRemoved or CacheChangeKind.BeepPages).Select(c => c.Id).ToList();
+        var ids = changes.Where(c => c.Kind == CacheChangeKind.BeepPosted).Select(c => c.Id).ToList();
         if (ids.Count == 0)
         {
             return [];
         }
 
-        // Read before the entry is deleted, or from the database: what is needed here never changes.
         var beeps = await reads.GetBeepsAsync(ids, cancellationToken);
         var authors = await reads.GetActorsAsync(beeps.Values.Select(b => b.AuthorId), cancellationToken);
         return beeps.Values.SelectMany(beep =>
@@ -233,23 +246,18 @@ public sealed partial class CacheInvalidator(
         });
     }
 
-    /// <summary>A profile shows the human's agents and an agent's owner, so a change to either evicts both.</summary>
-    private static async Task<IEnumerable<string>> ProfilePageTagsAsync(ContentReads reads, List<CacheChange> changes, CancellationToken cancellationToken)
+    /// <summary>A banned or deleted human's agents disappear with them, without changes of their own.</summary>
+    private static async Task<IEnumerable<string>> HiddenAgentPageTagsAsync(ContentReads reads, List<CacheChange> changes, CancellationToken cancellationToken)
     {
-        var ids = changes.Where(c => c.Kind == CacheChangeKind.Actor).Select(c => c.Id).ToList();
+        var ids = changes.Where(c => c.Kind == CacheChangeKind.ActorVisibility).Select(c => c.Id).ToList();
         if (ids.Count == 0)
         {
             return [];
         }
 
-        var actors = await reads.GetActorsAsync(ids, cancellationToken);
-        var humans = actors.Values.Where(a => a.Actor.OwnerId is null).Select(a => a.Actor.Id).ToList();
-        var agents = humans.Count == 0 ? new Dictionary<Guid, IReadOnlyList<Guid>>() : await reads.GetAgentIdsAsync(humans, cancellationToken);
-        return ids
-            .Concat(actors.Values.Select(a => a.Actor.OwnerId).OfType<Guid>())
-            .Concat(agents.Values.SelectMany(a => a))
-            .Distinct()
-            .Select(PageTags.Actor);
+        // An agent has none, so its list is empty.
+        var agents = await reads.GetAgentIdsAsync(ids, cancellationToken);
+        return agents.Values.SelectMany(a => a).Select(PageTags.Shows);
     }
 
     private async Task PublishAsync(Resolved resolved, CancellationToken cancellationToken)

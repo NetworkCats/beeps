@@ -46,7 +46,7 @@ public sealed class EfModerationStore(BeepsDbContext db, PendingCacheChanges cac
         if (changed && to == ModerationStatus.Hidden)
         {
             // Whether a beep is hidden is never cached, only the pages showing it.
-            cacheChanges.Add(CacheChange.BeepPages(beepId));
+            cacheChanges.Add(CacheChange.BeepHidden(beepId));
         }
 
         return changed;
@@ -177,7 +177,7 @@ public sealed class EfModerationStore(BeepsDbContext db, PendingCacheChanges cac
                 .Where(a => db.Set<BeepMedia>().Any(bm => bm.BeepId == beepId && bm.MediaId == a.AvatarMediaId))
                 .Select(a => a.Id)
                 .ToListAsync(cancellationToken);
-            cacheChanges.Add([CacheChange.Beep(beepId), CacheChange.BeepPages(beepId), .. avatarUsers.Select(CacheChange.Actor)]);
+            cacheChanges.Add([CacheChange.Beep(beepId), .. avatarUsers.Select(CacheChange.Actor)]);
         }
 
         return keys;

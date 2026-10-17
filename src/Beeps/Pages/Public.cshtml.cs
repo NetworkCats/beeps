@@ -22,7 +22,7 @@ public sealed class PublicModel(TimelineService timelines) : PageModel
 
     public async Task OnGetAsync(CancellationToken cancellationToken)
     {
-        PageTags.Add(HttpContext, PageTags.Public);
         Beeps = await timelines.GetPublicAsync(User.OptionalViewer(), PageRequest.Create(Before), cancellationToken);
+        PageTags.Add(HttpContext, [PageTags.Public, .. PageTags.Showing(Beeps.Items)]);
     }
 }

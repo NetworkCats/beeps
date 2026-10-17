@@ -33,7 +33,7 @@ public sealed class DetailsModel(BeepService beeps) : PageModel
         }
 
         (Focus, Thread) = (focus.Value, thread.Value);
-        PageTags.Add(HttpContext, PageTags.Thread(Focus.RootId));
+        PageTags.Add(HttpContext, [PageTags.Thread(Focus.RootId), .. PageTags.Showing([Focus, .. Thread.Items])]);
         return Page();
     }
 }

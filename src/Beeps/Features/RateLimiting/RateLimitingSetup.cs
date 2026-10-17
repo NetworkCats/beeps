@@ -8,6 +8,7 @@ public static class RateLimitingSetup
     {
         services.AddOptions<RateLimitOptions>().BindConfiguration(RateLimitOptions.SectionName).ValidateOnStart();
         services.AddSingleton<IValidateOptions<RateLimitOptions>, RateLimitOptionsValidator>();
+        services.AddSingleton<LocalRateLimiter>();
         services.AddSingleton<RateLimitService>();
         return services;
     }

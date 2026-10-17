@@ -34,7 +34,7 @@ public sealed class IndexModel(TimelineService timelines) : PageModel
         (Tag, Beeps) = (tag.TrimStart('#'), result.Value);
         if (BeepText.TryNormalizeHashtag(tag, out var normalized))
         {
-            PageTags.Add(HttpContext, PageTags.Hashtag(normalized));
+            PageTags.Add(HttpContext, [PageTags.Hashtag(normalized), .. PageTags.Showing(Beeps.Items)]);
             Live = Before is null ? LiveTopic.ForTag(normalized) : LiveTopic.None;
         }
 

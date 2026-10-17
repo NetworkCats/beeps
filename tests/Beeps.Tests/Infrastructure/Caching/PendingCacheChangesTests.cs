@@ -74,7 +74,7 @@ public sealed class PendingCacheChangesTests : IAsyncDisposable
 
         var message = await PublishedAsync();
         Assert.Equal([CacheKinds.Actor.Key(Agent), CacheKinds.Handle.Key("tom.claude")], message.Keys.Order(StringComparer.Ordinal));
-        Assert.Equal([PageTags.Actor(Owner), PageTags.Actor(Agent)], message.PageTags.Order(StringComparer.Ordinal));
+        Assert.Equal([PageTags.Shows(Agent)], message.PageTags);
     }
 
     [Fact]
@@ -104,9 +104,10 @@ public sealed class PendingCacheChangesTests : IAsyncDisposable
     }
 
     [Fact]
-    public async Task ABanDropsTheActorAndEveryCachedPage()
+    public async Task ABanDropsTheActorAndThePagesShowingIt()
     {
         await StartAsync();
+        Put(CacheKinds.Agents, Owner, (IReadOnlyList<Guid>)[]);
         var user = Track(new User { Id = Owner, Actor = new Actor { Id = Owner, Kind = ActorKind.Human, Handle = "tom", DisplayName = "Tom" }, Email = "t@x.test", NormalizedEmail = "t@x.test", PasswordHash = "x", Locale = "en" });
         user.BannedAt = TestData.Now;
 
@@ -115,7 +116,7 @@ public sealed class PendingCacheChangesTests : IAsyncDisposable
 
         var message = await PublishedAsync();
         Assert.Equal([CacheKinds.Actor.Key(Owner)], message.Keys);
-        Assert.Equal([PageTags.All], message.PageTags);
+        Assert.Equal([PageTags.Shows(Owner)], message.PageTags);
     }
 
     [Fact]

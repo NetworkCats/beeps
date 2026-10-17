@@ -61,13 +61,13 @@ public sealed partial class LiveUpdates(ILiveEventStore store, IBeepCounterStore
     }
 
     /// <summary>Publishes the current counts of beeps that changed since the last run. Instances may run it at once: each takes different beeps.</summary>
-    /// <returns>How many beeps were taken; <see cref="CountsBatchSize"/> means there may be more.</returns>
-    public async Task<int> PublishCountsAsync(CancellationToken cancellationToken)
+    /// <returns>The beeps taken; <see cref="CountsBatchSize"/> of them means there may be more.</returns>
+    public async Task<IReadOnlyList<Guid>> PublishCountsAsync(CancellationToken cancellationToken)
     {
         var changed = await store.TakeChangedCountsAsync(CountsBatchSize, cancellationToken);
         if (changed.Count == 0)
         {
-            return 0;
+            return changed;
         }
 
         var counts = await counters.GetAsync(changed, cancellationToken);
@@ -77,7 +77,7 @@ public sealed partial class LiveUpdates(ILiveEventStore store, IBeepCounterStore
             await store.AppendAsync(LiveEventTypes.Counts, JsonSerializer.Serialize(new CountsEvent(entries), LiveJsonContext.Default.CountsEvent), cancellationToken);
         }
 
-        return changed.Count;
+        return changed;
     }
 
     private async Task AppendAsync<T>(string type, T payload, JsonTypeInfo<T> payloadType, CancellationToken cancellationToken)

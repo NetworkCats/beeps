@@ -10,23 +10,29 @@ namespace Beeps.Infrastructure.Caching;
 
 public enum CacheChangeKind
 {
-    /// <summary>What a beep shows changed (its images): its entry.</summary>
+    /// <summary>What a beep shows changed (its images): its entry and the pages showing it.</summary>
     Beep,
 
-    /// <summary>A beep was deleted: its entry, and the cached pages that may show it.</summary>
+    /// <summary>A beep was deleted: its entry and the pages showing it.</summary>
     BeepRemoved,
 
-    /// <summary>
-    /// A beep was posted, or hidden by moderation: the cached pages that show it, or should (its entry, if any, stays
-    /// right).
-    /// </summary>
-    BeepPages,
+    /// <summary>A beep was hidden by moderation: the pages showing it (whether it is hidden is never cached).</summary>
+    BeepHidden,
 
-    /// <summary>An actor's name, handle, bio or avatar changed: its entry and its profile pages.</summary>
+    /// <summary>A beep was posted: the pages it belongs on (its thread, profiles, hashtags, the public timeline).</summary>
+    BeepPosted,
+
+    /// <summary>A beep's like or reply count changed: the pages showing it.</summary>
+    BeepCounts,
+
+    /// <summary>An actor's name, handle, bio or avatar changed: its entry and the pages showing it.</summary>
     Actor,
 
-    /// <summary>An actor was deleted, banned or unbanned: its entry, and every cached page, as its beeps may be on any.</summary>
+    /// <summary>An actor was deleted or banned: its entry and the pages showing it or (for a human) its agents.</summary>
     ActorVisibility,
+
+    /// <summary>A ban was lifted: its entry, and every cached page, as its beeps belong back on any of them.</summary>
+    ActorRestored,
 
     /// <summary>A handle now points elsewhere (or nowhere): <see cref="CacheChange.Name"/> is the normalized handle.</summary>
     Handle,
@@ -45,11 +51,17 @@ public readonly record struct CacheChange(CacheChangeKind Kind, Guid Id, string?
 
     public static CacheChange BeepRemoved(Guid id) => new(CacheChangeKind.BeepRemoved, id);
 
-    public static CacheChange BeepPages(Guid id) => new(CacheChangeKind.BeepPages, id);
+    public static CacheChange BeepHidden(Guid id) => new(CacheChangeKind.BeepHidden, id);
+
+    public static CacheChange BeepPosted(Guid id) => new(CacheChangeKind.BeepPosted, id);
+
+    public static CacheChange BeepCounts(Guid id) => new(CacheChangeKind.BeepCounts, id);
 
     public static CacheChange Actor(Guid id) => new(CacheChangeKind.Actor, id);
 
     public static CacheChange ActorVisibility(Guid id) => new(CacheChangeKind.ActorVisibility, id);
+
+    public static CacheChange ActorRestored(Guid id) => new(CacheChangeKind.ActorRestored, id);
 
     public static CacheChange Handle(string normalizedHandle) => new(CacheChangeKind.Handle, Guid.Empty, normalizedHandle);
 
@@ -125,10 +137,10 @@ public sealed class PendingCacheChanges(BeepsDbContext db, CacheInvalidator inva
                     Capture(entry, actor);
                     break;
                 case User user when entry.State == EntityState.Modified && entry.Property(nameof(User.BannedAt)).IsModified:
-                    pending.Add(CacheChange.ActorVisibility(user.Id));
+                    pending.Add(user.BannedAt is null ? CacheChange.ActorRestored(user.Id) : CacheChange.ActorVisibility(user.Id));
                     break;
                 case Beep beep when entry.State == EntityState.Added:
-                    pending.Add(CacheChange.BeepPages(beep.Id));
+                    pending.Add(CacheChange.BeepPosted(beep.Id));
                     break;
                 case Beep beep when entry.State == EntityState.Modified && entry.Property(nameof(Beep.DeletedAt)).IsModified:
                     pending.Add(CacheChange.BeepRemoved(beep.Id));

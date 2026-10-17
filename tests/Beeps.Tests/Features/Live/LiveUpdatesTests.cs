@@ -66,7 +66,7 @@ public sealed class LiveUpdatesTests
         await live.CountsChangedAsync(a, TestSupport.Ct);
         var taken = await live.PublishCountsAsync(TestSupport.Ct);
 
-        Assert.Equal(2, taken);
+        Assert.Equal([a, b], taken);
         await store.Received(1).MarkCountsChangedAsync(a, Arg.Any<CancellationToken>());
         Assert.Equal([$$"""{"beeps":[{"id":"{{a:D}}","like_count":0,"reply_count":2}]}"""], TestData.LiveEvents(store, LiveEventTypes.Counts));
     }
@@ -76,7 +76,7 @@ public sealed class LiveUpdatesTests
     {
         store.TakeChangedCountsAsync(default, TestSupport.Ct).ReturnsForAnyArgs([]);
 
-        Assert.Equal(0, await TestData.Live(store, counters).PublishCountsAsync(TestSupport.Ct));
+        Assert.Empty(await TestData.Live(store, counters).PublishCountsAsync(TestSupport.Ct));
         await counters.DidNotReceiveWithAnyArgs().GetAsync(default!, TestSupport.Ct);
         await store.DidNotReceiveWithAnyArgs().AppendAsync(default!, default!, TestSupport.Ct);
     }

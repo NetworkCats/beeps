@@ -665,7 +665,7 @@ public sealed class AccountServiceTests
             outbox,
             captcha,
             hasher,
-            new RateLimitService(rateLimitStore, limits, localizer, NullLogger<RateLimitService>.Instance),
+            new RateLimitService(rateLimitStore, new LocalRateLimiter(TimeProvider.System), limits, localizer, NullLogger<RateLimitService>.Instance),
             TestData.Live(liveEvents),
             dataProtection,
             TestData.Time(),

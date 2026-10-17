@@ -8,6 +8,7 @@ namespace Beeps.Features.RateLimiting;
 
 public sealed partial class RateLimitService(
     IRateLimitStore store,
+    LocalRateLimiter fallback,
     IOptionsMonitor<RateLimitOptions> options,
     IStringLocalizer<SharedResource> localizer,
     ILogger<RateLimitService> logger)
@@ -51,10 +52,10 @@ public sealed partial class RateLimitService(
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
-            // Fail open: a cache outage must not take the whole site down. Logged as an error so it
-            // is noticed; Turnstile and Identity lockout still protect the sensitive flows meanwhile.
+            // A Valkey outage must neither take the site down (refusing everything) nor lift every limit: this
+            // instance counts on its own until Valkey is back. Logged as an error so the outage is noticed.
             LogStoreFailed(logger, exception);
-            return Result.Success;
+            decision = fallback.TryAcquire(counters);
         }
 
         return decision.IsAllowed
@@ -66,6 +67,6 @@ public sealed partial class RateLimitService(
     private static string HashPartition(string partition) =>
         Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(partition)).AsSpan(0, 16));
 
-    [LoggerMessage(Level = LogLevel.Error, Message = "Rate limit store failed; allowing the request")]
+    [LoggerMessage(Level = LogLevel.Error, Message = "Rate limit store failed; counting on this instance only")]
     private static partial void LogStoreFailed(ILogger logger, Exception exception);
 }

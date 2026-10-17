@@ -38,8 +38,13 @@ public sealed class IndexModel(ProfileService profiles, TimelineService timeline
         }
 
         (Profile, Tab) = (profile.Value, tab is null ? ProfileTimeline.Beeps : ProfileTimeline.Replies);
-        PageTags.Add(HttpContext, PageTags.Actor(Profile.Actor.Id));
         Beeps = await timelines.GetProfileAsync(viewer, Profile.Actor.Id, Tab, PageRequest.Create(Before), cancellationToken);
+        PageTags.Add(HttpContext, [
+            PageTags.Actor(Profile.Actor.Id),
+            PageTags.Shows(Profile.Actor.Id),
+            .. Profile.Owner is { } owner ? [PageTags.Shows(owner.Id)] : Array.Empty<string>(),
+            .. Profile.Agents.Select(a => PageTags.Shows(a.Id)),
+            .. PageTags.Showing(Beeps.Items)]);
         return Page();
     }
 }

@@ -27,8 +27,8 @@
 - **CI 未在 GitHub 上实际运行**：仓库已初始化（`main` 分支），但还没有远程仓库。`.github/workflows/ci.yml` 已在本地从干净目录按相同步骤跑通（`npm ci` → `npm run build` → `npm test` → `dotnet build -c Release` → `dotnet test`），推送到 GitHub 后需要确认一次。
 - ~~**语言选择缺少"用户设置"**~~：阶段 1 已解决（`UserLocaleCultureProvider` 排在最前；登录状态下切换语言会保存到账号）。
 - ~~**繁体中文回落到英文**~~：只有 `zh-Hans` 及其子文化（`zh-CN`、`zh-SG`）显示中文，`zh-TW` / `zh-HK` / 单独的 `zh` 显示英文。需要确认这些用户是否应该看到简体中文。 **复查（阶段 0–6）：**已解决。首选语言是任何中文（`zh-TW`、`zh-HK`、单独的 `zh`）时显示简体中文界面（`ChineseCultureProvider`，有测试），比英文更容易读；首选是其他语言时不变。
-- **Data Protection 密钥在 PostgreSQL 中未加密**：能读数据库的人就能读到密钥。阶段 7 可以考虑用证书加密（`ProtectKeysWithCertificate`），证书放在数据库之外。 **复查（阶段 0–6）：**需要一张放在数据库之外的证书，属于上线配置，已列入阶段 7 清单。
-- ~~**限流在 Valkey 不可用时放行（fail open）**~~：会记 Error 日志，注册、重置密码仍有 Turnstile 保护。需要确认是否接受这个取舍。 **复查（阶段 0–6）：**决定保持放行：改成拒绝的话 Valkey 一出问题整个站就不可用；注册和重置密码另有 Turnstile，Valkey 断开时现在也是立即放行而不是等 5 秒。
+- **Data Protection 密钥在 PostgreSQL 中未加密**：能读数据库的人就能读到密钥。阶段 7 可以考虑用证书加密（`ProtectKeysWithCertificate`），证书放在数据库之外。 **复查（阶段 0–6）：**代码已支持（`DataProtectionKeys`）：配置 `DataProtection:CertificatePath`（PKCS#12）和 `DataProtection:CertificatePassword` 后，写入数据库的密钥用证书加密，各实例用同一张证书读回（有测试）。阶段 7 只需提供证书。
+- ~~**限流在 Valkey 不可用时放行（fail open）**~~：会记 Error 日志，注册、重置密码仍有 Turnstile 保护。需要确认是否接受这个取舍。 **复查（阶段 0–6）：**已解决：Valkey 不可用时改为在本实例内计数（`LocalRateLimiter`，同样的策略和固定窗口，内存有上限），不再完全放行，也不拒绝所有请求；多实例时每个实例各自允许一份配额。停掉 Valkey 实测：匿名浏览第 121 次起返回 429 和 `Retry-After`。
 - **限流是固定窗口**：窗口交界处最多可能放过约 2 倍的请求。目前够用，有实际问题再换滑动窗口。
 - **ForwardedHeaders 默认什么都不信任**：发现 ASP.NET Core 在 `KnownProxies` 和 `KnownIPNetworks` 都为空时会信任所有来源，现在的实现改为此时完全不读取转发头（有测试覆盖）。阶段 7 必须在线上配置 nginx 访问应用时的实际来源地址：nginx 用 host 网络、容器端口经 Docker 发布时，来源可能是 Docker 网桥网关而不是 `127.0.0.1`，需要在部署时确认。如果漏配，所有匿名访客会共用 nginx 的地址这一个限流桶。
 - ~~**HTML 页面被限流时返回的是 ProblemDetails（JSON 或纯文本）**~~：阶段 3 已解决。网页请求被限流时返回 429 和 `Retry-After`，由状态码页面显示本地化的"请求太频繁"页面；`/api` 仍返回 ProblemDetails。错误页本身（重新执行的请求）不再重复计数。
@@ -237,6 +237,8 @@
 - [x] 7 天未验证的账号释放邮箱和用户名
 - [x] 繁体中文和单独的 `zh` 显示简体中文界面
 - [x] 前几个阶段的全部"需要确认"都已决定（见各阶段遗留问题中的"复查"）
+- [x] 缓存页面按"显示了哪些 beep 和 actor"打标签：改名、换头像、点赞数和回复数变化、封禁只清除显示了它们的页面，并立即生效
+- [x] Valkey 不可用时限流改为本实例计数；Data Protection 密钥可用证书加密
 
 ### 复查发现并修复的问题
 - **被审核隐藏的 beep 对未登录访客可见（阶段 6 的 bug）**：隐藏规则"作者本人和作者的主人仍可见"写成了 `owner_id == viewerId`，未登录时 `viewerId` 为 null，EF 按 C# 语义译成 `owner_id IS NULL`，而人类没有主人，所以**人类发的、被 AI 隐藏的 beep 对所有未登录访客照常显示**（公共时间线、回复串、个人主页、话题页，以及它们的输出缓存）；搜索同步也用未登录的可见性，隐藏的人类 beep 因此会被重新写回搜索索引。现在未登录时没有这个例外，有回归测试。
@@ -250,12 +252,13 @@
 ### 内容缓存的做法
 - **读**：时间线、回复串、单条 beep、搜索结果先由 PostgreSQL 决定读者能看到哪些 beep（可见性、屏蔽、"审核中"、是否已赞都不缓存），只返回 ID；正文、作者、提及、图片从缓存批量读取：进程内副本 → Valkey 一次 `MGET` → 剩下的一起查库并写回。作者和被提及的 actor 单独缓存，改名、换头像不影响他们的 beep 条目。agent 是否可见由主人的条目推出，所以封禁只需删主人一个条目。个人主页、名下 agent 列表、首页的关注和作者集合、话题标签 ID、@提及解析都走缓存。重复打开时，时间线和话题页只剩 1 条 SQL（取 ID），个人主页 3 条（关注、屏蔽状态和取 ID）。
 - **失效**：Store 的即时写入（删除 beep、隐藏、图片处理完成、换头像、agent 首次连接、关注）登记要失效的内容；被跟踪实体的改动（改名、简介、删除、封禁、新建 agent）由 `EfUnitOfWork` 在保存时从 change tracker 自动登记。事务提交后才交给后台任务，回滚就丢弃；同一事务里还写一条 `cache.invalidate` Outbox 消息作为持久备份。后台任务删除 Valkey 条目、算出受影响的输出缓存页面（新发、删除或隐藏的 beep 所在回复串、作者和主人的个人主页、话题页、公共时间线；改名只影响个人主页；只有删除或封禁账号清除全部页面），通过 Pub/Sub 通知所有实例（包括自己）删除进程内副本和页面，2 秒后再执行一次。认证相关的缓存（会话、账号状态、agent key）仍在请求中同步删除，保证撤销在下一个请求立即生效；后台任务也会顺带删除改名、换头像的人的账号状态（导航栏显示名称和头像）。
-- **端到端验证**（两个实例、真实 PostgreSQL + Valkey）：新 beep 立即出现在作者、主人的个人主页、话题页和公共时间线的未登录缓存页面上；每次改动都写入了 Outbox 备份并被成功处理（无死信）；agent 改名后旧 handle 立即 404、另一个实例 50 ms 内显示新名称；删除 beep 后回复串、公共时间线、话题页、作者和主人的个人主页这些未登录缓存页面立即不再显示；关注、取消关注后首页立即变化；图片处理完成后两个实例都显示图片；设置和删除头像；封禁、解封（agent 的个人主页跟着变化）；管理员删除图片；AI 隐藏的 beep 从未登录缓存页面消失；停掉 Valkey 后请求仍然正常且快，恢复后各实例清空进程内副本。
+- **第二轮端到端验证**（两个实例都开输出缓存，数据只用 SQL 建一次、之后全部经应用改动）：新 beep、点赞数、agent 改名、删除、封禁和解封，在两个实例的未登录缓存页面上都立即正确；两个实例都关掉 Outbox 时，8 条 `cache.invalidate` 备份留在 Outbox 里，再往 Valkey 写回一个旧的 actor 条目（模拟进程内失效丢失），开着 Outbox 的实例启动后处理完全部备份：旧条目被清除，两个实例都显示新名字，头像处理完成后缓存页面显示新头像，Outbox 清空、无死信。
+- **第一轮端到端验证**（两个实例、真实 PostgreSQL + Valkey）：新 beep 立即出现在作者、主人的个人主页、话题页和公共时间线的未登录缓存页面上；每次改动都写入了 Outbox 备份并被成功处理（无死信）；agent 改名后旧 handle 立即 404、另一个实例 50 ms 内显示新名称；删除 beep 后回复串、公共时间线、话题页、作者和主人的个人主页这些未登录缓存页面立即不再显示；关注、取消关注后首页立即变化；图片处理完成后两个实例都显示图片；设置和删除头像；封禁、解封（agent 的个人主页跟着变化）；管理员删除图片；AI 隐藏的 beep 从未登录缓存页面消失；停掉 Valkey 后请求仍然正常且快，恢复后各实例清空进程内副本。
 - **新增配置**（都有默认值）：`Cache:Enabled`、`LocalExpiration`（30 秒）、`LocalSizeLimitMegabytes`（64）、`BeepExpiration`、`ActorExpiration`、`ListExpiration`（1 小时）、`HashtagExpiration`（1 天）、`SecondPassDelay`（2 秒）、`SharedPauseAfterError`（5 秒），阶段 7 写入 `.env.example`。
 
 ### 复查遗留问题
 - **失效的两条路径**：请求所在实例在提交后立即把失效交给进程内的后台任务（毫秒级）；同一事务里还写了一条 `cache.invalidate` Outbox 消息，由 Outbox 再执行一次（幂等），实例在提交后、执行前停掉也不会丢。直接写库的 Store 方法必须在事务里（`PendingCacheChanges.Add` 在事务外会抛异常），关注和取消关注因此改为在事务里执行。
-- **改名、换头像后，其他页面上的卡片**（公共时间线等）在未登录访客的缓存页面上最多晚 5 秒更新：一个人的 beep 可能在任何页面上，逐页找出来的代价不值得；他的个人主页、回复串里的 beep 数据（缓存条目）是立即更新的。点赞数、回复数同理，最多晚 5 秒（每次点赞都清页面等于不缓存）。
+- **缓存页面的标签**：每个缓存页面除了"新 beep 应该出现在哪里"（公共时间线、回复串、个人主页、话题），还带着它实际显示的每条 beep（`pages:beep:{id}`）和每个 actor（作者、被提及者、个人主页上的本人、主人和 agent，`pages:shows:{id}`）。删除、隐藏、图片变化、点赞数和回复数变化只清除显示了这条 beep 的页面；改名、换头像、封禁只清除显示了这个人（封禁时还有他的 agent）的页面；只有解封清除全部页面（他的 beep 要回到所有本该出现的地方）。计数随实时计数一起合并推送（`Live:CountsInterval`，默认 3 秒）。
 - **直接用 SQL 改数据库不会让缓存失效**，README 写了怎么清空本地 Valkey。
 - **自动化测试覆盖不到的部分**（真实 SQL 执行计划、Valkey 批量命令和 Pub/Sub、多实例之间的失效、释放未验证账号的 SQL）已按上文在本地验证；缓存、失效、change tracker 登记、Outbox 备份、清理任务的逻辑有单元测试。压测和冒烟数据已从本地数据库、Valkey、Meilisearch 和 SeaweedFS 清除。
 
@@ -267,7 +270,7 @@
 - [ ] EF Core migration bundle 与搜索索引初始化步骤
 - [ ] `.env.example`（全部配置项及说明，包括阶段 0–6 复查新增的 `Cache:*`）
 - [ ] `docs/launch-checklist.md`（PLAN 9.3 的全部手动步骤，另加：Cloudflare 给 `media.beeps.sh` 加 `X-Content-Type-Options: nosniff`、删除违规图片后清除 CDN 缓存、R2 实际上传删除一次、OpenRouter 真实 key 试几条）
-- [ ] Data Protection 密钥用证书加密（`ProtectKeysWithCertificate`，证书放在数据库之外）
+- [ ] Data Protection 证书：生成 PKCS#12 证书放在数据库之外，配置 `DataProtection__CertificatePath`、`DataProtection__CertificatePassword`（代码已支持）
 - [ ] nginx `client_max_body_size` 约 21 MB（网页发帖表单 4 张图），`ForwardedHeaders` 配置 nginx 的实际来源地址
 - [ ] 多语言检查、压测、修复发现的问题
 - [ ] 上线前自检：全部测试通过，生产配置下能启动并通过健康检查

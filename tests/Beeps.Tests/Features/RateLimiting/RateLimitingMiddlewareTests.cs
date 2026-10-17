@@ -101,7 +101,7 @@ public sealed class RateLimitingMiddlewareTests
         monitor.CurrentValue.Returns(options);
         var localizer = Substitute.For<IStringLocalizer<SharedResource>>();
         localizer[Arg.Any<string>()].Returns(call => new LocalizedString(call.Arg<string>(), call.Arg<string>()));
-        var service = new RateLimitService(store, monitor, localizer, NullLogger<RateLimitService>.Instance);
+        var service = new RateLimitService(store, new LocalRateLimiter(TimeProvider.System), monitor, localizer, NullLogger<RateLimitService>.Instance);
 
         var middleware = new RateLimitingMiddleware(_ =>
         {

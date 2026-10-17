@@ -97,13 +97,22 @@ public sealed class RateLimitServiceTests
     }
 
     [Fact]
-    public async Task StoreOutageFailsOpen()
+    public async Task DuringAStoreOutageThisInstanceStillCounts()
     {
         store.TryAcquireAsync(default!, TestSupport.Ct).ThrowsAsyncForAnyArgs(new TimeoutException("valkey is down"));
+        options.Policies["Outage"] = Policy((2, TimeSpan.FromMinutes(1)));
+        var service = CreateService();
 
-        var result = await CreateService().CheckAsync("Login", "ip:203.0.113.7", TestSupport.Ct);
+        var first = await service.CheckAsync("Outage", "ip:203.0.113.7", TestSupport.Ct);
+        var second = await service.CheckAsync("Outage", "ip:203.0.113.7", TestSupport.Ct);
+        var third = await service.CheckAsync("Outage", "ip:203.0.113.7", TestSupport.Ct);
+        var otherIp = await service.CheckAsync("Outage", "ip:203.0.113.8", TestSupport.Ct);
 
-        Assert.True(result.IsSuccess);
+        Assert.True(first.IsSuccess);
+        Assert.True(second.IsSuccess);
+        Assert.Equal(ErrorKind.RateLimited, third.Error?.Kind);
+        Assert.True(third.Error?.RetryAfter > TimeSpan.Zero);
+        Assert.True(otherIp.IsSuccess);
     }
 
     [Fact]
@@ -122,6 +131,6 @@ public sealed class RateLimitServiceTests
     {
         var monitor = Substitute.For<IOptionsMonitor<RateLimitOptions>>();
         monitor.CurrentValue.Returns(options);
-        return new RateLimitService(store, monitor, localizer, NullLogger<RateLimitService>.Instance);
+        return new RateLimitService(store, new LocalRateLimiter(TimeProvider.System), monitor, localizer, NullLogger<RateLimitService>.Instance);
     }
 }

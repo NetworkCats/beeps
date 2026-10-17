@@ -50,7 +50,7 @@ internal static class TestData
         {
             Policies = RateLimitPolicies.All.ToDictionary(p => p, _ => new RateLimitPolicyOptions { Rules = [new RateLimitRuleOptions { PermitLimit = 1, Window = TimeSpan.FromMinutes(1) }] }),
         });
-        return new RateLimitService(store, limits, new TestLocalizer(), NullLogger<RateLimitService>.Instance);
+        return new RateLimitService(store, new LocalRateLimiter(TimeProvider.System), limits, new TestLocalizer(), NullLogger<RateLimitService>.Instance);
     }
 
     /// <summary>The policies a rate-limit check counted, from the counter keys (<c>{policy}:{window}:{partition}</c>).</summary>

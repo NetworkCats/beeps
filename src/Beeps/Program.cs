@@ -27,7 +27,7 @@ builder.Services.AddBeepsLocalization();
 builder.Services.AddBeepsRateLimiting();
 builder.Services.AddBeepsAuth();
 builder.Services.AddBeepsFeatures();
-builder.Services.AddBeepsInfrastructure();
+builder.Services.AddBeepsInfrastructure(builder.Configuration);
 
 var app = builder.Build();
 
