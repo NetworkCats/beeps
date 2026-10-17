@@ -1,5 +1,5 @@
-// Lists the resource keys the app's components show (Client/strings.json): the layout sends just those to the browser,
-// in the page's language (Pages/Islands/ClientConfig.cs). A key is any string literal in Client/app that looks like one
+// Lists the resource keys the app's components show (Client/strings.json): the server sends just those to the browser,
+// in the page's language (Pages/Islands/ClientStrings.cs). A key is any string literal in Client/app that looks like one
 // (`'Beep.Delete'`), so keys are always written out in full, never put together.
 //
 //   node scripts/build-strings.ts           writes the list

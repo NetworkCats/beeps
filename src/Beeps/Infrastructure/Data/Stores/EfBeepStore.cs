@@ -125,6 +125,22 @@ public sealed class EfBeepStore(BeepsDbContext db, ContentReads reads, PendingCa
     public async Task<bool> RemoveLikeAsync(Guid actorId, Guid beepId, CancellationToken cancellationToken) =>
         await db.Set<Like>().Where(l => l.BeepId == beepId && l.ActorId == actorId).ExecuteDeleteAsync(cancellationToken) == 1;
 
+    // One statement: the beep's count goes up only when the person's did.
+    public async Task<bool> RecordViewAsync(Guid userId, Guid beepId, DateTimeOffset now, DateTimeOffset repeatAfter, CancellationToken cancellationToken) =>
+        await db.Database.ExecuteSqlAsync(
+            $"""
+            WITH counted AS (
+                INSERT INTO viewed_beeps (user_id, beep_id, first_viewed_at, last_viewed_at, view_count)
+                VALUES ({userId}, {beepId}, {now}, {now}, 1)
+                ON CONFLICT (user_id, beep_id) DO UPDATE
+                SET last_viewed_at = excluded.last_viewed_at, view_count = viewed_beeps.view_count + 1
+                WHERE viewed_beeps.last_viewed_at <= {repeatAfter}
+                RETURNING 1)
+            UPDATE beeps SET view_count = view_count + 1
+            WHERE id = {beepId} AND EXISTS (SELECT 1 FROM counted)
+            """,
+            cancellationToken) == 1;
+
     public async Task<IReadOnlyDictionary<Guid, BeepCounts>> RecountAsync(IReadOnlyCollection<Guid> beepIds, CancellationToken cancellationToken)
     {
         await db.Set<Beep>()

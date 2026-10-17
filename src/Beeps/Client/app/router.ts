@@ -11,6 +11,7 @@
 import { markSending } from './busy.ts';
 import { readConfig, viewer } from './config.ts';
 import { confirmAction } from './dialogs.ts';
+import { loadStrings } from './i18n.ts';
 import { mountIslands, snapshotIslands, unmountIslands } from './islands.tsx';
 import type { Envelope } from './props.ts';
 
@@ -123,11 +124,11 @@ function focusContent(): void {
 
 /**
  * Takes over the islands of the page now in the body; settles once they are drawn (a page's component is loaded the
- * first time a page has it). One whose code cannot be loaded (offline, or the site was updated and the old chunk is
- * gone) has the page loaded in full instead.
+ * first time a page has it, the text when the page is in another language). One whose code or text cannot be loaded
+ * (offline, or the site was updated and the old chunk is gone) has the page loaded in full instead.
  */
 function mount(saved?: ReadonlyMap<string, Envelope>): Promise<void> {
-  return mountIslands(document.body, saved).catch(() => window.location.assign(pageUrl()));
+  return loadStrings().then(() => mountIslands(document.body, saved)).catch(() => window.location.assign(pageUrl()));
 }
 
 function swapIn(fresh: Document, ahead: boolean): Promise<void> {

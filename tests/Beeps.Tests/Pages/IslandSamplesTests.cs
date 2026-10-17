@@ -14,7 +14,9 @@ using Beeps.Features.Profiles;
 using Beeps.Features.Search;
 using Beeps.Features.Shared;
 using Beeps.Features.Timelines;
+using Beeps.Pages.Islands;
 using Beeps.Tests.Support;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Beeps.Tests.Pages;
 
@@ -257,12 +259,16 @@ public sealed partial class IslandSamplesTests : IDisposable
     private static BeepRow Beep(int n, string text, ActorRow author, Guid? replyTo = null, Guid? root = null, bool liked = false, int likes = 0, int replies = 0) =>
         new(Id(n), text, author, replyTo, root ?? Id(n), TestData.Now.AddMinutes(-n), likes, replies, liked);
 
-    private static async Task MatchSampleAsync(string name, string url, string html)
+    private async Task MatchSampleAsync(string name, string url, string html)
     {
+        var config = JsonNode.Parse(AppConfigPattern().Match(html).Groups[1].Value)!;
+        // The interface text the config names (ClientStrings), as the app fetches it.
+        var culture = StringsCulturePattern().Match(config["stringsUrl"]!.GetValue<string>()).Groups[1].Value;
         var sample = new JsonObject
         {
             ["url"] = url,
-            ["config"] = JsonNode.Parse(AppConfigPattern().Match(html).Groups[1].Value),
+            ["config"] = config,
+            ["strings"] = JsonNode.Parse(factory.Services.GetRequiredService<ClientStrings>().For(culture).Json),
             ["islands"] = new JsonArray([.. Extract(html)]),
         };
         // What differs from run to run (new users' ids, tokens) is replaced the same way throughout the sample.
@@ -354,6 +360,9 @@ public sealed partial class IslandSamplesTests : IDisposable
 
     [GeneratedRegex("<script type=\"application/json\" id=\"app-config\">(.*?)</script>")]
     private static partial Regex AppConfigPattern();
+
+    [GeneratedRegex("^/strings/([A-Za-z-]+)\\.json\\?v=")]
+    private static partial Regex StringsCulturePattern();
 
     [GeneratedRegex("^<div class=\"skeleton-page\" data-skeleton=\"([a-z]+)\"")]
     private static partial Regex SkeletonPattern();

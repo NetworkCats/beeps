@@ -49,6 +49,12 @@ public interface IBeepStore
     Task<bool> RemoveLikeAsync(Guid actorId, Guid beepId, CancellationToken cancellationToken);
 
     /// <summary>
+    /// Counts a view of the beep by the human, in their history and in the beep's views, unless they last viewed it
+    /// after <paramref name="repeatAfter"/> (the same view still). Runs immediately; false when it was not counted.
+    /// </summary>
+    Task<bool> RecordViewAsync(Guid userId, Guid beepId, DateTimeOffset now, DateTimeOffset repeatAfter, CancellationToken cancellationToken);
+
+    /// <summary>
     /// Recounts likes and replies from their rows and writes them to the beeps' count columns. Runs
     /// immediately; returns the new counts (beeps that no longer exist are left out).
     /// </summary>

@@ -37,10 +37,31 @@ public sealed class Beep
     /// <summary>Direct replies that are neither deleted nor hidden; written back like <see cref="LikeCount"/>.</summary>
     public int ReplyCount { get; set; }
 
+    /// <summary>Views by signed-in people (<see cref="ViewedBeep"/>), counted as they happen; shown to no one.</summary>
+    public long ViewCount { get; set; }
+
     public DateTimeOffset CreatedAt { get; init; }
 
     /// <summary>Soft delete: invisible to everyone, kept for audit.</summary>
     public DateTimeOffset? DeletedAt { get; set; }
+}
+
+/// <summary>
+/// A beep a signed-in person opened (its page), and how often: their viewing history, shown to no one. Opening it again
+/// soon after (<see cref="BeepService.RepeatViewWindow"/>) is the same view.
+/// </summary>
+public sealed class ViewedBeep
+{
+    public Guid UserId { get; init; }
+
+    public Guid BeepId { get; init; }
+
+    public DateTimeOffset FirstViewedAt { get; init; }
+
+    /// <summary>When the last view that counted began.</summary>
+    public DateTimeOffset LastViewedAt { get; set; }
+
+    public int ViewCount { get; set; }
 }
 
 public sealed class Like

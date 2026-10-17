@@ -10,6 +10,7 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { renderToString } from 'preact-render-to-string';
 import { setConfig, type AppConfig } from './config.ts';
+import { setStrings } from './i18n.ts';
 import { loadComponent } from './islands.tsx';
 import { registerPages } from './pages/index.ts';
 import type { Errors } from './props.ts';
@@ -19,6 +20,7 @@ import { toasts } from './toasts.ts';
 interface Sample {
   url: string;
   config: AppConfig;
+  strings: Record<string, string>;
   islands: Array<{ name: string; props: unknown; errors?: Errors | null; html: string }>;
 }
 
@@ -126,6 +128,7 @@ for (const file of files) {
       document: { documentElement: { lang: 'en', dataset: {} } },
     });
     setConfig(sample.config);
+    setStrings(sample.config.stringsUrl, sample.strings);
     toasts.value = [];
     for (const island of sample.islands) {
       const Component = await loadComponent(island.name);

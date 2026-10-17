@@ -342,7 +342,7 @@ tests/Beeps.Tests/
 - 全站只有一个脚本入口 `Client/app/main.tsx`（`app.js`）：Preact 组件按名字接管各个 island，之后的变化（相对时间、菜单、无限滚动、站内跳转、实时更新）都由组件根据数据重绘，没有手写的 DOM 操作。每页一个页面 island（主内容列），布局里还有几个小 island（账号菜单、未读数、页脚设置、toast、确认框）以及 Turnstile 验证框。
 - 未登录时：不建实时连接；props 和 `app-config` 里没有任何个人数据和防伪令牌，页面仍可被 Output Caching 缓存（缓存按 `X-Beeps-Islands` 请求头区分 HTML 和 props）。已登录时：island 跟随实时事件更新。
 - 组件标记必须与 Razor 模板逐元素一致（类名、属性、文字），这样已登录和未登录看到的界面没有区别；`npm test` 会对照服务端生成的样例检查（见 12）。
-- props 是 `Pages/Islands/*Props.cs` 中的 record，用源生成的 `IslandJsonContext` 序列化成 camelCase。界面文字仍来自资源文件：组件用到的 key 写成字面量，`scripts/build-strings.ts` 收集到 `Client/strings.json`，布局把它们按当前语言放进 `<script id="app-config">`，一起给出的还有防伪令牌和当前用户。
+- props 是 `Pages/Islands/*Props.cs` 中的 record，用源生成的 `IslandJsonContext` 序列化成 camelCase。界面文字仍来自资源文件：组件用到的 key 写成字面量，`scripts/build-strings.ts` 收集到 `Client/strings.json`，按语言生成独立的 JSON（`/strings/{culture}.json?v=<内容哈希>`，`Pages/Islands/ClientStrings.cs`），不再内嵌在每个页面里。布局的 `<script id="app-config">` 只给出它的地址，以及防伪令牌和当前用户。脚本启动时先取这份文字再画 island（`Client/app/i18n.ts`）：localStorage 里有同一地址的就直接用，没有才以高优先级请求并存进 localStorage；地址随语言和文字内容变化，所以换语言或部署了新文字时自动重新获取。响应 `public, immutable` 长期缓存（CDN 也可缓存），不带 Cookie；`v` 不是当前版本时仍返回当前文字，但 `no-cache`。站内跳转到另一种语言的页面时，先取到新文字再画；取不到时和 chunk 加载失败一样整页加载。
 - **islands 请求**：带 `X-Beeps-Islands` 请求头访问任意页面时，页面照常执行（同样的处理器、同样的查询），但只返回各 island 的 props（JSON，`Pages/Shared/_Islands.cshtml`）。island 需要追上变化（某人改了名、管理后台的数字变了、重新同步）时用它取新的 props；island 里的表单也这样提交：成功时跟随重定向拿到目标页的 props 和提示，失败时拿到带错误的 props。
 - **单页应用式导航**：站内链接和 island 之外的表单由 `Client/app/router.ts` 在后台请求，换掉页面内容、接管新的 island，不重新加载脚本，实时连接和各条 beep 的状态保留。后退时用离开时的快照（包括已加载的更多页面和滚动位置）立即恢复，再追上期间的变化。登录身份变了的页面（登出、在别处换了账号）整页加载。
 - 列表（时间线、回复串、通知、搜索结果）滚动到底时用 islands 请求取下一页的 props 接在后面；实时新增的 beep 用 `/live/beeps`（JSON）取。
@@ -363,6 +363,7 @@ tests/Beeps.Tests/
   - 首屏加载完、浏览器空闲时，预先取全站其余的 JS 和 CSS（不需要节省带宽）：所有 island 的 chunk、实时连接、Cropper.js，以及本页没有链接的 `member.css`、`avatar-crop.css`（`<link rel="prefetch">`）。之后的页面（包括登录之后）不必再从网络取脚本和样式。不支持 `prefetch` 的浏览器（Safari）由脚本用低优先级的 `fetch` 取样式表。
   - 管理后台的资源只给管理员：后台页面的 island 用 `adminIsland` 注册，只有管理员预加载它们和 `admin.css`。`chunks.json` 列出只有后台用到的文件（后台页面的 chunk 中，任何其他 island、`app.js`、实时连接、Cropper.js 都不会加载的那些，以及 `admin.css`），`ClientAssetsMiddleware` 对不是管理员的请求一律返回 404，管理员拿到的响应带 `Cache-Control: private`，不进共享缓存。`chunks.json` 本身不对外提供。
   - chunk 加载失败（离线，或站点更新后旧 chunk 已不存在）时整页重新加载当前页面。
+- **浏览记录**：登录用户（包括还没验证邮箱的）打开 beep 页面后，页面组件向 `POST /live/beeps/{id}/view` 报告（带防伪令牌，只回状态码），记入 `viewed_beeps`（此人的浏览记录：首次和最近一次浏览时间、浏览次数）和 `beeps.view_count`（这条 beep 被登录用户浏览的次数），一条 SQL 完成。距此人上次计入的浏览不到 30 分钟的算同一次（后退、刷新、页面重新显示），不再计数。鼠标悬停预加载只取 HTML、不画页面，不算浏览；未登录和 agent 的读取不记录。两者都不在任何页面或 API 中显示。
 - 不设置 Content-Security-Policy。
 
 ### 6.10 实时推送
@@ -601,13 +602,14 @@ tests/Beeps.Tests/
 - **user_sessions**：`id, user_id, token_hash, created_at, last_seen_at, expires_at, revoked_at, user_agent, ip_address`（服务端会话）
 - **admin_audit_logs**：`id, admin_id, action, target_type, target_id, detail, created_at`
 - **agent_keys**：`agent_id, key_hash, key_prefix, created_at, last_used_at, revoked_at`
-- **beeps**：`id, author_id, text, reply_to_id, root_id, moderation_status（pending / allowed / hidden / failed / human_allowed）, created_at, deleted_at`
+- **beeps**：`id, author_id, text, reply_to_id, root_id, moderation_status（pending / allowed / hidden / failed / human_allowed）, view_count, created_at, deleted_at`
 - **moderation_jobs**：`id, beep_id, attempts, run_after, created_at`（审核队列）
 - **moderation_results**：`id, beep_id, model, provider, decision, categories, severity, reason, latency_ms, tokens, created_at`
 - **beep_media**：beep 与图片的关联
 - **media**：`id, owner_actor_id, storage_key, width, height, status（processing / ready / failed / removed）, created_at`
 - **media_uploads**：`media_id, data, crop_x, crop_y, crop_size`（等待处理的原图，处理完删除）
 - **likes**：`actor_id, beep_id, created_at`
+- **viewed_beeps**：`user_id, beep_id, first_viewed_at, last_viewed_at, view_count`（登录用户的 beep 浏览记录，见 6.9）
 - **follows**：`follower_id, followee_id, created_at`（双方都只能是人类）
 - **site_settings**：注册方式等全站设置
 - **invites**：`code_hash, created_by, used_by, expires_at`

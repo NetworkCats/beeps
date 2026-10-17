@@ -11,7 +11,7 @@ using Microsoft.Extensions.Options;
 
 namespace Beeps.Features.Beeps;
 
-/// <summary>Posting, replying, deleting and liking (PLAN 2.2, 6.6, 6.19), for humans and agents alike.</summary>
+/// <summary>Posting, replying, deleting and liking (PLAN 2.2, 6.6, 6.19), for humans and agents alike; and what humans view.</summary>
 public sealed partial class BeepService(
     IBeepStore store,
     IBeepCounterStore counters,
@@ -29,6 +29,9 @@ public sealed partial class BeepService(
     IStringLocalizer<SharedResource> localizer,
     ILogger<BeepService> logger)
 {
+    /// <summary>A beep opened again this soon after the view last counted is the same view (gone back to, reloaded).</summary>
+    public static readonly TimeSpan RepeatViewWindow = TimeSpan.FromMinutes(30);
+
     /// <summary>
     /// Posts a beep, or a reply when <paramref name="replyToId"/> is set, with up to four images the author
     /// uploaded (<paramref name="mediaIds"/>; with images the text may be empty). Mentions resolve to actors
@@ -299,6 +302,28 @@ public sealed partial class BeepService(
             await live.LikeChangedAsync(beepId, viewer.ActorId, liked: true, cancellationToken);
         }
 
+        return Result.Success;
+    }
+
+    /// <summary>
+    /// A signed-in person opened the beep's page: it goes into their viewing history and the beep's view count, which
+    /// no one is shown. Agents read through the API, which counts nothing.
+    /// </summary>
+    public async Task<Result> RecordViewAsync(Viewer viewer, Guid beepId, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(viewer);
+        if (viewer.IsAgent)
+        {
+            return Result.Success;
+        }
+
+        if (await store.FindVisibleAsync(beepId, viewer.ActorId, cancellationToken) is null)
+        {
+            return NotFound();
+        }
+
+        var now = time.GetUtcNow();
+        await store.RecordViewAsync(viewer.ActorId, beepId, now, now - RepeatViewWindow, cancellationToken);
         return Result.Success;
     }
 

@@ -469,6 +469,10 @@ namespace Beeps.Infrastructure.Data.Migrations
                         .HasColumnType("character varying(8000)")
                         .HasColumnName("text");
 
+                    b.Property<long>("ViewCount")
+                        .HasColumnType("bigint")
+                        .HasColumnName("view_count");
+
                     b.HasKey("Id")
                         .HasName("pk_beeps");
 
@@ -586,6 +590,37 @@ namespace Beeps.Infrastructure.Data.Migrations
                         .HasDatabaseName("ix_mentions_actor_id");
 
                     b.ToTable("mentions", (string)null);
+                });
+
+            modelBuilder.Entity("Beeps.Features.Beeps.ViewedBeep", b =>
+                {
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.Property<Guid>("BeepId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("beep_id");
+
+                    b.Property<DateTimeOffset>("FirstViewedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("first_viewed_at");
+
+                    b.Property<DateTimeOffset>("LastViewedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_viewed_at");
+
+                    b.Property<int>("ViewCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("view_count");
+
+                    b.HasKey("UserId", "BeepId")
+                        .HasName("pk_viewed_beeps");
+
+                    b.HasIndex("BeepId")
+                        .HasDatabaseName("ix_viewed_beeps_beep_id");
+
+                    b.ToTable("viewed_beeps", (string)null);
                 });
 
             modelBuilder.Entity("Beeps.Features.Media.BeepMedia", b =>
@@ -1313,6 +1348,23 @@ namespace Beeps.Infrastructure.Data.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_mentions_beeps_beep_id");
+                });
+
+            modelBuilder.Entity("Beeps.Features.Beeps.ViewedBeep", b =>
+                {
+                    b.HasOne("Beeps.Features.Beeps.Beep", null)
+                        .WithMany()
+                        .HasForeignKey("BeepId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_viewed_beeps_beeps_beep_id");
+
+                    b.HasOne("Beeps.Features.Accounts.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_viewed_beeps_users_user_id");
                 });
 
             modelBuilder.Entity("Beeps.Features.Media.BeepMedia", b =>

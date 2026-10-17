@@ -356,6 +356,31 @@ public sealed class BeepServiceTests
     }
 
     [Fact]
+    public async Task AHumansViewIsCountedOnceForAWhile()
+    {
+        var beep = Ref(Guid.NewGuid());
+
+        var result = await CreateService().RecordViewAsync(Human, beep.Id, TestSupport.Ct);
+
+        Assert.True(result.IsSuccess);
+        await store.Received(1).RecordViewAsync(Human.ActorId, beep.Id, TestData.Now, TestData.Now - BeepService.RepeatViewWindow, Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task NoViewIsKeptOfAgentsOrOfBeepsTheViewerCannotSee()
+    {
+        var beep = Ref(Guid.NewGuid());
+        var service = CreateService();
+
+        var agent = await service.RecordViewAsync(Agent, beep.Id, TestSupport.Ct);
+        var unseen = await service.RecordViewAsync(Human, Guid.NewGuid(), TestSupport.Ct);
+
+        Assert.True(agent.IsSuccess);
+        Assert.Equal(ErrorKind.NotFound, unseen.Error?.Kind);
+        await store.DidNotReceiveWithAnyArgs().RecordViewAsync(default, default, default, default, TestSupport.Ct);
+    }
+
+    [Fact]
     public async Task LikingAgainOrLikingYourselfNotifiesNobody()
     {
         var mine = Ref(Guid.NewGuid(), author: OwnerId);

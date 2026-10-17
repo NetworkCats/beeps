@@ -21,14 +21,15 @@ export interface Limits {
 }
 
 export interface AppConfig {
-  strings: Record<string, string>;
+  /** Where the interface text in the page's language is (i18n.ts). */
+  stringsUrl: string;
   antiforgery: { field: string; token: string };
   viewer: Viewer;
   limits: Limits;
 }
 
 const EMPTY: AppConfig = {
-  strings: {},
+  stringsUrl: '',
   antiforgery: { field: '', token: '' },
   viewer: { human: false, id: '', handle: '', avatar: null, member: false, admin: false },
   limits: { beepLength: 0, imagesPerBeep: 0, mediaBytes: 0 },

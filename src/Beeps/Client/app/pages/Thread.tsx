@@ -1,12 +1,15 @@
 // A beep in its thread (Beep/Details.cshtml): the whole conversation from its first beep, oldest first, with this one
-// marked and the reply form under it. The thread's last page takes in new replies as they are posted.
-import { useMemo } from 'preact/hooks';
+// marked and the reply form under it. The thread's last page takes in new replies as they are posted. Signed in, the
+// page tells the site the beep was viewed, for the person's history and the beep's view count (shown to no one).
+import { useEffect, useMemo } from 'preact/hooks';
 import { beepSignal, putBeeps } from '../beeps.ts';
 import { useBeepFeed, useFeedSnapshot, type FeedSource } from '../components/BeepFeed.tsx';
 import { BeepCard } from '../components/BeepCard.tsx';
 import { Composer } from '../components/Composer.tsx';
 import { Icon } from '../components/Icon.tsx';
 import { Pager } from '../components/Pager.tsx';
+import { viewer } from '../config.ts';
+import { formData } from '../http.ts';
 import { t } from '../i18n.ts';
 import type { IslandProps } from '../islands.tsx';
 import { useLive } from '../page.ts';
@@ -25,6 +28,15 @@ interface ThreadProps {
 function threadOf(page: IslandsPage): (FeedSource & { watch?: string }) | undefined {
   const props = page.islands.thread?.props as ThreadProps | undefined;
   return props && { items: props.items, next: props.next, watch: props.live.watch };
+}
+
+/**
+ * Once the page is shown, not when it is fetched ahead (a link hovered). The server counts it once however often the
+ * page is drawn again soon after (gone back to, shown anew).
+ */
+function recordView(id: string): void {
+  if (!viewer.value.human) return;
+  fetch(paths.beepView(id), { method: 'POST', body: formData(), credentials: 'same-origin', keepalive: true }).catch(() => {});
 }
 
 /** Under the beep the page is about: the reply form for members, a way in for everyone else (_ReplyBox.cshtml). */
@@ -50,6 +62,7 @@ export function ThreadPage({ props, errors }: IslandProps<ThreadProps>) {
   const feed = useBeepFeed({ items: props.items, next: props.next, watch: props.live.watch, thread: true, after: props.after, pageOf: threadOf });
   useFeedSnapshot(props, feed, (current, list) => ({ ...current, items: list.items, next: list.next }));
   const focusId = props.focus.id;
+  useEffect(() => recordView(focusId), [focusId]);
   // The beep the page is about, as the server last drew it, then as it changes.
   useMemo(() => putBeeps([props.focus]), [props.focus]);
   const focusShown = feed.visible.includes(focusId);

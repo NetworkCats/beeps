@@ -8,6 +8,7 @@
 // fetched ahead: the next page (or signing in) then needs nothing more from the network. The admin pages' only for an
 // admin: no one else is given them.
 import { readConfig, viewer } from './config.ts';
+import { loadStrings } from './i18n.ts';
 import { mountIslands, preloadIslands } from './islands.tsx';
 import { startRouter } from './router.ts';
 import { startTheme } from './state.ts';
@@ -46,10 +47,12 @@ function fetchAhead(): void {
 // Beeps open when clicked anywhere on them, so they react to the pointer like a link.
 document.documentElement.dataset.beepLinks = '';
 readConfig();
+// The islands are drawn once the text is there: kept in the browser, or fetched first.
+const text = loadStrings();
 startTheme();
 startClock();
 startRouter();
-const drawn = mountIslands(document.body);
+const drawn = text.then(() => mountIslands(document.body));
 // Signed in, the page follows the site live, from when its islands have said which beeps they show.
 if (document.body.dataset.liveStream) {
   void drawn.catch(() => {}).then(() => loadLive()).then((live) => live.startLive());

@@ -15,6 +15,8 @@ export const paths = {
   /** A like, an unlike or a delete (Pages/Beep/Actions), coming back to `returnUrl` without script. */
   beepAction: (id: string, handler: string, returnUrl: string): string =>
     `/beeps/${id}/actions?returnUrl=${encodeURIComponent(returnUrl)}&handler=${handler}`,
+  /** Where a beep's page says it was viewed (Pages/Islands/IslandEndpoints.cs). */
+  beepView: (id: string): string => `/live/beeps/${id}/view`,
 };
 
 /** This page's address as a form's `returnUrl` names it: path and query. */

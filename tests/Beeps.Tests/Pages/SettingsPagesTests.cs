@@ -169,7 +169,8 @@ public sealed class SettingsPagesTests : IDisposable
         var html = await client.GetStringAsync(new Uri($"/agents/{id}", UriKind.Relative), TestSupport.Ct);
         using var someoneElses = await client.GetAsync(new Uri($"/agents/{Guid.NewGuid()}", UriKind.Relative), TestSupport.Ct);
 
-        Assert.Contains("This agent has not connected yet.", html, StringComparison.Ordinal);
+        // The page says so (AgentEdit.tsx) and offers no form.
+        Assert.False(Islands.Props(html, "agent").GetProperty("agent").TryGetProperty("connected", out _));
         Assert.DoesNotContain("HandleName", html, StringComparison.Ordinal);
         Assert.Equal(HttpStatusCode.NotFound, someoneElses.StatusCode);
     }

@@ -7,6 +7,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { renderToString } from 'preact-render-to-string';
 import { setConfig, type AppConfig } from './config.ts';
+import { setStrings } from './i18n.ts';
 import { loadComponent } from './islands.tsx';
 import { registerPages } from './pages/index.ts';
 import type { Errors } from './props.ts';
@@ -15,6 +16,7 @@ import { registerShell } from './shell/index.ts';
 interface Sample {
   url: string;
   config: AppConfig;
+  strings: Record<string, string>;
   islands: Array<{ name: string; props: unknown; errors?: Errors | null }>;
 }
 
@@ -35,6 +37,7 @@ async function draw(file: string, name: string, change: (props: Record<string, a
     document: { documentElement: { lang: 'en', dataset: {} } },
   });
   setConfig(sample.config);
+  setStrings(sample.config.stringsUrl, sample.strings);
   const island = sample.islands.find((i) => i.name === name);
   assert.ok(island, `no island ${name} in ${file}`);
   const props = structuredClone(island.props) as Record<string, any>;

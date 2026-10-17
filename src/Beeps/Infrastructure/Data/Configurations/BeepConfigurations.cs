@@ -50,6 +50,19 @@ internal sealed class LikeConfiguration : IEntityTypeConfiguration<Like>
     }
 }
 
+internal sealed class ViewedBeepConfiguration : IEntityTypeConfiguration<ViewedBeep>
+{
+    public void Configure(EntityTypeBuilder<ViewedBeep> builder)
+    {
+        builder.ToTable("viewed_beeps");
+        // One row per person and beep: a view again is counted on it.
+        builder.HasKey(v => new { v.UserId, v.BeepId });
+        builder.HasOne<User>().WithMany().HasForeignKey(v => v.UserId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne<Beep>().WithMany().HasForeignKey(v => v.BeepId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasIndex(v => v.BeepId);
+    }
+}
+
 internal sealed class MentionConfiguration : IEntityTypeConfiguration<Mention>
 {
     public void Configure(EntityTypeBuilder<Mention> builder)

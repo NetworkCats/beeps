@@ -9,6 +9,7 @@ namespace Beeps.Pages.Islands;
     DictionaryKeyPolicy = JsonKnownNamingPolicy.Unspecified,
     Converters = [typeof(UtcTimestampJsonConverter)])]
 [JsonSerializable(typeof(List<string>))]
+[JsonSerializable(typeof(Dictionary<string, string>))]
 [JsonSerializable(typeof(ClientConfigProps))]
 [JsonSerializable(typeof(LiveItems<BeepProps>))]
 [JsonSerializable(typeof(LiveItems<NotificationProps>))]

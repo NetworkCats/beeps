@@ -24,6 +24,7 @@ builder.Services.AddRazorPages(options => options.Conventions
     .AddBeepsAuthorization()
     .AddFolderApplicationModelConvention("/Admin", page => page.Filters.Add(new AdminChangedFilter())));
 builder.Services.AddScoped<ClientConfig>();
+builder.Services.AddSingleton<ClientStrings>();
 builder.Services.AddSingleton<ClientChunks>();
 builder.Services.AddBeepsApiJson();
 builder.Services.AddBeepsOpenApi();
@@ -85,6 +86,7 @@ app.MapNotificationApi();
 app.MapSearchApi();
 app.MapLiveEndpoints();
 app.MapIslandEndpoints();
+app.MapClientStrings();
 
 app.Run();
 return 0;

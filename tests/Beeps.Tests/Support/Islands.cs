@@ -18,7 +18,7 @@ internal static partial class Islands
 
     public static JsonElement Props(string html, string name) => Envelope(html, name).GetProperty("props");
 
-    /// <summary>The layout's app config (Client/app/config.ts): interface text, the antiforgery token, who is signed in.</summary>
+    /// <summary>The layout's app config (Client/app/config.ts): where the interface text is, the antiforgery token, who is signed in.</summary>
     public static JsonElement Config(string html)
     {
         var match = AppConfigPattern().Match(html);

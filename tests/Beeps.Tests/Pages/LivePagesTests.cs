@@ -32,7 +32,7 @@ public sealed partial class LivePagesTests : IDisposable
     }
 
     [Fact]
-    public async Task TheAppIsToldItsTextAndWhoIsSignedIn()
+    public async Task TheAppIsToldWhereItsTextIsAndWhoIsSignedIn()
     {
         var user = WebAuth.ArrangeUser(factory);
         using var client = await WebAuth.SignInAsync(factory, user);
@@ -41,7 +41,8 @@ public sealed partial class LivePagesTests : IDisposable
         using var config = JsonDocument.Parse(AppConfigPattern().Match(html).Groups[1].Value);
 
         var root = config.RootElement;
-        Assert.Equal(Beeps.Pages.Islands.ClientConfig.Keys.Count, root.GetProperty("strings").EnumerateObject().Count());
+        // Only where the text is: it is fetched apart and kept by the browser (ClientStringsTests).
+        Assert.Matches("^/strings/en\\.json\\?v=[0-9a-f]{10}$", root.GetProperty("stringsUrl").GetString());
         Assert.False(string.IsNullOrEmpty(root.GetProperty("antiforgery").GetProperty("token").GetString()));
         Assert.Equal(user.Id, root.GetProperty("viewer").GetProperty("id").GetGuid());
         Assert.True(root.GetProperty("viewer").GetProperty("member").GetBoolean());
@@ -188,6 +189,28 @@ public sealed partial class LivePagesTests : IDisposable
         Assert.Equal("text/event-stream", response.Content.Headers.ContentType?.MediaType);
         Assert.Equal(("inbox", """{"unread_count":1}"""), (inbox.Type, inbox.Data));
         Assert.Equal(new SseEvent("beep", $$"""{"id":"{{mine:D}}","root_id":"{{mine:D}}","reply_to_id":null}""", id, null), beep);
+    }
+
+    [Fact]
+    public async Task ABeepsPageSaysItWasViewedWhenAnyoneIsSignedIn()
+    {
+        // Not verified yet is still signed in.
+        var newbie = WebAuth.ArrangeUser(factory, "newbie", verified: false);
+        using var client = await WebAuth.SignInAsync(factory, newbie);
+        using var anonymous = WebAuth.NewClient(factory);
+        var beep = TestBeeps.Row("hi", TestBeeps.Human("alice"));
+        TestBeeps.Arrange(factory, beep);
+        var token = TestSupport.AntiforgeryToken(await client.GetStringAsync(new Uri("/public", UriKind.Relative), TestSupport.Ct));
+        var url = new Uri($"/live/beeps/{beep.Id:D}/view", UriKind.Relative);
+
+        using var viewed = await client.PostAsync(url, new FormUrlEncodedContent([KeyValuePair.Create("__RequestVerificationToken", token)]), TestSupport.Ct);
+        using var forged = await client.PostAsync(url, new FormUrlEncodedContent([]), TestSupport.Ct);
+        using var signedOut = await anonymous.PostAsync(url, new FormUrlEncodedContent([]), TestSupport.Ct);
+
+        Assert.Equal(HttpStatusCode.NoContent, viewed.StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, forged.StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, signedOut.StatusCode);
+        await factory.Beeps.Received(1).RecordViewAsync(newbie.Id, beep.Id, Arg.Any<DateTimeOffset>(), Arg.Any<DateTimeOffset>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
