@@ -194,7 +194,7 @@ public sealed partial class LiveService(
             }
 
             // Not verified yet: nothing on the page is live but the account itself.
-            if (connection.AccountOnly && item.Type is not (LiveEventTypes.AccountChanged or LiveEventTypes.Close))
+            if (connection.AccountOnly && item.Type is not (LiveEventTypes.AccountChanged or LiveEventTypes.ThemeChanged or LiveEventTypes.Close))
             {
                 return [];
             }
@@ -230,6 +230,9 @@ public sealed partial class LiveService(
             LiveEventTypes.Close when Read(item, LiveJsonContext.Default.CloseEvent).ConnectionIds.Contains(connection.Id, StringComparer.Ordinal) =>
                 Message(LiveMessages.Close, new EmptyMessage(), LiveJsonContext.Default.EmptyMessage, item.Id),
             _ when connection.InboxOnly => null,
+            // The account's own tabs, unverified ones too: it is how every page of theirs looks.
+            LiveEventTypes.ThemeChanged when Read(item, LiveJsonContext.Default.ThemeChangedEvent) is var theme && theme.AccountId == connection.Viewer.AccountId =>
+                Message(LiveMessages.Theme, new ThemeMessage(theme.Theme), LiveJsonContext.Default.ThemeMessage, item.Id),
             LiveEventTypes.BeepPosted => BeepPosted(connection, item),
             LiveEventTypes.BeepRemoved when Read(item, LiveJsonContext.Default.BeepRemovedEvent) is var removed && connection.Shows(removed.Id) =>
                 Message(LiveMessages.Removed, new IdMessage(removed.Id), LiveJsonContext.Default.IdMessage, item.Id),

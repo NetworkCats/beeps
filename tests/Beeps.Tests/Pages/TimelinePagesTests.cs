@@ -69,7 +69,7 @@ public sealed class TimelinePagesTests : IDisposable
     }
 
     [Fact]
-    public async Task TimelinesLinkToTheirNextPage()
+    public async Task TimelinesLoadTheirNextPageAsTheyAreScrolled()
     {
         var beep = TestBeeps.Row("first page", TestBeeps.Human());
         factory.Timelines.PublicAsync(default!, default, TestSupport.Ct).ReturnsForAnyArgs(new CursorPage<BeepRow>([beep], beep.Id));
@@ -77,6 +77,9 @@ public sealed class TimelinePagesTests : IDisposable
 
         var html = await client.GetStringAsync(new Uri($"/public?before={Guid.NewGuid()}", UriKind.Relative), TestSupport.Ct);
 
+        // more.ts fetches the link's page into the list; without script the link is followed.
+        Assert.Contains("<div class=\"beep-list\" data-more-list=\"beeps\">", html, StringComparison.Ordinal);
+        Assert.Contains("<nav class=\"pager\" data-more=\"beeps\"", html, StringComparison.Ordinal);
         Assert.Contains($"href=\"/public?before={beep.Id:D}\"", html, StringComparison.Ordinal);
     }
 

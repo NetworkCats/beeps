@@ -1,5 +1,6 @@
 @model BeepList
 @* A region for the pages that do not grow live (older pages): they draw the list again when it may have changed.
+   The list loads its next pages as it is scrolled (more.ts); the link to them is for pages without script.
    The empty state is there either way, hidden while there are beeps: a live list shows it again once its last one goes. *@
 <div live-region="list">
 <div class="empty" live-empty hidden="@(Model.Page.Items.Count == 0 ? null : "hidden")">
@@ -11,7 +12,7 @@
 </div>
 @if (Model.Page.Items.Count > 0)
 {
-    <div class="beep-list">
+    <div class="beep-list" data-more-list="beeps">
         @foreach (var beep in Model.Page.Items)
         {
             <partial name="_Beep" model="new BeepCard(beep)" />
@@ -19,7 +20,7 @@
     </div>
     @if (Model.Page.NextCursor is { } next)
     {
-        <nav class="pager" aria-label="@L["Pager.Label"]">
+        <nav class="pager" data-more="beeps" aria-label="@L["Pager.Label"]">
             <a class="btn" href="@(Model.PagerPath ?? Context.Request.Path.Value)?@Model.CursorName=@next">@L["Pager.More"]</a>
         </nav>
     }

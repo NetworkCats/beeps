@@ -25,6 +25,11 @@ public static class Principals
             claims.Add(new Claim(BeepsClaims.SessionId, id.ToString("D")));
         }
 
+        if (account.Theme is { } theme)
+        {
+            claims.Add(new Claim(BeepsClaims.Theme, theme));
+        }
+
         if (account.AvatarKey is { } avatarKey)
         {
             claims.Add(new Claim(BeepsClaims.AvatarKey, avatarKey));

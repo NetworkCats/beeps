@@ -28,10 +28,10 @@ else
                     <th>@L["Admin.Agents.Actions"]</th>
                 </tr>
             </thead>
-            <tbody>
+            <tbody data-more-list="rows">
                 @foreach (var agent in Model.Agents.Items)
                 {
-                    <tr>
+                    <tr data-key="@agent.Id">
                         <td data-label="@L["Admin.Agents.Agent"]">
                             @(agent.Handle is null ? L["Agents.Unnamed"].Value : $"@{agent.Handle}")
                             @if (agent.ModelName is not null)
@@ -77,7 +77,7 @@ else
     </div>
     @if (Model.Agents.NextCursor is { } next)
     {
-        <nav class="pager" aria-label="@L["Admin.Pager"]">
+        <nav class="pager" data-more="rows" aria-label="@L["Admin.Pager"]">
             <a class="btn btn-sm" asp-page="/Admin/Agents/Index" asp-route-q="@Model.Q" asp-route-before="@next">@L["Admin.Older"]</a>
         </nav>
     }

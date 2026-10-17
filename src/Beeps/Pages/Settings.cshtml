@@ -7,6 +7,7 @@
 @inject AvatarUrls Avatars
 @{
     ViewData["Title"] = L["Settings.Title"];
+    var theme = Themes.For(User, ViewContext.HttpContext.Request);
 }
 @section Head {
     <link rel="stylesheet" href="~/dist/avatar-crop.css" asp-append-version="true">
@@ -49,16 +50,32 @@
 
     <form class="settings-section" method="post" asp-page-handler="Language" aria-labelledby="language-title">
         <h2 id="language-title">@L["Settings.Language"]</h2>
-        <fieldset class="check-group">
-            <legend class="visually-hidden">@L["Settings.Language"]</legend>
-            @foreach (var culture in SupportedCultures.All)
-            {
-                <label class="radio" lang="@culture">
-                    <input type="radio" name="Culture" value="@culture" checked="@(culture == Model.Settings.Locale)">
-                    @L[$"Language.{culture}"]
-                </label>
-            }
-        </fieldset>
+        <div class="field">
+            <label class="visually-hidden" for="Culture">@L["Settings.Language"]</label>
+            <select class="select settings-select" id="Culture" name="Culture">
+                @foreach (var culture in SupportedCultures.All)
+                {
+                    <option value="@culture" lang="@culture" selected="@(culture == Model.Settings.Locale)">@L[$"Language.{culture}"]</option>
+                }
+            </select>
+        </div>
+        <div class="form-actions">
+            <button class="btn" type="submit">@L["Settings.Save"]</button>
+        </div>
+    </form>
+
+    <form class="settings-section" method="post" asp-page-handler="Theme" aria-labelledby="theme-title">
+        <h2 id="theme-title">@L["Settings.Theme"]</h2>
+        <div class="field">
+            <label class="visually-hidden" for="Theme">@L["Settings.Theme"]</label>
+            <select class="select settings-select" id="Theme" name="Theme">
+                @foreach (var option in Themes.All)
+                {
+                    <option value="@option" selected="@(option == theme)">@L[$"Theme.{option}"]</option>
+                }
+            </select>
+            <p class="help">@L["Settings.Theme.Help"]</p>
+        </div>
         <div class="form-actions">
             <button class="btn" type="submit">@L["Settings.Save"]</button>
         </div>

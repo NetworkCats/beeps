@@ -193,6 +193,17 @@ public sealed class LiveServiceTests : IAsyncDisposable
     }
 
     [Fact]
+    public async Task AColourSchemeChangeReachesTheAccountsTabs()
+    {
+        await OpenAsync(new LiveRequest("", null, null, null));
+
+        feed.Publish(LiveEventTypes.ThemeChanged, $$"""{"account_id":"{{Alice:D}}","theme":"light"}""");
+        var id = feed.Publish(LiveEventTypes.ThemeChanged, $$"""{"account_id":"{{Tom:D}}","theme":"dark"}""");
+
+        Assert.Equal(new LiveMessage(LiveMessages.Theme, """{"theme":"dark"}""", id), await NextAsync());
+    }
+
+    [Fact]
     public async Task APageRenderedAfterTheChangeIsNotShownAnewForIt()
     {
         // The test feed stamps its events before this render time; a fresh page is replayed from a little before it.

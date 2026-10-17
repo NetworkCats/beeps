@@ -32,12 +32,15 @@ public sealed class AccountPagesTests : IDisposable
         var html = await client.GetStringAsync(new Uri(path, UriKind.Relative), TestSupport.Ct);
         var elsewhere = await client.GetStringAsync(new Uri("/public", UriKind.Relative), TestSupport.Ct);
 
-        // The top bar's buttons, the rail's sign-up button and the side column's sign-up card: elsewhere, not here.
-        foreach (var offer in new[] { "class=\"topbar-actions\"", "sidenav-cta", "id=\"join-title\"" })
+        // The top bar's buttons and the side column's sign-up card: elsewhere, not here.
+        foreach (var offer in new[] { "class=\"topbar-actions\"", "id=\"join-title\"" })
         {
             Assert.DoesNotContain(offer, html, StringComparison.Ordinal);
             Assert.Contains(offer, elsewhere, StringComparison.Ordinal);
         }
+
+        // The rail offers signing in only: signing up is in the top bar and the side column.
+        Assert.DoesNotContain("sidenav-cta", elsewhere, StringComparison.Ordinal);
     }
 
     [Fact]

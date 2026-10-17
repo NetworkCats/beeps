@@ -5,6 +5,7 @@ using Beeps.Features.Localization;
 using Beeps.Features.Profiles;
 using Beeps.Features.RateLimiting;
 using Beeps.Features.Search;
+using Beeps.Features.Site;
 using Beeps.Features.Shared;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
@@ -444,6 +445,28 @@ public sealed partial class AccountService(
         await store.ForgetAccountAsync(user.Id, cancellationToken);
         // The account's other open tabs switch to the new language too.
         await live.AccountChangedAsync(user.Id, cancellationToken);
+        return Result.Success;
+    }
+
+    /// <summary>The account's colour scheme (<see cref="Themes"/>), on every device it is signed in on.</summary>
+    public async Task<Result> SetThemeAsync(Guid userId, string? theme, CancellationToken cancellationToken)
+    {
+        if (Themes.Find(theme) is not { } supported)
+        {
+            return InvalidInput(new());
+        }
+
+        var user = await store.FindUserAsync(userId, cancellationToken);
+        if (user is null)
+        {
+            return AccountNotFound();
+        }
+
+        user.Theme = supported;
+        await unitOfWork.SaveChangesAsync(cancellationToken);
+        await store.ForgetAccountAsync(user.Id, cancellationToken);
+        // The account's other open tabs switch too, in place: nothing else on them changes.
+        await live.ThemeChangedAsync(user.Id, supported, cancellationToken);
         return Result.Success;
     }
 

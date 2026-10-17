@@ -25,5 +25,8 @@ public sealed class User
     /// <summary>Preferred UI language (a <see cref="Localization.SupportedCultures"/> name).</summary>
     public required string Locale { get; set; }
 
+    /// <summary>Colour scheme (a <see cref="Site.Themes"/> value); null until picked, when the browser's is used.</summary>
+    public string? Theme { get; set; }
+
     public DateTimeOffset CreatedAt { get; init; }
 }

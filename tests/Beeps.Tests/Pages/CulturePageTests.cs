@@ -80,7 +80,7 @@ public sealed class CulturePageTests(BeepsWebApplicationFactory factory) : IClas
         var html = await client.GetStringAsync(new Uri("/", UriKind.Relative), TestSupport.Ct);
 
         // Public pages are output-cached, so they must not carry a per-visitor antiforgery token.
-        Assert.Matches("<form class=\"language-switch\" method=\"get\"[^>]* action=\"/culture\">", html);
+        Assert.Matches("<form class=\"footer-switch\" method=\"get\"[^>]* action=\"/culture\">", html);
         Assert.DoesNotContain("__RequestVerificationToken", html, StringComparison.Ordinal);
     }
 

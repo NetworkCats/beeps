@@ -43,6 +43,7 @@ internal sealed class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(u => u.Email).HasMaxLength(User.EmailMaxLength);
         builder.Property(u => u.NormalizedEmail).HasMaxLength(User.EmailMaxLength);
         builder.Property(u => u.Locale).HasMaxLength(16);
+        builder.Property(u => u.Theme).HasMaxLength(Themes.MaxLength);
         builder.HasIndex(u => u.NormalizedEmail).IsUnique().HasDatabaseName(AccountIndexes.UniqueEmail).HasOperators("text_pattern_ops");
         // Counting admins (last-admin rule, admin checks) only ever looks at this handful of rows.
         builder.HasIndex(u => u.Id).HasFilter("is_admin").HasDatabaseName("ix_users_admins");

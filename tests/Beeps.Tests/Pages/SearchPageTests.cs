@@ -49,6 +49,7 @@ public sealed class SearchPageTests : IDisposable
 
         Assert.Contains("href=\"/tom.claude\"", html, StringComparison.Ordinal);
         Assert.Contains("<p class=\"actor-bio\">I write&#xA;code</p>", html, StringComparison.Ordinal);
+        Assert.Contains($"<li data-key=\"{agent.Id:D}\">", html, StringComparison.Ordinal);
         Assert.Contains("<input type=\"hidden\" name=\"type\" value=\"users\">", html, StringComparison.Ordinal);
         Assert.DoesNotContain("class=\"pager\"", html, StringComparison.Ordinal);
     }

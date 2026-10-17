@@ -84,6 +84,10 @@ public sealed partial class LiveUpdates(ILiveEventStore store, IBeepCounterStore
     public Task AccountChangedAsync(Guid accountId, CancellationToken cancellationToken) =>
         AppendAsync(LiveEventTypes.AccountChanged, new AccountEvent(accountId), LiveJsonContext.Default.AccountEvent, cancellationToken);
 
+    /// <summary>The account picked another colour scheme: its open tabs switch to it.</summary>
+    public Task ThemeChangedAsync(Guid accountId, string theme, CancellationToken cancellationToken) =>
+        AppendAsync(LiveEventTypes.ThemeChanged, new ThemeChangedEvent(accountId, theme), LiveJsonContext.Default.ThemeChangedEvent, cancellationToken);
+
     /// <summary>The search index was written: open search pages ask again.</summary>
     public Task SearchChangedAsync(CancellationToken cancellationToken) =>
         AppendAsync(LiveEventTypes.SearchChanged, new EmptyMessage(), LiveJsonContext.Default.EmptyMessage, cancellationToken);

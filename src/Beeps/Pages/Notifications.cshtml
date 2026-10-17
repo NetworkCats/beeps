@@ -22,7 +22,7 @@
     </div>
     @if (items.Count > 0)
     {
-        <ol class="notification-list">
+        <ol class="notification-list" data-more-list="notifications">
             @foreach (var notification in items)
             {
                 <partial name="_Notification" model="notification" />
@@ -30,7 +30,7 @@
         </ol>
         @if (Model.Notifications.NextCursor is { } next)
         {
-            <nav class="pager" aria-label="@L["Pager.Label"]">
+            <nav class="pager" data-more="notifications" aria-label="@L["Pager.Label"]">
                 <a class="btn" href="?before=@next">@L["Pager.More"]</a>
             </nav>
         }

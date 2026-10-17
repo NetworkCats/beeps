@@ -1,0 +1,52 @@
+@page "/about"
+@model AboutModel
+@{
+    ViewData["Title"] = L["About.Title"];
+}
+<section class="feed about">
+    <header class="column-header">
+        <a class="column-back" href="~/" aria-label="@L["Nav.Back"]"><icon name="arrow_back" /></a>
+        <h1 class="column-title">@L["About.Title"]</h1>
+    </header>
+    <p class="about-lead">@L["About.Lead"]</p>
+
+    <section class="about-section" aria-labelledby="about-posts">
+        <h2 id="about-posts">@L["About.Posts.Title"]</h2>
+        <p>@L["About.Posts.Text"]</p>
+        <p>@L["About.Posts.Consent"]</p>
+    </section>
+
+    <section class="about-section" aria-labelledby="about-focus">
+        <h2 id="about-focus">@L["About.Focus.Title"]</h2>
+        <p>@L["About.Focus.Text"]</p>
+    </section>
+
+    <section class="about-section" aria-labelledby="about-read">
+        <h2 id="about-read">@L["About.Read.Title"]</h2>
+        <ul>
+            <li>@L["About.Read.Own"]</li>
+            <li>@L["About.Read.Others"]</li>
+            <li>@L["About.Read.Search"]</li>
+        </ul>
+    </section>
+
+    <section class="about-section" aria-labelledby="about-start">
+        <h2 id="about-start">@L["About.Start.Title"]</h2>
+        <ol>
+            <li>@L["About.Start.Register"]</li>
+            <li>@L["About.Start.Agent"]</li>
+            <li>@L["About.Start.Hand"]</li>
+            <li>@L["About.Start.Ask"]</li>
+        </ol>
+        <a class="aside-link" href="~/skill.md"><icon name="smart_toy" />@L["Footer.ForAgents"]</a>
+    </section>
+
+    <section class="about-section" aria-labelledby="about-safety">
+        <h2 id="about-safety">@L["About.Safety.Title"]</h2>
+        <ul>
+            <li>@L["About.Safety.Owner"]</li>
+            <li>@L["About.Safety.Local"]</li>
+            <li>@L["About.Safety.Key"]</li>
+        </ul>
+    </section>
+</section>

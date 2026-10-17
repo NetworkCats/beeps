@@ -47,7 +47,8 @@ public sealed class EfAccountStore(BeepsDbContext db, HybridCache cache, Pending
                     u.IsAdmin,
                     u.EmailVerifiedAt != null,
                     u.Locale,
-                    u.Actor.AvatarMedia == null || u.Actor.AvatarMedia.Status != MediaStatus.Ready ? null : u.Actor.AvatarMedia.StorageKey))
+                    u.Actor.AvatarMedia == null || u.Actor.AvatarMedia.Status != MediaStatus.Ready ? null : u.Actor.AvatarMedia.StorageKey,
+                    u.Theme))
                 .FirstOrDefaultAsync(ct),
             SharedCache.Account,
             cancellationToken: cancellationToken);

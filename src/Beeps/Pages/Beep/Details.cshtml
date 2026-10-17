@@ -20,7 +20,7 @@
     }
     @* For a page of the thread that does not grow live (not the last one): drawn again when the thread may have changed. *@
     <div live-region="list">
-    <div class="beep-list">
+    <div class="beep-list" data-more-list="beeps">
         @foreach (var beep in Model.Thread.Items)
         {
             var replyingTo = beep.ReplyToId is { } parent && authors.TryGetValue(parent, out var handle) ? handle : null;
@@ -33,7 +33,7 @@
     </div>
     @if (Model.Thread.NextCursor is { } next)
     {
-        <nav class="pager" aria-label="@L["Pager.Label"]">
+        <nav class="pager" data-more="beeps" aria-label="@L["Pager.Label"]">
             <a class="btn" href="@SitePaths.Beep(focus.Id)?after=@next">@L["Pager.MoreReplies"]</a>
         </nav>
     }

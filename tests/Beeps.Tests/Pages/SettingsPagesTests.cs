@@ -21,7 +21,7 @@ public sealed class SettingsPagesTests : IDisposable
         Assert.Contains("<p class=\"settings-fixed\">@tom</p>", html, StringComparison.Ordinal);
         Assert.Contains("value=\"tom\"", html, StringComparison.Ordinal);
         Assert.Contains(">about me</textarea>", html, StringComparison.Ordinal);
-        Assert.Contains("value=\"en\" checked=\"checked\"", html, StringComparison.Ordinal);
+        Assert.Contains("<option value=\"en\" lang=\"en\" selected=\"selected\">English</option>", html, StringComparison.Ordinal);
         PageAssert.NoInlineScriptsOrStyles(html);
     }
 

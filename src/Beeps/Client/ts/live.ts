@@ -14,13 +14,16 @@
 //    | "actor:…"]                  is shown anew (a reload would not find it either)
 //   [data-live-url]                where the page's regions are drawn again from, when its own address can change
 //   <li data-from="…">             inbox entries, drawn again when their sender changes
+//   [data-more-list]               lists that load more pages as they are scrolled (more.ts): what they loaded stays
 // A form someone is filling in stays as it is when the region around it is drawn again.
 // New content is never built here: the page fetches it from /live/…, rendered by the server for this
 // viewer, so visibility and markup are exactly those of a reload.
 
 import { showLiked } from './like.ts';
 import { compareIds, liveStreamUrl, mergeIds, nextRetryDelay, NO_ID, previousId } from './live-url.ts';
+import { keepLoaded, MORE_LOADED } from './more.ts';
 import { PAGE_SWAPPED, pageUrl, putSlots, swapPage, takeSlots } from './page-swap.ts';
+import { showTheme } from './theme.ts';
 
 const LIVE_BEEPS = '/live/beeps';
 const LIVE_NOTIFICATIONS = '/live/notifications';
@@ -47,6 +50,8 @@ interface CountsEntry {
 }
 
 let source: EventSource | undefined;
+// The topic the connection was opened for: a thread that loads its last page takes on its topic (more.ts).
+let connectedTopic = '';
 let lastEventId: string | undefined;
 let retryDelay = 0;
 let retryTimer: number | undefined;
@@ -88,6 +93,7 @@ function connect(): void {
   const shown = pageBeepIds();
   // Beyond what one connection may list, the server sends what concerns any beep: all of them are known.
   known = new Set(shown);
+  connectedTopic = topic();
   const events = new EventSource(liveStreamUrl(base, topic(), shown, lastEventId, document.body.dataset.liveFrom));
   source = events;
   events.addEventListener('open', () => {
@@ -158,6 +164,8 @@ function connect(): void {
     refreshRegionNamed('admin', ADMIN_INTERVAL);
     schedule(checkSlots, ADMIN_INTERVAL);
   });
+  // The account picked another colour scheme, here or in another tab.
+  on(events, 'theme', (data: { theme: string }) => showTheme(data.theme));
   // The session ended elsewhere, or the account's language or rights changed: the page as a whole is different now.
   on(events, 'signed_out', () => void showAnew(events));
   on(events, 'reload', () => void showAnew(events));
@@ -180,7 +188,7 @@ function connect(): void {
 }
 
 // Messages that say nothing about the site's content.
-const NOT_CONTENT = new Set(['ping', 'inbox', 'close', 'signed_out', 'reload']);
+const NOT_CONTENT = new Set(['ping', 'inbox', 'close', 'signed_out', 'reload', 'theme']);
 
 function on<T>(events: EventSource, type: string, handle: (data: T) => void): void {
   events.addEventListener(type, (event) => {
@@ -698,8 +706,13 @@ async function resyncNotifications(): Promise<void> {
   // Still nothing: the empty state stays.
   if (fresh.length === 0 && entries.length === 0) return;
   const list = listIn(container, '.notification-list', () => Object.assign(document.createElement('ol'), { className: 'notification-list' }));
-
-  list.replaceChildren(...fresh);
+  // An answer short of the limit is the whole inbox. A full one reaches back to its oldest entry: the entries shown
+  // past that (pushed down by new ones, or loaded as the page was scrolled) stay below it.
+  const whole = fresh.length < limit;
+  const oldest = fresh.at(-1)?.dataset.notification ?? NO_ID;
+  const below = whole ? [] : entries.filter((entry) => compareIds(entry.dataset.notification ?? '', oldest) < 0);
+  list.replaceChildren(...fresh, ...below);
+  if (whole) container.querySelector('[data-more="notifications"]')?.remove();
   // The inbox events that brought new entries named their beeps, and the server watches those for this page.
   if (announced) {
     for (const entry of fresh.filter((e) => compareIds(e.dataset.notification ?? '', newest) > 0)) {
@@ -778,6 +791,8 @@ function swapRegion(region: HTMLElement, replacement: HTMLElement): void {
   holder.append(...[...replacement.childNodes].map((node) => document.importNode(node, true)));
   const active = document.activeElement;
   const selection = active instanceof HTMLInputElement || active instanceof HTMLTextAreaElement ? [active.selectionStart, active.selectionEnd] : null;
+  // Pages loaded past the first stay, as they are (forms being filled in included).
+  keepLoaded(region, holder);
   for (const [form, key] of formsIn(region)) {
     if (!beingFilledIn(form)) continue;
     const counterpart = formsIn(holder).find(([, other]) => other === key)?.[0];
@@ -832,6 +847,11 @@ document.addEventListener('visibilitychange', comeBack);
 window.addEventListener('focus', comeBack);
 
 connect();
+// Beeps loaded as the page was scrolled are followed too; a thread's last page brings its topic.
+document.addEventListener(MORE_LOADED, () => {
+  if (topic() !== connectedTopic && source && !closed) schedule(reconnect);
+  else followNewBeeps();
+});
 // An open connection keeps the page out of the back/forward cache; reconnect (and replay) on return.
 document.addEventListener(PAGE_SWAPPED, followNewPage);
 window.addEventListener('beforeunload', () => {

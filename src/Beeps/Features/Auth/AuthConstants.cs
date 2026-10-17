@@ -38,6 +38,8 @@ public static class BeepsClaims
     public const string Kind = "beeps:kind";
     public const string SessionId = "beeps:session";
     public const string Locale = "beeps:locale";
+    /// <summary>The account's colour scheme, once picked (Site.Themes).</summary>
+    public const string Theme = "beeps:theme";
     public const string EmailVerified = "beeps:verified";
     public const string OwnerId = "beeps:owner";
     public const string Connected = "beeps:connected";

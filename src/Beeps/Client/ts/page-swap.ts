@@ -52,6 +52,8 @@ async function swap(): Promise<void> {
   if (response.ok) delete document.documentElement.dataset.liveStatus;
   else document.documentElement.dataset.liveStatus = String(response.status);
   document.documentElement.lang = fresh.documentElement.lang;
+  if (fresh.documentElement.dataset.theme) document.documentElement.dataset.theme = fresh.documentElement.dataset.theme;
+  else delete document.documentElement.dataset.theme;
   document.title = fresh.title;
   addMissingAssets(fresh);
   for (const attribute of [...document.body.attributes]) document.body.removeAttribute(attribute.name);

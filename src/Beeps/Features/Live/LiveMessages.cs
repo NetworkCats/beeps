@@ -37,6 +37,9 @@ public static class LiveMessages
     /// <summary>The page must be shown anew as a whole (the account's language or admin rights changed); the script swaps it in place.</summary>
     public const string Reload = "reload";
 
+    /// <summary>The account picked another colour scheme, maybe in another tab: <see cref="ThemeMessage"/>. The page switches in place.</summary>
+    public const string Theme = "theme";
+
     /// <summary>Search results may have changed: the search page asks again.</summary>
     public const string Search = "search";
 
@@ -79,3 +82,6 @@ public sealed record IdsMessage(IReadOnlyList<Guid> Ids);
 public sealed record InboxMessage(int UnreadCount);
 
 public sealed record EmptyMessage;
+
+/// <param name="Theme">A Site.Themes value: <c>system</c>, <c>light</c> or <c>dark</c>.</param>
+public sealed record ThemeMessage(string Theme);

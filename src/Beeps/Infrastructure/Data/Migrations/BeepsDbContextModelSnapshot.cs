@@ -241,6 +241,11 @@ namespace Beeps.Infrastructure.Data.Migrations
                         .HasColumnType("text")
                         .HasColumnName("password_hash");
 
+                    b.Property<string>("Theme")
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("theme");
+
                     b.HasKey("Id")
                         .HasName("pk_users");
 

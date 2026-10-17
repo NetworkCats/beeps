@@ -4,13 +4,14 @@ using Beeps.Features.Avatars;
 using Beeps.Features.Localization;
 using Beeps.Features.Media;
 using Beeps.Features.Shared;
+using Beeps.Features.Site;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.Extensions.Localization;
 
 namespace Beeps.Pages;
 
-/// <summary>The account's own settings: avatar, profile, language and password (PLAN 2.2, 3.4, 6.12).</summary>
+/// <summary>The account's own settings: avatar, profile, language, colour scheme and password (PLAN 2.2, 3.4, 6.12).</summary>
 [RequestSizeLimit(MediaRules.MaxImageRequestBytes)]
 [RequestFormLimits(MultipartBodyLengthLimit = MediaRules.MaxImageRequestBytes, MemoryBufferThreshold = MediaRules.MaxImageRequestBytes)]
 public sealed class SettingsModel(AccountService accounts, AvatarService avatars, IStringLocalizer<SharedResource> localizer) : PageModel
@@ -22,6 +23,8 @@ public sealed class SettingsModel(AccountService accounts, AvatarService avatars
     [BindProperty] public string? Bio { get; set; }
 
     [BindProperty] public string? Culture { get; set; }
+
+    [BindProperty] public string? Theme { get; set; }
 
     [BindProperty] public string? CurrentPassword { get; set; }
 
@@ -58,6 +61,18 @@ public sealed class SettingsModel(AccountService accounts, AvatarService avatars
         if (result.IsSuccess)
         {
             CultureCookie.Append(Response, SupportedCultures.Find(Culture)!);
+        }
+
+        return await DoneAsync(result, notice: null, cancellationToken);
+    }
+
+    // The page then simply shows up in the new scheme, as do the account's other tabs.
+    public async Task<IActionResult> OnPostThemeAsync(CancellationToken cancellationToken)
+    {
+        var result = await accounts.SetThemeAsync(User.ActorId(), Theme, cancellationToken);
+        if (result.IsSuccess)
+        {
+            ThemeCookie.Set(Response, Theme);
         }
 
         return await DoneAsync(result, notice: null, cancellationToken);

@@ -1,4 +1,5 @@
 using System.Globalization;
+using Beeps.Features.Site;
 using Microsoft.AspNetCore.OutputCaching;
 using Microsoft.Extensions.Options;
 
@@ -39,10 +40,11 @@ public static class PublicPageCache
                     return;
                 }
 
-                // Same URL, different language: the culture comes from a cookie or Accept-Language, not the URL.
+                // Same URL, different language or colour scheme: both come from cookies (or Accept-Language), not the URL.
                 builder.Expire(page.Value.Duration)
                     .Tag(PageTags.All)
-                    .VaryByValue(_ => new KeyValuePair<string, string>("culture", CultureInfo.CurrentUICulture.Name));
+                    .VaryByValue(_ => new KeyValuePair<string, string>("culture", CultureInfo.CurrentUICulture.Name))
+                    .VaryByValue(context => new KeyValuePair<string, string>("theme", ThemeCookie.Read(context.Request) ?? Themes.System));
             }));
         return services;
     }

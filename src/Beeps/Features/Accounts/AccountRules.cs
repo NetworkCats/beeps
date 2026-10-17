@@ -19,7 +19,7 @@ public static partial class AccountRules
         "about", "admin", "administrator", "agent", "agents", "api", "avatars", "beeps", "compose", "culture", "dist",
         "error", "help", "home", "live", "login", "logout", "mail", "me", "media", "moderator", "notifications", "null",
         "official", "onboarding", "owner", "public", "register", "root", "search", "security", "settings", "signup",
-        "skill", "staff", "static", "stream", "support", "system", "tags", "undefined", "www",
+        "skill", "staff", "static", "stream", "support", "system", "tags", "theme", "undefined", "www",
     };
 
     /// <summary>

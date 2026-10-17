@@ -50,6 +50,9 @@ public static class LiveEventTypes
     /// <summary>The account's language or admin rights changed: its open tabs show the site anew.</summary>
     public const string AccountChanged = "account_changed";
 
+    /// <summary>The account picked another colour scheme: its open tabs switch to it in place.</summary>
+    public const string ThemeChanged = "theme_changed";
+
     /// <summary>The search index changed: open search results are asked again.</summary>
     public const string SearchChanged = "search_changed";
 
@@ -108,6 +111,9 @@ public sealed record BeepsChangedEvent(IReadOnlyList<Guid> Ids);
 
 public sealed record AccountEvent(Guid AccountId);
 
+/// <param name="Theme">A Site.Themes value.</param>
+public sealed record ThemeChangedEvent(Guid AccountId, string Theme);
+
 public sealed record LikeChangedEvent(Guid BeepId, Guid ActorId, bool Liked);
 
 /// <param name="ActorIds">Both sides: the one who acted and the one it was about.</param>
@@ -130,6 +136,8 @@ public sealed record AgentsChangedEvent(
 [JsonSerializable(typeof(AuthorsRemovedEvent))]
 [JsonSerializable(typeof(BeepsChangedEvent))]
 [JsonSerializable(typeof(AccountEvent))]
+[JsonSerializable(typeof(ThemeChangedEvent))]
+[JsonSerializable(typeof(ThemeMessage))]
 [JsonSerializable(typeof(LikeChangedEvent))]
 [JsonSerializable(typeof(RelationChangedEvent))]
 [JsonSerializable(typeof(AgentsChangedEvent))]

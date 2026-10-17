@@ -42,11 +42,11 @@
         }
         else if (users)
         {
-            <ul class="actor-list search-users">
+            <ul class="actor-list search-users" data-more-list="users">
                 @foreach (var result in results.Users)
                 {
                     var actor = result.Actor;
-                    <li>
+                    <li data-key="@actor.Id">
                         <a class="actor-row" href="@SitePaths.Profile(actor.Handle!)">
                             <span class="avatar"><img src="@actor.AvatarUrl" alt="" width="40" height="40" loading="lazy"></span>
                             <span class="actor-id">
@@ -69,7 +69,7 @@
         }
         else
         {
-            <div class="beep-list">
+            <div class="beep-list" data-more-list="beeps">
                 @foreach (var beep in results.Beeps)
                 {
                     <partial name="_Beep" model="new BeepCard(beep)" />
@@ -78,7 +78,7 @@
         }
         @if (results.NextOffset is { } next)
         {
-            <nav class="pager" aria-label="@L["Pager.Label"]">
+            <nav class="pager" data-more="@(users ? "users" : "beeps")" aria-label="@L["Pager.Label"]">
                 <a class="btn" asp-page="/Search" asp-route-q="@Model.Query" asp-route-type="@type" asp-route-offset="@next">@L["Pager.More"]</a>
             </nav>
         }

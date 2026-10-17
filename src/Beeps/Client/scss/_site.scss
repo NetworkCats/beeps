@@ -359,11 +359,40 @@
   }
 }
 
-.topbar-actions {
+.topbar-end {
   grid-column: 3;
   justify-self: end;
   display: flex;
+  align-items: center;
+  gap: var(--cui-space-1);
+}
+
+.topbar-actions {
+  display: flex;
   gap: var(--cui-space-2);
+}
+
+.topbar-more-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  color: var(--cui-text);
+  border-radius: var(--cui-radius-full);
+  transition: background-color var(--cui-transition);
+
+  > .icon {
+    --cui-icon-size: 1.375rem;
+  }
+
+  &:hover {
+    background: var(--beeps-hover-strong);
+  }
+
+  &:focus-visible {
+    @include focus-ring;
+  }
 }
 
 .tabbar {
@@ -451,7 +480,8 @@
 
 .shell-aside {
   grid-area: aside;
-  display: flex;
+  // Narrow screens have no side column: its footer is in the top bar's menu.
+  display: none;
   flex-direction: column;
   gap: var(--cui-space-4);
   min-width: 0;
@@ -463,6 +493,7 @@
   }
 
   @include mq(sm) {
+    display: flex;
     border-inline: var(--cui-border-width) solid var(--cui-border);
   }
 
@@ -568,6 +599,7 @@
   }
 }
 
+// _SiteOptions: the about page, language and colour scheme, in a line of small print.
 .site-footer {
   display: flex;
   flex-wrap: wrap;
@@ -578,7 +610,17 @@
   font-size: 0.8125rem;
 }
 
-.language-switch {
+.footer-link {
+  color: var(--cui-text-2);
+  text-decoration: none;
+
+  &:hover {
+    color: var(--cui-text);
+    text-decoration: underline;
+  }
+}
+
+.footer-switch {
   display: inline-flex;
   align-items: center;
   gap: var(--cui-space-1);
@@ -590,37 +632,89 @@
   }
 }
 
-.language-option {
-  padding: 0 var(--cui-space-1);
+// A borderless dropdown in the small print, its caret drawn in the text colour.
+.footer-select {
+  appearance: none;
+  min-width: 0;
+  margin: 0;
+  padding: 0 var(--cui-space-4) 0 var(--cui-space-1);
   color: var(--cui-text-2);
   font: inherit;
-  background: none;
+  background-color: transparent;
+  background-image: linear-gradient(45deg, transparent 50%, currentColor 50%), linear-gradient(135deg, currentColor 50%, transparent 50%);
+  background-position: calc(100% - 0.5rem) 55%, calc(100% - 0.25rem) 55%;
+  background-size: 0.25rem 0.25rem;
+  background-repeat: no-repeat;
   border: 0;
   border-radius: var(--cui-radius-sm);
   cursor: pointer;
 
   &:hover {
     color: var(--cui-text);
-    text-decoration: underline;
   }
 
   &:focus-visible {
     @include focus-ring;
   }
+}
 
-  &[aria-current] {
-    color: var(--cui-text);
-    font-weight: var(--cui-weight-bold);
-    cursor: default;
+// The choice takes effect as soon as it is made (theme.ts); the button is for pages without script.
+.footer-apply {
+  padding: 0 var(--cui-space-1);
+  color: var(--cui-link);
+  font: inherit;
+  background: none;
+  border: 0;
+  cursor: pointer;
 
-    &:hover {
-      text-decoration: none;
-    }
+  @media (scripting: enabled) {
+    display: none;
   }
 }
 
 .footer-note {
   margin: 0;
+}
+
+// The same options in the top bar's menu: one row each, with room to tap.
+.site-menu {
+  display: grid;
+  gap: var(--cui-space-1);
+  min-width: 16rem;
+  padding: var(--cui-space-2) var(--cui-space-4) var(--cui-space-3);
+  color: var(--cui-text-2);
+  font-size: var(--beeps-text-size);
+
+  > .footer-link {
+    padding-block: var(--cui-space-2);
+    color: var(--cui-text);
+    font-weight: var(--cui-weight-bold);
+  }
+
+  > .footer-switch {
+    display: flex;
+    min-height: 2.75rem;
+
+    > .icon {
+      --cui-icon-size: 1.25rem;
+      margin-inline-end: var(--cui-space-2);
+    }
+  }
+
+  .footer-select {
+    flex: 1 1 auto;
+    min-height: var(--cui-control-height-sm);
+    padding-inline: var(--cui-space-3) var(--cui-space-6);
+    color: var(--cui-text);
+    background-position: calc(100% - 0.875rem) 55%, calc(100% - 0.625rem) 55%;
+    border: var(--cui-border-width) solid var(--cui-control-border);
+    border-radius: var(--cui-control-radius);
+  }
+
+  > .footer-note {
+    padding-block-start: var(--cui-space-1);
+    font-size: 0.8125rem;
+  }
 }
 
 // ---- Column header: the page's name, sticky at the top of the column ----------------------------
@@ -792,19 +886,36 @@
   min-width: 0;
 }
 
+// The picture on the left, what beeps is on the right.
 .intro {
-  display: grid;
-  justify-items: start;
-  gap: var(--cui-space-2);
-  padding: var(--cui-space-8) var(--beeps-pad) var(--cui-space-6);
+  display: flex;
+  align-items: center;
+  gap: var(--cui-space-5);
+  padding: var(--cui-space-6) var(--beeps-pad);
   // Where the timeline starts: the line every beep below also has.
   border-block-end: var(--cui-border-width) solid var(--cui-border);
 }
 
-.intro-logo {
-  width: 3.5rem;
-  height: 3.5rem;
-  margin-block-end: var(--cui-space-2);
+// chill.png (534px square) has empty space around the robot: 46px above, 82px below, 6px on the left. Pulled in
+// by as much, so what lines up and centres is the robot itself, not its canvas.
+.intro-art {
+  --art: 5.5rem;
+  flex: none;
+  width: var(--art);
+  height: auto;
+  margin-block: calc(var(--art) * -46 / 534) calc(var(--art) * -82 / 534);
+  margin-inline-start: calc(var(--art) * -6 / 534);
+
+  @include mq(sm) {
+    --art: 7.5rem;
+  }
+}
+
+.intro-body {
+  display: grid;
+  justify-items: start;
+  gap: var(--cui-space-2);
+  min-width: 0;
 }
 
 .intro-title {
@@ -845,6 +956,34 @@
   display: flex;
   justify-content: center;
   padding: var(--cui-space-4) var(--beeps-pad) var(--cui-space-6);
+}
+
+// With script the next page loads as it is scrolled to (more.ts): a spinner stands in for the link, which comes
+// back only when loading failed, to try again.
+.pager[data-more-state] {
+  min-height: calc(var(--cui-space-4) + var(--cui-space-6) + 1.5rem);
+
+  &:not([data-more-state="failed"]) {
+    > .btn {
+      display: none;
+    }
+
+    &::before {
+      content: "";
+      width: 1.5rem;
+      height: 1.5rem;
+      border: 3px solid var(--cui-primary);
+      border-inline-end-color: transparent;
+      border-radius: 50%;
+      animation: beeps-spin 0.75s linear infinite;
+    }
+  }
+}
+
+@keyframes beeps-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 // form-errors and other alerts inside the column
@@ -1552,6 +1691,61 @@ span.beep-action {
   font-size: var(--beeps-text-size);
 }
 
+// ---- About ----------------------------------------------------------------------------------------
+
+.about-lead {
+  margin: 0;
+  padding: var(--cui-space-5) var(--beeps-pad) 0;
+  font-size: var(--cui-text-lg);
+  line-height: 1.5;
+}
+
+// Sections one after another, no lines between them; titled as on the settings page.
+.about-section {
+  display: grid;
+  justify-items: start;
+  gap: var(--cui-space-2);
+  padding: var(--cui-space-6) var(--beeps-pad) 0;
+  font-size: var(--beeps-text-size);
+  line-height: 1.5;
+
+  &:last-child {
+    padding-block-end: var(--cui-space-8);
+  }
+
+  > h2 {
+    margin: 0;
+    font-size: var(--cui-text-lg);
+    font-weight: 800;
+  }
+
+  > p,
+  > ul,
+  > ol {
+    margin: 0;
+  }
+
+  > ul,
+  > ol {
+    display: grid;
+    gap: var(--cui-space-1-5);
+    padding-inline-start: 1.25rem;
+  }
+
+  // The reset takes list markers away; steps need their numbers back.
+  > ul {
+    list-style: disc;
+  }
+
+  > ol {
+    list-style: decimal;
+  }
+
+  > .aside-link {
+    margin-block-start: var(--cui-space-1);
+  }
+}
+
 // ---- Search ----------------------------------------------------------------------------------------
 
 .search-hint {
@@ -1672,6 +1866,10 @@ span.beep-action {
 [data-live-region] + .settings-section,
 .settings-section + [data-live-region] > .settings-section {
   padding-block-start: var(--cui-space-6);
+}
+
+.settings-select {
+  max-width: 20rem;
 }
 
 .settings-fixed {

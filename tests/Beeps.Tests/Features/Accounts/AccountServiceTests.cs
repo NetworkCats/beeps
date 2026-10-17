@@ -468,6 +468,26 @@ public sealed class AccountServiceTests
     }
 
     [Fact]
+    public async Task ThemeIsSavedOnlyForKnownSchemes()
+    {
+        var user = TestData.User();
+        store.FindUserAsync(user.Id, Arg.Any<CancellationToken>()).Returns(user);
+        var service = CreateService();
+
+        var known = await service.SetThemeAsync(user.Id, "dark", TestSupport.Ct);
+        var unknown = await service.SetThemeAsync(user.Id, "purple", TestSupport.Ct);
+
+        Assert.True(known.IsSuccess);
+        Assert.Equal("dark", user.Theme);
+        Assert.False(unknown.IsSuccess);
+        Assert.Equal(1, unitOfWork.Saves);
+        await store.Received(1).ForgetAccountAsync(user.Id, Arg.Any<CancellationToken>());
+        // The account's other tabs switch in place, not shown anew.
+        Assert.Equal([$$"""{"account_id":"{{user.Id:D}}","theme":"dark"}"""], TestData.LiveEvents(liveEvents, LiveEventTypes.ThemeChanged));
+        Assert.Empty(TestData.LiveEvents(liveEvents, LiveEventTypes.AccountChanged));
+    }
+
+    [Fact]
     public async Task AWrongResetCodeStaysCountedAndKeepsSessions()
     {
         var user = TestData.User();
