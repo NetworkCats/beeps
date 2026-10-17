@@ -19,8 +19,11 @@ internal sealed class BeepConfiguration : IEntityTypeConfiguration<Beep>
         builder.HasOne(b => b.Author).WithMany().HasForeignKey(b => b.AuthorId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne<Beep>().WithMany().HasForeignKey(b => b.ReplyToId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne<Beep>().WithMany().HasForeignKey(b => b.RootId).OnDelete(DeleteBehavior.Restrict);
-        // Profile and home timelines: newest beeps of a set of authors.
-        builder.HasIndex(b => new { b.AuthorId, b.Id }).IsDescending(false, true);
+        // Profile and home timelines: newest beeps of each author, walked per author (LATERAL). It carries what
+        // decides whether a beep is shown, so those walks never visit the table itself.
+        builder.HasIndex(b => new { b.AuthorId, b.Id })
+            .IsDescending(false, true)
+            .IncludeProperties(b => new { b.ReplyToId, b.ModerationStatus, b.DeletedAt });
         // The public timeline: newest top-level beeps, without walking past deleted ones and replies.
         builder.HasIndex(b => b.Id).IsDescending(true).HasFilter("reply_to_id IS NULL AND deleted_at IS NULL").HasDatabaseName("ix_beeps_public");
         // The admins' review queue: hidden beeps and failed reviews, oldest first.

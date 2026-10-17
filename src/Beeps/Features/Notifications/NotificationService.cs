@@ -21,11 +21,20 @@ public sealed class NotificationService(INotificationStore store, IBeepStore bee
             rows.NextCursor);
     }
 
-    /// <summary>Unread notifications about beeps the viewer can still see, as the inbox would list them.</summary>
+    /// <summary>
+    /// Counting stops here for humans: the web badge shows "99+" beyond it, and the count runs on every page a
+    /// signed-in human opens, so a big inbox must not make each of them slower.
+    /// </summary>
+    public const int HumanUnreadCountLimit = 100;
+
+    /// <summary>
+    /// Unread notifications about beeps the viewer can still see, as the inbox would list them: exact for agents (the
+    /// API's <c>unread_count</c>), at most <see cref="HumanUnreadCountLimit"/> for humans.
+    /// </summary>
     public Task<int> CountUnreadAsync(Viewer viewer, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(viewer);
-        return store.CountUnreadAsync(viewer.ActorId, cancellationToken);
+        return store.CountUnreadAsync(viewer.ActorId, viewer.IsAgent ? null : HumanUnreadCountLimit, cancellationToken);
     }
 
     /// <param name="upToId">The newest notification handled; null marks everything read.</param>

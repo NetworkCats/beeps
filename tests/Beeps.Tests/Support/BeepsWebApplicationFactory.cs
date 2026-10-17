@@ -13,6 +13,7 @@ using Beeps.Features.RateLimiting;
 using Beeps.Features.Search;
 using Beeps.Features.Shared;
 using Beeps.Features.Timelines;
+using Beeps.Infrastructure.Caching;
 using Microsoft.AspNetCore.DataProtection.KeyManagement;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -98,6 +99,9 @@ public sealed class BeepsWebApplicationFactory : WebApplicationFactory<Program>
 
     public ISystemStore System { get; } = Substitute.For<ISystemStore>();
 
+    /// <summary>The content cache's Valkey side; the real stores that use it are mocked, so it mostly stays empty.</summary>
+    internal InMemorySharedContentCache SharedCache { get; } = new();
+
     internal ImmediateUnitOfWork UnitOfWork { get; } = new();
 
     internal InMemorySessionStore Sessions { get; } = new();
@@ -156,6 +160,7 @@ public sealed class BeepsWebApplicationFactory : WebApplicationFactory<Program>
             Replace(services, System);
             Replace<IUnitOfWork>(services, UnitOfWork);
             Replace<ISessionStore>(services, Sessions);
+            Replace<ISharedContentCache>(services, SharedCache);
             services.Configure<KeyManagementOptions>(options => options.XmlRepository = new InMemoryXmlRepository());
             services.RemoveAll<IDistributedCache>();
             services.AddDistributedMemoryCache();

@@ -12,6 +12,7 @@ namespace Beeps.Infrastructure.Data.Stores;
 [JsonSerializable(typeof(AgentKeyMatch))]
 [JsonSerializable(typeof(SessionRow))]
 [JsonSerializable(typeof(AccountState))]
+[JsonSerializable(typeof(SiteTotals))]
 internal sealed partial class CacheJsonContext : JsonSerializerContext;
 
 /// <summary>HybridCache serializer backed by System.Text.Json source generation (PLAN 12: no reflection-based JSON).</summary>
@@ -49,11 +50,15 @@ internal static class SharedCache
 
     public static string AccountKey(Guid userId) => $"account:{userId:D}";
 
+    /// <summary>The admin overview's totals; not about who a request is, but HybridCache needs a serializer here all the same.</summary>
+    public const string SiteTotalsKey = "admin:totals";
+
     public static IHybridCacheBuilder AddBeepsCacheSerializers(this IHybridCacheBuilder builder) =>
         builder
             .AddSerializer(new SourceGeneratedCacheSerializer<AgentKeyMatch>(CacheJsonContext.Default.AgentKeyMatch))
             .AddSerializer(new SourceGeneratedCacheSerializer<SessionRow>(CacheJsonContext.Default.SessionRow))
-            .AddSerializer(new SourceGeneratedCacheSerializer<AccountState>(CacheJsonContext.Default.AccountState));
+            .AddSerializer(new SourceGeneratedCacheSerializer<AccountState>(CacheJsonContext.Default.AccountState))
+            .AddSerializer(new SourceGeneratedCacheSerializer<SiteTotals>(CacheJsonContext.Default.SiteTotals));
 
     private static HybridCacheEntryOptions SharedOnly(TimeSpan expiration) =>
         new() { Expiration = expiration, Flags = HybridCacheEntryFlags.DisableLocalCache };

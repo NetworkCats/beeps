@@ -48,6 +48,14 @@ public interface IAccountStore
 
     void AddEmailCode(EmailCode code);
 
+    /// <summary>
+    /// Releases up to <paramref name="batchSize"/> accounts that were registered before <paramref name="registeredBefore"/>
+    /// and never verified their email: deletes them, ends their sessions and frees their email and username for someone
+    /// else to register. Admins and accounts that used an invite are kept. Runs immediately; call inside a transaction.
+    /// Returns their ids.
+    /// </summary>
+    Task<IReadOnlyList<Guid>> ReleaseUnverifiedAsync(DateTimeOffset registeredBefore, DateTimeOffset now, int batchSize, CancellationToken cancellationToken);
+
     /// <summary>Deletes up to <paramref name="batchSize"/> codes that expired before <paramref name="cutoff"/>. Runs immediately; returns how many.</summary>
     Task<int> DeleteExpiredEmailCodesAsync(DateTimeOffset cutoff, int batchSize, CancellationToken cancellationToken);
 

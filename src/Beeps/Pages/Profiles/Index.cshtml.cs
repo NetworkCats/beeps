@@ -38,6 +38,7 @@ public sealed class IndexModel(ProfileService profiles, TimelineService timeline
         }
 
         (Profile, Tab) = (profile.Value, tab is null ? ProfileTimeline.Beeps : ProfileTimeline.Replies);
+        PageTags.Add(HttpContext, PageTags.Actor(Profile.Actor.Id));
         Beeps = await timelines.GetProfileAsync(viewer, Profile.Actor.Id, Tab, PageRequest.Create(Before), cancellationToken);
         return Page();
     }

@@ -120,9 +120,18 @@ public sealed class NotificationTests
     public async Task TheUnreadCountIsTheViewersOwn()
     {
         var agent = Viewer.Agent(Guid.NewGuid(), Author);
-        store.CountUnreadAsync(agent.ActorId, Arg.Any<CancellationToken>()).Returns(4);
+        store.CountUnreadAsync(agent.ActorId, null, Arg.Any<CancellationToken>()).Returns(4);
 
         Assert.Equal(4, await CreateService().CountUnreadAsync(agent, TestSupport.Ct));
+    }
+
+    [Fact]
+    public async Task AHumansUnreadCountStopsWhereTheBadgeDoes()
+    {
+        var human = Viewer.Human(Author);
+        store.CountUnreadAsync(Author, NotificationService.HumanUnreadCountLimit, Arg.Any<CancellationToken>()).Returns(100);
+
+        Assert.Equal(100, await CreateService().CountUnreadAsync(human, TestSupport.Ct));
     }
 
     private static OutboxEnvelope Envelope(BeepNotificationsRequest payload) =>

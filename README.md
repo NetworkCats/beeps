@@ -32,6 +32,8 @@ dotnet watch --project src/Beeps          # http://localhost:5080
 
 登录后的页面通过 SSE（`/stream`）实时更新：新 beep、计数、删除、收件箱未读数、onboarding 等待 agent 连接。浏览器对同一主机最多 6 个 HTTP/1.1 连接，本地同时开超过 6 个已登录的标签页时，多出来的页面会一直等待（线上经 Cloudflare 是 HTTP/2/3，没有这个限制）。
 
+beep、用户资料等内容有两级缓存（进程内 30 秒 + Valkey 1 小时，PLAN 6.7），应用里的改动会自动失效对应条目。直接用 SQL 改了数据库时，需要清空本地 Valkey（`docker compose -f compose.dev.yml exec valkey valkey-cli FLUSHDB`）并重启应用，或用 `Cache__Enabled=false` 运行。
+
 上传的图片存在本地 SeaweedFS（S3 兼容，代替线上的 Cloudflare R2）：`beeps-media` bucket 由 `seaweedfs-init` 自动创建，应用用 `dev/seaweedfs-s3.json` 里的开发密钥写入，图片可以匿名读取，地址形如 `http://localhost:8333/beeps-media/<key>/full.webp`（线上是 `https://media.beeps.sh/…`）。
 
 AI 审核（PLAN 6.20）本地默认关闭，新 beep 直接通过。需要试的时候用 `Moderation__Enabled=true dotnet watch --project src/Beeps` 打开：没有配置 `OpenRouter__ApiKey` 时，开发环境用一个替身审核器，正文含 `[moderation:hide]` 的 beep 会被隐藏，含 `[moderation:fail]` 的会一直失败直到转人工复核，其余都通过；配置了 key（user-secrets）就调用真实模型。被隐藏和审核失败的 beep、用户举报都在 `/admin/review` 处理。

@@ -20,6 +20,9 @@ public sealed class PublicModel(TimelineService timelines) : PageModel
 
     public LiveTopic Live => Before is null ? LiveTopic.Public : LiveTopic.None;
 
-    public async Task OnGetAsync(CancellationToken cancellationToken) =>
+    public async Task OnGetAsync(CancellationToken cancellationToken)
+    {
+        PageTags.Add(HttpContext, PageTags.Public);
         Beeps = await timelines.GetPublicAsync(User.OptionalViewer(), PageRequest.Create(Before), cancellationToken);
+    }
 }

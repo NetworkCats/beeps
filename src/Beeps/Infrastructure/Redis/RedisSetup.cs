@@ -25,6 +25,9 @@ public static class RedisSetup
             var options = ConfigurationOptions.Parse(connectionString);
             // Keep retrying in the background instead of failing startup when Valkey is briefly away.
             options.AbortOnConnectFail = false;
+            // While disconnected, fail commands at once instead of queueing them until they time out (5 s each):
+            // every caller already falls back (to PostgreSQL, or by letting the request through).
+            options.BacklogPolicy = BacklogPolicy.FailFast;
             options.ClientName = "beeps";
             return ConnectionMultiplexer.Connect(options);
         });

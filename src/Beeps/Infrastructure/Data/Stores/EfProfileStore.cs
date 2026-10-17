@@ -1,31 +1,39 @@
-using Beeps.Features.Accounts;
 using Beeps.Features.Beeps;
-using Beeps.Features.Media;
 using Beeps.Features.Profiles;
+using Beeps.Infrastructure.Caching;
 using Microsoft.EntityFrameworkCore;
 
 namespace Beeps.Infrastructure.Data.Stores;
 
-public sealed class EfProfileStore(BeepsDbContext db) : IProfileStore
+/// <remarks>Profiles and agent lists come from the content cache (<see cref="ContentReads"/>); follows and blocks are asked of PostgreSQL.</remarks>
+public sealed class EfProfileStore(BeepsDbContext db, ContentReads reads, PendingCacheChanges cacheChanges) : IProfileStore
 {
-    public Task<ProfileRow?> FindByHandleAsync(string normalizedHandle, CancellationToken cancellationToken) =>
-        BeepQueries.VisibleActors(db)
-            .Where(a => a.NormalizedHandle == normalizedHandle)
-            .LeftJoin(db.Set<Actor>(), a => a.OwnerId, o => (Guid?)o.Id, (a, o) => new ProfileRow(
-                new ActorRow(a.Id, a.Kind, a.Handle, a.DisplayName, a.OwnerId, a.AvatarMedia == null || a.AvatarMedia.Status != MediaStatus.Ready ? null : a.AvatarMedia.StorageKey),
-                a.Bio,
-                a.ModelName,
-                a.CreatedAt,
-                o == null ? null : new ActorRow(o.Id, o.Kind, o.Handle, o.DisplayName, o.OwnerId, o.AvatarMedia == null || o.AvatarMedia.Status != MediaStatus.Ready ? null : o.AvatarMedia.StorageKey)))
-            .FirstOrDefaultAsync(cancellationToken);
+    public async Task<ProfileRow?> FindByHandleAsync(string normalizedHandle, CancellationToken cancellationToken)
+    {
+        var ids = await reads.GetActorIdsByHandleAsync([normalizedHandle], cancellationToken);
+        if (!ids.TryGetValue(normalizedHandle, out var id))
+        {
+            return null;
+        }
 
-    public async Task<IReadOnlyList<ActorRow>> ListAgentsAsync(Guid ownerId, CancellationToken cancellationToken) =>
-        await db.Set<Actor>()
-            .AsNoTracking()
-            .Where(a => a.OwnerId == ownerId && a.DeletedAt == null && a.Handle != null)
-            .OrderBy(a => a.Id)
-            .Select(BeepQueries.ToActorRow)
-            .ToListAsync(cancellationToken);
+        var actors = await reads.GetActorsAsync([id], cancellationToken);
+        if (actors.GetValueOrDefault(id) is not { Visible: true } found)
+        {
+            return null;
+        }
+
+        var actor = found.Actor;
+        var owner = actor.OwnerId is { } ownerId ? (await reads.GetActorsAsync([ownerId], cancellationToken)).GetValueOrDefault(ownerId) : null;
+        return new ProfileRow(found.Row, actor.Bio, actor.ModelName, actor.CreatedAt, owner?.Row);
+    }
+
+    public async Task<IReadOnlyList<ActorRow>> ListAgentsAsync(Guid ownerId, CancellationToken cancellationToken)
+    {
+        var ids = (await reads.GetAgentIdsAsync([ownerId], cancellationToken)).GetValueOrDefault(ownerId) ?? [];
+        var agents = await reads.GetActorsAsync(ids, cancellationToken);
+        // Connected (so they have a handle) and not deleted, oldest first.
+        return [.. ids.Select(agents.GetValueOrDefault).Where(a => a is { Actor: { Deleted: false, Handle: not null } }).Select(a => a!.Row)];
+    }
 
     public Task<bool> IsFollowingAsync(Guid followerId, Guid followeeId, CancellationToken cancellationToken) =>
         db.Set<Follow>().AnyAsync(f => f.FollowerId == followerId && f.FolloweeId == followeeId, cancellationToken);
@@ -34,12 +42,12 @@ public sealed class EfProfileStore(BeepsDbContext db) : IProfileStore
         await db.Set<Follow>().Where(f => f.FollowerId == followerId).Select(f => f.FolloweeId).ToListAsync(cancellationToken);
 
     public async Task<bool> AddFollowAsync(Guid followerId, Guid followeeId, DateTimeOffset now, CancellationToken cancellationToken) =>
-        await db.Database.ExecuteSqlAsync(
+        FollowingChanged(followerId, await db.Database.ExecuteSqlAsync(
             $"INSERT INTO follows (follower_id, followee_id, created_at) VALUES ({followerId}, {followeeId}, {now}) ON CONFLICT DO NOTHING",
-            cancellationToken) == 1;
+            cancellationToken) == 1);
 
     public async Task<bool> RemoveFollowAsync(Guid followerId, Guid followeeId, CancellationToken cancellationToken) =>
-        await db.Set<Follow>().Where(f => f.FollowerId == followerId && f.FolloweeId == followeeId).ExecuteDeleteAsync(cancellationToken) == 1;
+        FollowingChanged(followerId, await db.Set<Follow>().Where(f => f.FollowerId == followerId && f.FolloweeId == followeeId).ExecuteDeleteAsync(cancellationToken) == 1);
 
     public Task<bool> IsBlockingAsync(Guid blockerId, Guid blockedId, CancellationToken cancellationToken) =>
         db.Set<Block>().AnyAsync(k => k.BlockerId == blockerId && k.BlockedId == blockedId, cancellationToken);
@@ -56,4 +64,14 @@ public sealed class EfProfileStore(BeepsDbContext db) : IProfileStore
 
     public async Task<bool> RemoveBlockAsync(Guid blockerId, Guid blockedId, CancellationToken cancellationToken) =>
         await db.Set<Block>().Where(k => k.BlockerId == blockerId && k.BlockedId == blockedId).ExecuteDeleteAsync(cancellationToken) == 1;
+
+    private bool FollowingChanged(Guid followerId, bool changed)
+    {
+        if (changed)
+        {
+            cacheChanges.Add(CacheChange.Following(followerId));
+        }
+
+        return changed;
+    }
 }

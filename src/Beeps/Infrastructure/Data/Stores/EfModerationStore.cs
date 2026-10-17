@@ -4,6 +4,7 @@ using Beeps.Features.Beeps;
 using Beeps.Features.Media;
 using Beeps.Features.Moderation;
 using Beeps.Features.Shared;
+using Beeps.Infrastructure.Caching;
 using Microsoft.EntityFrameworkCore;
 
 namespace Beeps.Infrastructure.Data.Stores;
@@ -12,7 +13,7 @@ namespace Beeps.Infrastructure.Data.Stores;
 /// Admin and review reads go past <see cref="BeepVisibility"/> on purpose: they are about beeps that are hidden,
 /// failed review or deleted, which nobody else may see.
 /// </summary>
-public sealed class EfModerationStore(BeepsDbContext db) : IModerationStore
+public sealed class EfModerationStore(BeepsDbContext db, PendingCacheChanges cacheChanges) : IModerationStore
 {
     private const int MaxResults = 20;
     private const int MaxReports = 50;
@@ -37,10 +38,19 @@ public sealed class EfModerationStore(BeepsDbContext db) : IModerationStore
 
     public void AddResult(ModerationResult result) => db.Set<ModerationResult>().Add(result);
 
-    public async Task<bool> SetStatusAsync(Guid beepId, IReadOnlyCollection<ModerationStatus> from, ModerationStatus to, CancellationToken cancellationToken) =>
-        await db.Set<Beep>()
+    public async Task<bool> SetStatusAsync(Guid beepId, IReadOnlyCollection<ModerationStatus> from, ModerationStatus to, CancellationToken cancellationToken)
+    {
+        var changed = await db.Set<Beep>()
             .Where(b => b.Id == beepId && b.DeletedAt == null && from.Contains(b.ModerationStatus))
             .ExecuteUpdateAsync(s => s.SetProperty(b => b.ModerationStatus, to), cancellationToken) == 1;
+        if (changed && to == ModerationStatus.Hidden)
+        {
+            // Whether a beep is hidden is never cached, only the pages showing it.
+            cacheChanges.Add(CacheChange.BeepPages(beepId));
+        }
+
+        return changed;
+    }
 
     public Task DeleteJobAsync(Guid beepId, CancellationToken cancellationToken) =>
         db.Set<ModerationJob>().Where(j => j.BeepId == beepId).ExecuteDeleteAsync(cancellationToken);
@@ -160,6 +170,16 @@ public sealed class EfModerationStore(BeepsDbContext db) : IModerationStore
         await db.Set<MediaUpload>()
             .Where(u => db.Set<BeepMedia>().Any(bm => bm.BeepId == beepId && bm.MediaId == u.MediaId))
             .ExecuteDeleteAsync(cancellationToken);
+        if (keys.Count > 0)
+        {
+            // The same image may also be someone's avatar, which goes back to the default pattern.
+            var avatarUsers = await db.Set<Actor>()
+                .Where(a => db.Set<BeepMedia>().Any(bm => bm.BeepId == beepId && bm.MediaId == a.AvatarMediaId))
+                .Select(a => a.Id)
+                .ToListAsync(cancellationToken);
+            cacheChanges.Add([CacheChange.Beep(beepId), CacheChange.BeepPages(beepId), .. avatarUsers.Select(CacheChange.Actor)]);
+        }
+
         return keys;
     }
 

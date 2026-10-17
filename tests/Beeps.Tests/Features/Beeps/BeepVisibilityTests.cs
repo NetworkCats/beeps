@@ -67,6 +67,18 @@ public sealed class BeepVisibilityTests
     }
 
     [Fact]
+    public void AHumansHiddenBeepIsNotShownSignedOut()
+    {
+        // A human has no owner: compared with a missing viewer, that must not count as "the viewer owns the author".
+        var beep = Beep(owner.Actor);
+        beep.ModerationStatus = ModerationStatus.Hidden;
+
+        Assert.False(IsVisible(beep, null));
+        Assert.False(IsVisible(beep, stranger.Id));
+        Assert.True(IsVisible(beep, owner.Id));
+    }
+
+    [Fact]
     public void BlockingAHumanHidesThemAndTheirAgentsFromTheBlockerOnly()
     {
         blocks.Add(new Block { BlockerId = stranger.Id, BlockedId = owner.Id });

@@ -6,14 +6,18 @@ using Beeps.Features.Shared;
 using Beeps.Infrastructure.Jobs;
 using Beeps.Infrastructure.Outbox;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Hybrid;
 
 namespace Beeps.Infrastructure.Data.Stores;
 
-public sealed class EfSystemStore(BeepsDbContext db) : ISystemStore
+public sealed class EfSystemStore(BeepsDbContext db, HybridCache cache) : ISystemStore
 {
+    /// <summary>The totals scan whole tables; a minute old is fine for an overview, and every open admin page shares them.</summary>
+    private static readonly HybridCacheEntryOptions TotalsCache = new() { Expiration = TimeSpan.FromMinutes(1), LocalCacheExpiration = TimeSpan.FromMinutes(1) };
+
     /// <remarks>
     /// "New" compares ids rather than creation times: UUIDv7 ids sort by time, so the primary keys answer it.
-    /// The totals count whole tables, which is fine for one admin page at a time.
+    /// The totals count whole tables, so they are cached for a minute; today's counts and the backlogs are live.
     /// </remarks>
     public async Task<SiteCounts> CountAsync(DateTimeOffset since, CancellationToken cancellationToken)
     {
@@ -22,10 +26,16 @@ public sealed class EfSystemStore(BeepsDbContext db) : ISystemStore
         var humans = db.Set<User>().Where(u => u.Actor.DeletedAt == null);
         var agents = db.Set<Actor>().Where(a => a.Kind == ActorKind.Agent && a.DeletedAt == null);
         var beeps = db.Set<Beep>().Where(b => b.DeletedAt == null);
+        var totals = await cache.GetOrCreateAsync(
+            SharedCache.SiteTotalsKey,
+            (humans, agents, beeps),
+            static async (q, ct) => new SiteTotals(await q.humans.CountAsync(ct), await q.agents.CountAsync(ct), await q.beeps.CountAsync(ct)),
+            TotalsCache,
+            cancellationToken: cancellationToken);
         return new SiteCounts(
-            await humans.CountAsync(cancellationToken),
-            await agents.CountAsync(cancellationToken),
-            await beeps.CountAsync(cancellationToken),
+            totals.Users,
+            totals.Agents,
+            totals.Beeps,
             await humans.CountAsync(u => u.Id >= first, cancellationToken),
             await agents.CountAsync(a => a.Id >= first, cancellationToken),
             await beeps.CountAsync(b => b.Id >= first, cancellationToken),
@@ -89,3 +99,6 @@ public sealed class EfSystemStore(BeepsDbContext db) : ISystemStore
         return new Guid(bytes, bigEndian: true);
     }
 }
+
+/// <summary>Cached by <see cref="EfSystemStore.CountAsync"/>.</summary>
+public sealed record SiteTotals(int Users, int Agents, int Beeps);

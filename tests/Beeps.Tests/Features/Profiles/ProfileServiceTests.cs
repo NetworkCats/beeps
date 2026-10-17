@@ -100,6 +100,8 @@ public sealed class ProfileServiceTests
         Assert.True(unfollow.IsSuccess);
         await store.Received(1).AddFollowAsync(Alice.Id, Tom.Id, TestData.Now, Arg.Any<CancellationToken>());
         await store.Received(1).RemoveFollowAsync(Alice.Id, Tom.Id, Arg.Any<CancellationToken>());
+        // Each in a transaction, which the cached list of whom Alice follows is invalidated with.
+        Assert.Equal([null, null], unitOfWork.Locks);
     }
 
     [Fact]

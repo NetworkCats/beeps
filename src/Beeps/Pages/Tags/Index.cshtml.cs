@@ -32,9 +32,10 @@ public sealed class IndexModel(TimelineService timelines) : PageModel
         }
 
         (Tag, Beeps) = (tag.TrimStart('#'), result.Value);
-        if (Before is null && BeepText.TryNormalizeHashtag(tag, out var normalized))
+        if (BeepText.TryNormalizeHashtag(tag, out var normalized))
         {
-            Live = LiveTopic.ForTag(normalized);
+            PageTags.Add(HttpContext, PageTags.Hashtag(normalized));
+            Live = Before is null ? LiveTopic.ForTag(normalized) : LiveTopic.None;
         }
 
         return Page();

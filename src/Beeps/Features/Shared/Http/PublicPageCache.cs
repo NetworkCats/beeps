@@ -18,7 +18,8 @@ public sealed class PublicPageCacheOptions
 /// Output caching for public pages read by signed-out visitors (PLAN 6.6, 6.10): timelines, threads,
 /// hashtags and profiles. Signed-in pages carry personal state (likes, follow buttons) and are never
 /// cached; the framework's default policy already skips any authenticated request, and any response that
-/// sets a cookie, so a page with an antiforgery token is never stored either.
+/// sets a cookie, so a page with an antiforgery token is never stored either. Pages carry <see cref="PageTags"/>,
+/// so a removed beep or a changed profile is evicted from them at once on every instance.
 /// </summary>
 public static class PublicPageCache
 {
@@ -40,6 +41,7 @@ public static class PublicPageCache
 
                 // Same URL, different language: the culture comes from a cookie or Accept-Language, not the URL.
                 builder.Expire(page.Value.Duration)
+                    .Tag(PageTags.All)
                     .VaryByValue(_ => new KeyValuePair<string, string>("culture", CultureInfo.CurrentUICulture.Name));
             }));
         return services;

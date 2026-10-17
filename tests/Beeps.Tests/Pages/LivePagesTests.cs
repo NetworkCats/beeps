@@ -110,7 +110,7 @@ public sealed partial class LivePagesTests : IDisposable
     {
         var user = WebAuth.ArrangeUser(factory);
         factory.Profiles.ListFollowedAsync(user.Id, Arg.Any<CancellationToken>()).Returns([]);
-        factory.Notifications.CountUnreadAsync(user.Id, Arg.Any<CancellationToken>()).Returns(1);
+        factory.Notifications.CountUnreadAsync(user.Id, NotificationService.HumanUnreadCountLimit, Arg.Any<CancellationToken>()).Returns(1);
         using var client = await WebAuth.SignInAsync(factory, user);
         var mine = Guid.NewGuid();
 

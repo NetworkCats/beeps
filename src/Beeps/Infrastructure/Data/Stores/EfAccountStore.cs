@@ -1,12 +1,13 @@
 using Beeps.Features.Accounts;
 using Beeps.Features.Media;
 using Beeps.Features.Site;
+using Beeps.Infrastructure.Caching;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Hybrid;
 
 namespace Beeps.Infrastructure.Data.Stores;
 
-public sealed class EfAccountStore(BeepsDbContext db, HybridCache cache) : IAccountStore
+public sealed class EfAccountStore(BeepsDbContext db, HybridCache cache, PendingCacheChanges cacheChanges) : IAccountStore
 {
     public Task<bool> AnyUsersAsync(CancellationToken cancellationToken) =>
         db.Set<User>().AnyAsync(cancellationToken);
@@ -85,6 +86,40 @@ public sealed class EfAccountStore(BeepsDbContext db, HybridCache cache) : IAcco
 
     public void RemoveEmailCode(EmailCode code) => db.Set<EmailCode>().Remove(code);
 
+    /// <remarks>
+    /// The email becomes <c>released:{id}</c> and the handle is cleared from the unique index, so both can be taken
+    /// again; the row stays (like any deleted account) because others may have mentioned the handle. SKIP LOCKED leaves
+    /// alone an account that is verifying right now.
+    /// </remarks>
+    public async Task<IReadOnlyList<Guid>> ReleaseUnverifiedAsync(DateTimeOffset registeredBefore, DateTimeOffset now, int batchSize, CancellationToken cancellationToken)
+    {
+        var released = await db.Database
+            .SqlQuery<ReleasedAccount>(
+                $"""
+                WITH due AS (
+                    SELECT u.id FROM users u
+                    JOIN actors a ON a.id = u.id AND a.deleted_at IS NULL
+                    WHERE u.email_verified_at IS NULL AND u.created_at < {registeredBefore} AND NOT u.is_admin
+                      AND NOT EXISTS (SELECT 1 FROM invites i WHERE i.used_by = u.id)
+                    ORDER BY u.created_at
+                    LIMIT {batchSize}
+                    FOR UPDATE OF u SKIP LOCKED),
+                emails AS (
+                    UPDATE users u SET normalized_email = 'released:' || u.id::text FROM due WHERE u.id = due.id RETURNING u.id),
+                sessions AS (
+                    UPDATE user_sessions s SET revoked_at = {now} FROM due WHERE s.user_id = due.id AND s.revoked_at IS NULL)
+                UPDATE actors a SET deleted_at = {now}, normalized_handle = NULL
+                FROM due JOIN actors old ON old.id = due.id
+                WHERE a.id = due.id
+                RETURNING a.id AS "Id", old.normalized_handle AS "Handle"
+                """)
+            .ToListAsync(cancellationToken);
+        cacheChanges.Add([
+            .. released.Select(r => CacheChange.ActorVisibility(r.Id)),
+            .. released.Where(r => r.Handle is not null).Select(r => CacheChange.Handle(r.Handle!))]);
+        return [.. released.Select(r => r.Id)];
+    }
+
     public async Task<bool> TryCountCodeAttemptAsync(EmailCodePurpose purpose, string normalizedEmail, DateTimeOffset now, int maxAttempts, CancellationToken cancellationToken) =>
         await db.Set<EmailCode>()
             .Where(c => c.Purpose == purpose && c.NormalizedEmail == normalizedEmail && c.ExpiresAt > now && c.Attempts < maxAttempts)
@@ -92,3 +127,5 @@ public sealed class EfAccountStore(BeepsDbContext db, HybridCache cache) : IAcco
 
     private IQueryable<User> Users() => db.Set<User>().Include(u => u.Actor).Where(u => u.Actor.DeletedAt == null);
 }
+
+internal sealed record ReleasedAccount(Guid Id, string? Handle);

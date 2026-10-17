@@ -254,6 +254,14 @@ namespace Beeps.Infrastructure.Data.Migrations
 
                     NpgsqlIndexBuilderExtensions.HasOperators(b.HasIndex("NormalizedEmail"), new[] { "text_pattern_ops" });
 
+                    b.HasIndex(new[] { "Id" }, "ix_users_banned")
+                        .HasDatabaseName("ix_users_banned")
+                        .HasFilter("banned_at IS NOT NULL");
+
+                    b.HasIndex(new[] { "CreatedAt" }, "ix_users_unverified")
+                        .HasDatabaseName("ix_users_unverified")
+                        .HasFilter("email_verified_at IS NULL");
+
                     b.ToTable("users", (string)null);
                 });
 
@@ -470,6 +478,8 @@ namespace Beeps.Infrastructure.Data.Migrations
                     b.HasIndex("AuthorId", "Id")
                         .IsDescending(false, true)
                         .HasDatabaseName("ix_beeps_author_id_id");
+
+                    NpgsqlIndexBuilderExtensions.IncludeProperties(b.HasIndex("AuthorId", "Id"), new[] { "ReplyToId", "ModerationStatus", "DeletedAt" });
 
                     b.HasIndex("RootId", "Id")
                         .HasDatabaseName("ix_beeps_root_id_id");

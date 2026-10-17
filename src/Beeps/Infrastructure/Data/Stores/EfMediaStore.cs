@@ -1,11 +1,12 @@
 using Beeps.Features.Accounts;
 using Beeps.Features.Avatars;
 using Beeps.Features.Media;
+using Beeps.Infrastructure.Caching;
 using Microsoft.EntityFrameworkCore;
 
 namespace Beeps.Infrastructure.Data.Stores;
 
-public sealed class EfMediaStore(BeepsDbContext db) : IMediaStore, IAvatarStore
+public sealed class EfMediaStore(BeepsDbContext db, PendingCacheChanges cacheChanges) : IMediaStore, IAvatarStore
 {
     public void AddMedia(MediaItem media) => db.Set<MediaItem>().Add(media);
 
@@ -30,6 +31,14 @@ public sealed class EfMediaStore(BeepsDbContext db) : IMediaStore, IAvatarStore
             .Where(m => m.Id == mediaId && m.Status == MediaStatus.Processing)
             .ExecuteUpdateAsync(s => s.SetProperty(m => m.Status, status).SetProperty(m => m.Width, width).SetProperty(m => m.Height, height), cancellationToken);
         await db.Set<MediaUpload>().Where(u => u.MediaId == mediaId).ExecuteDeleteAsync(cancellationToken);
+        if (updated > 0 && status == MediaStatus.Ready)
+        {
+            // Beeps and avatars only show ready images, so whatever already uses this one shows it from now on.
+            var beeps = await db.Set<BeepMedia>().Where(bm => bm.MediaId == mediaId).Select(bm => bm.BeepId).ToListAsync(cancellationToken);
+            var actors = await db.Set<Actor>().Where(a => a.AvatarMediaId == mediaId).Select(a => a.Id).ToListAsync(cancellationToken);
+            cacheChanges.Add([.. beeps.Select(CacheChange.Beep), .. actors.Select(CacheChange.Actor)]);
+        }
+
         return updated > 0;
     }
 
@@ -71,8 +80,11 @@ public sealed class EfMediaStore(BeepsDbContext db) : IMediaStore, IAvatarStore
             .Select(a => new AvatarTarget(a.Id, a.Kind, a.OwnerId))
             .FirstOrDefaultAsync(cancellationToken);
 
-    public Task SetAvatarAsync(Guid actorId, Guid? mediaId, CancellationToken cancellationToken) =>
-        db.Set<Actor>()
+    public async Task SetAvatarAsync(Guid actorId, Guid? mediaId, CancellationToken cancellationToken)
+    {
+        await db.Set<Actor>()
             .Where(a => a.Id == actorId)
             .ExecuteUpdateAsync(s => s.SetProperty(a => a.AvatarMediaId, mediaId), cancellationToken);
+        cacheChanges.Add(CacheChange.Actor(actorId));
+    }
 }

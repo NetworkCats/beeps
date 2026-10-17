@@ -10,6 +10,7 @@ using Beeps.Features.Profiles;
 using Beeps.Features.RateLimiting;
 using Beeps.Features.Shared;
 using Beeps.Features.Timelines;
+using Beeps.Infrastructure.Caching;
 using Beeps.Infrastructure.Captcha;
 using Beeps.Infrastructure.Data;
 using Beeps.Infrastructure.Data.Stores;
@@ -35,6 +36,7 @@ public static class InfrastructureSetup
         services.AddBeepsForwardedHeaders();
         services.AddBeepsDatabase();
         services.AddBeepsRedis();
+        services.AddBeepsContentCache();
         services.AddBeepsOutbox();
         services.AddBeepsScheduledJobs();
         services.AddBeepsEmail();

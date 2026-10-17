@@ -30,7 +30,7 @@ public sealed class LiveServiceTests : IAsyncDisposable
     {
         store.AddConnectionAsync(default, default!, default, default, TestSupport.Ct).ReturnsForAnyArgs([]);
         profiles.ListFollowedAsync(Tom, Arg.Any<CancellationToken>()).Returns([Alice]);
-        notifications.CountUnreadAsync(default, TestSupport.Ct).ReturnsForAnyArgs(_ => unread);
+        notifications.CountUnreadAsync(default, default, TestSupport.Ct).ReturnsForAnyArgs(_ => unread);
     }
 
     [Theory]

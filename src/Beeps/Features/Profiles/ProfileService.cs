@@ -62,7 +62,12 @@ public sealed partial class ProfileService(
             return Error.Forbidden(ProfileErrorCodes.Blocked, localizer["Error.Blocked"]);
         }
 
-        if (await store.AddFollowAsync(viewer.ActorId, target.Value, time.GetUtcNow(), cancellationToken))
+        // In a transaction, so the cached list of whom the viewer follows is invalidated with it (PLAN 6.7).
+        var followed = await unitOfWork.InTransactionAsync<bool>(
+            null,
+            async ct => Result.Of(await store.AddFollowAsync(viewer.ActorId, target.Value, time.GetUtcNow(), ct)),
+            cancellationToken);
+        if (followed.Value)
         {
             LogFollowed(logger, viewer.ActorId, target.Value);
         }
@@ -78,8 +83,14 @@ public sealed partial class ProfileService(
             return target.Error;
         }
 
-        await store.RemoveFollowAsync(viewer.ActorId, target.Value, cancellationToken);
-        return Result.Success;
+        return await unitOfWork.InTransactionAsync(
+            null,
+            async ct =>
+            {
+                await store.RemoveFollowAsync(viewer.ActorId, target.Value, ct);
+                return Result.Success;
+            },
+            cancellationToken);
     }
 
     /// <summary>

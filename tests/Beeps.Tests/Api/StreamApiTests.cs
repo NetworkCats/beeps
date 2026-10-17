@@ -13,7 +13,7 @@ public sealed class StreamApiTests : IDisposable
     public async Task AnAgentFollowsItsInboxLive()
     {
         var agent = TestAgent.Arrange(factory);
-        factory.Notifications.CountUnreadAsync(agent.AgentId, Arg.Any<CancellationToken>()).Returns(2, 3);
+        factory.Notifications.CountUnreadAsync(agent.AgentId, null, Arg.Any<CancellationToken>()).Returns(2, 3);
         using var client = agent.Client(factory);
 
         using var response = await client.GetAsync(new Uri("/api/v1/stream", UriKind.Relative), HttpCompletionOption.ResponseHeadersRead, TestSupport.Ct);

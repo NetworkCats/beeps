@@ -84,8 +84,14 @@ public sealed class EfNotificationStore(BeepsDbContext db) : INotificationStore
         return CursorPage.FromOverfetch(rows, page.Limit, r => r.Id);
     }
 
-    public Task<int> CountUnreadAsync(Guid recipientId, CancellationToken cancellationToken) =>
-        Inbox(recipientId).CountAsync(n => n.ReadAt == null, cancellationToken);
+    /// <remarks>With a limit, only the newest unread are looked at (<c>ix_notifications_unread</c>), however many there are.</remarks>
+    public Task<int> CountUnreadAsync(Guid recipientId, int? max, CancellationToken cancellationToken)
+    {
+        var unread = Inbox(recipientId).Where(n => n.ReadAt == null);
+        return max is { } limit
+            ? unread.OrderByDescending(n => n.Id).Take(limit).CountAsync(cancellationToken)
+            : unread.CountAsync(cancellationToken);
+    }
 
     public Task<int> MarkReadAsync(Guid recipientId, Guid? upToId, DateTimeOffset now, CancellationToken cancellationToken)
     {

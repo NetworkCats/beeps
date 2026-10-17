@@ -20,6 +20,24 @@ public sealed class CulturePageTests(BeepsWebApplicationFactory factory) : IClas
         Assert.Contains("httponly", cookie, StringComparison.OrdinalIgnoreCase);
     }
 
+    [Theory]
+    [InlineData("zh-TW,zh;q=0.9,en;q=0.8", "zh-Hans")]
+    [InlineData("zh-HK", "zh-Hans")]
+    [InlineData("zh", "zh-Hans")]
+    [InlineData("zh-CN,en;q=0.5", "zh-Hans")]
+    [InlineData("en-US,zh-TW;q=0.5", "en")]
+    [InlineData("fr-FR", "en")]
+    public async Task AnyChineseFirstGetsSimplifiedChinese(string acceptLanguage, string expected)
+    {
+        using var client = NewClient();
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/public");
+        request.Headers.Add("Accept-Language", acceptLanguage);
+
+        using var response = await client.SendAsync(request, TestSupport.Ct);
+
+        Assert.Contains($"<html lang=\"{expected}\"", await response.Content.ReadAsStringAsync(TestSupport.Ct), StringComparison.Ordinal);
+    }
+
     [Fact]
     public async Task ExternalReturnUrlsAreIgnored()
     {

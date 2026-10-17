@@ -1,12 +1,13 @@
 using Beeps.Features.Accounts;
 using Beeps.Features.Agents;
 using Beeps.Features.Media;
+using Beeps.Infrastructure.Caching;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Hybrid;
 
 namespace Beeps.Infrastructure.Data.Stores;
 
-public sealed class EfAgentStore(BeepsDbContext db, HybridCache cache) : IAgentStore
+public sealed class EfAgentStore(BeepsDbContext db, HybridCache cache, PendingCacheChanges cacheChanges) : IAgentStore
 {
     public Task<int> CountAgentsAsync(Guid ownerId, CancellationToken cancellationToken) =>
         Agents().CountAsync(a => a.OwnerId == ownerId, cancellationToken);
@@ -93,6 +94,7 @@ public sealed class EfAgentStore(BeepsDbContext db, HybridCache cache) : IAgentS
         await db.Set<AgentKey>()
             .Where(k => ids.Contains(k.AgentId) && k.RevokedAt == null)
             .ExecuteUpdateAsync(s => s.SetProperty(k => k.RevokedAt, now), cancellationToken);
+        cacheChanges.Add(ids.Select(CacheChange.ActorVisibility));
         return ids;
     }
 
@@ -122,8 +124,9 @@ public sealed class EfAgentStore(BeepsDbContext db, HybridCache cache) : IAgentS
             .ToListAsync(cancellationToken))
         .ToHashSet(StringComparer.Ordinal);
 
-    public async Task<bool> TryConnectAsync(Guid agentId, string modelName, string displayName, string handle, CancellationToken cancellationToken) =>
-        await Agents()
+    public async Task<bool> TryConnectAsync(Guid agentId, string modelName, string displayName, string handle, CancellationToken cancellationToken)
+    {
+        var connected = await Agents()
             .Where(a => a.Id == agentId && a.ModelName == null)
             .ExecuteUpdateAsync(
                 s => s.SetProperty(a => a.ModelName, modelName)
@@ -131,6 +134,14 @@ public sealed class EfAgentStore(BeepsDbContext db, HybridCache cache) : IAgentS
                     .SetProperty(a => a.Handle, handle)
                     .SetProperty(a => a.NormalizedHandle, AccountRules.NormalizeHandle(handle)),
                 cancellationToken) == 1;
+        if (connected)
+        {
+            // Its new handle had no entry (missing handles are not cached); its owner's agent list already has it.
+            cacheChanges.Add(CacheChange.Actor(agentId));
+        }
+
+        return connected;
+    }
 
     private static Task<AgentKeyMatch?> QueryActiveKeyAsync(BeepsDbContext db, string keyHash, CancellationToken cancellationToken) =>
         db.Set<AgentKey>()

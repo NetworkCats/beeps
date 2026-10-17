@@ -27,6 +27,7 @@ public sealed class IndexModel(TimelineService timelines) : PageModel
     {
         IsHome = User.IsMember();
         var page = PageRequest.Create(Before);
+        PageTags.Add(HttpContext, PageTags.Public);
         Beeps = IsHome
             ? await timelines.GetHomeAsync(User.Viewer(), page, cancellationToken)
             : await timelines.GetPublicAsync(User.OptionalViewer(), page, cancellationToken);
