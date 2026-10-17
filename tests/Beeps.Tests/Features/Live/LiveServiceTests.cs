@@ -324,6 +324,21 @@ public sealed class LiveServiceTests : IAsyncDisposable
     }
 
     [Fact]
+    public async Task AnUnverifiedTabHearsOfMissedEventsAndOfASignOutAmongThem()
+    {
+        stream = (await CreateService().OpenAsync(TomViewer, new LiveSession(TomSession, Verified: false), new LiveRequest("", null, null, null), stop.Token)).Value.GetAsyncEnumerator(stop.Token);
+        await NextAsync();
+        sessions.IsActiveAsync(TomSession, TestData.Now, Arg.Any<CancellationToken>()).Returns(true, false);
+
+        // Still signed in: a reset only (no unread count to send), after which the page asks how it is signed in.
+        feed.Publish(LiveEventTypes.Gap, "");
+        Assert.Equal(new LiveMessage(LiveMessages.Reset, "{}"), await NextAsync());
+        feed.Publish(LiveEventTypes.Gap, "");
+        Assert.Equal(new LiveMessage(LiveMessages.SignedOut, "{}"), await NextAsync());
+        Assert.False(await stream!.MoveNextAsync());
+    }
+
+    [Fact]
     public async Task APageWithMoreBeepsThanItListsHearsOfEveryBeep()
     {
         await OpenAsync(new LiveRequest("", null, null, null, All: true));
@@ -381,12 +396,25 @@ public sealed class LiveServiceTests : IAsyncDisposable
     public async Task MissedEventsMakeThePageCatchUpTheUnreadCountWithIt()
     {
         await OpenAsync(new LiveRequest("home", null, "1760603400000-1", null));
+        sessions.IsActiveAsync(TomSession, TestData.Now, Arg.Any<CancellationToken>()).Returns(true);
         unread = 7;
 
         feed.Publish(LiveEventTypes.Gap, "");
 
         Assert.Equal(new LiveMessage(LiveMessages.Reset, "{}"), await NextAsync());
         Assert.Equal(new LiveMessage(LiveMessages.Inbox, """{"unread_count":7}"""), await NextAsync());
+    }
+
+    [Fact]
+    public async Task ASignOutAmongTheMissedEventsStillSignsTheTabOut()
+    {
+        await OpenAsync(new LiveRequest("home", null, "1760603400000-1", null));
+        sessions.IsActiveAsync(TomSession, TestData.Now, Arg.Any<CancellationToken>()).Returns(false);
+
+        feed.Publish(LiveEventTypes.Gap, "");
+
+        Assert.Equal(new LiveMessage(LiveMessages.SignedOut, "{}"), await NextAsync());
+        Assert.False(await stream!.MoveNextAsync());
     }
 
     [Fact]

@@ -29,22 +29,7 @@ public sealed partial class RateLimitService(
             return Result.Success;
         }
 
-        var counters = new List<RateLimitCounter>();
-        foreach (var target in targets)
-        {
-            if (!current.Policies.TryGetValue(target.Policy, out var policy))
-            {
-                throw new InvalidOperationException($"Rate limit policy '{target.Policy}' is not configured.");
-            }
-
-            var partition = HashPartition(target.Partition);
-            foreach (var rule in policy.Rules)
-            {
-                var windowSeconds = (long)rule.Window.TotalSeconds;
-                counters.Add(new RateLimitCounter($"{target.Policy}:{windowSeconds}:{partition}", rule.PermitLimit, rule.Window));
-            }
-        }
-
+        var counters = Counters(targets, current);
         RateLimitDecision decision;
         try
         {
@@ -61,6 +46,48 @@ public sealed partial class RateLimitService(
         return decision.IsAllowed
             ? Result.Success
             : Error.RateLimited(decision.RetryAfter, localizer["RateLimit.Detail"]);
+    }
+
+    /// <summary>How long until the policy would allow one more request for the partition; counts nothing.</summary>
+    public async Task<TimeSpan> WaitAsync(string policy, string partition, CancellationToken cancellationToken)
+    {
+        var current = options.CurrentValue;
+        if (!current.Enabled)
+        {
+            return TimeSpan.Zero;
+        }
+
+        var counters = Counters([new RateLimitTarget(policy, partition)], current);
+        try
+        {
+            return await store.WaitAsync(counters, cancellationToken);
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            LogStoreFailed(logger, exception);
+            return fallback.Wait(counters);
+        }
+    }
+
+    private static List<RateLimitCounter> Counters(IReadOnlyList<RateLimitTarget> targets, RateLimitOptions current)
+    {
+        var counters = new List<RateLimitCounter>();
+        foreach (var target in targets)
+        {
+            if (!current.Policies.TryGetValue(target.Policy, out var policy))
+            {
+                throw new InvalidOperationException($"Rate limit policy '{target.Policy}' is not configured.");
+            }
+
+            var partition = HashPartition(target.Partition);
+            foreach (var rule in policy.Rules)
+            {
+                var windowSeconds = (long)rule.Window.TotalSeconds;
+                counters.Add(new RateLimitCounter($"{target.Policy}:{windowSeconds}:{partition}", rule.PermitLimit, rule.Window));
+            }
+        }
+
+        return counters;
     }
 
     // Keys never contain raw IPs or email addresses.

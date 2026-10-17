@@ -127,6 +127,17 @@ public sealed class RateLimitServiceTests
     private static RateLimitPolicyOptions Policy(params (int Limit, TimeSpan Window)[] rules) =>
         new() { Rules = [.. rules.Select(r => new RateLimitRuleOptions { PermitLimit = r.Limit, Window = r.Window })] };
 
+    [Fact]
+    public async Task TheWaitComesFromTheStoreAndCountsNothing()
+    {
+        store.WaitAsync(default!, TestSupport.Ct).ReturnsForAnyArgs(TimeSpan.FromSeconds(12));
+
+        var wait = await CreateService().WaitAsync("Login", "account:1", TestSupport.Ct);
+
+        Assert.Equal(TimeSpan.FromSeconds(12), wait);
+        await store.DidNotReceiveWithAnyArgs().TryAcquireAsync(default!, TestSupport.Ct);
+    }
+
     private RateLimitService CreateService()
     {
         var monitor = Substitute.For<IOptionsMonitor<RateLimitOptions>>();

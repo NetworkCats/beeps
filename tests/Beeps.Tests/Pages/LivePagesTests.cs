@@ -68,6 +68,7 @@ public sealed partial class LivePagesTests : IDisposable
         TestBeeps.Arrange(factory, root);
         factory.Beeps.ListThreadAsync(root.RootId, Arg.Any<Guid?>(), Arg.Any<int>(), user.Id, Arg.Any<CancellationToken>())
             .Returns(new CursorPage<BeepRow>([root], null), new CursorPage<BeepRow>([root], root.Id));
+        factory.Timelines.PublicAsync(default!, default, TestSupport.Ct).ReturnsForAnyArgs(new CursorPage<BeepRow>([root], null));
         using var client = await WebAuth.SignInAsync(factory, user);
 
         var first = await client.GetStringAsync(new Uri("/public", UriKind.Relative), TestSupport.Ct);
@@ -80,6 +81,8 @@ public sealed partial class LivePagesTests : IDisposable
         Assert.Contains("data-live-watch=\"\"", older, StringComparison.Ordinal);
         Assert.Contains($"data-live-watch=\"thread:{root.Id:D}\"", lastPage, StringComparison.Ordinal);
         Assert.Contains($"data-beep=\"{root.Id:D}\"", lastPage, StringComparison.Ordinal);
+        // Beeps in it: the empty state is there for when they go, hidden.
+        Assert.Contains("class=\"empty empty-bordered\" hidden=\"hidden\" data-live-empty=\"\">", first, StringComparison.Ordinal);
         Assert.Contains("data-live-watch=\"\"", notLast, StringComparison.Ordinal);
     }
 
@@ -100,6 +103,9 @@ public sealed partial class LivePagesTests : IDisposable
         Assert.Contains($"data-live-region=\"profile\" data-live-actors=\"{alice.Id:D}\"", profile, StringComparison.Ordinal);
         Assert.Contains("data-live-watch=\"tag:beeps\"", tag, StringComparison.Ordinal);
         Assert.Contains("data-live-watch=\"notifications\"", inbox, StringComparison.Ordinal);
+        // Nothing in them: the empty state shows, marked for the live script to hide once something comes.
+        Assert.Contains("class=\"empty empty-bordered\" data-live-empty=\"\">", profile, StringComparison.Ordinal);
+        Assert.Contains("class=\"empty empty-bordered\" data-live-empty=\"\">", inbox, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -311,6 +317,8 @@ public sealed partial class LivePagesTests : IDisposable
         // The same text as the page's data-auth.
         Assert.Equal($"member:{user.Id:D}", await signedIn.Content.ReadAsStringAsync(TestSupport.Ct));
         Assert.Equal("no-store", signedIn.Headers.CacheControl?.ToString());
+        // And when this account may open its next stream (connections per minute are limited).
+        Assert.Equal("0", signedIn.Headers.GetValues("X-Stream-Wait-Ms").Single());
         Assert.Equal("anonymous", signedOut);
     }
 

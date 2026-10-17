@@ -8,6 +8,9 @@ public interface IRateLimitStore
     /// otherwise counts nothing and returns how long until the most restrictive window resets.
     /// </summary>
     Task<RateLimitDecision> TryAcquireAsync(IReadOnlyList<RateLimitCounter> counters, CancellationToken cancellationToken);
+
+    /// <summary>How long until <see cref="TryAcquireAsync"/> would allow; counts nothing.</summary>
+    Task<TimeSpan> WaitAsync(IReadOnlyList<RateLimitCounter> counters, CancellationToken cancellationToken);
 }
 
 /// <summary>One fixed-window counter. <see cref="Key"/> is unique per policy, rule and partition.</summary>

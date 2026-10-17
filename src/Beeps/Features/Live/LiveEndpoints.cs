@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Net.ServerSentEvents;
 using System.Runtime.CompilerServices;
 using System.Security.Claims;
@@ -49,12 +50,7 @@ public static class LiveEndpoints
             .ExcludeFromDescription();
 
         // Open to everyone: a tab whose session ended while its stream was down finds out here, and shows itself signed out.
-        routes.MapGet(AuthPath, (ClaimsPrincipal user, HttpContext context) =>
-            {
-                context.Response.Headers.CacheControl = "no-store";
-                return TypedResults.Text(user.AuthState());
-            })
-            .ExcludeFromDescription();
+        routes.MapGet(AuthPath, GetAuthStateAsync).ExcludeFromDescription();
 
         routes.MapGet(AgentPath, OpenAgent)
             .RequireAuthorization(AuthPolicies.ConnectedAgent)
@@ -70,6 +66,26 @@ public static class LiveEndpoints
                 "(regenerated or revoked, or you were disabled or deleted). Do not reconnect it. Limited to " +
                 "30 connections per minute and 10 open at once.");
         return routes;
+    }
+
+    /// <summary>A response header: how long until this account may open a stream again (its connections per minute are limited).</summary>
+    public const string StreamWaitHeader = "X-Stream-Wait-Ms";
+
+    /// <summary>
+    /// How the request is signed in, and, for someone signed in, how long until their next stream is allowed: a tab
+    /// whose stream was refused reconnects right then instead of guessing with its backoff.
+    /// </summary>
+    private static async Task<IResult> GetAuthStateAsync(ClaimsPrincipal user, HttpContext context, RateLimitService rateLimits, CancellationToken cancellationToken)
+    {
+        context.Response.Headers.CacheControl = "no-store";
+        if (user.IsHuman())
+        {
+            var wait = await rateLimits.WaitAsync(
+                RateLimitPolicies.StreamConnect, RateLimitingMiddleware.AccountPartition(user.ActorId().ToString("D")), cancellationToken);
+            context.Response.Headers[StreamWaitHeader] = ((long)wait.TotalMilliseconds).ToString(CultureInfo.InvariantCulture);
+        }
+
+        return TypedResults.Text(user.AuthState());
     }
 
     private static async Task<Results<ServerSentEventsResult<string>, ErrorHttpResult>> OpenWebAsync(

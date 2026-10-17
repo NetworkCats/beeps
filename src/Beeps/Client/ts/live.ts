@@ -32,6 +32,8 @@ const SEARCH_INTERVAL = 10_000;
 // Admin pages: drawn again at most this often. Figures that change with no event of their own (backlogs, dead
 // jobs) are watched by the server while an admin page is open (AdminFiguresWorker), which then sends `admin`.
 const ADMIN_INTERVAL = 3_000;
+// A page about a beep checks it is still there at most this often after a resync (each check renders the whole page).
+const SUBJECT_INTERVAL = 5_000;
 // Matches LiveFeedService.Limit: how many beeps the server sends at most for one fetch.
 const FETCH_LIMIT = 50;
 // The inbox page's first page (PageRequest.DefaultLimit) and the most the server lists at once (MaxLimit).
@@ -115,6 +117,8 @@ function connect(): void {
   });
   on(events, 'authors_removed', (data: { ids: string[] }) => {
     if (data.ids.some((id) => subject() === `actor:${id}`)) void showWhatReloadShows();
+    // A page about a beep (its thread, reporting it, replying to it) goes with its author.
+    else if (data.ids.some((id) => subjectCard()?.dataset.author === id)) schedule(checkSubject);
     data.ids.forEach(removeAuthor);
     // Read entries about them go too, which no unread count announces.
     inboxChanged();
@@ -143,7 +147,11 @@ function connect(): void {
   on(events, 'resync', () => {
     // Showing what was gone (an error page): it may be back (unblocked, unbanned, restored).
     if (Number(document.documentElement.dataset.liveStatus) >= 400) void showWhatReloadShows();
-    else resync();
+    else {
+      // Blocking either way hides a beep, with no event about the beep itself.
+      if (subject()?.startsWith('beep:')) schedule(checkSubject, SUBJECT_INTERVAL);
+      resync();
+    }
   });
   on(events, 'search', () => refreshRegionNamed('search-results', SEARCH_INTERVAL));
   on(events, 'admin', () => {
@@ -160,6 +168,8 @@ function connect(): void {
     document.body.dataset.liveFrom = String(Date.now());
     resync();
     redraw(pageBeepIds());
+    // A sign-out may be among the missed events, too.
+    void checkSignedIn();
   });
   on(events, 'close', () => {
     closed = true;
@@ -185,13 +195,19 @@ function on<T>(events: EventSource, type: string, handle: (data: T) => void): vo
   });
 }
 
-/** Signed in as the page says? If not (signed out elsewhere while disconnected), show the page as it now is. */
+/**
+ * After a failed connection: still signed in as the page says? If not (signed out elsewhere while disconnected), show
+ * the page as it now is. If so, the server also says when this account may connect again (connections per minute
+ * are limited): the tab reconnects right then, rather than when its backoff happens to try.
+ */
 async function checkSignedIn(): Promise<void> {
   let state: string;
+  let wait: number;
   try {
     const response = await fetch(AUTH_STATE, { credentials: 'same-origin', cache: 'no-store' });
     if (!response.ok) return;
     state = await response.text();
+    wait = Number(response.headers.get('X-Stream-Wait-Ms') ?? 'NaN');
   } catch {
     // Offline: the next failed reconnect asks again.
     return;
@@ -199,7 +215,14 @@ async function checkSignedIn(): Promise<void> {
   if (state !== (document.body.dataset.auth ?? 'anonymous')) {
     closed = true;
     void showWhatReloadShows();
+    return;
   }
+  // Refused for the connection limit: come back right when it allows, spread a little so tabs do not all come back
+  // at once. Anything else keeps the usual backoff.
+  if (source || closed || !(wait > 0)) return;
+  window.clearTimeout(retryTimer);
+  retryDelay = wait + Math.round(Math.random() * 500);
+  retryTimer = window.setTimeout(connect, retryDelay);
 }
 
 async function refreshTitle(): Promise<void> {
@@ -230,6 +253,23 @@ async function checkSlots(): Promise<void> {
     const fresh = await pages.get(check);
     if (fresh && !fresh.querySelector(slot.dataset.liveSlotRequires ?? '')) slot.replaceChildren();
   }
+}
+
+/**
+ * Is what the page is about still there for this viewer? Fetched as a reload would, without showing it: only when it
+ * is gone (not found, or the page now leads elsewhere) is the page shown anew, so a half-written reply stays otherwise.
+ */
+async function checkSubject(): Promise<void> {
+  const url = pageUrl();
+  const response = await fetch(url, { credentials: 'same-origin', headers: { Accept: 'text/html' } });
+  if (!response.ok && retryable(new HttpError(response.status))) throw new HttpError(response.status);
+  if (!response.ok || (response.url && response.url !== url)) await showWhatReloadShows();
+}
+
+/** The card of the beep the page is about, when it is about one. */
+function subjectCard(): HTMLElement | null {
+  const about = subject();
+  return about?.startsWith('beep:') ? document.querySelector<HTMLElement>(`[data-beep="${CSS.escape(about.slice(5))}"]`) : null;
 }
 
 function subject(): string | undefined {
@@ -289,6 +329,7 @@ function disconnect(): void {
  * removals until the connection lists them: reconnect, which replays from the last event, so nothing is lost.
  */
 function followNewBeeps(): void {
+  showEmptyStates();
   if (!source || closed || pageBeepIds().every((id) => known.has(id))) return;
   schedule(reconnect);
 }
@@ -319,7 +360,18 @@ function showCounts(entry: CountsEntry): void {
 
 /** In the inbox the whole entry goes: it is about this beep. */
 function removeCard(beep: HTMLElement): void {
-  (beep.closest('[data-notification]') ?? beep).remove();
+  const entry = beep.closest<HTMLElement>('[data-notification]');
+  const list = beep.parentElement;
+  (entry ?? beep).remove();
+  // A reload would show the next ones in its place: the inbox's first page is fetched again, an older page of a
+  // list or the inbox drawn again. A live list that grew is longer than a reload anyway; once its last one goes, it
+  // is filled from what is left.
+  if (entry) inboxChanged();
+  else if (list?.matches('.beep-list')) {
+    if (!beepPage()) refreshRegionNamed('list', 0);
+    else if (!list.querySelector(':scope > [data-beep]')) schedule(resyncBeeps);
+  }
+  showEmptyStates();
 }
 
 function removeBeep(id: string): void {
@@ -459,15 +511,23 @@ function freshBeeps(template: HTMLTemplateElement): HTMLElement[] {
   return topLevel(template, '[data-beep]');
 }
 
-/** The list new items go into; created in place of the empty state when the page had none. */
+/** The list new items go into; created after the empty state (hidden from then on) when the page had none. */
 function listIn(container: HTMLElement, selector: string, create: () => HTMLElement): HTMLElement {
   const existing = container.querySelector<HTMLElement>(selector);
   if (existing) return existing;
   const list = create();
-  const empty = container.querySelector(':scope > .empty, :scope > [data-live-region] > .empty');
-  if (empty) empty.replaceWith(list);
+  const empty = container.querySelector<HTMLElement>(':scope > [data-live-empty], :scope > [data-live-region] > [data-live-empty]');
+  if (empty) empty.after(list);
   else container.append(list);
+  showEmptyStates();
   return list;
+}
+
+/** Each live list's empty state shows exactly while the list has nothing in it, as a reload would. */
+function showEmptyStates(): void {
+  for (const empty of document.querySelectorAll<HTMLElement>('[data-live-empty]')) {
+    empty.hidden = !!empty.parentElement?.querySelector(':scope > .beep-list > [data-beep], :scope > .notification-list > [data-notification]');
+  }
 }
 
 interface BeepPage {

@@ -13,6 +13,26 @@ public sealed class LocalRateLimiter(TimeProvider time)
     private readonly Lock gate = new();
     private readonly Dictionary<string, Window> counters = new(StringComparer.Ordinal);
 
+    /// <inheritdoc cref="IRateLimitStore.WaitAsync"/>
+    public TimeSpan Wait(IReadOnlyList<RateLimitCounter> wanted)
+    {
+        ArgumentNullException.ThrowIfNull(wanted);
+        var now = time.GetUtcNow();
+        lock (gate)
+        {
+            var wait = TimeSpan.Zero;
+            foreach (var counter in wanted)
+            {
+                if (counters.TryGetValue(counter.Key, out var window) && window.ResetAt > now && window.Count >= counter.PermitLimit && window.ResetAt - now > wait)
+                {
+                    wait = window.ResetAt - now;
+                }
+            }
+
+            return wait;
+        }
+    }
+
     /// <inheritdoc cref="IRateLimitStore.TryAcquireAsync"/>
     public RateLimitDecision TryAcquire(IReadOnlyList<RateLimitCounter> wanted)
     {

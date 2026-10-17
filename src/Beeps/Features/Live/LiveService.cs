@@ -179,16 +179,24 @@ public sealed partial class LiveService(
                 return await SessionsEndedAsync(connection, item, cancellationToken);
             }
 
+            // Missed events: the page catches up, the unread count with it. A sign-out may be among them: the session is
+            // checked again, as its own event would have. A tab not verified yet has no unread count; its page asks how
+            // it is signed in after a reset, which shows a verification that was missed.
+            if (item.Type == LiveEventTypes.Gap && !connection.InboxOnly)
+            {
+                if (connection.SessionId is { } sessionId && !await sessions.IsActiveAsync(sessionId, time.GetUtcNow(), cancellationToken))
+                {
+                    return [Message(LiveMessages.SignedOut, new EmptyMessage(), LiveJsonContext.Default.EmptyMessage)];
+                }
+
+                var reset = Message(LiveMessages.Reset, new EmptyMessage(), LiveJsonContext.Default.EmptyMessage);
+                return connection.AccountOnly ? [reset] : [reset, await InboxAsync(connection, null, cancellationToken)];
+            }
+
             // Not verified yet: nothing on the page is live but the account itself.
             if (connection.AccountOnly && item.Type is not (LiveEventTypes.AccountChanged or LiveEventTypes.Close))
             {
                 return [];
-            }
-
-            // Missed events: the page catches up, the unread count with it.
-            if (item.Type == LiveEventTypes.Gap && !connection.InboxOnly)
-            {
-                return [Message(LiveMessages.Reset, new EmptyMessage(), LiveJsonContext.Default.EmptyMessage), await InboxAsync(connection, null, cancellationToken)];
             }
 
             IReadOnlyList<LiveMessage> messages = Handle(connection, item) is { } message ? [message]

@@ -15,14 +15,12 @@
     </header>
     @* For older pages of the inbox, which do not follow it live: drawn again when it changes. *@
     <div data-live-region="notifications">
-    @if (items.Count == 0)
-    {
-        <div class="empty empty-bordered">
-            <h2 class="empty-title">@L["Notifications.Empty.Title"]</h2>
-            <p class="empty-text">@L["Notifications.Empty.Text"]</p>
-        </div>
-    }
-    else
+    @* There either way, hidden while there are entries: the live inbox shows it again once its last one goes. *@
+    <div class="empty empty-bordered" live-empty hidden="@(items.Count == 0 ? null : "hidden")">
+        <h2 class="empty-title">@L["Notifications.Empty.Title"]</h2>
+        <p class="empty-text">@L["Notifications.Empty.Text"]</p>
+    </div>
+    @if (items.Count > 0)
     {
         <ol class="notification-list">
             @foreach (var notification in items)

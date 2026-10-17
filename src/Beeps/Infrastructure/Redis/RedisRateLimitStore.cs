@@ -29,6 +29,20 @@ public sealed class RedisRateLimitStore(IConnectionMultiplexer redis) : IRateLim
         return 0
         """;
 
+    // The first half of Script: the wait, nothing counted.
+    private const string WaitScript = """
+        local wait = 0
+        for i, key in ipairs(KEYS) do
+          local count = tonumber(redis.call('GET', key) or '0')
+          if count >= tonumber(ARGV[i * 2 - 1]) then
+            local ttl = redis.call('PTTL', key)
+            if ttl < 0 then ttl = tonumber(ARGV[i * 2]) end
+            if ttl > wait then wait = ttl end
+          end
+        end
+        return wait
+        """;
+
     public async Task<RateLimitDecision> TryAcquireAsync(IReadOnlyList<RateLimitCounter> counters, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(counters);
@@ -37,6 +51,18 @@ public sealed class RedisRateLimitStore(IConnectionMultiplexer redis) : IRateLim
             return RateLimitDecision.Allowed;
         }
 
+        var waitMs = await EvaluateAsync(Script, counters);
+        return waitMs <= 0 ? RateLimitDecision.Allowed : RateLimitDecision.Denied(TimeSpan.FromMilliseconds(waitMs));
+    }
+
+    public async Task<TimeSpan> WaitAsync(IReadOnlyList<RateLimitCounter> counters, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(counters);
+        return counters.Count == 0 ? TimeSpan.Zero : TimeSpan.FromMilliseconds(Math.Max(0, await EvaluateAsync(WaitScript, counters)));
+    }
+
+    private async Task<long> EvaluateAsync(string script, IReadOnlyList<RateLimitCounter> counters)
+    {
         var keys = new RedisKey[counters.Count];
         var values = new RedisValue[counters.Count * 2];
         for (var i = 0; i < counters.Count; i++)
@@ -47,7 +73,6 @@ public sealed class RedisRateLimitStore(IConnectionMultiplexer redis) : IRateLim
         }
 
         // StackExchange.Redis has no per-call cancellation; the multiplexer's own timeouts bound the wait.
-        var waitMs = (long)await redis.GetDatabase().ScriptEvaluateAsync(Script, keys, values);
-        return waitMs <= 0 ? RateLimitDecision.Allowed : RateLimitDecision.Denied(TimeSpan.FromMilliseconds(waitMs));
+        return (long)await redis.GetDatabase().ScriptEvaluateAsync(script, keys, values);
     }
 }

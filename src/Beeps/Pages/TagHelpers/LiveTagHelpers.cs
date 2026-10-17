@@ -18,12 +18,14 @@ namespace Beeps.Pages.TagHelpers;
 /// (<c>data-auth</c>), so the browser's other tabs follow a sign-in or sign-out.
 /// <c>live-watch="Model.Live"</c>: the page's <see cref="LiveTopic"/>.
 /// <c>live-region</c>, <c>live-subject</c>, <c>live-url</c>: the same <c>data-live-*</c> attributes, for members only.
+/// <c>live-empty</c>: a live list's empty state, which the live script shows and hides as the list empties and fills.
 /// </remarks>
 [HtmlTargetElement("body", Attributes = StreamAttribute)]
 [HtmlTargetElement(Attributes = WatchAttribute)]
 [HtmlTargetElement(Attributes = RegionAttribute)]
 [HtmlTargetElement(Attributes = SubjectAttribute)]
 [HtmlTargetElement(Attributes = UrlAttribute)]
+[HtmlTargetElement(Attributes = EmptyAttribute)]
 public sealed class LiveTagHelper(TimeProvider time) : TagHelper
 {
     private const string StreamAttribute = "live-stream";
@@ -31,6 +33,7 @@ public sealed class LiveTagHelper(TimeProvider time) : TagHelper
     private const string RegionAttribute = "live-region";
     private const string SubjectAttribute = "live-subject";
     private const string UrlAttribute = "live-url";
+    private const string EmptyAttribute = "live-empty";
 
     [HtmlAttributeName(WatchAttribute)]
     public LiveTopic? Watch { get; set; }
@@ -56,8 +59,9 @@ public sealed class LiveTagHelper(TimeProvider time) : TagHelper
     {
         ArgumentNullException.ThrowIfNull(context);
         ArgumentNullException.ThrowIfNull(output);
-        // A marker without a value, so not bound: it must not reach the page either way.
+        // Markers without a value, so not bound: they must not reach the page either way.
         output.Attributes.RemoveAll(StreamAttribute);
+        output.Attributes.RemoveAll(EmptyAttribute);
         var user = ViewContext.HttpContext.User;
         if (!user.IsHuman())
         {
@@ -82,6 +86,11 @@ public sealed class LiveTagHelper(TimeProvider time) : TagHelper
         if (Watch is not null)
         {
             output.Attributes.SetAttribute("data-live-watch", Watch.ToString());
+        }
+
+        if (context.AllAttributes.ContainsName(EmptyAttribute))
+        {
+            output.Attributes.SetAttribute("data-live-empty", null);
         }
 
         foreach (var (name, value) in new[] { ("data-live-region", Region), ("data-live-subject", Subject), ("data-live-url", Url) })

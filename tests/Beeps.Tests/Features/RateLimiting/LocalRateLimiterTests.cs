@@ -8,6 +8,23 @@ public sealed class LocalRateLimiterTests
     private readonly FixedTimeProvider time = new(TestData.Now);
 
     [Fact]
+    public void TheWaitIsReadWithoutCounting()
+    {
+        var limiter = new LocalRateLimiter(time);
+        RateLimitCounter[] counter = [new("StreamConnect:60:a", 1, TimeSpan.FromMinutes(1))];
+
+        var before = limiter.Wait(counter);
+        limiter.TryAcquire(counter);
+        time.Now += TimeSpan.FromSeconds(15);
+        var full = limiter.Wait(counter);
+        var again = limiter.Wait(counter);
+
+        Assert.Equal(TimeSpan.Zero, before);
+        Assert.Equal(TimeSpan.FromSeconds(45), full);
+        Assert.Equal(full, again);
+    }
+
+    [Fact]
     public void CountsEachWindowAndResetsAfterIt()
     {
         var limiter = new LocalRateLimiter(time);
