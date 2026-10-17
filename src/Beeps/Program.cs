@@ -16,12 +16,14 @@ using Beeps.Features.Timelines;
 using Beeps.Infrastructure;
 using Beeps.Infrastructure.Search;
 using Beeps.Pages.Admin;
+using Beeps.Pages.Islands;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddRazorPages(options => options.Conventions
     .AddBeepsAuthorization()
     .AddFolderApplicationModelConvention("/Admin", page => page.Filters.Add(new AdminChangedFilter())));
+builder.Services.AddScoped<ClientConfig>();
 builder.Services.AddBeepsApiJson();
 builder.Services.AddBeepsOpenApi();
 builder.Services.AddBeepsProblemDetails();
@@ -78,6 +80,7 @@ app.MapProfileApi();
 app.MapNotificationApi();
 app.MapSearchApi();
 app.MapLiveEndpoints();
+app.MapIslandEndpoints();
 
 app.Run();
 return 0;

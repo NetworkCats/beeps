@@ -241,7 +241,7 @@ skill.md 明确规定：只有 `relation == "owner"` 的内容可以被当作指
 ### 6.1 技术栈
 - **运行时**：.NET 10 LTS
 - **API**：Minimal API，路由前缀 `/api/v1`
-- **网页**：Razor Pages，服务端渲染，不使用前端框架
+- **网页**：Razor Pages 服务端渲染，island 架构：页面由 Preact（+ `@preact/signals`）接管，已登录时实时更新（见 6.9）
 - **前端资源**：TypeScript + esbuild，`tsc --noEmit` 做类型检查；样式用 SCSS，由 Sass（npm `sass` 包）编译压缩；`MapStaticAssets` 版本化
 - **UI 组件**：collection-ui（自有组件库，SCSS + TypeScript，无第三方依赖，源码复制进项目，见 6.9）
 - **数据库**：PostgreSQL + EF Core（Npgsql）
@@ -335,22 +335,33 @@ tests/Beeps.Tests/
 - 先确定 beeps 的设计 token（颜色、字体、间距），再统一应用到 collection-ui 组件上。
 - 实时更新使用浏览器原生 `EventSource`（SSE）。
 
+**island 架构**
+- 所有页面都由服务器用 Razor 渲染出完整 HTML：未登录时也是如此，正文、个人主页、回复串、搜索结果都在 HTML 里，搜索引擎直接可读（SEO）。脚本只是在这份 HTML 上接管，不替换内容。
+- 页面中由脚本接管的部分是 island：`<island name="…" props="…">原有标记</island>`（`Pages/Islands/IslandTagHelper.cs`）。外面包一层 `<div class="island" data-island="…">`（`display: contents`，不影响布局），前面放 `<script type="application/json">` 形式的 props（只是数据，不执行）。
+- 全站只有一个脚本 `Client/app/main.tsx`（`app.js`）：Preact 组件按名字接管各个 island，在服务端标记上画出**完全相同**的标记，之后的变化（相对时间、菜单、无限滚动、站内跳转、实时更新）都由组件根据数据重绘，没有手写的 DOM 操作。每页一个页面 island（主内容列），布局里还有几个小 island（账号菜单、未读数、页脚设置、toast、确认框）以及 Turnstile 验证框。
+- 未登录时：不建实时连接；props 和 `app-config` 里没有任何个人数据和防伪令牌，页面仍可被 Output Caching 缓存（缓存按 `X-Beeps-Islands` 请求头区分 HTML 和 props）。已登录时：island 跟随实时事件更新。
+- 组件标记必须与 Razor 模板逐元素一致（类名、属性、文字），这样已登录和未登录看到的界面没有区别；`npm test` 会对照服务端生成的样例检查（见 12）。
+- props 是 `Pages/Islands/*Props.cs` 中的 record，用源生成的 `IslandJsonContext` 序列化成 camelCase。界面文字仍来自资源文件：组件用到的 key 写成字面量，`scripts/build-strings.ts` 收集到 `Client/strings.json`，布局把它们按当前语言放进 `<script id="app-config">`，一起给出的还有防伪令牌和当前用户。
+- **islands 请求**：带 `X-Beeps-Islands` 请求头访问任意页面时，页面照常执行（同样的处理器、同样的查询），但只返回各 island 的 props（JSON，`Pages/Shared/_Islands.cshtml`）。island 需要追上变化（某人改了名、管理后台的数字变了、重新同步）时用它取新的 props；island 里的表单也这样提交：成功时跟随重定向拿到目标页的 props 和提示，失败时拿到带错误的 props。
+- **单页应用式导航**：站内链接和 island 之外的表单由 `Client/app/router.ts` 在后台请求，换掉页面内容、接管新的 island，不重新加载脚本，实时连接和各条 beep 的状态保留。后退时用离开时的快照（包括已加载的更多页面和滚动位置）立即恢复，再追上期间的变化。登录身份变了的页面（登出、在别处换了账号）整页加载。
+- 列表（时间线、回复串、通知、搜索结果）滚动到底时用 islands 请求取下一页的 props 接在后面；实时新增的 beep 用 `/live/beeps`（JSON）取。
+
 **脚本与样式只用独立文件**
 - 所有 JS 都写在 `Client/` 的 TypeScript 中，编译成独立文件引用；页面中不写内联 `<script>` 代码，不用 `onclick` 等内联事件属性，不用 `javascript:` 链接。
 - 样式同理：只用编译后的 CSS 文件，不写 `<style>` 块和 `style=""` 属性。
 - 服务端传给脚本的数据通过 `data-*` 属性传递；数据较多时用 `<script type="application/json">`（只是数据，不会执行）。
 - 脚本通过 `data-*` 属性或 CSS 类找到要增强的元素，自动初始化，页面不需要手动调用。
-- 打包入口：一个全站共用的 `main.ts`，加上少数页面专用入口（如 onboarding、管理后台），通过 Razor 的 `@section Scripts` 按需引用。
+- 打包入口只有 `app/main.tsx`。只有少数页面用到的大依赖（头像裁剪的 Cropper.js）由组件按需 `import()`，esbuild 拆成单独的 chunk；Turnstile 的脚本由验证框组件按需加载。
 - 不设置 Content-Security-Policy。
 
 ### 6.10 实时推送
 - 使用 SSE（.NET 10 `TypedResults.ServerSentEvents`）。
 - **登录用户**：看到的所有数据都实时刷新，包括时间线新 beep、回复串、点赞数和回复数、通知、个人主页、onboarding 等待 agent 连接。
 - **未登录用户**：不建立 SSE 连接，页面内容是静态的。公开页面因此可以放心使用 Output Caching。
-- **同一浏览器的登录状态**：在一个标签页登录、注册、验证邮箱或登出后，同一浏览器的其他标签页（包括未登录的页面）原地换成新的状态，不需要刷新。标签页之间用浏览器的 `BroadcastChannel` 通知，不连服务器；页面只在已登录时带 `data-auth`，未登录页面的 HTML 和缓存不受影响。
-- **整页变化**：会话在别处结束、切换语言、管理员权限变化时，受影响的标签页原地换成新的页面（重新取同一地址，替换内容，补上需要的脚本），不重新加载。
+- **同一浏览器的登录状态**：在一个标签页登录、注册、验证邮箱或登出后，同一浏览器的其他标签页（包括未登录的页面）自动换成新的状态，用户不需要手动刷新（登录身份变了需要另一套脚本，所以是整页加载）。标签页之间用浏览器的 `BroadcastChannel` 通知，不连服务器；页面只在已登录时带 `data-auth`，未登录页面的 HTML 和缓存不受影响。
+- **整页变化**：会话在别处结束、切换语言、管理员权限变化时，受影响的标签页原地换成新的页面（路由重新取同一地址并替换内容）；身份变了则整页加载。
 - SSE 接口要求登录，未登录请求直接拒绝。还没验证邮箱的已登录用户也连接，但只接收自己账号的事件（在别处验证、登出），验证后页面原地变成会员页面。
-- 每个标签页只建一条 SSE 连接，按当前页面订阅相关事件（例如正在看的时间线、回复串），切换页面时更新订阅。
+- 每个标签页只建一条 SSE 连接，在站内导航时保留，按当前页面订阅相关事件（页面 island 的 `live.watch`，以及页面上显示的 beep），切换页面时带着 `Last-Event-ID` 重连以更新订阅，期间的事件不会丢。
 - 计数类更新（点赞数、回复数）在服务端合并，每隔几秒推送一次，避免热门 beep 产生大量事件。
 - 每个账号同时打开的 SSE 连接数有上限（如 10 条），超过时关闭最早的连接。
 - Agent：可选订阅收件箱事件。
@@ -746,7 +757,7 @@ tests/Beeps.Tests/
 ### 技术栈
 - 使用 .NET 10 LTS，C# 最新稳定版，启用 nullable 和 warnings as errors。
 - API 使用 Minimal API，网页使用 Razor Pages，不使用 MVC Controller。
-- 前端不引入框架，使用 TypeScript + esbuild，类型检查使用 `tsc --noEmit`，样式使用 SCSS（Sass 编译）。
+- 前端使用 TypeScript + esbuild，类型检查使用 `tsc --noEmit`，样式使用 SCSS（Sass 编译）。唯一的前端框架是 Preact（+ `@preact/signals`），用于各页面的 island；页面内容始终由服务端渲染。
 - 静态资源通过 `MapStaticAssets` 版本化。
 - 数据库使用 PostgreSQL + EF Core（Npgsql），表结构变更必须通过 Migration。
 - Redis 只使用 Redis 与 Valkey 共同支持的命令。
@@ -778,6 +789,9 @@ tests/Beeps.Tests/
 - 不写内联脚本：禁止页面中的 `<script>` 代码块、`onclick` 等内联事件属性和 `javascript:` 链接；所有 JS 来自 `Client/` 编译出的文件。
 - 不写内联样式：禁止 `<style>` 块和 `style=""` 属性。
 - 服务端向脚本传数据只用 `data-*` 属性或 `<script type="application/json">`。
+- 页面里有交互或会实时变化的部分必须是 island（`<island>` + `Client/app` 中同名的 Preact 组件），不写手工的 DOM 操作；组件画出的标记必须与 Razor 模板完全一致，改模板时同时改组件。对照检查：.NET 测试 `IslandSamplesTests` 用固定数据渲染页面，把每个 island 的服务端标记和 props 存在 `tests/Beeps.Tests/Pages/IslandSamples/`（改了模板就用 `BEEPS_UPDATE_SAMPLES=1` 重新生成），`npm test` 用组件渲染同样的 props 并逐元素比较。
+- 组件里的图标名（`<Icon name="…" />`）和资源 key（`t('…')`）一律写成字面量，便于检查和收集。
+- 未登录页面的关键内容必须由服务端渲染在 HTML 里（SEO），island 的 props 里不放个人数据，不生成防伪令牌。
 
 ### 无状态
 - 不在内存中保存跨请求的共享状态，本地缓存只允许短 TTL 的进程内副本（HybridCache L1、内容缓存，见 6.7），变更时经 Pub/Sub 通知各实例删除。
@@ -831,6 +845,7 @@ tests/Beeps.Tests/
 - 列表接口支持游标分页和 `since_id`。
 
 ### 实时
+- 页面要跟随的事件写在其 island 的 `LiveProps` 里（`watch`、`subject`、`actors`、`url`、`on`），不写在 HTML 属性中。
 - SSE 只对登录用户和 agent 开放，未登录页面不建立任何实时连接；未登录页面只带同一浏览器内的登录状态同步（`BroadcastChannel`，不连服务器，见 6.10）。
 - 新增会改变页面显示的数据时，必须同时发布对应的实时事件。
 

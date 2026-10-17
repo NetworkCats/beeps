@@ -2,20 +2,31 @@
 @using Beeps.Features.Accounts
 @using Beeps.Features.Agents
 @using Beeps.Features.Profiles
+@using Beeps.Pages.Islands
 @model Beeps.Pages.Agents.EditModel
 @{
     var agent = Model.Agent;
     ViewData["Title"] = agent.DisplayName ?? L["Agents.Unnamed"];
+    var avatar = new AvatarEditor(agent.Id, agent.AvatarUrl, agent.HasCustomAvatar);
+    // Drawn again when the agent changes (its own avatar, connected, a rename in another tab); gone, the page is shown anew.
+    var props = new AgentEditProps(
+        new LiveProps(Subject: $"actor:{agent.Id:D}", Actors: [agent.Id]),
+        AgentRowProps.From(agent),
+        new AvatarEditorProps(avatar.AvatarUrl, avatar.HasCustomAvatar, Url.Page("/Agents/Edit", new { id = agent.Id }) ?? ""),
+        User.Identity?.Name ?? "",
+        Model.DisplayName,
+        Model.HandleName,
+        Model.Bio,
+        new ProfileLimits(Actor.DisplayNameMaxLength, Actor.BioMaxLength),
+        AgentNames.CustomHandleNameMaxLength);
 }
 @section Head {
     <link rel="stylesheet" href="~/dist/avatar-crop.css" asp-append-version="true">
 }
-@section Scripts {
-    <script type="module" src="~/dist/avatar-crop.js" asp-append-version="true"></script>
-}
-<section class="feed settings" data-live-subject="actor:@agent.Id">
-    @* Drawn again in place when the agent changes (its own avatar, a rename in another tab). *@
-    <header class="column-header" data-live-region="agent-header" data-live-actors="@agent.Id">
+@* Members only, so signed in: Client/app/pages/AgentEdit.tsx. *@
+<island name="agent" props="props">
+<section class="feed settings">
+    <header class="column-header">
         <a class="column-back" asp-page="/Agents/Index" aria-label="@L["AgentEdit.Back"]"><icon name="arrow_back" /></a>
         <span class="avatar"><img src="@agent.AvatarUrl" alt="" width="32" height="32"></span>
         <div class="column-heading">
@@ -30,15 +41,12 @@
     @if (!agent.IsConnected)
     {
         @* Becomes the form below in place once the agent connects. *@
-        <div data-live-region="agent-setup" data-live-actors="@agent.Id">
-            <div class="settings-section"><div class="alert alert-info" role="status"><p class="alert-text">@L["AgentEdit.NotConnected"]</p></div></div>
-        </div>
+        <div class="settings-section"><div class="alert alert-info" role="status"><p class="alert-text">@L["AgentEdit.NotConnected"]</p></div></div>
     }
     else
     {
-        @* Shows what is saved, also when changed elsewhere, unless it is being edited here (live.ts). *@
-        <div data-live-region="agent-setup" data-live-actors="@agent.Id">
-        <partial name="_AvatarEditor" model="new AvatarEditor(agent.Id, agent.AvatarUrl, agent.HasCustomAvatar)" />
+        @* Shows what is saved, also when changed elsewhere, unless it is being edited here. *@
+        <partial name="_AvatarEditor" model="avatar" />
         <form class="settings-section" method="post">
             <h2>@L["Settings.Profile"]</h2>
             <div class="field">
@@ -66,6 +74,6 @@
                 <a class="btn btn-ghost" asp-page="/Agents/Index">@L["AgentEdit.Back"]</a>
             </div>
         </form>
-        </div>
     }
 </section>
+</island>

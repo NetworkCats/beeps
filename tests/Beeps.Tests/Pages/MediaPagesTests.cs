@@ -101,7 +101,8 @@ public sealed class MediaPagesTests : IDisposable
 
         Assert.Contains("enctype=\"multipart/form-data\"", html, StringComparison.Ordinal);
         Assert.Contains("type=\"file\" name=\"Images\" multiple", html, StringComparison.Ordinal);
-        Assert.Contains("data-max-files=\"4\"", html, StringComparison.Ordinal);
+        // The app checks the picked images against the same limits before they are sent.
+        Assert.Contains("\"imagesPerBeep\":4", html, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -160,7 +161,7 @@ public sealed class MediaPagesTests : IDisposable
     [Theory]
     [InlineData("/settings")]
     [InlineData("/agents/{0}")]
-    public async Task TheAvatarFormsLoadTheCropper(string path)
+    public async Task TheAvatarFormsLoadTheCroppersStyles(string path)
     {
         var user = WebAuth.ArrangeUser(factory);
         var agentId = Guid.NewGuid();
@@ -170,9 +171,8 @@ public sealed class MediaPagesTests : IDisposable
 
         var html = await client.GetStringAsync(new Uri(string.Format(System.Globalization.CultureInfo.InvariantCulture, path, agentId), UriKind.Relative), TestSupport.Ct);
 
-        Assert.Matches("<script type=\"module\" src=\"/dist/avatar-crop\\.[a-z0-9]+\\.js\"", html);
+        // The cropper itself comes with the app, once a file is picked.
         Assert.Matches("<link rel=\"stylesheet\" href=\"/dist/avatar-crop\\.[a-z0-9]+\\.css\"", html);
-        Assert.Contains("data-avatar-cropper", html, StringComparison.Ordinal);
         Assert.Contains("name=\"Crop.Size\"", html, StringComparison.Ordinal);
         PageAssert.NoInlineScriptsOrStyles(html);
     }
@@ -199,7 +199,7 @@ public sealed class MediaPagesTests : IDisposable
         var html = await client.GetStringAsync(new Uri("/settings", UriKind.Relative), TestSupport.Ct);
 
         // The avatar editor, the navigation rail and the narrow screens' top bar.
-        Assert.Equal(3, html.Split("https://media.beeps.test/face/avatar.webp").Length - 1);
+        Assert.Equal(3, html.Split("src=\"https://media.beeps.test/face/avatar.webp\"").Length - 1);
         Assert.Contains("handler=RemoveAvatar", html, StringComparison.Ordinal);
         PageAssert.NoInlineScriptsOrStyles(html);
     }

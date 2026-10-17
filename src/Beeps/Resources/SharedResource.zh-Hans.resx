@@ -930,6 +930,12 @@
   <data name="Error.AlreadySignedIn" xml:space="preserve">
     <value>你已经以 @{0} 的身份登录。要使用其他账号，请先退出登录。</value>
   </data>
+  <data name="Error.ActionFailed" xml:space="preserve">
+    <value>操作没有成功，请再试一次。</value>
+  </data>
+  <data name="Error.Offline" xml:space="preserve">
+    <value>连不上 beeps，请检查网络后再试。</value>
+  </data>
   <data name="Error.MediaTooLarge" xml:space="preserve">
     <value>图片最大 {0} MB。</value>
   </data>

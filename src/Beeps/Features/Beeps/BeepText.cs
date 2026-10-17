@@ -40,7 +40,7 @@ public sealed record ParsedBeepText(string Text, BeepTextProblem Problem, IReadO
 
 /// <summary>
 /// The only implementation of beep text rules (PLAN 6.19, 12): length, #hashtags, @mentions and HTML
-/// rendering. Pages, SSE fragments and the API all go through here.
+/// rendering. Pages, the islands' props and the API all go through here.
 /// </summary>
 public static class BeepText
 {

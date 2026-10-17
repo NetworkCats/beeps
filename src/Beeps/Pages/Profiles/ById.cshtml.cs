@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 namespace Beeps.Pages.Profiles;
 
 /// <summary>
-/// A profile by id, sent on to its current address. An open profile page draws itself again from here (live.ts), so an
+/// A profile by id, sent on to its current address. An open profile page fetches its props again from here (its island's LiveProps.Url), so an
 /// agent renamed meanwhile is still found; nobody links here.
 /// </summary>
 public sealed class ByIdModel(IProfileStore profiles) : PageModel

@@ -275,18 +275,6 @@ public sealed class BeepServiceTests
     }
 
     [Fact]
-    public async Task AuthorHandlesAreOnlyThoseOfVisibleBeeps()
-    {
-        var shown = Row(Guid.NewGuid(), OwnerId);
-        var hidden = Guid.NewGuid();
-        store.GetRowsAsync(Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Count == 2), null, Arg.Any<CancellationToken>()).Returns([shown]);
-
-        var handles = await CreateService().GetAuthorHandlesAsync(null, [shown.Id, hidden], TestSupport.Ct);
-
-        Assert.Equal(new Dictionary<Guid, string?> { [shown.Id] = "tom" }, handles);
-    }
-
-    [Fact]
     public async Task AuthorsDeleteTheirBeepsAndTheParentLosesAReply()
     {
         var parent = Ref(Guid.NewGuid(), replies: 3);

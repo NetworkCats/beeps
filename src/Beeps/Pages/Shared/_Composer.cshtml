@@ -6,29 +6,27 @@
 @{
     var fieldId = Model.ReplyTo is null ? "compose" : "reply";
 }
-@* With images the text may be empty, so the server, not "required", decides whether there is anything to post. *@
+@* Members only, so signed in: Client/app/components/Composer.tsx draws the same markup, with a count of what is left
+   and the picked images shown small. With images the text may be empty, so the server, not "required", decides
+   whether there is anything to post. *@
 <form class="composer" method="post" enctype="multipart/form-data" asp-page="/Compose" asp-route-replyTo="@Model.ReplyTo" id="@fieldId">
     <input type="hidden" name="ReturnUrl" value="@Model.ReturnUrl">
-    @* Live: shows the new avatar once it is processed, like the one in the navigation. *@
-    <span class="avatar composer-avatar" aria-hidden="true" data-live-region="composer-avatar" data-live-actors="@User.ActorId()"><img src="@Avatars.For(User.ActorId(), User.AvatarKey())" alt="" width="40" height="40"></span>
+    <span class="avatar composer-avatar" aria-hidden="true"><img src="@Avatars.For(User.ActorId(), User.AvatarKey())" alt="" width="40" height="40"></span>
     <div class="composer-main">
         <div class="field">
             <label class="label visually-hidden" for="text">@L[Model.ReplyTo is null ? "Compose.Label" : "Compose.ReplyLabel"]</label>
-            <textarea class="textarea composer-text" beeps-field="text" rows="@(Model.ReplyTo is null ? 2 : 1)" placeholder="@L[Model.ReplyTo is null ? "Compose.Placeholder" : "Compose.ReplyPlaceholder"]"
-                      data-composer data-max-length="@BeepText.MaxLength">@Model.Text</textarea>
+            <textarea class="textarea composer-text" beeps-field="text" rows="@(Model.ReplyTo is null ? 2 : 1)" placeholder="@L[Model.ReplyTo is null ? "Compose.Placeholder" : "Compose.ReplyPlaceholder"]">@Model.Text</textarea>
             <field-error name="text" />
         </div>
-        @* The images picked, shown small before posting (images.ts); empty and hidden without script. *@
-        <div class="composer-previews" data-image-previews hidden></div>
+        @* The images picked, shown small before posting; empty and hidden without script. *@
+        <div class="composer-previews" hidden></div>
         <div class="composer-footer">
             <label class="composer-images" title="@L["Compose.Images", MediaRules.MaxImagesPerBeep]">
                 <icon name="image" />
                 <span class="visually-hidden">@L["Compose.Images", MediaRules.MaxImagesPerBeep]</span>
-                <input class="composer-file" type="file" name="@MediaFields.Images" multiple accept="image/jpeg,image/png,image/webp,image/gif"
-                       data-images data-max-files="@MediaRules.MaxImagesPerBeep" data-max-bytes="@MediaRules.MaxBytes"
-                       data-too-many="@L["Error.TooManyMedia", MediaRules.MaxImagesPerBeep]" data-too-large="@L["Error.MediaTooLarge", MediaRules.MaxBytes / (1024 * 1024)]">
+                <input class="composer-file" type="file" name="@MediaFields.Images" multiple accept="image/jpeg,image/png,image/webp,image/gif">
             </label>
-            <span class="composer-count" data-composer-count aria-live="polite"></span>
+            <span class="composer-count" aria-live="polite" hidden></span>
             <button class="btn btn-primary" type="submit">@L[Model.ReplyTo is null ? "Compose.Submit" : "Compose.Reply"]</button>
         </div>
         <field-error name="@MediaFields.Images" />

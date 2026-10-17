@@ -1,12 +1,18 @@
 @page "/tags/{tag}"
+@using Beeps.Pages.Islands
 @model Beeps.Pages.Tags.IndexModel
 @{
     ViewData["Title"] = $"#{Model.Tag}";
+    var list = new BeepList(Model.Beeps, L["Tag.Empty.Title"]);
+    var props = new TagProps(new LiveProps(LiveProps.WatchFor(User, Model.Live)), Model.Tag, BeepListProps.From(list, Request.Path));
 }
-<section class="feed" live-watch="Model.Live">
+@* Client/app/pages/Feeds.tsx draws the same markup over it, for every visitor; signed in, it follows the site live. *@
+<island name="tag" props="props">
+<section class="feed">
     <header class="column-header">
         <a class="column-back" href="~/" aria-label="@L["Nav.Back"]"><icon name="arrow_back" /></a>
         <h1 class="column-title">#@Model.Tag</h1>
     </header>
-    <partial name="_BeepList" model='new BeepList(Model.Beeps, L["Tag.Empty.Title"])' />
+    <partial name="_BeepList" model="list" />
 </section>
+</island>

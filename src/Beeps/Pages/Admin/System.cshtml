@@ -1,8 +1,15 @@
 @page "/admin/system"
+@using Beeps.Pages.Islands
 @model Beeps.Pages.Admin.SystemModel
 @{
     ViewData["Title"] = L["Admin.System"];
+    var props = new AdminSystemProps(
+        AdminLive.Props,
+        PageProps.From(Model.DeadJobs, DeadJobProps.From, next => Url.Page("/Admin/System", new { before = next })!),
+        [.. Model.ScheduledJobs.Select(ScheduledJobProps.From)]);
 }
+@* Client/app/pages/admin/System.tsx. *@
+<island name="admin-system" props="props">
 <h1>@L["Admin.System"]</h1>
 
 <section class="admin-section">
@@ -24,10 +31,10 @@
                         <th>@L["Admin.Agents.Actions"]</th>
                     </tr>
                 </thead>
-                <tbody data-more-list="rows">
+                <tbody>
                     @foreach (var job in Model.DeadJobs.Items)
                     {
-                        <tr data-key="@job.Id">
+                        <tr>
                             <td data-label="@L["Admin.System.Type"]"><code>@job.Type</code> <span class="help">@L["Admin.System.Attempts", job.Attempts]</span></td>
                             <td data-label="@L["Admin.System.Failed"]"><utc-time value="job.FailedAt" /></td>
                             <td data-label="@L["Admin.System.Error"]"><span class="review-note" lang="en">@job.LastError</span></td>
@@ -48,7 +55,7 @@
         </div>
         @if (Model.DeadJobs.NextCursor is { } next)
         {
-            <nav class="pager" data-more="rows" aria-label="@L["Admin.Pager"]">
+            <nav class="pager" aria-label="@L["Admin.Pager"]">
                 <a class="btn btn-sm" asp-page="/Admin/System" asp-route-before="@next">@L["Admin.Older"]</a>
             </nav>
         }
@@ -97,3 +104,4 @@
         </div>
     }
 </section>
+</island>

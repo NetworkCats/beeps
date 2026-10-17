@@ -1,12 +1,11 @@
 @using Beeps.Features.Notifications
 @model NotificationView
-@* One inbox entry: the inbox page and the fragment it fetches when new ones arrive. *@
+@* One inbox entry. Client/app/pages/Notifications.tsx draws the same markup. *@
 @{
     var from = Model.From;
     var tone = Model.Type.ToString().ToLowerInvariant();
 }
-@* data-from: the entry is drawn again when its sender changes name or avatar (live.ts). *@
-<li class="notification@(Model.Read ? "" : " notification-unread")" data-notification="@Model.Id" data-from="@from.Id">
+<li class="notification@(Model.Read ? "" : " notification-unread")">
     <p class="notification-summary">
         <span class="notification-icon notification-icon-@tone">
             @switch (Model.Type)

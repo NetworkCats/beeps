@@ -106,6 +106,9 @@ public sealed class BeepsWebApplicationFactory : WebApplicationFactory<Program>
 
     internal InMemorySessionStore Sessions { get; } = new();
 
+    /// <summary>A clock for tests whose pages must come out the same every time (the footer's year, relative times).</summary>
+    public TimeProvider? Time { get; init; }
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Testing");
@@ -167,6 +170,11 @@ public sealed class BeepsWebApplicationFactory : WebApplicationFactory<Program>
             Replace<IUnitOfWork>(services, UnitOfWork);
             Replace<ISessionStore>(services, Sessions);
             Replace<ISharedContentCache>(services, SharedCache);
+            if (Time is not null)
+            {
+                Replace(services, Time);
+            }
+
             services.Configure<KeyManagementOptions>(options => options.XmlRepository = new InMemoryXmlRepository());
             services.RemoveAll<IDistributedCache>();
             services.AddDistributedMemoryCache();

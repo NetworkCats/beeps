@@ -1,4 +1,5 @@
 @page "/beeps/{id:guid}"
+@using Beeps.Pages.Islands
 @model DetailsModel
 @{
     var focus = Model.Focus;
@@ -6,9 +7,19 @@
     // Who each beep on the page is by, so a reply can say whom it answers.
     var authors = Model.Thread.Items.ToDictionary(b => b.Id, b => b.Author.Handle);
     var focusShown = Model.Thread.Items.Any(b => b.Id == focus.Id);
+    var next = Model.Thread.NextCursor is { } cursor ? $"{SitePaths.Beep(focus.Id)}?after={cursor}" : null;
+    // When this beep is deleted or hidden, the page is shown anew, as a reload would.
+    var props = new ThreadProps(
+        new LiveProps(LiveProps.WatchFor(User, Model.Live), Subject: $"beep:{focus.Id:D}"),
+        BeepProps.From(focus),
+        [.. Model.Thread.Items.Select(BeepProps.From)],
+        next,
+        Model.After,
+        User.IsMember() ? ComposerProps.From(new Composer(SitePaths.Beep(focus.Id), focus.Id)) : null);
 }
-@* data-live-subject: when this beep is deleted or hidden, the page is shown anew (live.ts), as a reload would. *@
-<section class="feed thread" live-watch="Model.Live" live-subject="@($"beep:{focus.Id:D}")">
+@* Client/app/pages/Thread.tsx draws the same markup over it, for every visitor; signed in, it follows the site live. *@
+<island name="thread" props="props">
+<section class="feed thread">
     <header class="column-header">
         <a class="column-back" href="~/" aria-label="@L["Nav.Back"]"><icon name="arrow_back" /></a>
         <h1 class="column-title">@L["Thread.Title"]</h1>
@@ -18,9 +29,7 @@
         <partial name="_Beep" model="new BeepCard(focus, Focused: true)" />
         <partial name="_ReplyBox" model="focus" />
     }
-    @* For a page of the thread that does not grow live (not the last one): drawn again when the thread may have changed. *@
-    <div live-region="list">
-    <div class="beep-list" data-more-list="beeps">
+    <div class="beep-list">
         @foreach (var beep in Model.Thread.Items)
         {
             var replyingTo = beep.ReplyToId is { } parent && authors.TryGetValue(parent, out var handle) ? handle : null;
@@ -31,11 +40,11 @@
             }
         }
     </div>
-    @if (Model.Thread.NextCursor is { } next)
+    @if (next is not null)
     {
-        <nav class="pager" data-more="beeps" aria-label="@L["Pager.Label"]">
-            <a class="btn" href="@SitePaths.Beep(focus.Id)?after=@next">@L["Pager.MoreReplies"]</a>
+        <nav class="pager" aria-label="@L["Pager.Label"]">
+            <a class="btn" href="@next">@L["Pager.MoreReplies"]</a>
         </nav>
     }
-    </div>
 </section>
+</island>

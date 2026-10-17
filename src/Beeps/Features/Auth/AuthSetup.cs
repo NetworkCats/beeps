@@ -27,7 +27,7 @@ public static class AuthSetup
                 options.LoginPath = LoginPath;
                 options.Events.OnRedirectToLogin = context =>
                 {
-                    // PLAN 6.10: the stream and the fragments it leads to refuse signed-out requests outright;
+                    // PLAN 6.10: the stream and what the islands fetch refuse signed-out requests outright;
                     // a redirect to the login page would only feed HTML to a script.
                     if (IsLive(context.Request))
                     {
@@ -103,11 +103,10 @@ public static class AuthSetup
         conventions.AuthorizePage("/Beep/Report", AuthPolicies.Member);
         conventions.AuthorizePage("/Notifications", AuthPolicies.Member);
         conventions.AuthorizePage("/Settings", AuthPolicies.Member);
-        conventions.AuthorizeFolder("/Live", AuthPolicies.Member);
         return conventions;
     }
 
-    /// <summary>The browsers' event stream and the fragments live pages fetch: never a login redirect.</summary>
+    /// <summary>The browsers' event stream and what the islands fetch (Pages/Islands/IslandEndpoints.cs): never a login redirect.</summary>
     public static bool IsLive(HttpRequest request)
     {
         ArgumentNullException.ThrowIfNull(request);

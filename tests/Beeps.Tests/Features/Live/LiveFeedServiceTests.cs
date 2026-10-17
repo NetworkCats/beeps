@@ -46,8 +46,7 @@ public sealed class LiveFeedServiceTests
         await service.GetNewBeepsAsync(Tom, $"replies:{profile:D}", Newest, null, TestSupport.Ct);
         await service.GetNewBeepsAsync(Tom, "tag:Beeps", Newest, null, TestSupport.Ct);
 
-        Assert.Equal([row.Id], home.Value.Items.Select(b => b.Id));
-        Assert.False(home.Value.InThread);
+        Assert.Equal([row.Id], home.Value.Select(b => b.Id));
         var since = PageRequest.Create(sinceId: Newest, limit: LiveFeedService.Limit);
         await timelines.Received(1).HomeAsync(Tom.ActorId, since, Tom.ActorId, Arg.Any<CancellationToken>());
         await timelines.Received(1).PublicAsync(since, Tom.ActorId, Arg.Any<CancellationToken>());
@@ -66,18 +65,15 @@ public sealed class LiveFeedServiceTests
     }
 
     [Fact]
-    public async Task AThreadAddsTheRepliesAfterItsLastOneWithWhomTheyAnswer()
+    public async Task AThreadAddsTheRepliesAfterItsLastOne()
     {
         var root = TestBeeps.Row("root", TestBeeps.Human("tom"));
         var reply = TestBeeps.Row("reply", TestBeeps.Human("alice"), replyTo: root.Id, root: root.Id);
         beeps.ListThreadAsync(root.Id, Newest, LiveFeedService.Limit, Tom.ActorId, Arg.Any<CancellationToken>()).Returns(new CursorPage<BeepRow>([reply], null));
-        beeps.GetRowsAsync(Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Single() == root.Id), Tom.ActorId, Arg.Any<CancellationToken>()).Returns([root]);
 
         var result = await Create().GetNewBeepsAsync(Tom, $"thread:{root.Id:D}", Newest, null, TestSupport.Ct);
 
-        Assert.True(result.Value.InThread);
-        Assert.Equal([reply.Id], result.Value.Items.Select(b => b.Id));
-        Assert.Equal("tom", result.Value.ReplyingTo[root.Id]);
+        Assert.Equal([reply.Id], result.Value.Select(b => b.Id));
     }
 
     [Theory]
@@ -97,24 +93,9 @@ public sealed class LiveFeedServiceTests
         var (gone, other) = (Guid.NewGuid(), TestBeeps.Row("other", TestBeeps.Human("bob")));
         beeps.GetRowsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Tom.ActorId, Arg.Any<CancellationToken>()).Returns([row, other]);
 
-        var result = await Create().GetBeepsAsync(Tom, "home", [other.Id, gone, row.Id], TestSupport.Ct);
+        var result = await Create().GetBeepsAsync(Tom, [other.Id, gone, row.Id], TestSupport.Ct);
 
-        Assert.Equal([other.Id, row.Id], result.Value.Items.Select(b => b.Id));
-        Assert.False(result.Value.InThread);
-    }
-
-    [Fact]
-    public async Task InAThreadChangedRepliesStillSayWhomTheyAnswer()
-    {
-        var root = TestBeeps.Row("root", TestBeeps.Human("tom"));
-        var reply = TestBeeps.Row("reply", TestBeeps.Human("alice"), replyTo: root.Id, root: root.Id);
-        beeps.GetRowsAsync(Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Single() == reply.Id), Tom.ActorId, Arg.Any<CancellationToken>()).Returns([reply]);
-        beeps.GetRowsAsync(Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Single() == root.Id), Tom.ActorId, Arg.Any<CancellationToken>()).Returns([root]);
-
-        var result = await Create().GetBeepsAsync(Tom, $"thread:{root.Id:D}", [reply.Id], TestSupport.Ct);
-
-        Assert.True(result.Value.InThread);
-        Assert.Equal("tom", result.Value.ReplyingTo[root.Id]);
+        Assert.Equal([other.Id, row.Id], result.Value.Select(b => b.Id));
     }
 
     [Fact]
@@ -122,11 +103,9 @@ public sealed class LiveFeedServiceTests
     {
         var service = Create();
 
-        var tooMany = await service.GetBeepsAsync(Tom, "", [.. Enumerable.Range(0, LiveService.MaxWatchedBeeps + 1).Select(_ => Guid.NewGuid())], TestSupport.Ct);
-        var badWatch = await service.GetBeepsAsync(Tom, "nonsense", [Guid.NewGuid()], TestSupport.Ct);
+        var tooMany = await service.GetBeepsAsync(Tom, [.. Enumerable.Range(0, LiveService.MaxWatchedBeeps + 1).Select(_ => Guid.NewGuid())], TestSupport.Ct);
 
         Assert.Equal(LiveErrorCodes.InvalidBeeps, tooMany.Error?.Code);
-        Assert.Equal(LiveErrorCodes.InvalidWatch, badWatch.Error?.Code);
     }
 
     private LiveFeedService Create()

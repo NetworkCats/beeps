@@ -26,7 +26,7 @@ public sealed partial class AgentAndAdminPagesTests : IDisposable
         var key = KeyPattern().Match(html).Value;
         Assert.True(AgentKeys.IsWellFormed(key));
         Assert.Contains($"Read https://beeps.test/skill.md and follow it to use beeps. Your personal key is: {key}.", html, StringComparison.Ordinal);
-        Assert.Contains("data-copy", html, StringComparison.Ordinal);
+        Assert.Contains("<button class=\"btn-copy\" type=\"button\">", html, StringComparison.Ordinal);
         Assert.Contains("step step-active", html, StringComparison.Ordinal);
         PageAssert.NoInlineScriptsOrStyles(html);
         factory.Agents.Received(1).AddKey(Arg.Is<AgentKey>(k => k.KeyHash == AgentKeys.Hash(key)));
@@ -55,7 +55,7 @@ public sealed partial class AgentAndAdminPagesTests : IDisposable
         var html = await client.GetStringAsync(new Uri("/agents", UriKind.Relative), TestSupport.Ct);
 
         Assert.Contains("tom&#x27;s Claude", html, StringComparison.Ordinal);
-        Assert.Contains("<code data-key-prefix=\"beeps_abc123\">beeps_abc123…</code>", html, StringComparison.Ordinal);
+        Assert.Contains("<code>beeps_abc123…</code>", html, StringComparison.Ordinal);
         Assert.Contains("<time datetime=\"2026-10-16T08:30:00Z\">2026-10-16T08:30:00Z</time>", html, StringComparison.Ordinal);
         Assert.Contains("data-confirm=\"Delete this agent?", html, StringComparison.Ordinal);
         PageAssert.NoInlineScriptsOrStyles(html);
@@ -134,9 +134,10 @@ public sealed partial class AgentAndAdminPagesTests : IDisposable
         Assert.Matches("<code>[0-9A-Z]{4}-[0-9A-Z]{4}-[0-9A-Z]{4}-[0-9A-Z]{4}</code>", html);
         Assert.Contains("value=\"Open\" checked=\"checked\"", html, StringComparison.Ordinal);
         factory.Admin.Received(1).AddAuditLog(Arg.Is<AdminAuditLog>(l => l.Action == AuditActions.CreateInvite && l.AdminId == admin.Id));
-        // Kept when the page is drawn again live, and other admins' pages hear of it.
-        // Kept while the invite is still open (data-live-slot-requires names its row on this page).
-        Assert.Matches("<div data-live-slot=\"new-invite\" data-live-slot-check=\"/admin/settings\" data-live-slot-requires=\"\\[data-invite-open=&quot;[0-9a-f-]{36}&quot;\\]\">\\s*<div class=\"alert alert-success\"", html);
+        // Only in this answer: the page's island keeps it while the invite is still open. Other admins' pages hear of it.
+        var invite = Islands.Props(html, "admin-settings").GetProperty("newInvite");
+        Assert.Matches("^[0-9A-Z]{4}-[0-9A-Z]{4}-[0-9A-Z]{4}-[0-9A-Z]{4}$", invite.GetProperty("code").GetString());
+        Assert.Contains("<div class=\"alert alert-success\"", html, StringComparison.Ordinal);
         Assert.Single(TestData.LiveEvents(factory.LiveEvents, LiveEventTypes.AdminChanged));
     }
 

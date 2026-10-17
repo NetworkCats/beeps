@@ -1,12 +1,23 @@
 @page "/compose"
+@using Beeps.Pages.Islands
 @model ComposeModel
 @{
     ViewData["Title"] = Model.ReplyTo is null ? L["Compose.Title"] : L["Compose.ReplyTitle"];
+    var back = Model.ReplyTo is { } parentId ? SitePaths.Beep(parentId) : "/";
+    var composer = Model.ReplyTo is null || Model.Parent is not null ? new Composer(Model.ReturnUrl ?? SitePaths.Home, Model.ReplyTo, Model.Text) : null;
+    // Replying: when the beep answered goes, the page shows what a reload would.
+    var props = new ComposeProps(
+        new LiveProps(Subject: Model.ReplyTo is { } replyTo ? $"beep:{replyTo:D}" : null),
+        ViewData["Title"]?.ToString() ?? "",
+        back,
+        Model.Parent is { } parent ? BeepProps.From(parent) : null,
+        composer is null ? null : ComposerProps.From(composer));
 }
-@* Replying: when the beep answered goes, the page shows what a reload would (live.ts). *@
-<section class="feed" live-subject="@(Model.ReplyTo is { } replyTo ? $"beep:{replyTo:D}" : null)">
+@* Members only, so signed in: Client/app/pages/Compose.tsx. *@
+<island name="compose" props="props">
+<section class="feed">
     <header class="column-header">
-        <a class="column-back" href="@(Model.ReplyTo is { } parentId ? SitePaths.Beep(parentId) : "/")" aria-label="@L["Nav.Back"]"><icon name="arrow_back" /></a>
+        <a class="column-back" href="@back" aria-label="@L["Nav.Back"]"><icon name="arrow_back" /></a>
         <h1 class="column-title">@ViewData["Title"]</h1>
     </header>
     <form-errors />
@@ -14,8 +25,9 @@
     {
         <partial name="_Beep" model="new BeepCard(Model.Parent)" />
     }
-    @if (Model.ReplyTo is null || Model.Parent is not null)
+    @if (composer is not null)
     {
-        <partial name="_Composer" model="new Composer(Model.ReturnUrl ?? SitePaths.Home, Model.ReplyTo, Model.Text)" />
+        <partial name="_Composer" model="composer" />
     }
 </section>
+</island>

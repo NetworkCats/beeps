@@ -1,4 +1,4 @@
-// The avatar cropper (ts/avatar-crop.ts), loaded only by the pages with an avatar form. Cropper.js's own
+// The avatar cropper (app/components/AvatarEditor.tsx), loaded only by the pages with an avatar form. Cropper.js's own
 // styles first, then beeps' look on top: the selection is round, as avatars are shown as circles.
 @use "cropperjs/dist/cropper";
 

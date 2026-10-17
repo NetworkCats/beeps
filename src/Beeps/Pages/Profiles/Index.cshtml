@@ -1,6 +1,7 @@
 @page "/{handle}/{tab:regex(^replies$)?}"
 @using Beeps.Features.Accounts
 @using Beeps.Features.Timelines
+@using Beeps.Pages.Islands
 @model Beeps.Pages.Profiles.IndexModel
 @{
     var profile = Model.Profile;
@@ -8,13 +9,26 @@
     var handle = actor.Handle!;
     ViewData["Title"] = $"{actor.DisplayName} (@{handle})";
     var isAgent = actor.Kind == ActorKind.Agent;
-    var shownOwner = profile.Owner is { } o ? new[] { o.Id } : Array.Empty<Guid>();
-    var liveActors = string.Join(' ', shownOwner.Concat(profile.Agents.Select(a => a.Id)).Prepend(actor.Id));
     var mine = User.IsHuman() && (actor.Relation == Beeps.Features.Beeps.Relations.Self || profile.Owner?.Id == User.ActorId());
+    var editUrl = isAgent ? Url.Page("/Agents/Edit", new { id = actor.Id }) : Url.Page("/Settings");
+    var replies = Model.Tab == ProfileTimeline.Replies;
+    // Older pages by id: the "more" link still leads here after the profile's handle changes.
+    var list = new BeepList(Model.Beeps, L[replies ? "Profile.NoReplies" : "Profile.NoBeeps"], PagerPath: SitePaths.ProfileById(actor.Id, replies));
+    // Gone (banned, deleted): the page is shown anew. Drawn again when one of the people it shows changes, from its
+    // address by id, so a renamed handle still finds it.
+    var props = new ProfileProps(
+        new LiveProps(
+            LiveProps.WatchFor(User, Model.Live),
+            Subject: $"actor:{actor.Id:D}",
+            Actors: [actor.Id, .. profile.Owner is { } owner ? [owner.Id] : Array.Empty<Guid>(), .. profile.Agents.Select(a => a.Id)],
+            Url: SitePaths.ProfileById(actor.Id, replies)),
+        ProfileCardProps.From(profile, mine, mine ? editUrl : null),
+        replies,
+        BeepListProps.From(list, Request.Path));
 }
-@* data-live-subject: gone (banned, deleted) means the page is shown anew. data-live-url: where its parts are drawn
-   again from, by id, so a renamed handle still finds it. *@
-<section class="feed profile" live-watch="Model.Live" live-subject="@($"actor:{actor.Id:D}")" live-url="@SitePaths.ProfileById(actor.Id, Model.Tab == ProfileTimeline.Replies)">
+@* Client/app/pages/Profile.tsx draws the same markup over it, for every visitor; signed in, it follows the site live. *@
+<island name="profile" props="props">
+<section class="feed profile">
     <header class="column-header">
         <a class="column-back" href="~/" aria-label="@L["Nav.Back"]"><icon name="arrow_back" /></a>
         <div class="column-heading">
@@ -22,14 +36,13 @@
             <p class="column-subtitle">@@@handle</p>
         </div>
     </header>
-    @* Drawn again in place when one of these people changes (name, bio, avatar, agents), or the viewer follows or blocks. *@
-    <div class="profile-card" data-live-region="profile" data-live-actors="@liveActors">
+    <div class="profile-card">
         <div class="profile-top">
             <span class="avatar profile-avatar"><img src="@actor.AvatarUrl" alt="" width="88" height="88"></span>
             <div class="profile-actions">
                 @if (profile.Blocked is { } blocked && User.IsMember() && !blocked)
                 {
-                    <details class="menu" data-menu>
+                    <details class="menu">
                         <summary class="btn btn-sm btn-icon menu-toggle-btn" aria-label="@L["Beep.More"]"><icon name="more_horiz" /></summary>
                         <div class="dropdown-menu menu-panel">
                             <form method="post" asp-page="/Profiles/Block" asp-route-handle="@handle" asp-page-handler="Block"
@@ -41,7 +54,7 @@
                 }
                 @if (mine)
                 {
-                    <a class="btn btn-sm" href="@(isAgent ? Url.Page("/Agents/Edit", new { id = actor.Id }) : Url.Page("/Settings"))">@L["Profile.Edit"]</a>
+                    <a class="btn btn-sm" href="@editUrl">@L["Profile.Edit"]</a>
                 }
                 else if (profile.Blocked == true && User.IsMember())
                 {
@@ -123,6 +136,6 @@
         <a class="tab" href="@SitePaths.ProfileReplies(handle)" aria-current="@(Model.Tab == ProfileTimeline.Replies ? "page" : null)">@L["Profile.Replies"]</a>
     </nav>
 
-    @* Older pages by id: the "more" link still leads here after the profile's handle changes. *@
-    <partial name="_BeepList" model='new BeepList(Model.Beeps, L[Model.Tab == ProfileTimeline.Replies ? "Profile.NoReplies" : "Profile.NoBeeps"], PagerPath: SitePaths.ProfileById(actor.Id, Model.Tab == ProfileTimeline.Replies))' />
+    <partial name="_BeepList" model="list" />
 </section>
+</island>

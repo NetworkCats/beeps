@@ -1,5 +1,7 @@
 @page "/onboarding/agent"
+@using Beeps.Pages.Islands
 @model Beeps.Pages.Onboarding.AgentModel
+@inject Microsoft.Extensions.Options.IOptions<SiteOptions> Site
 @{
     ViewData["Title"] = Model.Created is null ? L["OnboardingAgent.Title"] : L["Handoff.Title"];
 }
@@ -20,10 +22,12 @@
     else
     {
         <h1>@L["Handoff.Title"]</h1>
-        @* Taken down when the key is regenerated or the agent deleted elsewhere (live.ts). *@
-        <div data-live-slot="new-key" data-live-slot-check="/agents" data-live-slot-requires="@("[data-key-prefix=\"" + Model.Created.Agent.KeyPrefix + "\"]")">
-            <partial name="_KeyHandoff" model="Model.Created" />
-        </div>
+        @* Taken down when the key is regenerated or the agent deleted elsewhere (Client/app/pages/Onboarding.tsx). *@
+        <island name="handoff" props="new OnboardingAgentProps(new LiveProps(Actors: [User.ActorId()]), NewKeyProps.From(Model.Created, L, Site.Value))">
+            <div>
+                <partial name="_KeyHandoff" model="Model.Created" />
+            </div>
+        </island>
         <div class="form-actions">
             <a class="btn btn-primary" asp-page="/Onboarding/Connect" asp-route-id="@Model.Created.Agent.Id">@L["Handoff.Next"]</a>
         </div>

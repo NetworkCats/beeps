@@ -139,9 +139,9 @@ public sealed class ProfilePagesTests : IDisposable
         var html = await client.GetStringAsync(new Uri("/notifications", UriKind.Relative), TestSupport.Ct);
         using var response = await WebAuth.PostFormAsync(client, "/notifications", "/notifications?handler=Read", ("upToId", notification.Id.ToString()));
 
-        Assert.Contains($"<li class=\"notification notification-unread\" data-notification=\"{notification.Id:D}\" data-from=\"{notification.From.Id:D}\">", html, StringComparison.Ordinal);
-        Assert.Matches($"<form (?![^>]*hidden)[^>]*data-mark-read[^>]*>\\s*<input type=\"hidden\" name=\"upToId\" value=\"{notification.Id:D}\">", html);
-        Assert.Contains("data-live-watch=\"notifications\"", html, StringComparison.Ordinal);
+        Assert.Contains($"<li class=\"notification notification-unread\">", html, StringComparison.Ordinal);
+        Assert.Matches($"<form class=\"column-actions\" method=\"post\" action=\"/notifications\\?handler=Read\">\\s*<input type=\"hidden\" name=\"upToId\" value=\"{notification.Id:D}\">", html);
+        Assert.Equal("notifications", Islands.Props(html, "notifications").GetProperty("live").GetProperty("watch").GetString());
         Assert.Matches("</a>\\s*replied to you\\s*<span class=\"notification-time\">", html);
         Assert.Contains("hi @tom", html, StringComparison.Ordinal);
         Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
@@ -158,8 +158,8 @@ public sealed class ProfilePagesTests : IDisposable
         var html = await client.GetStringAsync(new Uri("/notifications", UriKind.Relative), TestSupport.Ct);
 
         Assert.Contains("还没有通知", html, StringComparison.Ordinal);
-        // Kept for the live script, which shows it once something unread arrives.
-        Assert.Contains("data-mark-read hidden=\"hidden\"", html, StringComparison.Ordinal);
+        // There for when something unread arrives, hidden till then.
+        Assert.Contains("<form class=\"column-actions\" method=\"post\" hidden=\"hidden\" action=\"/notifications?handler=Read\">", html, StringComparison.Ordinal);
     }
 
     private ActorRow ArrangeProfile(string handle, string? bio = null)

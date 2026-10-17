@@ -5,15 +5,17 @@
   "description": "Client assets for beeps: TypeScript and SCSS in src/Beeps/Client, built into src/Beeps/wwwroot/dist.",
   "license": "MIT",
   "scripts": {
-    "build": "npm run typecheck && node scripts/build-client.ts",
+    "build": "npm run typecheck && node scripts/build-strings.ts && node scripts/build-client.ts",
     "watch": "node scripts/build-client.ts --watch",
     "icons": "node scripts/build-icons.ts",
     "typecheck": "tsc -p tsconfig.json",
-    "test": "node --test \"src/Beeps/Client/ts/**/*.test.ts\""
+    "test": "node scripts/build-strings.ts --check && node scripts/test-client.ts",
+    "strings": "node scripts/build-strings.ts"
   },
   "devDependencies": {
     "@types/node": "26.6.5",
     "esbuild": "0.28.2",
+    "preact-render-to-string": "6.8.1",
     "sass": "1.105.1",
     "typescript": "7.0.2"
   },
@@ -25,6 +27,8 @@
     "@parcel/watcher": false
   },
   "dependencies": {
-    "cropperjs": "1.6.2"
+    "@preact/signals": "2.11.3",
+    "cropperjs": "1.6.2",
+    "preact": "11.0.1"
   }
 }

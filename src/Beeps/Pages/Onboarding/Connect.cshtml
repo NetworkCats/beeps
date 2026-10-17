@@ -1,13 +1,17 @@
 @page "/onboarding/connect/{id:guid}"
+@using Beeps.Pages.Islands
 @model Beeps.Pages.Onboarding.ConnectModel
 @{
     ViewData["Title"] = L["Connect.Title"];
+    // Drawn again as soon as the agent says hello; gone (deleted), the page is shown anew.
+    var props = new ConnectProps(new LiveProps(Subject: $"actor:{Model.Agent.Id:D}", Actors: [Model.Agent.Id]), AgentRowProps.From(Model.Agent));
 }
-<section class="auth" data-live-subject="actor:@Model.Agent.Id">
+@* Members only, so signed in: Client/app/pages/Onboarding.tsx. *@
+<island name="connect" props="props">
+<section class="auth">
     <partial name="_OnboardingSteps" model="5" />
     <h1>@L["Connect.Title"]</h1>
-    @* Drawn again in place as soon as the agent says hello. *@
-    <div data-live-region="connect" data-live-actors="@Model.Agent.Id" aria-live="polite">
+    <div aria-live="polite">
     @if (Model.Agent.IsConnected)
     {
         <div class="agent-card connected">
@@ -36,3 +40,4 @@
     }
     </div>
 </section>
+</island>

@@ -28,9 +28,9 @@ public enum LiveTopicKind
 }
 
 /// <summary>
-/// What new content a page shows as it arrives (PLAN 6.10: each tab subscribes to its page). Pages write it
-/// into <c>data-live-watch</c>; the browser passes it back as <c>watch</c> on the stream and on fragment
-/// requests. The text form is <c>home</c>, <c>public</c>, <c>profile:{id}</c>, <c>replies:{id}</c>,
+/// What new content a page shows as it arrives (PLAN 6.10: each tab subscribes to its page). Pages give it to
+/// their page island (<c>LiveProps.Watch</c>); the browser passes it back as <c>watch</c> on the stream and when it
+/// fetches new beeps (<c>/live/beeps</c>). The text form is <c>home</c>, <c>public</c>, <c>profile:{id}</c>, <c>replies:{id}</c>,
 /// <c>tag:{normalized tag}</c>, <c>thread:{root id}</c>, <c>notifications</c>, <c>search</c>, <c>admin</c>, or empty.
 /// </summary>
 public sealed record LiveTopic(LiveTopicKind Kind, Guid Id = default, string Tag = "")

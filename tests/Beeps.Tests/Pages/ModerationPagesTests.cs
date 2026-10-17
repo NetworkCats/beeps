@@ -28,7 +28,7 @@ public sealed class ModerationPagesTests : IDisposable
 
         Assert.Contains($"href=\"/beeps/{theirs.Id:D}/report\"><span class=\"icon\" aria-hidden=\"true\">flag</span>Report</a>", html, StringComparison.Ordinal);
         Assert.DoesNotContain($"/beeps/{mine.Id:D}/report", html, StringComparison.Ordinal);
-        Assert.DoesNotContain("Under review", html, StringComparison.Ordinal);
+        Assert.DoesNotContain(">Under review</span>", html, StringComparison.Ordinal);
     }
 
     [Fact]

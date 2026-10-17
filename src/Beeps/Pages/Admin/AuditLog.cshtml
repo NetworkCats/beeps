@@ -1,9 +1,15 @@
 @page "/admin/audit"
 @using Beeps.Features.Admin
+@using Beeps.Pages.Islands
 @model Beeps.Pages.Admin.AuditLogModel
 @{
     ViewData["Title"] = L["Admin.AuditLog"];
+    var props = new AdminAuditProps(
+        AdminLive.Props,
+        PageProps.From(Model.Entries, entry => AuditEntryProps.From(entry, L, Url), next => Url.Page("/Admin/AuditLog", new { before = next })!));
 }
+@* Client/app/pages/admin/AuditLog.tsx. *@
+<island name="admin-audit" props="props">
 <h1>@L["Admin.AuditLog"]</h1>
 @if (Model.Entries.Items.Count == 0)
 {
@@ -22,10 +28,10 @@ else
                     <th>@L["Admin.AuditLog.Detail"]</th>
                 </tr>
             </thead>
-            <tbody data-more-list="rows">
+            <tbody>
                 @foreach (var entry in Model.Entries.Items)
                 {
-                    <tr data-key="@entry.Id">
+                    <tr>
                         <td data-label="@L["Admin.AuditLog.When"]"><utc-time value="entry.CreatedAt" /></td>
                         <td data-label="@L["Admin.AuditLog.Who"]"><a asp-page="/Admin/Users/Details" asp-route-id="@entry.AdminId">@@@entry.AdminHandle</a></td>
                         <td data-label="@L["Admin.AuditLog.What"]">@L[$"Audit.{entry.Action}"]</td>
@@ -55,8 +61,9 @@ else
     </div>
     @if (Model.Entries.NextCursor is { } next)
     {
-        <nav class="pager" data-more="rows" aria-label="@L["Admin.Pager"]">
+        <nav class="pager" aria-label="@L["Admin.Pager"]">
             <a class="btn btn-sm" asp-page="/Admin/AuditLog" asp-route-before="@next">@L["Admin.Older"]</a>
         </nav>
     }
 }
+</island>

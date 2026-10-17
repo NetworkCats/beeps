@@ -930,6 +930,12 @@
   <data name="Error.AlreadySignedIn" xml:space="preserve">
     <value>You are already signed in as @{0}. Sign out first to use another account.</value>
   </data>
+  <data name="Error.ActionFailed" xml:space="preserve">
+    <value>That didn't work. Please try again.</value>
+  </data>
+  <data name="Error.Offline" xml:space="preserve">
+    <value>Couldn't reach beeps. Check your connection and try again.</value>
+  </data>
   <data name="Error.MediaTooLarge" xml:space="preserve">
     <value>An image can be at most {0} MB.</value>
   </data>

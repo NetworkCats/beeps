@@ -33,8 +33,8 @@
 | `components/_dropdown.scss` | 导航栏账号菜单的菜单项样式（2026-10-16 阶段 3 复制；菜单本身用 `<details>`，不用 Popover 和 `dropdown.js`） |
 | `components/_icon.scss` | 图标（Material Symbols，2026-10-17 UI 重构时复制） |
 | `components/_search.scss` | 搜索框（侧栏和搜索页，2026-10-17 复制） |
-| `components/_toast.scss` | 操作结果提示（2026-10-17 复制；不用 `toast.js`，见 `Client/ts/toast.ts`） |
-| `components/_dialog.scss` | 删除等操作的确认对话框（2026-10-17 复制；不用 `dialog.js`，见 `Client/ts/confirm.ts`） |
+| `components/_toast.scss` | 操作结果提示（2026-10-17 复制；不用 `toast.js`，见 `Client/app/shell/Toasts.tsx`） |
+| `components/_dialog.scss` | 删除等操作的确认对话框（2026-10-17 复制；不用 `dialog.js`，见 `Client/app/shell/ConfirmDialog.tsx`） |
 | `_utilities.scss` | 工具类（`visually-hidden` 等） |
 
 只复制用到的组件；新增组件时从上游复制对应文件并更新上表。
@@ -50,7 +50,7 @@
 - 中性灰改成无彩度的纯灰（`main.scss` 里覆盖 `$neutral`），并关掉品牌色对中性色的 tint
   （`_theme.scss`），页面背景是纯白 / 近黑。圆角比上游大（`$radii`），按钮是胶囊形、没有上游的
   键帽立体效果。
-- 脚本没有复制上游的 `src/ts/`：`Client/ts/copy.ts` 参照上游 `copy.ts` 改写（去掉 toast 和
-  图标切换，按钮改为切换文字），`data-cui-copy` 改为 `data-copy`。
+- 脚本没有复制上游的 `src/ts/`：复制按钮（`Client/app/components/KeyHandoff.tsx`、`Client/app/clipboard.ts`）
+  参照上游 `copy.ts` 改写（去掉 toast 和图标切换，按钮改为切换文字）。
 
 同步上游时，用上游对应提交的 `src/scss/` 与本目录逐个文件 diff。

@@ -1,9 +1,14 @@
 @page "/public"
+@using Beeps.Pages.Islands
 @model PublicModel
 @{
     ViewData["Title"] = L["Public.Title"];
+    var list = new BeepList(Model.Beeps, L["Public.Empty.Title"]);
+    var props = new PublicProps(new LiveProps(LiveProps.WatchFor(User, Model.Live)), BeepListProps.From(list, Request.Path));
 }
-<section class="feed" live-watch="Model.Live">
+@* Client/app/pages/Feeds.tsx draws the same markup over it, for every visitor; signed in, it follows the site live. *@
+<island name="public" props="props">
+<section class="feed">
     @if (User.IsHuman())
     {
         <header class="column-header column-header-tabs">
@@ -18,5 +23,6 @@
         </header>
         <p class="column-lead">@L["Public.Lead"]</p>
     }
-    <partial name="_BeepList" model='new BeepList(Model.Beeps, L["Public.Empty.Title"])' />
+    <partial name="_BeepList" model="list" />
 </section>
+</island>

@@ -48,10 +48,8 @@ public sealed class HomePageTests(BeepsWebApplicationFactory factory) : IClassFi
 
         var html = await client.GetStringAsync(new Uri("/", UriKind.Relative), TestSupport.Ct);
 
-        Assert.DoesNotContain("<style", html, StringComparison.OrdinalIgnoreCase);
-        Assert.DoesNotContain("style=", html, StringComparison.OrdinalIgnoreCase);
-        Assert.DoesNotMatch("<script(?![^>]*\\bsrc=)", html);
-        Assert.Contains("/dist/main.", html, StringComparison.Ordinal);
+        PageAssert.NoInlineScriptsOrStyles(html);
+        Assert.Contains("src=\"/dist/app.", html, StringComparison.Ordinal);
     }
 
     [Fact]

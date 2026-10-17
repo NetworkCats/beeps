@@ -1,38 +1,41 @@
 @using System.Globalization
 @using Beeps.Features.Localization
 @using Beeps.Features.Site
-@* The site's own links and settings: the footer under the side column, and the top bar's "more" menu on narrow
-   screens, which have no side column. A choice takes effect as soon as it is made (theme.ts); the buttons are for
-   pages without script. *@
+@using Beeps.Pages.Islands
+@model bool
+@inject TimeProvider Time
+@* The site's own links and settings: the footer under the side column (model false), and the top bar's "more" menu
+   on narrow screens (model true), which have no side column. Client/app/shell/SiteOptions.tsx draws the same markup;
+   there a choice takes effect as soon as it is made, and the buttons are for pages without script. *@
 @{
+    var inMenu = Model;
     var currentCulture = CultureInfo.CurrentUICulture.Name;
     var returnUrl = $"{Context.Request.PathBase}{Context.Request.Path}{Context.Request.QueryString}";
     var signedIn = User.IsHuman();
     var theme = Themes.For(User, Context.Request);
+    var year = Time.GetUtcNow().Year;
+    var props = new SiteOptionsProps(
+        inMenu,
+        signedIn,
+        returnUrl,
+        currentCulture,
+        [.. SupportedCultures.All.Select(c => new OptionProps(c, L[$"Language.{c}"], c))],
+        theme,
+        [.. Themes.All.Select(t => new OptionProps(t, L[$"Theme.{t}"]))],
+        year);
 }
-<a class="footer-link" href="@SitePaths.About">@L["Footer.About"]</a>
-@* Signed out these are GET forms: public pages are output-cached, so they must not carry an antiforgery token. Signed
-   in, the choice is saved to the account. *@
-<form class="footer-switch" method="@(signedIn ? "post" : "get")" asp-page="/Culture" data-autosubmit>
-    <input type="hidden" name="returnUrl" value="@returnUrl">
-    <icon name="language" />
-    <select class="footer-select" name="culture" aria-label="@L["Footer.Language"]">
-        @foreach (var culture in SupportedCultures.All)
-        {
-            <option value="@culture" lang="@culture" selected="@(culture == currentCulture)">@L[$"Language.{culture}"]</option>
-        }
-    </select>
-    <button class="footer-apply" type="submit">@L["Footer.Apply"]</button>
-</form>
-<form class="footer-switch" method="@(signedIn ? "post" : "get")" asp-page="/Theme" data-autosubmit data-theme-switch>
-    <input type="hidden" name="returnUrl" value="@returnUrl">
-    <icon name="contrast" />
-    <select class="footer-select" name="theme" aria-label="@L["Footer.Theme"]">
-        @foreach (var option in Themes.All)
-        {
-            <option value="@option" selected="@(option == theme)">@L[$"Theme.{option}"]</option>
-        }
-    </select>
-    <button class="footer-apply" type="submit">@L["Footer.Apply"]</button>
-</form>
-<p class="footer-note">© @DateTime.UtcNow.Year @L["Site.Name"]</p>
+<island name="site-options" props="props">
+@if (inMenu)
+{
+    <details class="menu topbar-more">
+        <summary class="topbar-more-toggle" aria-label="@L["Nav.More"]"><icon name="more_horiz" /></summary>
+        <div class="dropdown-menu menu-panel site-menu">
+            <partial name="_SiteOptionsList" />
+        </div>
+    </details>
+}
+else
+{
+    <partial name="_SiteOptionsList" />
+}
+</island>

@@ -9,6 +9,8 @@ public static class SitePaths
 
     public const string About = "/about";
 
+    public const string Settings = "/settings";
+
     /// <summary>A profile: <c>/tom</c>, <c>/tom.claude</c>. Usernames cannot clash with site paths (reserved names).</summary>
     public static string Profile(string handle) => "/" + Uri.EscapeDataString(handle);
 

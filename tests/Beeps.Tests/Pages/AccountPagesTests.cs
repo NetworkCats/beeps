@@ -9,14 +9,15 @@ public sealed class AccountPagesTests : IDisposable
     private readonly BeepsWebApplicationFactory factory = new();
 
     [Fact]
-    public async Task RegisterShowsTurnstileThroughTheCaptchaEntry()
+    public async Task RegisterShowsTurnstileThroughItsIsland()
     {
         using var client = WebAuth.NewClient(factory);
 
         var html = await client.GetStringAsync(new Uri("/register", UriKind.Relative), TestSupport.Ct);
 
         Assert.Contains("class=\"cf-turnstile captcha\" data-sitekey=\"test-site-key\"", html, StringComparison.Ordinal);
-        Assert.Matches("<script type=\"module\" src=\"/dist/captcha[^\"]*\\.js\"", html);
+        // The app loads Turnstile's script for the widget.
+        Assert.Equal("test-site-key", Islands.Props(html, "captcha").GetProperty("siteKey").GetString());
         Assert.Contains("class=\"steps steps-sm onboarding-steps\"", html, StringComparison.Ordinal);
         PageAssert.NoInlineScriptsOrStyles(html);
     }
@@ -239,6 +240,7 @@ internal static class PageAssert
         Assert.DoesNotContain(" style=", html, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain(" onclick=", html, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("javascript:", html, StringComparison.OrdinalIgnoreCase);
-        Assert.DoesNotMatch("<script(?![^>]*\\bsrc=)", html);
+        // Scripts come from files; the islands' props and the app's config are JSON data, which never runs (PLAN 6.9).
+        Assert.DoesNotMatch("<script(?![^>]*\\b(src=|type=\"application/json\"))", html);
     }
 }

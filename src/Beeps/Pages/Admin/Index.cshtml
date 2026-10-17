@@ -1,9 +1,13 @@
 @page "/admin"
+@using Beeps.Pages.Islands
 @model Beeps.Pages.Admin.IndexModel
 @{
     ViewData["Title"] = L["Admin.Overview"];
     var o = Model.Overview;
+    var props = AdminOverviewProps.From(o);
 }
+@* Client/app/pages/admin/Overview.tsx. *@
+<island name="admin-overview" props="props">
 <h1>@L["Admin.Overview"]</h1>
 
 <section class="admin-section">
@@ -31,3 +35,4 @@
         </div>
     </dl>
 </section>
+</island>

@@ -28,7 +28,7 @@ public static class ThemeCookie
             {
                 MaxAge = TimeSpan.FromDays(365),
                 IsEssential = true,
-                // Read by the server only: the page is drawn with it, and theme.ts changes it through /theme.
+                // Read by the server only: the page is drawn with it, and the app changes it through /theme.
                 HttpOnly = true,
                 SameSite = SameSiteMode.Lax,
                 Secure = response.HttpContext.Request.IsHttps,

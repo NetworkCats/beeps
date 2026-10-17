@@ -24,6 +24,9 @@ public sealed class PublicPageCacheOptions
 /// </summary>
 public static class PublicPageCache
 {
+    /// <summary>Pages.Islands.IslandRequests.Header: Features do not depend on the pages.</summary>
+    private const string IslandsHeader = "X-Beeps-Islands";
+
     /// <summary>Put on a PageModel as <c>[OutputCache(PolicyName = PublicPageCache.Policy)]</c>.</summary>
     public const string Policy = "PublicPage";
 
@@ -44,7 +47,9 @@ public static class PublicPageCache
                 builder.Expire(page.Value.Duration)
                     .Tag(PageTags.All)
                     .VaryByValue(_ => new KeyValuePair<string, string>("culture", CultureInfo.CurrentUICulture.Name))
-                    .VaryByValue(context => new KeyValuePair<string, string>("theme", ThemeCookie.Read(context.Request) ?? Themes.System));
+                    .VaryByValue(context => new KeyValuePair<string, string>("theme", ThemeCookie.Read(context.Request) ?? Themes.System))
+                    // The same address answers with a page or, for the app, with its islands' props (Pages/Islands).
+                    .SetVaryByHeader(IslandsHeader);
             }));
         return services;
     }

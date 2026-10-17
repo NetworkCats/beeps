@@ -1,10 +1,20 @@
 @page "/admin/users/{id:guid}"
+@using Beeps.Pages.Islands
 @model Beeps.Pages.Admin.Users.DetailsModel
 @{
     var user = Model.Details.User;
     ViewData["Title"] = $"@{user.Handle}";
     var here = Request.Path.Value ?? "";
+    var props = new AdminUserDetailsProps(
+        AdminLive.Props,
+        AdminUserProps.From(user),
+        Model.Details.AvatarUrl,
+        Model.IsSelf,
+        [.. Model.Details.Agents.Select(AdminOwnedAgentProps.From)],
+        here);
 }
+@* Client/app/pages/admin/User.tsx. *@
+<island name="admin-user" props="props">
 <header class="admin-person">
     <span class="avatar avatar-xl"><img src="@Model.Details.AvatarUrl" alt="" width="64" height="64"></span>
     <div>
@@ -107,3 +117,4 @@ else
         }
     </ul>
 }
+</island>

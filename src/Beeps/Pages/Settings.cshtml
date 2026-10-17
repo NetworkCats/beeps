@@ -3,28 +3,41 @@
 @using Beeps.Features.Avatars
 @using Beeps.Features.Localization
 @using Beeps.Features.Profiles
+@using Beeps.Pages.Islands
 @model SettingsModel
 @inject AvatarUrls Avatars
 @{
     ViewData["Title"] = L["Settings.Title"];
     var theme = Themes.For(User, ViewContext.HttpContext.Request);
+    var avatar = new AvatarEditor(User.ActorId(), Avatars.For(User.ActorId(), User.AvatarKey()), User.AvatarKey() is not null);
+    // Shows the saved name, bio and avatar, also when changed in another tab, unless they are being edited here.
+    var props = new SettingsProps(
+        new LiveProps(Actors: [User.ActorId()]),
+        new AvatarEditorProps(avatar.AvatarUrl, avatar.HasCustomAvatar, SitePaths.Settings),
+        Model.Settings.Handle,
+        Model.DisplayName,
+        Model.Bio,
+        Model.Settings.Locale,
+        [.. SupportedCultures.All.Select(c => new OptionProps(c, L[$"Language.{c}"], c))],
+        theme,
+        [.. Themes.All.Select(t => new OptionProps(t, L[$"Theme.{t}"]))],
+        new ProfileLimits(Actor.DisplayNameMaxLength, Actor.BioMaxLength),
+        AccountRules.PasswordMinLength,
+        AccountRules.PasswordMaxLength);
 }
 @section Head {
     <link rel="stylesheet" href="~/dist/avatar-crop.css" asp-append-version="true">
 }
-@section Scripts {
-    <script type="module" src="~/dist/avatar-crop.js" asp-append-version="true"></script>
-}
+@* Members only, so signed in: Client/app/pages/Settings.tsx. *@
+<island name="settings" props="props">
 <section class="feed settings">
     <header class="column-header">
         <h1 class="column-title">@L["Settings.Title"]</h1>
     </header>
     <form-errors />
 
-    <partial name="_AvatarEditor" model="new AvatarEditor(User.ActorId(), Avatars.For(User.ActorId(), User.AvatarKey()), User.AvatarKey() is not null)" />
+    <partial name="_AvatarEditor" model="avatar" />
 
-    @* Shows the saved name and bio, also when changed in another tab, unless it is being edited here (live.ts). *@
-    <div data-live-region="settings-profile" data-live-actors="@User.ActorId()">
     <form class="settings-section" method="post" asp-page-handler="Profile" aria-labelledby="profile-title">
         <h2 id="profile-title">@L["Settings.Profile"]</h2>
         <div class="field">
@@ -46,7 +59,6 @@
             <button class="btn btn-primary" type="submit">@L["Settings.Save"]</button>
         </div>
     </form>
-    </div>
 
     <form class="settings-section" method="post" asp-page-handler="Language" aria-labelledby="language-title">
         <h2 id="language-title">@L["Settings.Language"]</h2>
@@ -101,3 +113,4 @@
         </div>
     </form>
 </section>
+</island>

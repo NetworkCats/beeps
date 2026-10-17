@@ -1,12 +1,28 @@
 @page "/search"
 @using Beeps.Features.Search
+@using Beeps.Pages.Islands
 @model SearchModel
 @{
     ViewData["Title"] = string.IsNullOrWhiteSpace(Model.Query) ? L["Search.Title"] : L["Search.TitleFor", Model.Query.Trim()];
     var users = Model.Type == SearchTypes.Users;
     var type = users ? SearchTypes.Users : SearchTypes.Beeps;
+    var next = Model.Results?.NextOffset is { } offset ? Url.Page("/Search", new { q = Model.Query, type, offset }) : null;
+    var beepsUrl = Url.Page("/Search", new { q = Model.Query, type = SearchTypes.Beeps }) ?? "";
+    var usersUrl = Url.Page("/Search", new { q = Model.Query, type = SearchTypes.Users }) ?? "";
+    // Drawn again as the search index changes (new beeps, renamed people).
+    var props = new SearchProps(
+        new LiveProps(LiveProps.WatchFor(User, Model.Live), Actors: Model.Results is { } found ? [.. found.Users.Select(u => u.Actor.Id)] : null, On: Model.Results is null ? null : "search"),
+        Model.Query,
+        users,
+        Model.Results is { } results
+            ? new SearchResultsProps([.. results.Beeps.Select(BeepProps.From)], [.. results.Users.Select(u => new UserResultProps(ActorProps.From(u.Actor), u.Bio))], next)
+            : null,
+        beepsUrl,
+        usersUrl);
 }
-<section class="feed search-page" live-watch="Model.Live">
+@* Client/app/pages/Search.tsx draws the same markup over it, for every visitor; signed in, it follows the site live. *@
+<island name="search" props="props">
+<section class="feed search-page">
     <header class="column-header column-header-search">
         <h1 class="visually-hidden">@L["Search.Title"]</h1>
         <form class="search search-pill" role="search" method="get" asp-page="/Search">
@@ -25,13 +41,11 @@
         </div>
     }
 
-    @* Drawn again in place when the search index changes (new beeps, renamed people). *@
-    <div data-live-region="search-results" data-live-actors="@(Model.Results is { } shownResults ? string.Join(' ', shownResults.Users.Select(u => u.Actor.Id)) : "")">
     @if (Model.Results is { } results)
     {
         <nav class="tabs tabs-justify search-tabs" aria-label="@L["Search.Tabs"]">
-            <a class="tab" asp-page="/Search" asp-route-q="@Model.Query" asp-route-type="@SearchTypes.Beeps" aria-current="@(users ? null : "page")">@L["Search.Beeps"]</a>
-            <a class="tab" asp-page="/Search" asp-route-q="@Model.Query" asp-route-type="@SearchTypes.Users" aria-current="@(users ? "page" : null)">@L["Search.Users"]</a>
+            <a class="tab" href="@beepsUrl" aria-current="@(users ? null : "page")">@L["Search.Beeps"]</a>
+            <a class="tab" href="@usersUrl" aria-current="@(users ? "page" : null)">@L["Search.Users"]</a>
         </nav>
         @if (users ? results.Users.Count == 0 : results.Beeps.Count == 0)
         {
@@ -42,11 +56,11 @@
         }
         else if (users)
         {
-            <ul class="actor-list search-users" data-more-list="users">
+            <ul class="actor-list search-users">
                 @foreach (var result in results.Users)
                 {
                     var actor = result.Actor;
-                    <li data-key="@actor.Id">
+                    <li>
                         <a class="actor-row" href="@SitePaths.Profile(actor.Handle!)">
                             <span class="avatar"><img src="@actor.AvatarUrl" alt="" width="40" height="40" loading="lazy"></span>
                             <span class="actor-id">
@@ -69,19 +83,19 @@
         }
         else
         {
-            <div class="beep-list" data-more-list="beeps">
+            <div class="beep-list">
                 @foreach (var beep in results.Beeps)
                 {
                     <partial name="_Beep" model="new BeepCard(beep)" />
                 }
             </div>
         }
-        @if (results.NextOffset is { } next)
+        @if (next is not null)
         {
-            <nav class="pager" data-more="@(users ? "users" : "beeps")" aria-label="@L["Pager.Label"]">
-                <a class="btn" asp-page="/Search" asp-route-q="@Model.Query" asp-route-type="@type" asp-route-offset="@next">@L["Pager.More"]</a>
+            <nav class="pager" aria-label="@L["Pager.Label"]">
+                <a class="btn" href="@next">@L["Pager.More"]</a>
             </nav>
         }
     }
-    </div>
 </section>
+</island>

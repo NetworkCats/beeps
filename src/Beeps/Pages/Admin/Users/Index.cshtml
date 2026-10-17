@@ -1,8 +1,15 @@
 @page "/admin/users"
+@using Beeps.Pages.Islands
 @model Beeps.Pages.Admin.Users.IndexModel
 @{
     ViewData["Title"] = L["Admin.Users"];
+    var props = new AdminUsersProps(
+        AdminLive.Props,
+        Model.Q,
+        PageProps.From(Model.Users, AdminUserProps.From, next => Url.Page("/Admin/Users/Index", new { q = Model.Q, before = next })!));
 }
+@* Client/app/pages/admin/Users.tsx. *@
+<island name="admin-users" props="props">
 <header class="section-header">
     <h1>@L["Admin.Users"]</h1>
     <form class="admin-search" method="get" role="search">
@@ -26,10 +33,10 @@ else
                     <th>@L["Admin.Users.Joined"]</th>
                 </tr>
             </thead>
-            <tbody data-more-list="rows">
+            <tbody>
                 @foreach (var user in Model.Users.Items)
                 {
-                    <tr data-key="@user.Id">
+                    <tr>
                         <td data-label="@L["Admin.Users.User"]"><a asp-page="/Admin/Users/Details" asp-route-id="@user.Id">@@@user.Handle</a></td>
                         <td data-label="@L["Field.Email"]">@user.Email</td>
                         <td data-label="@L["Admin.Users.Status"]"><partial name="_UserBadges" model="user" /></td>
@@ -41,8 +48,9 @@ else
     </div>
     @if (Model.Users.NextCursor is { } next)
     {
-        <nav class="pager" data-more="rows" aria-label="@L["Admin.Pager"]">
+        <nav class="pager" aria-label="@L["Admin.Pager"]">
             <a class="btn btn-sm" asp-page="/Admin/Users/Index" asp-route-q="@Model.Q" asp-route-before="@next">@L["Admin.Older"]</a>
         </nav>
     }
 }
+</island>

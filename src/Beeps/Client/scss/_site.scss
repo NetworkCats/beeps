@@ -11,6 +11,35 @@
 
 // ---- Shell -------------------------------------------------------------------------------------
 
+// The wrapper of an island (Pages/Islands/IslandTagHelper.cs), for signed-in people only: laid out as if it were not
+// there, so the page looks the same either way. Selectors that reach into one use descendants, not `>`.
+.island {
+  display: contents;
+}
+
+// Another page is on its way (Client/app/router.ts): a thin bar along the top, once it takes a moment.
+:root[data-loading]::before {
+  content: "";
+  position: fixed;
+  inset-block-start: 0;
+  inset-inline: 0;
+  z-index: calc(var(--cui-z-sticky) + 1);
+  height: 2px;
+  background: var(--cui-primary-solid);
+  transform-origin: left;
+  animation: beeps-loading 1.2s ease-out 0.15s both;
+}
+
+@keyframes beeps-loading {
+  from {
+    transform: scaleX(0);
+  }
+
+  to {
+    transform: scaleX(0.85);
+  }
+}
+
 .shell {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
@@ -206,7 +235,7 @@
   }
 }
 
-// ---- Menus (a <details>: opens without script; menu.ts closes it on outside clicks) -----------
+// ---- Menus (a <details>: opens without script; components/Menu.tsx closes it on outside clicks) ---
 
 .menu {
   position: relative;
@@ -243,7 +272,7 @@
     @include focus-ring;
   }
 
-  > .avatar {
+  .avatar {
     --cui-avatar-size: 2.5rem;
   }
 }
@@ -333,14 +362,14 @@
     display: none;
   }
 
-  > .topbar-menu {
+  .topbar-menu {
     grid-column: 1;
     justify-self: start;
 
     .menu-toggle {
       padding: var(--cui-space-1);
 
-      > .avatar {
+      .avatar {
         --cui-avatar-size: 2rem;
       }
     }
@@ -437,7 +466,7 @@
     @include focus-ring($inset: true);
   }
 
-  > .nav-count {
+  .nav-count {
     inset-block-start: 0.5rem;
     inset-inline-start: 50%;
   }
@@ -658,7 +687,7 @@
   }
 }
 
-// The choice takes effect as soon as it is made (theme.ts); the button is for pages without script.
+// The choice takes effect as soon as it is made (shell/SiteOptions.tsx); the button is for pages without script.
 .footer-apply {
   padding: 0 var(--cui-space-1);
   color: var(--cui-link);
@@ -685,13 +714,13 @@
   color: var(--cui-text-2);
   font-size: var(--beeps-text-size);
 
-  > .footer-link {
+  .footer-link {
     padding-block: var(--cui-space-2);
     color: var(--cui-text);
     font-weight: var(--cui-weight-bold);
   }
 
-  > .footer-switch {
+  .footer-switch {
     display: flex;
     min-height: 2.75rem;
 
@@ -711,7 +740,7 @@
     border-radius: var(--cui-control-radius);
   }
 
-  > .footer-note {
+  .footer-note {
     padding-block-start: var(--cui-space-1);
     font-size: 0.8125rem;
   }
@@ -958,7 +987,7 @@
   padding: var(--cui-space-4) var(--beeps-pad) var(--cui-space-6);
 }
 
-// With script the next page loads as it is scrolled to (more.ts): a spinner stands in for the link, which comes
+// With script the next page loads as it is scrolled to (components/Pager.tsx): a spinner stands in for the link, which comes
 // back only when loading failed, to try again.
 .pager[data-more-state] {
   min-height: calc(var(--cui-space-4) + var(--cui-space-6) + 1.5rem);
@@ -987,14 +1016,8 @@
 }
 
 // form-errors and other alerts inside the column
-.feed > .alert,
-.feed > [data-live-region] > .alert {
+.feed > .alert {
   margin: var(--cui-space-3) var(--beeps-pad) 0;
-}
-
-.inline-form {
-  display: inline;
-  margin: 0;
 }
 
 .section-header {
@@ -1032,7 +1055,7 @@
   // Links and redirects land on #beep-…; keep the beep clear of the sticky column header.
   scroll-margin-block-start: calc(var(--beeps-column-header-height) + var(--cui-space-2));
 
-  // The whole card opens the beep (beep-link.ts), so it reacts to the pointer like a link.
+  // The whole card opens the beep (BeepCard.tsx), so it reacts to the pointer like a link.
   :root[data-beep-links] &:not(.beep-focused) {
     cursor: pointer;
 
@@ -1861,11 +1884,6 @@ span.beep-action {
   > .alert {
     margin: 0;
   }
-}
-
-[data-live-region] + .settings-section,
-.settings-section + [data-live-region] > .settings-section {
-  padding-block-start: var(--cui-space-6);
 }
 
 .settings-select {

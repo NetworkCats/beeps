@@ -1,10 +1,21 @@
 @page "/beeps/{id:guid}/report"
 @using Beeps.Features.Moderation
+@using Beeps.Pages.Islands
 @model ReportModel
 @{
     ViewData["Title"] = L["Report.Title"];
+    // When the beep goes, the page shows what a reload would.
+    var props = new ReportProps(
+        new LiveProps(Subject: $"beep:{Model.Beep.Id:D}"),
+        BeepProps.From(Model.Beep),
+        [.. ReportModel.Reasons.Select(r => new OptionProps(r, L[$"Moderation.Category.{r}"]))],
+        Model.Reason,
+        Model.Note,
+        Report.NoteMaxLength);
 }
-<section class="feed" data-live-subject="beep:@Model.Beep.Id">
+@* Members only, so signed in: Client/app/pages/Report.tsx. *@
+<island name="report" props="props">
+<section class="feed">
     <header class="column-header">
         <a class="column-back" href="@SitePaths.Beep(Model.Beep.Id)" aria-label="@L["Nav.Back"]"><icon name="arrow_back" /></a>
         <h1 class="column-title">@L["Report.Title"]</h1>
@@ -36,3 +47,4 @@
         </div>
     </form>
 </section>
+</island>

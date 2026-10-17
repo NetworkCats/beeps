@@ -3,7 +3,7 @@
 //   node scripts/build-client.ts           one-shot production build (minified, no source maps)
 //   node scripts/build-client.ts --watch   rebuild on change, with source maps
 //
-// File names stay stable (main.js, main.css): MapStaticAssets fingerprints them at `dotnet build`,
+// File names stay stable (app.js, main.css): MapStaticAssets fingerprints them at `dotnet build`,
 // so cache busting is not this script's job.
 import * as esbuild from 'esbuild';
 import * as sass from 'sass';
@@ -16,14 +16,9 @@ const client = join(root, 'src/Beeps/Client');
 const out = join(root, 'src/Beeps/wwwroot/dist');
 const watchMode = process.argv.includes('--watch');
 
-// Site-wide `main` plus page-specific entries (onboarding, admin…) as they are added.
+// One app for every page: server-drawn HTML whose islands Preact takes over, live for signed-in people (PLAN 6.9, 6.10).
 const scriptEntries: Record<string, string> = {
-  main: join(client, 'ts/main.ts'),
-  captcha: join(client, 'ts/captcha.ts'),
-  // The avatar forms only: Cropper.js is not worth loading on every page.
-  'avatar-crop': join(client, 'ts/avatar-crop.ts'),
-  // Signed-in people only (PLAN 6.10): signed-out pages open no live connection.
-  live: join(client, 'ts/live.ts'),
+  app: join(client, 'app/main.tsx'),
 };
 const styleEntries: Record<string, string> = {
   main: join(client, 'scss/main.scss'),
@@ -35,7 +30,12 @@ const scriptOptions: esbuild.BuildOptions = {
   outdir: out,
   bundle: true,
   format: 'esm',
+  // Shared code and what only some pages need (Cropper.js for the avatar forms) go into chunks, loaded when used.
+  splitting: true,
+  chunkNames: 'chunks/[name]-[hash]',
   target: 'es2022',
+  jsx: 'automatic',
+  jsxImportSource: 'preact',
   minify: !watchMode,
   sourcemap: watchMode ? 'linked' : false,
   legalComments: 'none',

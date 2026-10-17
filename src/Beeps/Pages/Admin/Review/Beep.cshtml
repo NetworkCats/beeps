@@ -2,6 +2,7 @@
 @using Beeps.Features.Beeps
 @using Beeps.Features.Media
 @using Beeps.Features.Moderation
+@using Beeps.Pages.Islands
 @model Beeps.Pages.Admin.Review.BeepModel
 @inject MediaUrls MediaUrls
 @{
@@ -11,7 +12,10 @@
     var shownMedia = beep.Media.Where(m => m.Status != MediaStatus.Removed).ToList();
     // An admin's earlier decision with no report since leaves nothing to handle.
     var keepable = beep.Status != ModerationStatus.HumanAllowed || beep.Reports.Any(r => r.ResolvedAt is null);
+    var props = AdminReviewBeepProps.From(beep, MediaUrls, L);
 }
+@* Client/app/pages/admin/ReviewBeep.tsx. *@
+<island name="admin-review-beep" props="props">
 <h1>@L["Admin.Beep.Title"]</h1>
 
 @if (beep.ReplyTo is { } parent)
@@ -194,3 +198,4 @@
         </div>
     }
 </section>
+</island>

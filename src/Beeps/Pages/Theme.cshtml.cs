@@ -23,7 +23,7 @@ public sealed class ThemeModel(AccountService accounts) : PageModel
         return LocalRedirect(Url.IsLocalUrl(returnUrl) ? returnUrl : "~/");
     }
 
-    /// <summary>theme.ts sends the footer's and the menu's choice here in the background, and switches the page itself.</summary>
+    /// <summary>The app (shell/SiteOptions.tsx) sends the footer's and the menu's choice here in the background, and switches the page itself.</summary>
     public async Task<IActionResult> OnPostAsync(string? theme, string? returnUrl, CancellationToken cancellationToken)
     {
         if (Themes.Find(theme) is { } supported)

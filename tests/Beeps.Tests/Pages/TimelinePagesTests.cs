@@ -46,10 +46,10 @@ public sealed class TimelinePagesTests : IDisposable
 
         Assert.Contains("from someone I follow", html, StringComparison.Ordinal);
         Assert.Matches("<form class=\"composer\" method=\"post\"[^>]* action=\"/compose\"", html);
-        Assert.Contains("data-max-length=\"500\"", html, StringComparison.Ordinal);
+        Assert.Equal("/", Islands.Props(html, "index").GetProperty("composer").GetProperty("returnUrl").GetString());
         Assert.Contains($"action=\"/beeps/{beep.Id:D}/actions?returnUrl=%2F&amp;handler=Unlike\"", html, StringComparison.Ordinal);
         Assert.Contains("aria-pressed=\"true\"", html, StringComparison.Ordinal);
-        Assert.Contains("<span class=\"beep-count\" data-like-count>3</span>", html, StringComparison.Ordinal);
+        Assert.Contains("<span class=\"beep-count\">3</span>", html, StringComparison.Ordinal);
         Assert.DoesNotContain("class=\"intro\"", html, StringComparison.Ordinal);
         PageAssert.NoInlineScriptsOrStyles(html);
     }
@@ -63,7 +63,7 @@ public sealed class TimelinePagesTests : IDisposable
         var html = await client.GetStringAsync(new Uri("/public", UriKind.Relative), TestSupport.Ct);
 
         Assert.Contains("<a class=\"sidenav-item\" aria-current=\"page\" href=\"/public\"><span class=\"icon\" aria-hidden=\"true\">public</span><span class=\"sidenav-label\">Public</span></a>", html, StringComparison.Ordinal);
-        Assert.Contains("<details class=\"menu sidenav-menu\" data-menu>", html, StringComparison.Ordinal);
+        Assert.Contains("<details class=\"menu sidenav-menu\">", html, StringComparison.Ordinal);
         Assert.Contains("<a class=\"dropdown-item\" href=\"/tom\"><span class=\"icon\" aria-hidden=\"true\">person</span>Profile</a>", html, StringComparison.Ordinal);
         Assert.DoesNotContain("/admin/users", html, StringComparison.Ordinal);
     }
@@ -77,9 +77,10 @@ public sealed class TimelinePagesTests : IDisposable
 
         var html = await client.GetStringAsync(new Uri($"/public?before={Guid.NewGuid()}", UriKind.Relative), TestSupport.Ct);
 
-        // more.ts fetches the link's page into the list; without script the link is followed.
-        Assert.Contains("<div class=\"beep-list\" data-more-list=\"beeps\">", html, StringComparison.Ordinal);
-        Assert.Contains("<nav class=\"pager\" data-more=\"beeps\"", html, StringComparison.Ordinal);
+        // The page's island loads the link's page into the list as it is scrolled; without script the link is followed.
+        Assert.Contains("<div class=\"beep-list\">", html, StringComparison.Ordinal);
+        Assert.Contains("<nav class=\"pager\" aria-label=", html, StringComparison.Ordinal);
+        Assert.Equal($"/public?before={beep.Id:D}", Islands.Props(html, "public").GetProperty("list").GetProperty("next").GetString());
         Assert.Contains($"href=\"/public?before={beep.Id:D}\"", html, StringComparison.Ordinal);
     }
 
@@ -108,11 +109,13 @@ public sealed class TimelinePagesTests : IDisposable
 
         var html = await client.GetStringAsync(new Uri($"/beeps/{reply.Id}", UriKind.Relative), TestSupport.Ct);
 
-        Assert.Contains($"<article class=\"beep beep-focused\" id=\"beep-{reply.Id:D}\" data-beep=\"{reply.Id:D}\" data-author=\"{reply.Author.Id:D}\" data-reply-to=\"{root.Id:D}\">", html, StringComparison.Ordinal);
+        Assert.Contains($"<article class=\"beep beep-focused\" id=\"beep-{reply.Id:D}\">", html, StringComparison.Ordinal);
         Assert.Contains($"<a href=\"#beep-{root.Id:D}\">Replying to @alice</a>", html, StringComparison.Ordinal);
         Assert.Matches($"<form class=\"composer\" method=\"post\"[^>]* id=\"reply\" action=\"/compose\\?replyTo={reply.Id:D}\"", html);
         Assert.Contains($"name=\"ReturnUrl\" value=\"/beeps/{reply.Id:D}\"", html, StringComparison.Ordinal);
-        Assert.True(html.IndexOf("the question", StringComparison.Ordinal) < html.IndexOf("the answer", StringComparison.Ordinal));
+        // In the markup, after the island's props.
+        var markup = html[html.IndexOf("<section class=\"feed thread\">", StringComparison.Ordinal)..];
+        Assert.True(markup.IndexOf("the question", StringComparison.Ordinal) < markup.IndexOf("the answer", StringComparison.Ordinal));
         PageAssert.NoInlineScriptsOrStyles(html);
     }
 

@@ -1,37 +1,35 @@
 @using Beeps.Features.Media
 @model AvatarEditor
-@* Posts to the current page's Avatar and RemoveAvatar handlers: the settings page and an agent's page.
-   The page loads dist/avatar-crop.js and .css, which turn the picked file into a cropper. *@
+@* Posts to the current page's Avatar and RemoveAvatar handlers: the settings page and an agent's page. Members only,
+   so signed in: Client/app/components/AvatarEditor.tsx draws the same markup and turns the picked file into a cropper
+   (the page loads dist/avatar-crop.css for it). *@
 <section class="settings-section" aria-labelledby="avatar-title">
     <h2 id="avatar-title">@L["Avatar.Title"]</h2>
     <div class="avatar-editor">
-        @* Live: a new avatar shows here once processed, without touching the forms beside it. *@
-        <span class="avatar avatar-2xl" data-live-region="avatar-preview" data-live-actors="@Model.ActorId"><img src="@Model.AvatarUrl" alt="" width="96" height="96"></span>
+        <span class="avatar avatar-2xl"><img src="@Model.AvatarUrl" alt="" width="96" height="96"></span>
         <div class="avatar-editor-forms">
-            <form method="post" enctype="multipart/form-data" asp-page-handler="Avatar" data-avatar-cropper>
+            <form method="post" enctype="multipart/form-data" asp-page-handler="Avatar">
                 <div class="field">
                     <label class="label" for="@MediaFields.Avatar">@L["Avatar.Choose"]</label>
-                    <input class="file" id="@MediaFields.Avatar" type="file" name="@MediaFields.Avatar" required accept="image/jpeg,image/png,image/webp,image/gif"
-                           data-images data-max-files="1" data-max-bytes="@MediaRules.MaxBytes"
-                           data-too-many="@L["Error.TooManyMedia", 1]" data-too-large="@L["Error.MediaTooLarge", MediaRules.MaxBytes / (1024 * 1024)]">
+                    <input class="file" id="@MediaFields.Avatar" type="file" name="@MediaFields.Avatar" required accept="image/jpeg,image/png,image/webp,image/gif">
                     <p class="help">@L["Avatar.Help", MediaRules.MaxBytes / (1024 * 1024)]</p>
                 </div>
                 @* The browser only picks the square; the original file is uploaded and the server crops it. Without
                    script the fields stay empty and the server takes the centered square. *@
-                <div class="avatar-crop" data-avatar-crop-area hidden>
+                <div class="avatar-crop" hidden>
                     <p class="help" id="avatar-crop-help">@L["Avatar.Crop.Help"]</p>
                     <div class="avatar-crop-stage">
-                        <img alt="@L["Avatar.Crop.Image"]" aria-describedby="avatar-crop-help" data-avatar-crop-image>
+                        <img alt="@L["Avatar.Crop.Image"]" aria-describedby="avatar-crop-help">
                     </div>
                 </div>
-                <input type="hidden" name="Crop.X" data-avatar-crop-x>
-                <input type="hidden" name="Crop.Y" data-avatar-crop-y>
-                <input type="hidden" name="Crop.Size" data-avatar-crop-size>
+                <input type="hidden" name="Crop.X">
+                <input type="hidden" name="Crop.Y">
+                <input type="hidden" name="Crop.Size">
                 <div class="form-actions">
                     <button class="btn" type="submit">@L["Avatar.Upload"]</button>
                 </div>
             </form>
-            <div class="avatar-remove" data-live-region="avatar-remove" data-live-actors="@Model.ActorId">
+            <div class="avatar-remove">
                 @if (Model.HasCustomAvatar)
                 {
                     <form method="post" asp-page-handler="RemoveAvatar" data-confirm="@L["Avatar.Remove.Confirm"]">

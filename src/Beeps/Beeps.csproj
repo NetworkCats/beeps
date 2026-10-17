@@ -30,6 +30,8 @@
   <!-- Served at /skill.md with the site's address filled in. -->
   <ItemGroup>
     <EmbeddedResource Include="Features/Skill/skill.md" LogicalName="Beeps.skill.md" />
+    <!-- The resource keys the client app shows (Pages/Islands/ClientConfig.cs). -->
+    <EmbeddedResource Include="Client/strings.json" LogicalName="Beeps.client-strings.json" />
   </ItemGroup>
 
   <!-- Client sources are built by npm into wwwroot/dist; keep them out of the content/publish set. -->

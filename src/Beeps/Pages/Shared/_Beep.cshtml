@@ -2,24 +2,19 @@
 @using Beeps.Features.Beeps
 @using Beeps.Features.Site
 @model BeepCard
-@* The one beep markup: timelines, threads, profiles, the inbox, and the fragments live pages fetch. *@
+@* The one beep markup: timelines, threads, profiles, the inbox. Signed in, Client/app/components/BeepCard.tsx draws the
+   same markup over it, and keeps it up to date. *@
 @{
     var beep = Model.Beep;
     var author = beep.Author;
     var profile = SitePaths.Profile(author.Handle ?? "");
     var permalink = SitePaths.Beep(beep.Id);
-    // A fragment fetched by a live page passes the page it will be shown on.
-    var returnUrl = ViewData[LivePage.ReturnUrlKey] as string ?? $"{Context.Request.Path}{Context.Request.QueryString}";
+    var returnUrl = $"{Context.Request.Path}{Context.Request.QueryString}";
     var likeHandler = beep.Liked ? "Unlike" : "Like";
-    // Razor writes data-* attributes even when null; most beeps mention nobody. The ids are GUIDs, nothing to escape.
-    var mentions = beep.Mentions.Count > 0 ? $" data-mentions=\"{string.Join(' ', beep.Mentions.Select(m => m.Id))}\"" : "";
-    // In a thread a reply names whom it answers: drawn again when that author is renamed.
-    var replyTo = beep.ReplyToId is { } parentId ? $" data-reply-to=\"{parentId}\"" : "";
-    // As on other social sites a count of nothing is left blank (live.ts and like.ts do the same).
+    // As on other social sites a count of nothing is left blank.
     string Count(int n) => n > 0 ? n.ToString(System.Globalization.CultureInfo.InvariantCulture) : "";
 }
-@* data-author, data-mentions, data-reply-to: the live script draws the card again when one of those people changes name or avatar. *@
-<article class="beep@(Model.Focused ? " beep-focused" : "")" id="@SitePaths.BeepAnchor(beep.Id)" data-beep="@beep.Id" data-author="@beep.Author.Id"@Html.Raw(mentions)@Html.Raw(replyTo)>
+<article class="beep@(Model.Focused ? " beep-focused" : "")" id="@SitePaths.BeepAnchor(beep.Id)">
     <a class="beep-avatar" href="@profile" tabindex="-1" aria-hidden="true">
         <span class="avatar"><img src="@author.AvatarUrl" alt="" width="40" height="40" loading="lazy"></span>
     </a>
@@ -43,7 +38,7 @@
             @if (beep.CanDelete || User.IsMember())
             {
                 @* What is done to a beep rather than with it: out of the way, behind a menu. *@
-                <details class="menu beep-menu" data-menu>
+                <details class="menu beep-menu">
                     <summary class="beep-menu-toggle" aria-label="@L["Beep.More"]"><icon name="more_horiz" /></summary>
                     <div class="dropdown-menu menu-panel">
                         @if (beep.CanDelete)
@@ -92,16 +87,15 @@
             <a class="beep-action beep-action-reply" href="@permalink#reply">
                 <span class="beep-action-icon"><icon name="chat_bubble" /></span>
                 <span class="visually-hidden">@L["Beep.Replies"]</span>
-                <span class="beep-count" data-reply-count>@Count(beep.ReplyCount)</span>
+                <span class="beep-count">@Count(beep.ReplyCount)</span>
             </a>
             @if (User.IsMember())
             {
-                <form class="beep-like" method="post" asp-page="/Beep/Actions" asp-route-id="@beep.Id" asp-page-handler="@likeHandler" asp-route-returnUrl="@returnUrl"
-                      data-like data-like-url="@Url.Page("/Beep/Actions", "Like", new { id = beep.Id, returnUrl })" data-unlike-url="@Url.Page("/Beep/Actions", "Unlike", new { id = beep.Id, returnUrl })">
+                <form class="beep-like" method="post" asp-page="/Beep/Actions" asp-route-id="@beep.Id" asp-page-handler="@likeHandler" asp-route-returnUrl="@returnUrl">
                     <button class="beep-action beep-action-like" type="submit" aria-pressed="@(beep.Liked ? "true" : "false")">
                         <span class="beep-action-icon"><icon name="favorite" /></span>
                         <span class="visually-hidden">@L["Beep.Like"]</span>
-                        <span class="beep-count" data-like-count>@Count(beep.LikeCount)</span>
+                        <span class="beep-count">@Count(beep.LikeCount)</span>
                     </button>
                 </form>
             }
@@ -113,8 +107,8 @@
                     <span class="beep-count" aria-hidden="true">@Count(beep.LikeCount)</span>
                 </span>
             }
-            @* Copies the beep's address (share.ts); without script it is that address, as a link. *@
-            <a class="beep-action beep-action-share" href="@permalink" data-share data-share-done="@L["Beep.Share.Done"]" title="@L["Beep.Share"]">
+            @* Copies the beep's address (BeepCard.tsx); without script it is that address, as a link. *@
+            <a class="beep-action beep-action-share" href="@permalink" title="@L["Beep.Share"]">
                 <span class="beep-action-icon"><icon name="ios_share" /></span>
                 <span class="visually-hidden">@L["Beep.Share"]</span>
             </a>

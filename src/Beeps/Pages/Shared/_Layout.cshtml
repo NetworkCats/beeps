@@ -1,12 +1,14 @@
 @using System.Globalization
 @using Beeps.Features.Avatars
 @using Beeps.Features.Site
+@using Beeps.Pages.Islands
 @inject AvatarUrls Avatars
+@inject ClientConfig AppConfig
 @{
     var currentCulture = CultureInfo.CurrentUICulture.Name;
+    // PLAN 6.9, 6.10: pages are drawn here and taken over by the app's Preact islands. Signed in they follow the site
+    // live (unverified: only their account); signed out they are static and cacheable.
     var signedIn = User.IsHuman();
-    // PLAN 6.10: live updates for anyone signed in (unverified: only their account); signed-out pages stay static and cacheable.
-    var live = signedIn;
     var page = ViewContext.RouteData.Values["page"] as string;
     string? Current(params string[] names) => names.Contains(page) ? "page" : null;
     var (notice, alert) = Notices.Take(Context, TempData);
@@ -27,7 +29,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    @* theme.ts keeps these in step when the scheme is switched in place. *@
+    @* The app (state.ts) keeps these in step when the scheme is switched in place. *@
     <meta name="theme-color" content="#ffffff" data-scheme="light" media="@(theme switch { null => "(prefers-color-scheme: light)", Themes.Light => "all", _ => "not all" })">
     <meta name="theme-color" content="#0a0a0a" data-scheme="dark" media="@(theme switch { null => "(prefers-color-scheme: dark)", Themes.Dark => "all", _ => "not all" })">
     <title>@ViewData["Title"] · @L["Site.Name"]</title>
@@ -36,11 +38,7 @@
     <link rel="apple-touch-icon" href="~/images/logo.png" asp-append-version="true">
     <link rel="preload" href="~/fonts/material-symbols-rounded.woff2" as="font" type="font/woff2" crossorigin>
     <link rel="stylesheet" href="~/dist/main.css" asp-append-version="true">
-    <script type="module" src="~/dist/main.js" asp-append-version="true"></script>
-    @if (live)
-    {
-        <script type="module" src="~/dist/live.js" asp-append-version="true"></script>
-    }
+    <script type="module" src="~/dist/app.js" asp-append-version="true"></script>
     @await RenderSectionAsync("Head", required: false)
 </head>
 <body class="page" live-stream>
@@ -50,12 +48,14 @@
         <header class="topbar">
             @if (signedIn)
             {
-                <details class="menu topbar-menu" data-menu>
-                    <summary class="menu-toggle" aria-label="@L["Nav.Account"]">
-                        <span class="avatar" data-live-region="topbar-avatar" data-live-actors="@User.ActorId()"><img src="@avatar" alt="" width="32" height="32"></span>
-                    </summary>
-                    <partial name="_AccountMenu" />
-                </details>
+                <island name="account-menu" props="new AccountMenuProps(Rail: false)">
+                    <details class="menu topbar-menu">
+                        <summary class="menu-toggle" aria-label="@L["Nav.Account"]">
+                            <span class="avatar"><img src="@avatar" alt="" width="32" height="32"></span>
+                        </summary>
+                        <partial name="_AccountMenu" />
+                    </details>
+                </island>
             }
             <a class="topbar-brand" href="~/" aria-label="@L["Site.Name"]">
                 <img src="~/images/logo.png" asp-append-version="true" alt="" width="32" height="32">
@@ -69,12 +69,7 @@
                     </div>
                 }
                 @* What the side column's footer holds on wider screens. *@
-                <details class="menu topbar-more" data-menu>
-                    <summary class="topbar-more-toggle" aria-label="@L["Nav.More"]"><icon name="more_horiz" /></summary>
-                    <div class="dropdown-menu menu-panel site-menu">
-                        <partial name="_SiteOptions" />
-                    </div>
-                </details>
+                <partial name="_SiteOptions" model="true" />
             </div>
         </header>
 
@@ -90,8 +85,8 @@
                 <a class="sidenav-item" asp-page="/Search" aria-current="@Current("/Search")"><icon name="search" /><span class="sidenav-label">@L["Nav.Search"]</span></a>
                 <a class="sidenav-item" asp-page="/Notifications" aria-current="@Current("/Notifications")">
                     <icon name="notifications" /><span class="sidenav-label">@L["Nav.Notifications"]</span>
-                    @* Filled in by the live script with the unread count. *@
-                    <span class="count count-primary nav-count" data-inbox-count hidden></span>
+                    @* The unread count, once the live connection says it. *@
+                    <island name="inbox-count" tag="span"><span class="count count-primary nav-count" hidden></span></island>
                 </a>
                 <a class="sidenav-item" asp-page="/Agents/Index" aria-current="@Current("/Agents/Index", "/Agents/Edit")"><icon name="smart_toy" /><span class="sidenav-label">@L["Nav.Agents"]</span></a>
                 <a class="sidenav-item" href="@profilePath" aria-current="@(onOwnProfile ? "page" : null)"><icon name="person" /><span class="sidenav-label">@L["Nav.Profile"]</span></a>
@@ -101,14 +96,16 @@
                     <a class="btn btn-primary sidenav-cta" asp-page="/Compose" aria-label="@L["Compose.Title"]"><icon name="edit_square" /><span class="sidenav-label">@L["Compose.Title"]</span></a>
                 }
                 <div class="sidenav-footer">
-                    <details class="menu sidenav-menu" data-menu>
-                        <summary class="menu-toggle" aria-label="@L["Nav.Account"]">
-                            <span class="avatar" data-live-region="nav-avatar" data-live-actors="@User.ActorId()"><img src="@avatar" alt="" width="32" height="32"></span>
-                            <span class="menu-handle">@@@handle</span>
-                            <icon name="more_horiz" class="menu-more" />
-                        </summary>
-                        <partial name="_AccountMenu" />
-                    </details>
+                    <island name="account-menu" props="new AccountMenuProps(Rail: true)">
+                        <details class="menu sidenav-menu">
+                            <summary class="menu-toggle" aria-label="@L["Nav.Account"]">
+                                <span class="avatar"><img src="@avatar" alt="" width="32" height="32"></span>
+                                <span class="menu-handle">@@@handle</span>
+                                <icon name="more_horiz" class="menu-more" />
+                            </summary>
+                            <partial name="_AccountMenu" />
+                        </details>
+                    </island>
                 </div>
             }
             else
@@ -152,7 +149,7 @@
                 </section>
             }
             <footer class="site-footer">
-                <partial name="_SiteOptions" />
+                <partial name="_SiteOptions" model="false" />
             </footer>
         </aside>
 
@@ -164,7 +161,7 @@
                 <a class="tabbar-item" asp-page="/Search" aria-current="@Current("/Search")"><icon name="search" /><span class="visually-hidden">@L["Nav.Search"]</span></a>
                 <a class="tabbar-item" asp-page="/Notifications" aria-current="@Current("/Notifications")">
                     <icon name="notifications" /><span class="visually-hidden">@L["Nav.Notifications"]</span>
-                    <span class="count count-primary nav-count" data-inbox-count hidden></span>
+                    <island name="inbox-count" tag="span"><span class="count count-primary nav-count" hidden></span></island>
                 </a>
                 <a class="tabbar-item" asp-page="/Agents/Index" aria-current="@Current("/Agents/Index", "/Agents/Edit")"><icon name="smart_toy" /><span class="visually-hidden">@L["Nav.Agents"]</span></a>
             </nav>
@@ -175,42 +172,50 @@
         }
     </div>
 
+    @* What the last action did: a toast at the bottom that goes by itself (notice) or stays until closed (alert). *@
+    <island name="toasts" props="new ToastsProps(notice, alert)">
     @if (notice is not null || alert is not null)
     {
-        @* What the last action did: a toast at the bottom that goes by itself (notice) or stays until closed (alert). *@
         <div class="toast-stack" data-position="bottom-center">
             @if (notice is not null)
             {
-                <div class="toast toast-dark" role="status" data-toast>
+                <div class="toast toast-dark" role="status">
                     <icon name="check_circle" class="toast-icon" />
                     <div class="toast-content"><p class="toast-message">@notice</p></div>
-                    <button class="btn-close toast-close" type="button" aria-label="@L["Toast.Close"]" data-toast-close></button>
+                    <button class="btn-close toast-close" type="button" aria-label="@L["Toast.Close"]"></button>
                 </div>
             }
             @if (alert is not null)
             {
-                <div class="toast toast-danger" role="alert" data-toast data-toast-sticky>
+                <div class="toast toast-danger" role="alert">
                     <icon name="error" class="toast-icon" />
                     <div class="toast-content"><p class="toast-message">@alert</p></div>
-                    <button class="btn-close toast-close" type="button" aria-label="@L["Toast.Close"]" data-toast-close></button>
+                    <button class="btn-close toast-close" type="button" aria-label="@L["Toast.Close"]"></button>
                 </div>
             }
         </div>
     }
+    </island>
 
-    @* The confirmation asked before a destructive action (<form data-confirm>); confirm.ts fills in the question. *@
-    <dialog class="dialog dialog-sm dialog-plain confirm-dialog" data-confirm-dialog>
-        <form method="dialog" asp-antiforgery="false">
-            <div class="dialog-body">
-                <p class="confirm-message" data-confirm-message></p>
-            </div>
-            <div class="dialog-footer">
-                <button class="btn" value="cancel" autofocus>@L["Confirm.Cancel"]</button>
-                <button class="btn btn-danger" value="confirm">@L["Confirm.Ok"]</button>
-            </div>
-        </form>
-    </dialog>
-
-    @await RenderSectionAsync("Scripts", required: false)
+    @if (signedIn)
+    {
+        @* The confirmation asked before a destructive action, with the question filled in (shell/ConfirmDialog.tsx). Signed
+           out there is nothing to destroy. *@
+        <island name="confirm">
+            <dialog class="dialog dialog-sm dialog-plain confirm-dialog">
+                <!form method="dialog">
+                    <div class="dialog-body">
+                        <p class="confirm-message"></p>
+                    </div>
+                    <div class="dialog-footer">
+                        <button class="btn" value="cancel" autofocus>@L["Confirm.Cancel"]</button>
+                        <button class="btn btn-danger" value="confirm">@L["Confirm.Ok"]</button>
+                    </div>
+                </!form>
+            </dialog>
+        </island>
+    }
+    @* What the app needs besides the islands' props (Client/app/config.ts). *@
+    <script type="application/json" id="app-config">@Html.Raw(AppConfig.For(Context))</script>
 </body>
 </html>

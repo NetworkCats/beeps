@@ -188,13 +188,6 @@ public sealed partial class BeepService(
         return [.. beepIds.Distinct().Where(built.ContainsKey).Select(id => built[id])];
     }
 
-    /// <summary>Handles of the authors of these beeps, for the visible ones; for "replying to @…" lines.</summary>
-    public async Task<IReadOnlyDictionary<Guid, string?>> GetAuthorHandlesAsync(Viewer? viewer, IReadOnlyCollection<Guid> beepIds, CancellationToken cancellationToken)
-    {
-        var rows = await store.GetRowsAsync(beepIds, viewer?.ActorId, cancellationToken);
-        return rows.ToDictionary(r => r.Id, r => r.Author.Handle);
-    }
-
     /// <summary>The beeps of a thread after <paramref name="after"/>, oldest first, by the id of its root (which may itself be deleted).</summary>
     public async Task<CursorPage<BeepView>> ListThreadAsync(Viewer? viewer, Guid rootId, Guid? after, int? limit, CancellationToken cancellationToken)
     {

@@ -1,10 +1,18 @@
 @page "/agents"
+@using Beeps.Pages.Islands
 @model Beeps.Pages.Agents.IndexModel
+@inject Microsoft.Extensions.Options.IOptions<SiteOptions> Site
 @{
     ViewData["Title"] = L["Agents.Title"];
-    var liveActors = string.Join(' ', Model.Agents.Select(a => a.Id).Prepend(User.ActorId()));
-    var keyStillShown = Model.NewKey is { } shownKey ? "[data-key-prefix=\"" + shownKey.Agent.KeyPrefix + "\"]" : "";
+    // Drawn again when the agents change (connected, renamed, new avatar, changed in another tab). A new key is shown
+    // only on the response that made it: it stays while it is still good.
+    var props = new AgentsProps(
+        new LiveProps(Actors: [User.ActorId(), .. Model.Agents.Select(a => a.Id)]),
+        [.. Model.Agents.Select(AgentRowProps.From)],
+        Model.NewKey is { } created ? NewKeyProps.From(created, L, Site.Value) : null);
 }
+@* Members only, so signed in: Client/app/pages/Agents.tsx. *@
+<island name="agents" props="props">
 <section class="feed agents">
     <header class="column-header">
         <h1 class="column-title column-heading">@L["Agents.Title"]</h1>
@@ -15,9 +23,6 @@
     <p class="column-lead">@L["Agents.Lead"]</p>
     <form-errors />
 
-    @* Shown only on the response that generated it: kept when the page is drawn again live (data-live-slot, live.ts). *@
-    @* Checked against the agents page when they change: a key regenerated or deleted elsewhere is taken down (live.ts). *@
-    <div data-live-slot="new-key" data-live-slot-check="/agents" data-live-slot-requires="@keyStillShown">
     @if (Model.NewKey is not null)
     {
         <div class="card new-key">
@@ -31,11 +36,7 @@
             </div>
         </div>
     }
-    </div>
 
-    @* Drawn again in place when the agents change (connected, renamed, new avatar, changed in another tab). The new key
-       above stays: it is shown only on the response that made it. *@
-    <div data-live-region="agents" data-live-actors="@liveActors">
     @if (Model.Agents.Count == 0)
     {
         <div class="empty">
@@ -74,7 +75,7 @@
                             }
                             @if (agent.KeyPrefix is not null)
                             {
-                                <span class="agent-key"><icon name="key" /><code data-key-prefix="@agent.KeyPrefix">@(agent.KeyPrefix)…</code></span>
+                                <span class="agent-key"><icon name="key" /><code>@(agent.KeyPrefix)…</code></span>
                             }
                             <span>@L["Agents.LastUsed"] @if (agent.KeyLastUsedAt is null) { @L["Agents.Never"] } else { <utc-time value="agent.KeyLastUsedAt" /> }</span>
                         </p>
@@ -107,5 +108,5 @@
             }
         </ul>
     }
-    </div>
 </section>
+</island>

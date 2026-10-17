@@ -74,7 +74,7 @@ public static class Principals
     }
 
     /// <summary>
-    /// How the request is signed in, for the browser's tabs to compare (Client/ts/auth-sync.ts, live.ts):
+    /// How the request is signed in, for the browser's tabs to compare (Client/app/auth-sync.ts, Client/app/live.ts):
     /// <c>member:{id}</c>, <c>unverified:{id}</c>, or <c>anonymous</c>.
     /// </summary>
     public static string AuthState(this ClaimsPrincipal principal) =>

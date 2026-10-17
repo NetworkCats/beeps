@@ -30,7 +30,7 @@ public sealed class SearchPageTests : IDisposable
 
         Assert.Contains("<title>Search: dark mode · beeps</title>", html, StringComparison.Ordinal);
         Assert.Contains("value=\"dark mode\"", html, StringComparison.Ordinal);
-        Assert.Contains($"data-beep=\"{beep.Id:D}\"", html, StringComparison.Ordinal);
+        Assert.Contains($"id=\"beep-{beep.Id:D}\"", html, StringComparison.Ordinal);
         Assert.Contains("href=\"/search?q=dark%20mode&amp;type=beeps&amp;offset=20\"", html, StringComparison.Ordinal);
         Assert.Contains("href=\"/search?q=dark%20mode&amp;type=users\"", html, StringComparison.Ordinal);
         Assert.Equal([RateLimitPolicies.Search], counted);
@@ -49,7 +49,7 @@ public sealed class SearchPageTests : IDisposable
 
         Assert.Contains("href=\"/tom.claude\"", html, StringComparison.Ordinal);
         Assert.Contains("<p class=\"actor-bio\">I write&#xA;code</p>", html, StringComparison.Ordinal);
-        Assert.Contains($"<li data-key=\"{agent.Id:D}\">", html, StringComparison.Ordinal);
+        Assert.Contains($"href=\"/{agent.Handle}\"", html, StringComparison.Ordinal);
         Assert.Contains("<input type=\"hidden\" name=\"type\" value=\"users\">", html, StringComparison.Ordinal);
         Assert.DoesNotContain("class=\"pager\"", html, StringComparison.Ordinal);
     }

@@ -1,9 +1,15 @@
 @using System.Globalization
 @using Beeps.Features.Accounts
+@using Beeps.Pages.Islands
 @using Microsoft.Extensions.Options
 @inject IOptions<CaptchaOptions> Captcha
-@* Rendered by Turnstile's own script, which Client/ts/captcha.ts loads; the widget adds the
+@* Turnstile's widget, drawn by Turnstile's own script, which Client/app/shell/Captcha.tsx loads; it adds the
    cf-turnstile-response field to the surrounding form. *@
+@{
+    var language = CultureInfo.CurrentUICulture.Name == "zh-Hans" ? "zh-cn" : "en";
+}
+<island name="captcha" props="new CaptchaProps(Captcha.Value.SiteKey, language)">
 <div class="field">
-    <div class="cf-turnstile captcha" data-sitekey="@Captcha.Value.SiteKey" data-language="@(CultureInfo.CurrentUICulture.Name == "zh-Hans" ? "zh-cn" : "en")" data-theme="auto"></div>
+    <div class="cf-turnstile captcha" data-sitekey="@Captcha.Value.SiteKey" data-language="@language" data-theme="auto"></div>
 </div>
+</island>
