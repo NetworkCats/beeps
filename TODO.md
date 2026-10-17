@@ -266,6 +266,8 @@
 - **直接用 SQL 改数据库不会让缓存失效**，README 写了怎么清空本地 Valkey。
 - **自动化测试覆盖不到的部分**（真实 SQL 执行计划、Valkey 批量命令和 Pub/Sub、多实例之间的失效、释放未验证账号的 SQL）已按上文在本地验证；缓存、失效、change tracker 登记、Outbox 备份、清理任务的逻辑有单元测试。压测和冒烟数据已从本地数据库、Valkey、Meilisearch 和 SeaweedFS 清除。
 
+- **按确认（2026-10-17）留到阶段 7 的实测**：真实 OpenRouter key 调用一次、R2 实际上传和删除、nginx 与 Cloudflare 配置、在 GitHub 上跑一次 CI。本机没有这些账号和凭据，阶段 0–6 中能在本地验证的部分都已验证（见上文），这几项列在下面的阶段 7 清单里。
+
 ## 阶段 7：可上线状态
 - [ ] Dockerfile（多阶段构建）
 - [ ] `compose.prod.yml`（应用、PostgreSQL、Valkey、Meilisearch、nginx host 网络，数据卷、健康检查）
@@ -278,3 +280,4 @@
 - [ ] nginx `client_max_body_size` 约 21 MB（网页发帖表单 4 张图），`ForwardedHeaders` 配置 nginx 的实际来源地址
 - [ ] 多语言检查、压测、修复发现的问题
 - [ ] 上线前自检：全部测试通过，生产配置下能启动并通过健康检查
+- [ ] 用真实账号实测：OpenRouter 审核调用、R2 上传和删除、经 nginx + Cloudflare 的 SSE 和真实 IP、GitHub 上的 CI
