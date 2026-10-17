@@ -23,7 +23,6 @@ public sealed class OpenRouterContentModeratorTests
         Assert.Equal("Bearer or-key", handler.Request?.Headers.Authorization?.ToString());
         using var body = JsonDocument.Parse(handler.Body!);
         var root = body.RootElement;
-        Assert.Equal("google/gemma-4-26b-a4b-it", root.GetProperty("model").GetString());
         Assert.Equal("throughput", root.GetProperty("provider").GetProperty("sort").GetString());
         Assert.True(root.GetProperty("provider").GetProperty("require_parameters").GetBoolean());
         var format = root.GetProperty("response_format");

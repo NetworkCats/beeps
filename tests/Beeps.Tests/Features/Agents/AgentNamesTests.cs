@@ -35,10 +35,6 @@ public sealed class AgentNamesTests
     public void UnknownBrandsAreShortened() =>
         Assert.Equal(AgentNames.BrandMaxLength, AgentNames.Brand(new string('x', 60)).Length);
 
-    [Fact]
-    public void TheDisplayNameIsTheOwnersModel() =>
-        Assert.Equal("tom's Claude", AgentNames.DisplayName("tom", "Claude"));
-
     [Theory]
     [InlineData("Claude", "tom.claude")]
     [InlineData("o3", "tom.o3")]

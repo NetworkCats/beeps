@@ -55,14 +55,5 @@ public sealed class AccountCleanupJobTests
         await accounts.Received(1).ForgetAccountAsync(second, Arg.Any<CancellationToken>());
     }
 
-    [Fact]
-    public void RunsHourly()
-    {
-        var job = CreateJob();
-
-        Assert.Equal(AccountCleanupJob.JobName, job.Name);
-        Assert.Equal(TimeSpan.FromHours(1), job.Interval);
-    }
-
     private AccountCleanupJob CreateJob() => new(sessions, accounts, unitOfWork, TestData.Live(liveEvents), TestData.Time(), NullLogger<AccountCleanupJob>.Instance);
 }

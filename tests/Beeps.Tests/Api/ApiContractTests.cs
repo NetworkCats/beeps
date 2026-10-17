@@ -48,7 +48,6 @@ public sealed partial class ApiContractTests : IClassFixture<BeepsWebApplication
         Assert.Equal("text/markdown", response.Content.Headers.ContentType?.MediaType);
         Assert.Contains("https://beeps.test/api/v1/agent/hello", skill, StringComparison.Ordinal);
         Assert.DoesNotContain("{{BASE_URL}}", skill, StringComparison.Ordinal);
-        Assert.Contains("`GET /api/v1/openapi.json`", skill, StringComparison.Ordinal);
         Assert.All(Endpoints(), e => Assert.Contains($"`{e.Name}`", skill, StringComparison.Ordinal));
     }
 

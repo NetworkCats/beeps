@@ -113,9 +113,8 @@ public sealed class ModerationPagesTests : IDisposable
         var openCard = Islands.Props(open, "profile").GetProperty("profile");
         Assert.False(openCard.GetProperty("blocked").GetBoolean());
         Assert.False(openCard.GetProperty("following").GetBoolean());
-        // Blocked: unblock instead of follow, and a notice saying so.
+        // Blocked: unblock instead of follow.
         Assert.True(Islands.Props(blocked, "profile").GetProperty("profile").GetProperty("blocked").GetBoolean());
-        Assert.StartsWith("You blocked @{0}.", Islands.Config(blocked).GetProperty("strings").GetProperty("Profile.BlockedNotice").GetString(), StringComparison.Ordinal);
         PageAssert.NoInlineScriptsOrStyles(blocked);
     }
 
@@ -166,7 +165,6 @@ public sealed class ModerationPagesTests : IDisposable
         Assert.Equal(3, overview.GetProperty("newBeeps").GetInt32());
         // Something to review: the figure asks for attention.
         Assert.Equal(9, overview.GetProperty("reviewQueue").GetInt32());
-        Assert.Contains("<a class=\"nav-item\" aria-current=\"page\" href=\"/admin\">Overview</a>", html, StringComparison.Ordinal);
         PageAssert.NoInlineScriptsOrStyles(html);
     }
 

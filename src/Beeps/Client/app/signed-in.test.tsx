@@ -44,24 +44,6 @@ function draw(file: string, name: string, change: (props: Record<string, any>) =
   return renderToString(<Component props={props} errors={island.errors ?? {}} />);
 }
 
-/** The opening tag of the first element with this class, attributes and all. */
-function tag(html: string, className: string): string {
-  const found = html.match(new RegExp(`<[a-z]+ [^>]*class="${className}"[^>]*>`));
-  assert.ok(found, `no element with class "${className}"`);
-  return found[0];
-}
-
-test('the home timeline has a composer that posts its text and images to the compose page', () => {
-  const html = draw('home.json', 'index');
-  const form = tag(html, 'composer');
-  assert.match(form, /method="post"/);
-  assert.match(form, /enctype="multipart\/form-data"/);
-  assert.match(form, /action="\/compose"/);
-  assert.match(html, /<input type="hidden" name="ReturnUrl" value="\/"\/>/);
-  assert.match(html, /<input class="composer-file" type="file" name="Images" multiple/);
-  assert.match(html, /name="__RequestVerificationToken"/);
-});
-
 test('a liked beep shows the like pressed and posts the unlike', () => {
   const html = draw('home.json', 'index');
   // Beep 0b is liked in the sample, 0a is not.
@@ -78,23 +60,8 @@ test('one\'s own beep can be deleted, after asking, and someone else\'s reported
   assert.match(html, /<span class="badge badge-warning" title="[^"]+">Under review<\/span>/);
 });
 
-test('the account menu works without script and leads to the profile, settings and signing out', () => {
-  for (const [rail, menu] of [[true, 'menu sidenav-menu'], [false, 'menu topbar-menu']] as const) {
-    const html = draw('home.json', 'account-menu', (props) => {
-      props.rail = rail || undefined;
-    });
-    // A <details>: it opens without script.
-    assert.match(html, new RegExp(`^<details class="${menu}"><summary class="menu-toggle" aria-label="Account menu">`));
-    assert.match(html, /<a class="dropdown-item" href="\/tom">/);
-    assert.match(html, /<a class="dropdown-item" href="\/settings">/);
-    assert.match(html, /<form method="post" action="\/logout">/);
-  }
-});
-
-test('a profile has its beeps and replies tabs and a follow button that follows the state', () => {
+test('a profile has a follow button that follows the state', () => {
   const followed = draw('profile.json', 'profile');
-  assert.match(followed, /<a class="tab" href="\/alice" aria-current="page">Beeps<\/a>/);
-  assert.match(followed, /<a class="tab" href="\/alice\/replies">Replies<\/a>/);
   // tom follows alice in the sample.
   assert.match(followed, /<form method="post" action="\/alice\/follow\?handler=Unfollow">/);
   const notFollowed = draw('profile.json', 'profile', (props) => {

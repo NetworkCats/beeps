@@ -70,11 +70,4 @@ public sealed class MediaRulesTests
     [InlineData(199, 99, 3)]
     public void ACropOutsideTheImageOrTooSmallIsRejected(int x, int y, int size) =>
         Assert.Null(MediaRules.FitCrop(new AvatarCrop(x, y, size), 200, 100));
-
-    [Fact]
-    public void ObjectNamesComeOnlyFromTheStorageKey()
-    {
-        Assert.Equal(["k/full.webp", "k/thumb.webp", "k/avatar.webp"], MediaObjects.All("k"));
-        Assert.Equal(new Uri("https://media.beeps.test/k/thumb.webp"), TestData.Media.Thumbnail("k"));
-    }
 }

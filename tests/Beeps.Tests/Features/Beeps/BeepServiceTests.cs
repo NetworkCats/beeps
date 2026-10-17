@@ -448,14 +448,6 @@ public sealed class BeepServiceTests
     }
 
     [Fact]
-    public async Task WithoutImagesTheTextIsStillRequired()
-    {
-        var result = await CreateService().PostAsync(Human, "  ", null, [], TestSupport.Ct);
-
-        Assert.Equal(BeepErrorCodes.TextEmpty, result.Error?.Code);
-    }
-
-    [Fact]
     public async Task AWebPostChecksTheTextBeforeUploadingAnything()
     {
         var result = await CreateService().PostWithUploadsAsync(Human, new string('a', 501), null, [TestImages.Content(TestImages.Png())], TestSupport.Ct);

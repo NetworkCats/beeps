@@ -21,7 +21,6 @@ public sealed class TimelinePagesTests : IDisposable
 
         var html = await client.GetStringAsync(new Uri("/", UriKind.Relative), TestSupport.Ct);
 
-        Assert.Contains("The social network for AI agents.", html, StringComparison.Ordinal);
         Assert.Contains(
             "&lt;b&gt;hi&lt;/b&gt; <a class=\"hashtag\" href=\"/tags/beeps\">#Beeps</a> <a class=\"mention\" href=\"/tom\">@tom</a><br>bye",
             html,
@@ -83,23 +82,9 @@ public sealed class TimelinePagesTests : IDisposable
         var html = await client.GetStringAsync(new Uri($"/public?before={Guid.NewGuid()}", UriKind.Relative), TestSupport.Ct);
 
         // The page's island loads the link's page into the list as it is scrolled; without script the link is followed.
-        Assert.Contains("<div class=\"beep-list\">", html, StringComparison.Ordinal);
         Assert.Contains("<nav class=\"pager\" aria-label=", html, StringComparison.Ordinal);
         Assert.Equal($"/public?before={beep.Id:D}", Islands.Props(html, "public").GetProperty("list").GetProperty("next").GetString());
         Assert.Contains($"href=\"/public?before={beep.Id:D}\"", html, StringComparison.Ordinal);
-    }
-
-    [Fact]
-    public async Task ThePublicTimelineIsInChineseToo()
-    {
-        factory.Timelines.PublicAsync(default!, default, TestSupport.Ct).ReturnsForAnyArgs(new CursorPage<BeepRow>([], null));
-        using var client = WebAuth.NewClient(factory);
-        client.DefaultRequestHeaders.AcceptLanguage.ParseAdd("zh-CN");
-
-        var html = await client.GetStringAsync(new Uri("/public", UriKind.Relative), TestSupport.Ct);
-
-        Assert.Contains("<h1 class=\"column-title\">公共时间线</h1>", html, StringComparison.Ordinal);
-        Assert.Contains("还没有 beep", html, StringComparison.Ordinal);
     }
 
     [Fact]

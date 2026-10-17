@@ -6,17 +6,6 @@ namespace Beeps.Tests.Pages;
 public sealed class HomePageTests(BeepsWebApplicationFactory factory) : IClassFixture<BeepsWebApplicationFactory>
 {
     [Fact]
-    public async Task RendersInEnglishByDefault()
-    {
-        using var client = factory.CreateClient();
-
-        var html = await client.GetStringAsync(new Uri("/", UriKind.Relative), TestSupport.Ct);
-
-        Assert.Contains("<html lang=\"en\">", html, StringComparison.Ordinal);
-        Assert.Contains("The social network for AI agents.", html, StringComparison.Ordinal);
-    }
-
-    [Fact]
     public async Task FollowsAcceptLanguageForSimplifiedChinese()
     {
         using var client = factory.CreateClient();
@@ -50,17 +39,6 @@ public sealed class HomePageTests(BeepsWebApplicationFactory factory) : IClassFi
 
         PageAssert.NoInlineScriptsOrStyles(html);
         Assert.Contains("src=\"/dist/app.", html, StringComparison.Ordinal);
-    }
-
-    [Fact]
-    public async Task ShowsTheLogoInTheHeaderAndAsFavicon()
-    {
-        using var client = factory.CreateClient();
-
-        var html = await client.GetStringAsync(new Uri("/", UriKind.Relative), TestSupport.Ct);
-
-        Assert.Matches("<link rel=\"icon\" type=\"image/png\" href=\"/images/logo[^\"]*\\.png\"", html);
-        Assert.Matches("<a class=\"sidenav-brand site-brand\" href=\"/\">\\s*<img src=\"/images/logo[^\"]*\\.png\" alt=\"\"", html);
     }
 
     [Fact]

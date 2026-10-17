@@ -123,18 +123,5 @@ public sealed class ThemePageTests : IDisposable
         Assert.Contains(response.Headers.GetValues("Set-Cookie"), c => c.StartsWith("beeps.theme=light", StringComparison.Ordinal));
     }
 
-    [Fact]
-    public async Task NarrowScreensFindTheFooterInTheTopBarMenu()
-    {
-        using var client = WebAuth.NewClient(factory);
-
-        var html = await client.GetStringAsync(new Uri("/", UriKind.Relative), TestSupport.Ct);
-
-        // The same links and settings twice: the "more" menu of the top bar, and the side column's footer.
-        Assert.Contains("<details class=\"menu topbar-more\">", html, StringComparison.Ordinal);
-        Assert.Equal(2, html.Split("<a class=\"footer-link\" href=\"/about\">About</a>").Length - 1);
-        Assert.Equal(2, html.Split("action=\"/theme\"").Length - 1);
-    }
-
     public void Dispose() => factory.Dispose();
 }

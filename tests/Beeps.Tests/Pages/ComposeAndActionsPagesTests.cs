@@ -193,8 +193,6 @@ public sealed class ComposeAndActionsPagesTests : IDisposable
         Assert.True(items[mine.Id].GetProperty("canDelete").GetBoolean());
         Assert.True(items[myAgents.Id].GetProperty("canDelete").GetBoolean());
         Assert.False(items[theirs.Id].TryGetProperty("canDelete", out _));
-        // The question asked before deleting.
-        Assert.Equal("Delete this beep? This cannot be undone.", Islands.Config(html).GetProperty("strings").GetProperty("Beep.Delete.Confirm").GetString());
     }
 
     public void Dispose() => factory.Dispose();

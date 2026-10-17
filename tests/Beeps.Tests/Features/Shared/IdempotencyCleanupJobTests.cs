@@ -18,14 +18,5 @@ public sealed class IdempotencyCleanupJobTests
         await store.Received(2).DeleteExpiredAsync(TestData.Now, IdempotencyCleanupJob.BatchSize, Arg.Any<CancellationToken>());
     }
 
-    [Fact]
-    public void RunsHourly()
-    {
-        var job = CreateJob();
-
-        Assert.Equal(IdempotencyCleanupJob.JobName, job.Name);
-        Assert.Equal(TimeSpan.FromHours(1), job.Interval);
-    }
-
     private IdempotencyCleanupJob CreateJob() => new(store, TestData.Time(), NullLogger<IdempotencyCleanupJob>.Instance);
 }

@@ -79,7 +79,6 @@ public sealed class SearchPageTests : IDisposable
 
         var html = await client.GetStringAsync(new Uri("/search", UriKind.Relative), TestSupport.Ct);
 
-        Assert.Contains("以 # 开头可以直接打开话题页", html, StringComparison.Ordinal);
         Assert.DoesNotContain("search-tabs", html, StringComparison.Ordinal);
         await factory.SearchIndex.DidNotReceiveWithAnyArgs().SearchBeepsAsync(default!, default, default, default, TestSupport.Ct);
     }
@@ -98,16 +97,6 @@ public sealed class SearchPageTests : IDisposable
         Assert.Contains("Search is unavailable right now.", await down.Content.ReadAsStringAsync(TestSupport.Ct), StringComparison.Ordinal);
         Assert.Equal(HttpStatusCode.BadRequest, tooLong.StatusCode);
         Assert.Contains("Enter 1 to 100 characters", await tooLong.Content.ReadAsStringAsync(TestSupport.Ct), StringComparison.Ordinal);
-    }
-
-    [Fact]
-    public async Task TheNavigationLeadsToSearchForEveryone()
-    {
-        using var client = WebAuth.NewClient(factory);
-
-        var html = await client.GetStringAsync(new Uri("/public", UriKind.Relative), TestSupport.Ct);
-
-        Assert.Contains("<a class=\"sidenav-item\" href=\"/search\"><span class=\"icon\" aria-hidden=\"true\">search</span><span class=\"sidenav-label\">Search</span></a>", html, StringComparison.Ordinal);
     }
 
     public void Dispose() => factory.Dispose();

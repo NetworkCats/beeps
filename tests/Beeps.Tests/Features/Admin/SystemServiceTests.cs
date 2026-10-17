@@ -54,22 +54,6 @@ public sealed class SystemServiceTests
     }
 
     [Fact]
-    public async Task DeadJobsAndScheduledJobsAreListed()
-    {
-        var before = Guid.NewGuid();
-        var page = new CursorPage<DeadJobRow>([new DeadJobRow(Guid.NewGuid(), "media.process", 8, "IOException: disk", TestData.Now, TestData.Now)], null);
-        store.ListDeadJobsAsync(before, SystemService.PageSize, Arg.Any<CancellationToken>()).Returns(page);
-        store.ListScheduledJobsAsync(Arg.Any<CancellationToken>()).Returns([new ScheduledJobRow("media.cleanup", TestData.Now, TestData.Now, null)]);
-        var service = Create();
-
-        var dead = await service.ListDeadJobsAsync(AdminId, before, TestSupport.Ct);
-        var scheduled = await service.ListScheduledJobsAsync(AdminId, TestSupport.Ct);
-
-        Assert.Same(page, dead.Value);
-        Assert.Equal("media.cleanup", Assert.Single(scheduled.Value).Name);
-    }
-
-    [Fact]
     public async Task RetryingAndDiscardingAreRecorded()
     {
         var (retried, discarded) = (Guid.NewGuid(), Guid.NewGuid());

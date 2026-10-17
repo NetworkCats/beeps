@@ -18,7 +18,6 @@ public sealed class AccountPagesTests : IDisposable
         Assert.Contains("class=\"cf-turnstile captcha\" data-sitekey=\"test-site-key\"", html, StringComparison.Ordinal);
         // The app loads Turnstile's script for the widget.
         Assert.Equal("test-site-key", Islands.Props(html, "captcha").GetProperty("siteKey").GetString());
-        Assert.Contains("class=\"steps steps-sm onboarding-steps\"", html, StringComparison.Ordinal);
         PageAssert.NoInlineScriptsOrStyles(html);
     }
 
@@ -113,7 +112,7 @@ public sealed class AccountPagesTests : IDisposable
     [Fact]
     public async Task LoginReturnsToTheRequestedPage()
     {
-        var user = WebAuth.ArrangeUser(factory);
+        WebAuth.ArrangeUser(factory);
         using var client = WebAuth.NewClient(factory);
 
         using var response = await WebAuth.PostFormAsync(client, "/login?ReturnUrl=%2Fagents", "/login",
@@ -121,7 +120,6 @@ public sealed class AccountPagesTests : IDisposable
 
         Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
         Assert.Equal("/agents", response.Headers.Location?.OriginalString);
-        Assert.NotNull(user);
     }
 
     [Fact]

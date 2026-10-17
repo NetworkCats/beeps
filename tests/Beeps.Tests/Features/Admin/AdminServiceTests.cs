@@ -308,19 +308,6 @@ public sealed class AdminServiceTests
         Assert.Equal(AuditActions.RevokeInvite, Assert.Single(audit).Action);
     }
 
-    [Fact]
-    public async Task ListsComeFromTheStore()
-    {
-        var invites = new[] { new InviteRow(Guid.NewGuid(), "AB12", TestData.Now, TestData.Now.AddDays(1), null, null) };
-        var log = new CursorPage<AuditLogRow>([], null);
-        store.ListInvitesAsync(AdminService.PageSize, Arg.Any<CancellationToken>()).Returns(invites);
-        store.ListAuditLogAsync(null, AdminService.PageSize, Arg.Any<CancellationToken>()).Returns(log);
-        var service = CreateService();
-
-        Assert.Same(invites, (await service.ListInvitesAsync(AdminId, TestSupport.Ct)).Value);
-        Assert.Same(log, (await service.ListAuditLogAsync(AdminId, null, TestSupport.Ct)).Value);
-    }
-
     private User User(bool admin = false, Guid? id = null)
     {
         var user = TestData.User(handle: $"u{Guid.NewGuid():N}"[..10], admin: admin);

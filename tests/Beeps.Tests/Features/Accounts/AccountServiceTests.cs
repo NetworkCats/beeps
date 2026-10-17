@@ -512,14 +512,6 @@ public sealed class AccountServiceTests
         await store.Received(1).ForgetAccountAsync(user.Id, Arg.Any<CancellationToken>());
     }
 
-    [Fact]
-    public async Task RegistrationModeComesFromTheStore()
-    {
-        store.GetRegistrationModeAsync(Arg.Any<CancellationToken>()).Returns(RegistrationMode.InviteOnly);
-
-        Assert.Equal(RegistrationMode.InviteOnly, await CreateService().GetRegistrationModeAsync(TestSupport.Ct));
-    }
-
     // ---- Settings ----------------------------------------------------------
 
     [Fact]

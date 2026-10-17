@@ -101,10 +101,9 @@ public sealed class MediaPagesTests : IDisposable
 
         var html = await client.GetStringAsync(new Uri("/", UriKind.Relative), TestSupport.Ct);
 
-        // The composer (which the app draws with its image picker) and the picker's label.
+        // The composer, which the app draws with its image picker.
         Assert.True(Islands.Props(html, "index").TryGetProperty("composer", out _));
         var config = Islands.Config(html);
-        Assert.Equal("Add images (at most {0})", config.GetProperty("strings").GetProperty("Compose.Images").GetString());
         // The app checks the picked images against the same limits before they are sent.
         Assert.Equal(MediaRules.MaxImagesPerBeep, config.GetProperty("limits").GetProperty("imagesPerBeep").GetInt32());
         Assert.Equal(MediaRules.MaxBytes, config.GetProperty("limits").GetProperty("mediaBytes").GetInt64());

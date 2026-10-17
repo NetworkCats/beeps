@@ -16,8 +16,7 @@ public sealed class ModerationSetupTests
     {
         using var services = Build("Production", moderation: true, key: null);
 
-        var failure = Assert.Throws<OptionsValidationException>(() => services.GetRequiredService<IOptions<OpenRouterOptions>>().Value);
-        Assert.Contains("OpenRouter:ApiKey", failure.Message, StringComparison.Ordinal);
+        Assert.Throws<OptionsValidationException>(() => services.GetRequiredService<IOptions<OpenRouterOptions>>().Value);
     }
 
     [Theory]

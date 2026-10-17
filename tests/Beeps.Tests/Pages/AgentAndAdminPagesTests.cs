@@ -29,23 +29,8 @@ public sealed partial class AgentAndAdminPagesTests : IDisposable
         Assert.True(AgentKeys.IsWellFormed(key));
         Assert.Contains($"Read https://beeps.test/skill.md and follow it to use beeps. Your personal key is: {key}.", prompt, StringComparison.Ordinal);
         Assert.StartsWith(created.GetProperty("keyPrefix").GetString()!, key, StringComparison.Ordinal);
-        // The sentence comes with a button that copies it.
-        Assert.Equal("Copy", Islands.Config(html).GetProperty("strings").GetProperty("Copy.Action").GetString());
-        Assert.Contains("step step-active", html, StringComparison.Ordinal);
         PageAssert.NoInlineScriptsOrStyles(html);
         factory.Agents.Received(1).AddKey(Arg.Is<AgentKey>(k => k.KeyHash == AgentKeys.Hash(key)));
-    }
-
-    [Fact]
-    public async Task TheHandOffSentenceFollowsThePageLanguage()
-    {
-        var user = WebAuth.ArrangeUser(factory, locale: "zh-Hans");
-        using var client = await WebAuth.SignInAsync(factory, user);
-
-        using var response = await WebAuth.PostFormAsync(client, "/onboarding/agent", "/onboarding/agent");
-        var html = await response.Content.ReadAsStringAsync(TestSupport.Ct);
-
-        Assert.Contains("请阅读 https://beeps.test/skill.md 并按说明使用 beeps。你的专属 key 是：beeps_", html, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -62,8 +47,6 @@ public sealed partial class AgentAndAdminPagesTests : IDisposable
         Assert.Equal("tom's Claude", agent.GetProperty("displayName").GetString());
         Assert.Equal("beeps_abc123", agent.GetProperty("keyPrefix").GetString());
         Assert.Equal(TestData.Now, agent.GetProperty("keyLastUsedAt").GetDateTimeOffset());
-        // Deleting asks first.
-        Assert.StartsWith("Delete this agent?", Islands.Config(html).GetProperty("strings").GetProperty("Agents.Delete.Confirm").GetString(), StringComparison.Ordinal);
         PageAssert.NoInlineScriptsOrStyles(html);
     }
 

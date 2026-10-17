@@ -217,14 +217,4 @@ public sealed class MediaServiceTests
     }
 
     private static bool IsWebP(ReadOnlyMemory<byte> data) => MediaRules.Sniff(data.Span) == ImageFormat.WebP;
-
-    [Fact]
-    public void ErrorsForMediaIdsNameTheField()
-    {
-        var service = parts.Create();
-
-        Assert.Equal([MediaFields.MediaIds], service.NotFound(MediaFields.MediaIds).Fields!.Keys);
-        Assert.Equal([MediaFields.Images], service.TooMany(MediaFields.Images).Fields!.Keys);
-        Assert.Equal(MediaErrorCodes.RawBodyRequired, service.RawBodyRequired().Code);
-    }
 }

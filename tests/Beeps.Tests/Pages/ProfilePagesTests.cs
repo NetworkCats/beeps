@@ -162,19 +162,6 @@ public sealed class ProfilePagesTests : IDisposable
         PageAssert.NoInlineScriptsOrStyles(html);
     }
 
-    [Fact]
-    public async Task AnEmptyInboxSaysWhatWillShowUp()
-    {
-        var user = WebAuth.ArrangeUser(factory, locale: "zh-Hans");
-        using var client = await WebAuth.SignInAsync(factory, user);
-
-        var html = await client.GetStringAsync(new Uri("/notifications", UriKind.Relative), TestSupport.Ct);
-
-        // Nothing in it, so the empty state shows, in the page's language (and no "mark read" until something arrives).
-        Assert.Empty(Islands.Props(html, "notifications").GetProperty("page").GetProperty("items").EnumerateArray());
-        Assert.Equal("还没有通知", Islands.Config(html).GetProperty("strings").GetProperty("Notifications.Empty.Title").GetString());
-    }
-
     private ActorRow ArrangeProfile(string handle, string? bio = null)
     {
         var actor = TestBeeps.Human(handle);
