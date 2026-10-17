@@ -137,7 +137,7 @@ public sealed class EfAgentStore(BeepsDbContext db, HybridCache cache, PendingCa
         if (connected)
         {
             // Its new handle had no entry (missing handles are not cached); its owner's agent list already has it.
-            cacheChanges.Add(CacheChange.Actor(agentId));
+            cacheChanges.Add(CacheChange.AgentConnected(agentId));
         }
 
         return connected;

@@ -131,7 +131,7 @@ public sealed partial class CacheInvalidator(
         change.Kind switch
         {
             CacheChangeKind.Beep or CacheChangeKind.BeepRemoved => [CacheKinds.Beep.Key(change.Id)],
-            CacheChangeKind.Actor or CacheChangeKind.ActorVisibility or CacheChangeKind.ActorRestored => [CacheKinds.Actor.Key(change.Id)],
+            CacheChangeKind.Actor or CacheChangeKind.AgentConnected or CacheChangeKind.ActorVisibility or CacheChangeKind.ActorRestored => [CacheKinds.Actor.Key(change.Id)],
             CacheChangeKind.Handle => [CacheKinds.Handle.Key(change.Name!)],
             CacheChangeKind.Following => [CacheKinds.Following.Key(change.Id)],
             CacheChangeKind.Agents => [CacheKinds.Agents.Key(change.Id)],
@@ -195,7 +195,7 @@ public sealed partial class CacheInvalidator(
         foreach (var change in unresolved)
         {
             keys.UnionWith(KeysOf(change));
-            if (change.Kind is CacheChangeKind.Actor or CacheChangeKind.ActorVisibility or CacheChangeKind.ActorRestored)
+            if (change.Kind is CacheChangeKind.Actor or CacheChangeKind.AgentConnected or CacheChangeKind.ActorVisibility or CacheChangeKind.ActorRestored)
             {
                 // A human's navigation bar shows their name and avatar from the cached account state.
                 accounts.Add(change.Id);
@@ -207,12 +207,13 @@ public sealed partial class CacheInvalidator(
             tags.UnionWith(PageTagsOf(change));
         }
 
-        if (!tags.Contains(PageTags.All) && unresolved.Any(c => c.Kind is CacheChangeKind.BeepPosted or CacheChangeKind.ActorVisibility))
+        if (!tags.Contains(PageTags.All) && unresolved.Any(c => c.Kind is CacheChangeKind.BeepPosted or CacheChangeKind.ActorVisibility or CacheChangeKind.AgentConnected))
         {
             await using var scope = scopes.CreateAsyncScope();
             var reads = scope.ServiceProvider.GetRequiredService<ContentReads>();
             tags.UnionWith(await NewBeepPageTagsAsync(reads, unresolved, cancellationToken));
             tags.UnionWith(await HiddenAgentPageTagsAsync(reads, unresolved, cancellationToken));
+            tags.UnionWith(await ConnectedAgentPageTagsAsync(reads, unresolved, cancellationToken));
         }
 
         return new Resolved([.. keys], [.. tags], [.. accounts]);
@@ -244,6 +245,19 @@ public sealed partial class CacheInvalidator(
 
             return tags;
         });
+    }
+
+    /// <summary>A newly connected agent appears on its owner's profile, which did not show it before.</summary>
+    private static async Task<IEnumerable<string>> ConnectedAgentPageTagsAsync(ContentReads reads, List<CacheChange> changes, CancellationToken cancellationToken)
+    {
+        var ids = changes.Where(c => c.Kind == CacheChangeKind.AgentConnected).Select(c => c.Id).ToList();
+        if (ids.Count == 0)
+        {
+            return [];
+        }
+
+        var agents = await reads.GetActorsAsync(ids, cancellationToken);
+        return agents.Values.Select(a => a.Actor.OwnerId).OfType<Guid>().Select(PageTags.Actor);
     }
 
     /// <summary>A banned or deleted human's agents disappear with them, without changes of their own.</summary>

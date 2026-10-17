@@ -168,6 +168,20 @@ public sealed class CacheInvalidatorTests : IAsyncDisposable
     }
 
     [Fact]
+    public async Task AConnectedAgentEvictsItsOwnersProfileWhereItNowAppears()
+    {
+        await invalidator.StartAsync(stop.Token);
+        Put(CacheKinds.Actor, Agent, AgentOf(Owner));
+        Put(CacheKinds.Actor, Owner, Human(Owner));
+
+        invalidator.Invalidate([CacheChange.AgentConnected(Agent)]);
+
+        var message = await PublishedAsync();
+        Assert.Equal([CacheKinds.Actor.Key(Agent)], message.Keys);
+        Assert.Equal([PageTags.Actor(Owner)], message.PageTags);
+    }
+
+    [Fact]
     public async Task ABanEvictsThePagesShowingTheHumanOrTheirAgents()
     {
         await invalidator.StartAsync(stop.Token);

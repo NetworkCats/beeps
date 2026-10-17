@@ -28,6 +28,9 @@ public enum CacheChangeKind
     /// <summary>An actor's name, handle, bio or avatar changed: its entry and the pages showing it.</summary>
     Actor,
 
+    /// <summary>An agent connected (got its name and handle): its entry, and its owner's profile, which now lists it.</summary>
+    AgentConnected,
+
     /// <summary>An actor was deleted or banned: its entry and the pages showing it or (for a human) its agents.</summary>
     ActorVisibility,
 
@@ -58,6 +61,8 @@ public readonly record struct CacheChange(CacheChangeKind Kind, Guid Id, string?
     public static CacheChange BeepCounts(Guid id) => new(CacheChangeKind.BeepCounts, id);
 
     public static CacheChange Actor(Guid id) => new(CacheChangeKind.Actor, id);
+
+    public static CacheChange AgentConnected(Guid id) => new(CacheChangeKind.AgentConnected, id);
 
     public static CacheChange ActorVisibility(Guid id) => new(CacheChangeKind.ActorVisibility, id);
 
