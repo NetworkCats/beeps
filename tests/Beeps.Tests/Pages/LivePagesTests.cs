@@ -1,4 +1,5 @@
 using System.Net;
+using Beeps.Features.Accounts;
 using Beeps.Features.Agents;
 using Beeps.Features.Beeps;
 using Beeps.Features.Live;
@@ -24,10 +25,25 @@ public sealed partial class LivePagesTests : IDisposable
 
         Assert.Matches("<script type=\"module\" src=\"/dist/live\\.[^\"]+\"></script>", html);
         // The render time lets the stream replay what happened before the script connected.
-        Assert.Matches("<body class=\"page\" data-live-stream=\"/stream\" data-live-from=\"[0-9]{13}\">", html);
+        Assert.Matches($"<body class=\"page\" data-auth=\"member:{user.Id:D}\" data-live-stream=\"/stream\" data-live-from=\"[0-9]{{13}}\">", html);
         Assert.Contains("data-live-watch=\"home\"", html, StringComparison.Ordinal);
         Assert.Contains("<span class=\"indicator-count nav-count\" data-inbox-count hidden></span>", html, StringComparison.Ordinal);
         PageAssert.NoInlineScriptsOrStyles(html);
+    }
+
+    [Fact]
+    public async Task AnUnverifiedAccountsPagesFollowOnlyTheAccount()
+    {
+        var newbie = WebAuth.ArrangeUser(factory, "newbie", verified: false);
+        using var client = await WebAuth.SignInAsync(factory, newbie);
+
+        var html = await client.GetStringAsync(new Uri("/public", UriKind.Relative), TestSupport.Ct);
+
+        // Connected, so the tab follows its verification elsewhere, but nothing on the page is followed.
+        Assert.Matches($"<body class=\"page\" data-auth=\"unverified:{newbie.Id:D}\" data-live-stream=\"/stream\" data-live-from=\"[0-9]{{13}}\">", html);
+        Assert.Contains("/dist/live", html, StringComparison.Ordinal);
+        Assert.DoesNotContain("data-live-watch", html, StringComparison.Ordinal);
+        Assert.DoesNotContain("data-live-region=\"list\"", html, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -39,6 +55,7 @@ public sealed partial class LivePagesTests : IDisposable
 
         Assert.Contains("<body class=\"page\">", html, StringComparison.Ordinal);
         Assert.DoesNotContain("data-live", html, StringComparison.Ordinal);
+        Assert.DoesNotContain("data-auth", html, StringComparison.Ordinal);
         Assert.DoesNotContain("live-", html, StringComparison.Ordinal);
         Assert.DoesNotContain("/dist/live", html, StringComparison.Ordinal);
     }
@@ -80,13 +97,13 @@ public sealed partial class LivePagesTests : IDisposable
         var inbox = await client.GetStringAsync(new Uri("/notifications", UriKind.Relative), TestSupport.Ct);
 
         Assert.Contains($"data-live-watch=\"replies:{alice.Id:D}\"", profile, StringComparison.Ordinal);
-        Assert.Contains("data-live-region=\"profile\"", profile, StringComparison.Ordinal);
+        Assert.Contains($"data-live-region=\"profile\" data-live-actors=\"{alice.Id:D}\"", profile, StringComparison.Ordinal);
         Assert.Contains("data-live-watch=\"tag:beeps\"", tag, StringComparison.Ordinal);
         Assert.Contains("data-live-watch=\"notifications\"", inbox, StringComparison.Ordinal);
     }
 
     [Fact]
-    public async Task TheAgentsPageReloadsOnAConnectionExceptWhileShowingANewKey()
+    public async Task TheAgentsAndTheWaitingPageRedrawWhenAnAgentChangesButANewKeyStays()
     {
         var user = WebAuth.ArrangeUser(factory);
         using var client = await WebAuth.SignInAsync(factory, user);
@@ -99,10 +116,10 @@ public sealed partial class LivePagesTests : IDisposable
             .Returns([new AgentRow(Guid.Parse(agentId), null, null, null, TestData.Now, null, "beeps_abc", TestData.Now, null)]);
         var waiting = await client.GetStringAsync(new Uri($"/onboarding/connect/{agentId}", UriKind.Relative), TestSupport.Ct);
 
-        Assert.Contains("data-live-agents", list, StringComparison.Ordinal);
-        Assert.Contains("beeps_", withKey, StringComparison.Ordinal);
-        Assert.DoesNotContain("data-live-agents", withKey, StringComparison.Ordinal);
-        Assert.Contains($"data-live-agent=\"{agentId}\"", waiting, StringComparison.Ordinal);
+        Assert.Contains($"data-live-region=\"agents\" data-live-actors=\"{user.Id:D}\"", list, StringComparison.Ordinal);
+        // The key is shown only on this response, so it is outside what a live update draws again.
+        Assert.True(withKey.IndexOf("beeps_", StringComparison.Ordinal) is >= 0 and var key && key < withKey.IndexOf("data-live-region=\"agents\"", StringComparison.Ordinal));
+        Assert.Contains($"data-live-region=\"connect\" data-live-actors=\"{agentId}\"", waiting, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -138,12 +155,14 @@ public sealed partial class LivePagesTests : IDisposable
 
         using var signedOut = await anonymous.GetAsync(new Uri("/stream", UriKind.Relative), TestSupport.Ct);
         using var fragment = await anonymous.GetAsync(new Uri("/live/beeps?watch=home", UriKind.Relative), TestSupport.Ct);
-        using var notVerified = await newbie.GetAsync(new Uri("/stream", UriKind.Relative), TestSupport.Ct);
+        // Not verified yet is still signed in: such a tab follows its account (verified elsewhere, signed out).
+        using var notVerified = await newbie.GetAsync(new Uri("/stream", UriKind.Relative), HttpCompletionOption.ResponseHeadersRead, TestSupport.Ct);
         using var badWatch = await tom.GetAsync(new Uri("/stream?watch=everything", UriKind.Relative), TestSupport.Ct);
 
         Assert.Equal(HttpStatusCode.Unauthorized, signedOut.StatusCode);
         Assert.Equal(HttpStatusCode.Unauthorized, fragment.StatusCode);
-        Assert.Equal(HttpStatusCode.Forbidden, notVerified.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, notVerified.StatusCode);
+        Assert.Equal("text/event-stream", notVerified.Content.Headers.ContentType?.MediaType);
         Assert.Equal(HttpStatusCode.BadRequest, badWatch.StatusCode);
         Assert.Contains(LiveErrorCodes.InvalidWatch, await badWatch.Content.ReadAsStringAsync(TestSupport.Ct), StringComparison.Ordinal);
     }
@@ -188,8 +207,95 @@ public sealed partial class LivePagesTests : IDisposable
 
         var html = await client.GetStringAsync(new Uri($"/live/notifications?after={newest}", UriKind.Relative), TestSupport.Ct);
 
-        Assert.StartsWith($"<li class=\"notification notification-unread\" data-notification=\"{notification.Id:D}\">", html.TrimStart(), StringComparison.Ordinal);
+        Assert.StartsWith($"<li class=\"notification notification-unread\" data-notification=\"{notification.Id:D}\" data-from=\"{alice.Id:D}\">", html.TrimStart(), StringComparison.Ordinal);
         Assert.Contains("returnUrl=%2Fnotifications", html, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task ChangedBeepsComeAsCardsDrawnAsThePageDrawsThem()
+    {
+        var user = WebAuth.ArrangeUser(factory);
+        var alice = TestBeeps.Human("alice");
+        var root = TestBeeps.Row("root", alice);
+        var reply = TestBeeps.Row("reply", TestBeeps.Human("bob"), replyTo: root.Id, root: root.Id);
+        TestBeeps.Arrange(factory, root, reply);
+        factory.Beeps.GetMentionsAsync(default!, TestSupport.Ct).ReturnsForAnyArgs(new Dictionary<Guid, IReadOnlyList<ActorRow>> { [reply.Id] = [alice] });
+        using var client = await WebAuth.SignInAsync(factory, user);
+
+        var html = await client.GetStringAsync(new Uri($"/live/beeps?watch=thread:{root.Id:D}&ids={reply.Id:D},{Guid.NewGuid():D}&focus={reply.Id:D}", UriKind.Relative), TestSupport.Ct);
+        using var bad = await client.GetAsync(new Uri("/live/beeps?watch=home&ids=nope", UriKind.Relative), TestSupport.Ct);
+
+        // Only the one still visible; marked as the page marks it, saying whom it answers, and naming whom it mentions.
+        Assert.Equal(1, html.Split("<article", StringSplitOptions.None).Length - 1);
+        Assert.Contains($"<article class=\"beep beep-focused\" id=\"beep-{reply.Id:D}\" data-beep=\"{reply.Id:D}\" data-author=\"{reply.Author.Id:D}\" data-mentions=\"{alice.Id:D}\" data-reply-to=\"{root.Id:D}\">", html, StringComparison.Ordinal);
+        Assert.Contains("Replying to @alice", html, StringComparison.Ordinal);
+        Assert.Equal(HttpStatusCode.BadRequest, bad.StatusCode);
+    }
+
+    [Fact]
+    public async Task TheInboxCatchesUpWithItsWholeFirstPage()
+    {
+        var user = WebAuth.ArrangeUser(factory);
+        factory.Notifications.ListAsync(user.Id, PageRequest.Create(limit: 30), false, Arg.Any<CancellationToken>())
+            .Returns(new CursorPage<NotificationRow>([], null));
+        using var client = await WebAuth.SignInAsync(factory, user);
+
+        using var response = await client.GetAsync(new Uri("/live/notifications?limit=30", UriKind.Relative), TestSupport.Ct);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        await factory.Notifications.Received(1).ListAsync(user.Id, PageRequest.Create(limit: 30), false, Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task TheViewersAvatarIsRedrawnLiveWhereverItShows()
+    {
+        var user = WebAuth.ArrangeUser(factory);
+        using var client = await WebAuth.SignInAsync(factory, user);
+
+        var settings = await client.GetStringAsync(new Uri("/settings", UriKind.Relative), TestSupport.Ct);
+
+        Assert.Contains($"data-live-region=\"nav-avatar\" data-live-actors=\"{user.Id:D}\"", settings, StringComparison.Ordinal);
+        Assert.Contains($"data-live-region=\"avatar-preview\" data-live-actors=\"{user.Id:D}\"", settings, StringComparison.Ordinal);
+        Assert.Contains($"data-live-region=\"avatar-remove\" data-live-actors=\"{user.Id:D}\"", settings, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task AProfileIsFoundByIdAfterARenameAndOnlyMembersPagesSayWhatTheyAreAbout()
+    {
+        var user = WebAuth.ArrangeUser(factory);
+        var agent = TestBeeps.Agent(Guid.NewGuid(), "tom.renamed");
+        factory.Profiles.FindHandleAsync(agent.Id, Arg.Any<CancellationToken>()).Returns("tom.renamed");
+        factory.Profiles.FindByHandleAsync("tom.renamed", Arg.Any<CancellationToken>()).Returns(new ProfileRow(agent, null, null, TestData.Now, null));
+        using var anonymous = WebAuth.NewClient(factory);
+        using var member = await WebAuth.SignInAsync(factory, user);
+
+        using var byId = await anonymous.GetAsync(new Uri($"/actors/{agent.Id:D}/replies?before={Guid.Empty:D}", UriKind.Relative), TestSupport.Ct);
+        using var gone = await anonymous.GetAsync(new Uri($"/actors/{Guid.NewGuid():D}", UriKind.Relative), TestSupport.Ct);
+        var signedOut = await anonymous.GetStringAsync(new Uri("/tom.renamed", UriKind.Relative), TestSupport.Ct);
+        var signedIn = await member.GetStringAsync(new Uri("/tom.renamed", UriKind.Relative), TestSupport.Ct);
+
+        Assert.Equal(HttpStatusCode.Redirect, byId.StatusCode);
+        Assert.Equal($"/tom.renamed/replies?before={Guid.Empty:D}", byId.Headers.Location?.OriginalString);
+        Assert.Equal(HttpStatusCode.NotFound, gone.StatusCode);
+        Assert.Contains($"data-live-subject=\"actor:{agent.Id:D}\" data-live-url=\"/actors/{agent.Id:D}\"", signedIn, StringComparison.Ordinal);
+        Assert.Contains("data-live-region=\"list\"", signedIn, StringComparison.Ordinal);
+        // Signed-out pages are cached for everyone: none of it.
+        Assert.DoesNotContain("data-live-subject", signedOut, StringComparison.Ordinal);
+        Assert.DoesNotContain("data-live-region=\"list\"", signedOut, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task APageWithMoreBeepsThanItCanListAsksForAllAndIsServed()
+    {
+        var user = WebAuth.ArrangeUser(factory);
+        factory.Profiles.ListFollowedAsync(user.Id, Arg.Any<CancellationToken>()).Returns([]);
+        using var client = await WebAuth.SignInAsync(factory, user);
+
+        // As live-url.ts writes it.
+        using var response = await client.GetAsync(new Uri("/stream?watch=home&all=true", UriKind.Relative), HttpCompletionOption.ResponseHeadersRead, TestSupport.Ct);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("text/event-stream", response.Content.Headers.ContentType?.MediaType);
     }
 
     public void Dispose() => factory.Dispose();

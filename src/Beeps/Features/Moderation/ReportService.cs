@@ -1,4 +1,5 @@
 using Beeps.Features.Beeps;
+using Beeps.Features.Live;
 using Beeps.Features.RateLimiting;
 using Beeps.Features.Shared;
 using Microsoft.Extensions.Localization;
@@ -29,6 +30,7 @@ public sealed partial class ReportService(
     IModerationStore store,
     IBeepStore beeps,
     RateLimitService rateLimits,
+    LiveUpdates live,
     TimeProvider time,
     IStringLocalizer<SharedResource> localizer,
     ILogger<ReportService> logger)
@@ -87,6 +89,8 @@ public sealed partial class ReportService(
         if (added)
         {
             LogReported(logger, beepId, viewer.ActorId, reason!);
+            // The review queue on open admin pages.
+            await live.AdminChangedAsync(cancellationToken);
         }
 
         return Result.Success;

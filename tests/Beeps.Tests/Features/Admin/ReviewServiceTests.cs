@@ -85,6 +85,9 @@ public sealed class ReviewServiceTests
         Assert.Equal((AuditActions.KeepBeep, AuditTargets.Beep, BeepId, "Hidden -> HumanAllowed, reports resolved: 2"), (entry.Action, entry.TargetType, entry.TargetId, entry.Detail));
         Assert.Equal(1, unitOfWork.Saves);
         await counters.Received(1).AddAsync(ParentId, new BeepCounts(0, 4), new BeepCounts(0, 1), Arg.Any<CancellationToken>());
+        // Open pages put it back where it belongs, and its author's loses the "under review" mark.
+        Assert.Equal(["{}"], TestData.LiveEvents(liveEvents, LiveEventTypes.Resync));
+        Assert.Equal([$$"""{"ids":["{{BeepId:D}}"]}"""], TestData.LiveEvents(liveEvents, LiveEventTypes.BeepsChanged));
     }
 
     [Fact]
@@ -99,6 +102,8 @@ public sealed class ReviewServiceTests
         Assert.Equal("HumanAllowed, reports resolved: 1", Assert.Single(audit).Detail);
         outbox.DidNotReceiveWithAnyArgs().Enqueue<SearchBeepSyncRequest>(default!, default!, default!);
         await counters.DidNotReceiveWithAnyArgs().AddAsync(default, default, default, TestSupport.Ct);
+        // It never left any page.
+        Assert.Empty(TestData.LiveEvents(liveEvents, LiveEventTypes.Resync));
     }
 
     [Fact]
@@ -181,6 +186,8 @@ public sealed class ReviewServiceTests
             Arg.Any<JsonTypeInfo<DeleteMediaObjectsRequest>>());
         var entry = Assert.Single(audit);
         Assert.Equal((AuditActions.RemoveBeepMedia, "images: 2"), (entry.Action, entry.Detail));
+        // Open pages draw the beep again, without them.
+        Assert.Equal([$$"""{"ids":["{{BeepId:D}}"]}"""], TestData.LiveEvents(liveEvents, LiveEventTypes.BeepsChanged));
     }
 
     [Fact]
@@ -211,6 +218,7 @@ public sealed class ReviewServiceTests
             unitOfWork,
             outbox,
             TestData.Live(liveEvents, counters),
+            TestData.Inboxes(liveEvents),
             TestData.Time(),
             localizer,
             NullLogger<ReviewService>.Instance);

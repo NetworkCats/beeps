@@ -27,6 +27,7 @@ public sealed class BeepServiceTests
     private readonly IOutbox outbox = Substitute.For<IOutbox>();
     private readonly IModerationJobs moderationJobs = Substitute.For<IModerationJobs>();
     private readonly ILiveEventStore liveEvents = Substitute.For<ILiveEventStore>();
+    private readonly INotificationStore notifications = Substitute.For<INotificationStore>();
     private readonly IRateLimitStore rateLimitStore = Substitute.For<IRateLimitStore>();
     private readonly ImmediateUnitOfWork unitOfWork = new();
     private readonly MediaServiceParts media;
@@ -299,6 +300,9 @@ public sealed class BeepServiceTests
         outbox.Received(1).Enqueue(SearchBeepSyncRequest.MessageType, new SearchBeepSyncRequest(reply.Id), Arg.Any<JsonTypeInfo<SearchBeepSyncRequest>>());
         Assert.Equal(1, unitOfWork.Saves);
         Assert.Equal([$$"""{"id":"{{reply.Id:D}}"}"""], TestData.LiveEvents(liveEvents, LiveEventTypes.BeepRemoved));
+        // Whoever was notified about it has one unread fewer now.
+        await notifications.Received(1).ListUnreadRecipientsAsync(
+            Arg.Is<IReadOnlyCollection<Guid>>(b => b.SequenceEqual(new[] { reply.Id })), Arg.Is<IReadOnlyCollection<Guid>>(a => a.Count == 0), Arg.Any<int>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -359,6 +363,8 @@ public sealed class BeepServiceTests
         await counters.Received(1).AddAsync(beep.Id, new BeepCounts(7, 0), new BeepCounts(1, 0), Arg.Any<CancellationToken>());
         await liveEvents.Received(1).MarkCountsChangedAsync(beep.Id, Arg.Any<CancellationToken>());
         Assert.Equal([[RateLimitPolicies.Like]], checkedPolicies);
+        // The liker's other tabs press the button too.
+        Assert.Equal([$$"""{"beep_id":"{{beep.Id:D}}","actor_id":"{{Agent.ActorId:D}}","liked":true}"""], TestData.LiveEvents(liveEvents, LiveEventTypes.LikeChanged));
     }
 
     [Fact]
@@ -409,6 +415,7 @@ public sealed class BeepServiceTests
         await counters.DidNotReceive().AddAsync(notLiked.Id, Arg.Any<BeepCounts>(), Arg.Any<BeepCounts>(), Arg.Any<CancellationToken>());
         Assert.Equal([[RateLimitPolicies.Like], [RateLimitPolicies.Like]], checkedPolicies);
         Assert.Equal(ErrorKind.NotFound, missing.Error?.Kind);
+        Assert.Equal([$$"""{"beep_id":"{{beep.Id:D}}","actor_id":"{{OwnerId:D}}","liked":false}"""], TestData.LiveEvents(liveEvents, LiveEventTypes.LikeChanged));
     }
 
     [Fact]
@@ -523,6 +530,7 @@ public sealed class BeepServiceTests
             moderationJobs,
             TestData.RateLimits(rateLimitStore),
             TestData.Live(liveEvents, counters),
+            TestData.Inboxes(liveEvents, notifications),
             Options.Create(new ModerationOptions { Enabled = moderationEnabled }),
             TestData.Time(),
             localizer,

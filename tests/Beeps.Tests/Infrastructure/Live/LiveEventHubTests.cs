@@ -1,6 +1,7 @@
 using Beeps.Features.Live;
 using Beeps.Infrastructure.Live;
 using Beeps.Tests.Support;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 
@@ -12,6 +13,8 @@ public sealed class LiveEventHubTests : IAsyncDisposable
     private readonly LiveOptions options = new() { PollInterval = TimeSpan.FromMilliseconds(5) };
     private readonly FixedTimeProvider time = new(TestData.Now);
     private readonly CancellationTokenSource stop = CancellationTokenSource.CreateLinkedTokenSource(TestSupport.Ct);
+    private readonly CancellationTokenSource stopping = new();
+    private readonly IHostApplicationLifetime lifetime = Substitute.For<IHostApplicationLifetime>();
     private LiveEventHub? hub;
 
     [Fact]
@@ -113,6 +116,35 @@ public sealed class LiveEventHubTests : IAsyncDisposable
     }
 
     [Fact]
+    public async Task StreamsEndWhenTheInstanceShutsDownSoTheirClientsReconnectElsewhere()
+    {
+        var hub = await StartAsync();
+        using var open = hub.Subscribe(null);
+        var reading = CountUntilEndAsync(open);
+
+        await hub.StopAsync(TestSupport.Ct);
+        using var late = hub.Subscribe(null);
+
+        Assert.Equal(0, await reading.WaitAsync(TimeSpan.FromSeconds(5), TestSupport.Ct));
+        Assert.Equal(0, await CountUntilEndAsync(late).WaitAsync(TimeSpan.FromSeconds(5), TestSupport.Ct));
+    }
+
+    [Fact]
+    public async Task StreamsEndAsSoonAsTheInstanceStartsShuttingDownNotWhenTheServerGivesUpWaiting()
+    {
+        var hub = await StartAsync();
+        using var open = hub.Subscribe(null);
+        var reading = CountUntilEndAsync(open);
+
+        // The server is still draining requests; the hub itself is not stopped yet.
+        await stopping.CancelAsync();
+        using var late = hub.Subscribe(null);
+
+        Assert.Equal(0, await reading.WaitAsync(TimeSpan.FromSeconds(5), TestSupport.Ct));
+        Assert.Equal(0, await CountUntilEndAsync(late).WaitAsync(TimeSpan.FromSeconds(5), TestSupport.Ct));
+    }
+
+    [Fact]
     public async Task WhenDisabledTheStreamIsNotPolledButReplaysStillFinish()
     {
         options.Enabled = false;
@@ -134,11 +166,13 @@ public sealed class LiveEventHubTests : IAsyncDisposable
         }
 
         stop.Dispose();
+        stopping.Dispose();
     }
 
     private async Task<LiveEventHub> StartAsync()
     {
-        hub = new LiveEventHub(store, Options.Create(options), time, NullLogger<LiveEventHub>.Instance);
+        lifetime.ApplicationStopping.Returns(stopping.Token);
+        hub = new LiveEventHub(store, Options.Create(options), time, lifetime, NullLogger<LiveEventHub>.Instance);
         await hub.StartAsync(stop.Token);
         // Once it has read the stream's end, anything added afterwards counts as new.
         while (options.Enabled && store.Reads == 0)
@@ -147,6 +181,18 @@ public sealed class LiveEventHubTests : IAsyncDisposable
         }
 
         return hub;
+    }
+
+    /// <summary>Reads with the test's own token, so only the stream ending stops it.</summary>
+    private static async Task<int> CountUntilEndAsync(ILiveSubscription subscription)
+    {
+        var count = 0;
+        await foreach (var _ in subscription.ReadAllAsync(TestSupport.Ct))
+        {
+            count++;
+        }
+
+        return count;
     }
 
     private async Task<int> CountAsync(ILiveSubscription subscription)

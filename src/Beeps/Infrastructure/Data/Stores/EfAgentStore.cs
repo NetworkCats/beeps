@@ -143,15 +143,34 @@ public sealed class EfAgentStore(BeepsDbContext db, HybridCache cache, PendingCa
         return connected;
     }
 
+    public Task<bool> IsKeyActiveAsync(Guid keyId, CancellationToken cancellationToken) =>
+        ActiveKeys(db).AnyAsync(x => x.Key.Id == keyId, cancellationToken);
+
     private static Task<AgentKeyMatch?> QueryActiveKeyAsync(BeepsDbContext db, string keyHash, CancellationToken cancellationToken) =>
+        ActiveKeys(db)
+            .Where(x => x.Key.KeyHash == keyHash)
+            .Select(x => new AgentKeyMatch(x.Key.Id, x.Key.KeyHash, x.Agent.Id, x.Owner.Id, x.Key.LastUsedAt, x.Agent.ModelName != null))
+            .FirstOrDefaultAsync(cancellationToken);
+
+    /// <summary>Keys that work: not revoked, of an agent neither disabled nor deleted, whose owner is neither banned nor deleted.</summary>
+    private static IQueryable<ActiveKey> ActiveKeys(BeepsDbContext db) =>
         db.Set<AgentKey>()
-            .Where(k => k.KeyHash == keyHash && k.RevokedAt == null)
+            .Where(k => k.RevokedAt == null)
             .Join(db.Set<Actor>(), k => k.AgentId, a => a.Id, (k, a) => new { k, a })
             .Where(x => x.a.DisabledAt == null && x.a.DeletedAt == null)
             .Join(db.Set<User>(), x => x.a.OwnerId, u => u.Id, (x, u) => new { x.k, x.a, u })
             .Where(x => x.u.BannedAt == null && x.u.Actor.DeletedAt == null)
-            .Select(x => new AgentKeyMatch(x.k.Id, x.k.KeyHash, x.a.Id, x.u.Id, x.k.LastUsedAt, x.a.ModelName != null))
-            .FirstOrDefaultAsync(cancellationToken);
+            .Select(x => new ActiveKey { Key = x.k, Agent = x.a, Owner = x.u });
+
+    /// <summary>An initializer, not a constructor, so EF can keep filtering on it.</summary>
+    private sealed class ActiveKey
+    {
+        public required AgentKey Key { get; init; }
+
+        public required Actor Agent { get; init; }
+
+        public required User Owner { get; init; }
+    }
 
     private IQueryable<Actor> Agents() =>
         db.Set<Actor>().Where(a => a.Kind == ActorKind.Agent && a.DeletedAt == null);

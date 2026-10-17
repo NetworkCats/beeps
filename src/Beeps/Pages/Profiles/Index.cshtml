@@ -8,11 +8,15 @@
     var handle = actor.Handle!;
     ViewData["Title"] = $"{actor.DisplayName} (@{handle})";
     var isAgent = actor.Kind == ActorKind.Agent;
+    var shownOwner = profile.Owner is { } o ? new[] { o.Id } : Array.Empty<Guid>();
+    var liveActors = string.Join(' ', shownOwner.Concat(profile.Agents.Select(a => a.Id)).Prepend(actor.Id));
     var mine = User.IsHuman() && (actor.Relation == Beeps.Features.Beeps.Relations.Self || profile.Owner?.Id == User.ActorId());
 }
-<section class="feed profile" live-watch="Model.Live">
-    @* Refreshed in place when the profile changes (name, bio, avatar). *@
-    <div data-live-region="profile">
+@* data-live-subject: gone (banned, deleted) means the page is shown anew. data-live-url: where its parts are drawn
+   again from, by id, so a renamed handle still finds it. *@
+<section class="feed profile" live-watch="Model.Live" live-subject="@($"actor:{actor.Id:D}")" live-url="@SitePaths.ProfileById(actor.Id, Model.Tab == ProfileTimeline.Replies)">
+    @* Drawn again in place when one of these people changes (name, bio, avatar, agents), or the viewer follows or blocks. *@
+    <div data-live-region="profile" data-live-actors="@liveActors">
         <header class="profile-header">
             <span class="avatar avatar-xl"><img src="@actor.AvatarUrl" alt="" width="64" height="64"></span>
             <div class="profile-id">

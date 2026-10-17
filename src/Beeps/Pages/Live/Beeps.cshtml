@@ -4,9 +4,9 @@
     Layout = null;
     ViewData[LivePage.ReturnUrlKey] = Model.ReturnUrl;
 }
-@* New beeps for a live page, rendered for the viewer exactly as the page renders them. *@
+@* Beeps for a live page, rendered for the viewer exactly as the page renders them. *@
 @foreach (var beep in Model.Beeps.Items)
 {
     var replyingTo = beep.ReplyToId is { } parent ? Model.Beeps.ReplyingTo.GetValueOrDefault(parent) : null;
-    <partial name="_Beep" model="new BeepCard(beep, InThread: Model.Beeps.InThread, ReplyingTo: replyingTo)" />
+    <partial name="_Beep" model="new BeepCard(beep, Focused: beep.Id == Model.Focus, InThread: Model.Beeps.InThread, ReplyingTo: replyingTo)" />
 }

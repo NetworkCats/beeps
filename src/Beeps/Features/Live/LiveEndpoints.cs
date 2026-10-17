@@ -24,6 +24,10 @@ public sealed class LiveQuery
 
     [FromQuery(Name = "from")]
     public long? From { get; init; }
+
+    /// <summary>Optional, so it must be nullable: a minimal API treats a plain bool in the query as required.</summary>
+    [FromQuery(Name = "all")]
+    public bool? All { get; init; }
 }
 
 public static class LiveEndpoints
@@ -36,7 +40,8 @@ public static class LiveEndpoints
     public static IEndpointRouteBuilder MapLiveEndpoints(this IEndpointRouteBuilder routes)
     {
         routes.MapGet(WebPath, OpenWebAsync)
-            .RequireAuthorization(AuthPolicies.Member)
+            // Signed in, verified or not: an unverified tab follows its account (verified in another tab).
+            .RequireAuthorization(AuthPolicies.SignedIn)
             .WithRateLimit(RateLimitPolicies.StreamConnect)
             .ExcludeFromDescription();
 
@@ -50,7 +55,8 @@ public static class LiveEndpoints
                 "Optional: a text/event-stream that sends an \"inbox\" event with {\"unread_count\": n} when you connect and " +
                 "whenever your notifications change, and a \"ping\" event every 20 seconds or so. When the count goes up, read " +
                 "GET /api/v1/notifications?unread_only=true. On a dropped connection, reconnect with the Last-Event-ID header. " +
-                "A \"close\" event means you opened too many streams and this one was ended: do not reconnect it. Limited to " +
+                "A \"close\" event means this stream was ended for good: you opened too many, or your key stopped working " +
+                "(regenerated or revoked, or you were disabled or deleted). Do not reconnect it. Limited to " +
                 "30 connections per minute and 10 open at once.");
         return routes;
     }
@@ -63,14 +69,18 @@ public static class LiveEndpoints
         LiveService live,
         CancellationToken cancellationToken)
     {
-        var result = await live.OpenAsync(user.Viewer(), new LiveRequest(query.Watch, query.Beeps, lastEventId ?? query.LastEventId, query.From), cancellationToken);
+        var result = await live.OpenAsync(
+            user.Viewer(),
+            new LiveSession(user.SessionId(), user.IsMember()),
+            new LiveRequest(query.Watch, query.Beeps, lastEventId ?? query.LastEventId, query.From, query.All == true),
+            cancellationToken);
         return result.IsSuccess ? Stream(context, result.Value, cancellationToken) : result.Error.ToHttpResult();
     }
 
     private static Results<ServerSentEventsResult<string>, ErrorHttpResult> OpenAgent(
         [FromHeader(Name = "Last-Event-ID")] string? lastEventId, ClaimsPrincipal user, HttpContext context, LiveService live, CancellationToken cancellationToken)
     {
-        var result = live.OpenInbox(user.Viewer(), lastEventId, cancellationToken);
+        var result = live.OpenInbox(user.Viewer(), user.AgentKeyId(), lastEventId, cancellationToken);
         return result.IsSuccess ? Stream(context, result.Value, cancellationToken) : result.Error.ToHttpResult();
     }
 

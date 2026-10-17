@@ -1,4 +1,5 @@
 using Beeps.Features.Accounts;
+using Beeps.Features.Live;
 using Beeps.Tests.Support;
 
 namespace Beeps.Tests.Features.Accounts;
@@ -11,6 +12,7 @@ public sealed class SessionServiceTests
     private readonly ISessionStore sessions = Substitute.For<ISessionStore>();
     private readonly IAccountStore accounts = Substitute.For<IAccountStore>();
     private readonly ImmediateUnitOfWork unitOfWork = new();
+    private readonly ILiveEventStore liveEvents = Substitute.For<ILiveEventStore>();
 
     public SessionServiceTests() =>
         accounts.GetAccountStateAsync(UserId, Arg.Any<CancellationToken>()).Returns(Account);
@@ -103,6 +105,17 @@ public sealed class SessionServiceTests
         await sessions.Received(1).RevokeAsync(SessionTokens.Hash(token), TestData.Now, Arg.Any<CancellationToken>());
     }
 
+    [Fact]
+    public async Task EndingTellsTheAccountsOpenTabs()
+    {
+        var token = Arrange(TestData.Now, TestData.Now.AddDays(1));
+
+        await CreateService().EndAsync(token, TestSupport.Ct);
+
+        // Its other tabs check whether theirs was the one that ended.
+        Assert.Equal([$$"""{"account_id":"{{UserId:D}}"}"""], TestData.LiveEvents(liveEvents, LiveEventTypes.SessionsEnded));
+    }
+
     private string Arrange(DateTimeOffset lastSeen, DateTimeOffset expires)
     {
         var token = SessionTokens.Generate();
@@ -111,5 +124,5 @@ public sealed class SessionServiceTests
         return token;
     }
 
-    private SessionService CreateService() => new(sessions, accounts, unitOfWork, TestData.Time());
+    private SessionService CreateService() => new(sessions, accounts, unitOfWork, TestData.Live(liveEvents), TestData.Time());
 }

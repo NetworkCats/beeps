@@ -13,6 +13,8 @@
             <button class="btn btn-sm" type="submit">@L["Notifications.MarkRead"]</button>
         </form>
     </header>
+    @* For older pages of the inbox, which do not follow it live: drawn again when it changes. *@
+    <div data-live-region="notifications">
     @if (items.Count == 0)
     {
         <div class="empty empty-bordered">
@@ -35,4 +37,5 @@
             </nav>
         }
     }
+    </div>
 </section>

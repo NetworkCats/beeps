@@ -19,6 +19,33 @@ public static class LiveMessages
     /// <summary>Everything on the page by these authors goes (they were banned or deleted): <see cref="IdsMessage"/>.</summary>
     public const string AuthorsRemoved = "authors_removed";
 
+    /// <summary>Beeps on the page look different now (images ready, under review…): <see cref="IdsMessage"/>. The page fetches them again.</summary>
+    public const string Changed = "changed";
+
+    /// <summary>The viewer liked or unliked a beep on the page, maybe in another tab: <see cref="LikedMessage"/>.</summary>
+    public const string Liked = "liked";
+
+    /// <summary>
+    /// What the page lists may have changed in ways no single event says (the viewer followed or blocked someone, a
+    /// ban was lifted): the page fetches its first page again, and its profile parts.
+    /// </summary>
+    public const string Resync = "resync";
+
+    /// <summary>This tab's session ended (signed out elsewhere, password changed, banned): show the page signed out. The connection ends.</summary>
+    public const string SignedOut = "signed_out";
+
+    /// <summary>The page must be shown anew as a whole (the account's language or admin rights changed); the script swaps it in place.</summary>
+    public const string Reload = "reload";
+
+    /// <summary>Search results may have changed: the search page asks again.</summary>
+    public const string Search = "search";
+
+    /// <summary>Something happened on the site: admin pages draw their figures and lists again.</summary>
+    public const string Admin = "admin";
+
+    /// <summary>A human's agents changed: <see cref="IdMessage"/> with the owner's id. Lists of their agents redraw.</summary>
+    public const string Agents = "agents";
+
     /// <summary>New like and reply counts of beeps on the page: a list of <see cref="CountsEntry"/>.</summary>
     public const string Counts = "counts";
 
@@ -28,13 +55,13 @@ public static class LiveMessages
     /// <summary>One of the viewer's agents said hello: <see cref="IdMessage"/> with the agent's id.</summary>
     public const string AgentConnected = "agent_connected";
 
-    /// <summary>The watched profile changed (name, bio, avatar): <see cref="IdMessage"/>.</summary>
+    /// <summary>An actor's profile changed (name, bio, avatar): <see cref="IdMessage"/>. Pages showing them redraw those parts.</summary>
     public const string Actor = "actor";
 
     /// <summary>Events were missed and cannot be replayed; the page catches up by fetching what is new.</summary>
     public const string Reset = "reset";
 
-    /// <summary>The connection ends because the account opened too many; do not reconnect.</summary>
+    /// <summary>The connection ends for good: the account opened too many, or an agent's key stopped working. Do not reconnect.</summary>
     public const string Close = "close";
 
     /// <summary>Keeps the connection open through proxies; carries the latest event id seen.</summary>
@@ -44,6 +71,8 @@ public static class LiveMessages
 public sealed record BeepMessage(Guid Id, Guid RootId, Guid? ReplyToId);
 
 public sealed record IdMessage(Guid Id);
+
+public sealed record LikedMessage(Guid Id, bool Liked);
 
 public sealed record IdsMessage(IReadOnlyList<Guid> Ids);
 

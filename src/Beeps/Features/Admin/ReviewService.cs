@@ -2,6 +2,7 @@ using Beeps.Features.Beeps;
 using Beeps.Features.Live;
 using Beeps.Features.Media;
 using Beeps.Features.Moderation;
+using Beeps.Features.Notifications;
 using Beeps.Features.Search;
 using Beeps.Features.Shared;
 using Microsoft.Extensions.Localization;
@@ -21,6 +22,7 @@ public sealed partial class ReviewService(
     IUnitOfWork unitOfWork,
     IOutbox outbox,
     LiveUpdates live,
+    InboxRecounter inboxes,
     TimeProvider time,
     IStringLocalizer<SharedResource> localizer,
     ILogger<ReviewService> logger)
@@ -94,9 +96,16 @@ public sealed partial class ReviewService(
         }
 
         LogKept(logger, beepId, adminId);
-        if (restored && subject.ReplyToId is { } parentId)
+        if (restored)
         {
-            await beeps.ReplyVisibilityChangedAsync(parentId, visible: true, cancellationToken);
+            // Back for everyone: pages that list it fetch it again, its author's loses the "under review" mark.
+            await live.BeepsChangedAsync([beepId], cancellationToken);
+            await live.ResyncAsync(cancellationToken);
+            await inboxes.RecountAsync([beepId], [], cancellationToken);
+            if (subject.ReplyToId is { } parentId)
+            {
+                await beeps.ReplyVisibilityChangedAsync(parentId, visible: true, cancellationToken);
+            }
         }
 
         return result;
@@ -143,6 +152,7 @@ public sealed partial class ReviewService(
 
         LogDeleted(logger, beepId, adminId);
         await live.BeepRemovedAsync(beepId, cancellationToken);
+        await inboxes.RecountAsync([beepId], [], cancellationToken);
         // A hidden reply was already left out of its parent's count.
         if (subject.ReplyToId is { } parentId && subject.Status != ModerationStatus.Hidden)
         {
@@ -189,6 +199,7 @@ public sealed partial class ReviewService(
         if (removed > 0)
         {
             LogMediaRemoved(logger, removed, beepId, adminId);
+            await live.BeepsChangedAsync([beepId], cancellationToken);
         }
 
         return result;

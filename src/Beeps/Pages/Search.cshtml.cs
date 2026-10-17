@@ -1,4 +1,5 @@
 using Beeps.Features.Auth;
+using Beeps.Features.Live;
 using Beeps.Features.RateLimiting;
 using Beeps.Features.Search;
 using Beeps.Features.Site;
@@ -20,6 +21,9 @@ public sealed class SearchModel(SearchService search) : PageModel
 
     /// <summary>Null until something was searched.</summary>
     public SearchResults? Results { get; private set; }
+
+    /// <summary>Results are asked again as the index changes; there is nothing to follow before searching.</summary>
+    public LiveTopic Live => Results is null ? LiveTopic.None : LiveTopic.Search;
 
     public async Task<IActionResult> OnGetAsync(CancellationToken cancellationToken)
     {

@@ -44,7 +44,8 @@ public sealed class NotificationTests
         Assert.Equal(
             [(Parent, NotificationType.Reply), (mentioned, NotificationType.Mention)],
             added.Select(n => (n.RecipientId, n.Type)));
-        Assert.Equal([$$"""{"recipient_ids":["{{Parent:D}}","{{mentioned:D}}"]}"""], TestData.LiveEvents(liveEvents, LiveEventTypes.Inbox));
+        // Naming the beep, which open inbox pages are about to show.
+        Assert.Equal([$$"""{"recipient_ids":["{{Parent:D}}","{{mentioned:D}}"],"beep_ids":["{{BeepId:D}}"]}"""], TestData.LiveEvents(liveEvents, LiveEventTypes.Inbox));
         Assert.All(added, n => Assert.Equal((Author, BeepId, TestData.Now), (n.FromActorId, n.BeepId, n.CreatedAt)));
     }
 
@@ -74,7 +75,7 @@ public sealed class NotificationTests
 
         var like = Assert.Single(added);
         Assert.Equal((Author, NotificationType.Like, liker), (like.RecipientId, like.Type, like.FromActorId));
-        Assert.Equal([$$"""{"recipient_ids":["{{Author:D}}"]}"""], TestData.LiveEvents(liveEvents, LiveEventTypes.Inbox));
+        Assert.Equal([$$"""{"recipient_ids":["{{Author:D}}"],"beep_ids":["{{BeepId:D}}"]}"""], TestData.LiveEvents(liveEvents, LiveEventTypes.Inbox));
     }
 
     [Fact]

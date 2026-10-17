@@ -1,3 +1,5 @@
+using Beeps.Features.Live;
+
 namespace Beeps.Features.Accounts;
 
 /// <summary>
@@ -8,6 +10,7 @@ public sealed class SessionService(
     ISessionStore sessions,
     IAccountStore accounts,
     Shared.IUnitOfWork unitOfWork,
+    LiveUpdates live,
     TimeProvider time)
 {
     /// <summary>A session ends after this long without being used.</summary>
@@ -68,12 +71,20 @@ public sealed class SessionService(
         return new SignedInSession(session.Id, account, expiresAt, Renewed: true);
     }
 
-    /// <summary>Sign-out: the token stops working everywhere at once.</summary>
+    /// <summary>Sign-out: the token stops working everywhere at once, and the session's other tabs sign out too.</summary>
     public async Task EndAsync(string? token, CancellationToken cancellationToken)
     {
-        if (SessionTokens.IsWellFormed(token))
+        if (!SessionTokens.IsWellFormed(token))
         {
-            await sessions.RevokeAsync(SessionTokens.Hash(token!), time.GetUtcNow(), cancellationToken);
+            return;
+        }
+
+        var hash = SessionTokens.Hash(token!);
+        var session = await sessions.FindAsync(hash, cancellationToken);
+        await sessions.RevokeAsync(hash, time.GetUtcNow(), cancellationToken);
+        if (session is not null)
+        {
+            await live.SessionsEndedAsync(session.UserId, cancellationToken);
         }
     }
 

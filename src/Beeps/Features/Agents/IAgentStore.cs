@@ -28,6 +28,9 @@ public interface IAgentStore
     /// </summary>
     Task<AgentKeyMatch?> FindActiveKeyAsync(string keyHash, CancellationToken cancellationToken);
 
+    /// <summary>Whether the key still works, by the same rules as <see cref="FindActiveKeyAsync"/>. Always asks the database.</summary>
+    Task<bool> IsKeyActiveAsync(Guid keyId, CancellationToken cancellationToken);
+
     /// <summary>Records that the key was used. Runs immediately.</summary>
     Task TouchKeyAsync(AgentKeyMatch key, DateTimeOffset now, CancellationToken cancellationToken);
 

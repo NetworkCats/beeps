@@ -1,6 +1,7 @@
 using Beeps.Features.Accounts;
 using Beeps.Features.Avatars;
 using Beeps.Features.Beeps;
+using Beeps.Features.Live;
 using Beeps.Features.Profiles;
 using Beeps.Features.RateLimiting;
 using Beeps.Features.Shared;
@@ -18,6 +19,7 @@ public sealed class ProfileServiceTests
     private readonly IProfileStore store = Substitute.For<IProfileStore>();
     private readonly ImmediateUnitOfWork unitOfWork = new();
     private readonly IRateLimitStore rateLimitStore = Substitute.For<IRateLimitStore>();
+    private readonly ILiveEventStore liveStore = Substitute.For<ILiveEventStore>();
 
     public ProfileServiceTests()
     {
@@ -205,7 +207,27 @@ public sealed class ProfileServiceTests
     {
         var views = new BeepViews(
             Substitute.For<IBeepStore>(), Substitute.For<IBeepCounterStore>(), TestData.Avatars, TestData.Media, NullLogger<BeepViews>.Instance);
-        return new ProfileService(store, views, unitOfWork, TestData.RateLimits(rateLimitStore), TestData.Time(), new TestLocalizer(), NullLogger<ProfileService>.Instance);
+        return new ProfileService(store, views, unitOfWork, TestData.RateLimits(rateLimitStore), TestData.Live(liveStore), TestData.Time(), new TestLocalizer(), NullLogger<ProfileService>.Instance);
+    }
+
+    [Fact]
+    public async Task EachChangedFollowOrBlockTellsBothSidesLive()
+    {
+        store.AddFollowAsync(Alice.Id, Tom.Id, Arg.Any<DateTimeOffset>(), Arg.Any<CancellationToken>()).Returns(true, false);
+        store.RemoveFollowAsync(Alice.Id, Tom.Id, Arg.Any<CancellationToken>()).Returns(true);
+        store.AddBlockAsync(Alice.Id, Tom.Id, Arg.Any<DateTimeOffset>(), Arg.Any<CancellationToken>()).Returns(true);
+        store.RemoveBlockAsync(Alice.Id, Tom.Id, Arg.Any<CancellationToken>()).Returns(false);
+        var (service, alice) = (Create(), Viewer.Human(Alice.Id));
+
+        await service.FollowAsync(alice, "tom", TestSupport.Ct);
+        await service.FollowAsync(alice, "tom", TestSupport.Ct);
+        await service.UnfollowAsync(alice, "tom", TestSupport.Ct);
+        await service.BlockAsync(alice, "tom", TestSupport.Ct);
+        await service.UnblockAsync(alice, "tom", TestSupport.Ct);
+
+        // The second follow and the unblock changed nothing.
+        var both = $$"""{"actor_ids":["{{Alice.Id:D}}","{{Tom.Id:D}}"]}""";
+        Assert.Equal([both, both, both], TestData.LiveEvents(liveStore, LiveEventTypes.RelationChanged));
     }
 
     [Fact]

@@ -93,6 +93,30 @@ public sealed class ProcessMediaHandlerTests
         Assert.Equal([$$"""{"actor_id":"{{actorId:D}}"}"""], TestData.LiveEvents(parts.LiveEvents, LiveEventTypes.ActorChanged));
     }
 
+    [Fact]
+    public async Task BeepsPostedWhileTheirImageProcessedAreRedrawnOnceReady()
+    {
+        var media = await UploadAsync(TestImages.Png());
+        var beepId = Guid.NewGuid();
+        parts.Store.ListBeepsUsingAsync(media.Id, Arg.Any<CancellationToken>()).Returns([beepId]);
+
+        await parts.ProcessQueuedAsync();
+
+        Assert.Equal([$$"""{"ids":["{{beepId:D}}"]}"""], TestData.LiveEvents(parts.LiveEvents, LiveEventTypes.BeepsChanged));
+    }
+
+    [Fact]
+    public async Task AnImageThatCannotBeReadChangesNoBeep()
+    {
+        var media = await UploadAsync(TestImages.Png());
+        parts.Store.ListBeepsUsingAsync(media.Id, Arg.Any<CancellationToken>()).Returns([Guid.NewGuid()]);
+        parts.Store.FinishProcessingAsync(default, default, default, default, TestSupport.Ct).ReturnsForAnyArgs(false);
+
+        await parts.ProcessQueuedAsync();
+
+        Assert.Empty(TestData.LiveEvents(parts.LiveEvents, LiveEventTypes.BeepsChanged));
+    }
+
     private async Task<MediaItem> UploadAsync(byte[] data)
     {
         MediaItem? stored = null;

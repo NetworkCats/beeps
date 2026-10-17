@@ -32,6 +32,9 @@ internal sealed class InMemorySessionStore : ISessionStore
         return Task.CompletedTask;
     }
 
+    public Task<bool> IsActiveAsync(Guid sessionId, DateTimeOffset now, CancellationToken cancellationToken) =>
+        Task.FromResult(sessions.Values.Any(s => s.Id == sessionId && s.RevokedAt is null && s.ExpiresAt > now));
+
     public Task RevokeAsync(string tokenHash, DateTimeOffset now, CancellationToken cancellationToken)
     {
         Update(tokenHash, s => Revoked(s, now));

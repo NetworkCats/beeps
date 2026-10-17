@@ -14,6 +14,8 @@ public sealed class LiveTopicTests
     [InlineData("home", LiveTopicKind.Home)]
     [InlineData("public", LiveTopicKind.Public)]
     [InlineData("notifications", LiveTopicKind.Notifications)]
+    [InlineData("search", LiveTopicKind.Search)]
+    [InlineData("admin", LiveTopicKind.Admin)]
     public void SimpleTopicsParse(string? text, LiveTopicKind kind)
     {
         Assert.True(LiveTopic.TryParse(text, out var topic));

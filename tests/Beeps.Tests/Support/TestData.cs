@@ -3,6 +3,7 @@ using Beeps.Features.Avatars;
 using Beeps.Features.Beeps;
 using Beeps.Features.Live;
 using Beeps.Features.Media;
+using Beeps.Features.Notifications;
 using Beeps.Features.RateLimiting;
 using Beeps.Features.Shared;
 using Beeps.Features.Site;
@@ -35,6 +36,10 @@ internal static class TestData
     /// <summary>The real live-event publisher over a mocked store, so tests can see which events a change published.</summary>
     public static LiveUpdates Live(ILiveEventStore store, IBeepCounterStore? counters = null) =>
         new(store, counters ?? Substitute.For<IBeepCounterStore>(), NullLogger<LiveUpdates>.Instance);
+
+    /// <summary>Recounts inboxes on <paramref name="live"/>, with no unread notifications anywhere unless the store says so.</summary>
+    public static InboxRecounter Inboxes(ILiveEventStore live, INotificationStore? notifications = null) =>
+        new(notifications ?? Substitute.For<INotificationStore>(), Live(live), NullLogger<InboxRecounter>.Instance);
 
     /// <summary>The live events of one type a mocked store received, with their JSON data.</summary>
     public static List<string> LiveEvents(ILiveEventStore store, string type) =>

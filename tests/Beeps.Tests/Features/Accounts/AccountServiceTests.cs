@@ -426,6 +426,8 @@ public sealed class AccountServiceTests
             sessions.ForgetAllAsync(user.Id, Arg.Any<CancellationToken>());
             store.ForgetAccountAsync(user.Id, Arg.Any<CancellationToken>());
         });
+        // Tabs still open in the old sessions sign out.
+        Assert.Equal([$$"""{"account_id":"{{user.Id:D}}"}"""], TestData.LiveEvents(liveEvents, LiveEventTypes.SessionsEnded));
     }
 
     [Fact]
@@ -461,6 +463,8 @@ public sealed class AccountServiceTests
         Assert.False(unsupported.IsSuccess);
         Assert.Equal(1, unitOfWork.Saves);
         await store.Received(1).ForgetAccountAsync(user.Id, Arg.Any<CancellationToken>());
+        // The account's other tabs switch language too.
+        Assert.Equal([$$"""{"account_id":"{{user.Id:D}}"}"""], TestData.LiveEvents(liveEvents, LiveEventTypes.AccountChanged));
     }
 
     [Fact]
@@ -568,6 +572,8 @@ public sealed class AccountServiceTests
             sessions.ForgetAllAsync(user.Id, Arg.Any<CancellationToken>());
         });
         await sessions.DidNotReceiveWithAnyArgs().RevokeAllAsync(default, default, TestSupport.Ct);
+        // The tabs of the other sessions sign out.
+        Assert.Equal([$$"""{"account_id":"{{user.Id:D}}"}"""], TestData.LiveEvents(liveEvents, LiveEventTypes.SessionsEnded));
     }
 
     [Fact]

@@ -8,29 +8,45 @@ using Microsoft.AspNetCore.Razor.TagHelpers;
 namespace Beeps.Pages.TagHelpers;
 
 /// <summary>
-/// The <c>data-live-*</c> attributes the live script reads (<c>Client/ts/live.ts</c>), written for signed-in members
-/// only (PLAN 6.10). Razor writes <c>data-*</c> attributes even when their value is null, so they are not written by
-/// hand: signed-out pages stay free of them, and of the cache-busting render time.
+/// The <c>data-live-*</c> attributes the live script reads (<c>Client/ts/live.ts</c>), written for signed-in people
+/// only (PLAN 6.10; an unverified account gets the stream but nothing to watch). Razor writes <c>data-*</c> attributes
+/// even when their value is null, so they are not written by hand: signed-out pages stay free of them, and of the
+/// cache-busting render time.
 /// </summary>
 /// <remarks>
-/// <c>&lt;body live-stream&gt;</c>: where the stream is and when the page was rendered.
+/// <c>&lt;body live-stream&gt;</c>: where the stream is and when the page was rendered, and for anyone signed in how
+/// (<c>data-auth</c>), so the browser's other tabs follow a sign-in or sign-out.
 /// <c>live-watch="Model.Live"</c>: the page's <see cref="LiveTopic"/>.
-/// <c>live-agents="true"</c>: reload when one of the viewer's agents connects.
+/// <c>live-region</c>, <c>live-subject</c>, <c>live-url</c>: the same <c>data-live-*</c> attributes, for members only.
 /// </remarks>
 [HtmlTargetElement("body", Attributes = StreamAttribute)]
 [HtmlTargetElement(Attributes = WatchAttribute)]
-[HtmlTargetElement(Attributes = AgentsAttribute)]
+[HtmlTargetElement(Attributes = RegionAttribute)]
+[HtmlTargetElement(Attributes = SubjectAttribute)]
+[HtmlTargetElement(Attributes = UrlAttribute)]
 public sealed class LiveTagHelper(TimeProvider time) : TagHelper
 {
     private const string StreamAttribute = "live-stream";
     private const string WatchAttribute = "live-watch";
-    private const string AgentsAttribute = "live-agents";
+    private const string RegionAttribute = "live-region";
+    private const string SubjectAttribute = "live-subject";
+    private const string UrlAttribute = "live-url";
 
     [HtmlAttributeName(WatchAttribute)]
     public LiveTopic? Watch { get; set; }
 
-    [HtmlAttributeName(AgentsAttribute)]
-    public bool Agents { get; set; }
+    /// <summary><c>data-live-region</c> on pages that signed-out visitors see too, written for members only.</summary>
+    [HtmlAttributeName(RegionAttribute)]
+    public string? Region { get; set; }
+
+    /// <summary><c>data-live-subject</c>: what the page is about (<c>beep:{id}</c>, <c>actor:{id}</c>).</summary>
+    [HtmlAttributeName(SubjectAttribute)]
+    public string? Subject { get; set; }
+
+    /// <summary><c>data-live-url</c>: where the page's regions are drawn again from, when its own address can change.</summary>
+    [HtmlAttributeName(UrlAttribute)]
+    public string? Url { get; set; }
+
 
     [ViewContext]
     [HtmlAttributeNotBound]
@@ -42,16 +58,25 @@ public sealed class LiveTagHelper(TimeProvider time) : TagHelper
         ArgumentNullException.ThrowIfNull(output);
         // A marker without a value, so not bound: it must not reach the page either way.
         output.Attributes.RemoveAll(StreamAttribute);
-        if (!ViewContext.HttpContext.User.IsMember())
+        var user = ViewContext.HttpContext.User;
+        if (!user.IsHuman())
         {
             return;
         }
 
         if (context.AllAttributes.ContainsName(StreamAttribute))
         {
+            // How this tab is signed in, for the other tabs of the browser to compare with (Client/ts/auth-sync.ts).
+            output.Attributes.SetAttribute("data-auth", $"{(user.IsMember() ? "member" : "unverified")}:{user.ActorId():D}");
+            // Unverified too: such a tab follows its account (verified or signed out elsewhere), nothing else.
             output.Attributes.SetAttribute("data-live-stream", LiveEndpoints.WebPath);
             // The stream replays what happened between rendering this page and connecting.
             output.Attributes.SetAttribute("data-live-from", time.GetUtcNow().ToUnixTimeMilliseconds().ToString(CultureInfo.InvariantCulture));
+        }
+
+        if (!user.IsMember())
+        {
+            return;
         }
 
         if (Watch is not null)
@@ -59,9 +84,12 @@ public sealed class LiveTagHelper(TimeProvider time) : TagHelper
             output.Attributes.SetAttribute("data-live-watch", Watch.ToString());
         }
 
-        if (Agents)
+        foreach (var (name, value) in new[] { ("data-live-region", Region), ("data-live-subject", Subject), ("data-live-url", Url) })
         {
-            output.Attributes.SetAttribute("data-live-agents", "");
+            if (value is not null)
+            {
+                output.Attributes.SetAttribute(name, value);
+            }
         }
     }
 }

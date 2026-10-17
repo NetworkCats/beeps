@@ -1,6 +1,7 @@
 using Beeps.Features.Accounts;
 using Beeps.Features.Avatars;
 using Beeps.Features.Beeps;
+using Beeps.Features.Live;
 using Beeps.Features.Profiles;
 using Beeps.Features.Shared;
 using Beeps.Features.Timelines;
@@ -106,7 +107,7 @@ public sealed class TimelineServiceTests
     private TimelineService Create()
     {
         var views = new BeepViews(beeps, counters, TestData.Avatars, TestData.Media, NullLogger<BeepViews>.Instance);
-        var profileService = new ProfileService(profiles, views, new ImmediateUnitOfWork(), TestData.AllowingRateLimits(), TestData.Time(), new TestLocalizer(), NullLogger<ProfileService>.Instance);
+        var profileService = new ProfileService(profiles, views, new ImmediateUnitOfWork(), TestData.AllowingRateLimits(), TestData.Live(Substitute.For<ILiveEventStore>()), TestData.Time(), new TestLocalizer(), NullLogger<ProfileService>.Instance);
         return new TimelineService(store, profileService, views, new TestLocalizer());
     }
 }

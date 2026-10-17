@@ -22,7 +22,7 @@ const scriptEntries: Record<string, string> = {
   captcha: join(client, 'ts/captcha.ts'),
   // The avatar forms only: Cropper.js is not worth loading on every page.
   'avatar-crop': join(client, 'ts/avatar-crop.ts'),
-  // Signed-in members only (PLAN 6.10): signed-out pages load no live code at all.
+  // Signed-in people only (PLAN 6.10): signed-out pages open no live connection.
   live: join(client, 'ts/live.ts'),
 };
 const styleEntries: Record<string, string> = {

@@ -35,6 +35,8 @@
             <button class="btn btn-sm" type="submit">@L["Admin.Invites.Create"]</button>
         </form>
     </header>
+    @* Shown only on the response that created it: drawing the page again live keeps it (data-live-slot, live.ts). *@
+    <div data-live-slot="new-invite">
     @if (Model.NewInvite is not null)
     {
         <div class="alert alert-success" role="status">
@@ -47,6 +49,7 @@
             </div>
         </div>
     }
+    </div>
     @if (Model.Invites.Count == 0)
     {
         <p class="section-lead">@L["Admin.Invites.None"]</p>

@@ -12,12 +12,15 @@ namespace Beeps.Infrastructure.Data.Stores;
 
 public sealed class EfSystemStore(BeepsDbContext db, HybridCache cache) : ISystemStore
 {
-    /// <summary>The totals scan whole tables; a minute old is fine for an overview, and every open admin page shares them.</summary>
-    private static readonly HybridCacheEntryOptions TotalsCache = new() { Expiration = TimeSpan.FromMinutes(1), LocalCacheExpiration = TimeSpan.FromMinutes(1) };
+    /// <summary>
+    /// The totals scan whole tables, so every open admin page shares one count for a few seconds; the admin pages follow
+    /// them live (AdminFiguresWorker), so that is how far behind they may be.
+    /// </summary>
+    private static readonly HybridCacheEntryOptions TotalsCache = new() { Expiration = TimeSpan.FromSeconds(5), LocalCacheExpiration = TimeSpan.FromSeconds(5) };
 
     /// <remarks>
     /// "New" compares ids rather than creation times: UUIDv7 ids sort by time, so the primary keys answer it.
-    /// The totals count whole tables, so they are cached for a minute; today's counts and the backlogs are live.
+    /// The totals count whole tables, so they are cached for a few seconds; today's counts and the backlogs are exact.
     /// </remarks>
     public async Task<SiteCounts> CountAsync(DateTimeOffset since, CancellationToken cancellationToken)
     {

@@ -38,10 +38,12 @@ public static class FeaturesSetup
         services.AddScoped<TimelineService>();
         services.AddScoped<ProfileService>();
         services.AddScoped<NotificationService>();
+        services.AddScoped<InboxRecounter>();
         services.AddScoped<MediaService>();
         services.AddScoped<AvatarService>();
         services.AddSingleton<LiveUpdates>();
         services.AddScoped<LiveService>();
+        services.AddSingleton<AdminWatchers>();
         services.AddScoped<LiveFeedService>();
         services.AddScoped<SearchService>();
         services.AddScoped<SearchIndexer>();

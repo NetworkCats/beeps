@@ -26,6 +26,7 @@ internal static class TestServices
             Substitute.For<IModerationJobs>(),
             TestData.RateLimits(media.RateLimits),
             TestData.Live(liveEvents, counters),
+            TestData.Inboxes(liveEvents),
             Options.Create(new ModerationOptions()),
             TestData.Time(),
             new TestLocalizer(),

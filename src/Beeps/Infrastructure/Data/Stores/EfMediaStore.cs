@@ -42,6 +42,9 @@ public sealed class EfMediaStore(BeepsDbContext db, PendingCacheChanges cacheCha
         return updated > 0;
     }
 
+    public async Task<IReadOnlyList<Guid>> ListBeepsUsingAsync(Guid mediaId, CancellationToken cancellationToken) =>
+        await db.Set<BeepMedia>().Where(m => m.MediaId == mediaId).Select(m => m.BeepId).ToListAsync(cancellationToken);
+
     public async Task<IReadOnlyList<Guid>> ListAvatarUsersAsync(Guid mediaId, CancellationToken cancellationToken) =>
         await db.Set<Actor>().Where(a => a.AvatarMediaId == mediaId).Select(a => a.Id).ToListAsync(cancellationToken);
 

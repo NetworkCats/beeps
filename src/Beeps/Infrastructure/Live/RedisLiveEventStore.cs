@@ -74,8 +74,31 @@ public sealed class RedisLiveEventStore(IConnectionMultiplexer redis, IOptions<L
             return null;
         }
 
-        return LiveEventId.TryParse((string?)info.MaxDeletedEntryId, out var trimmed) && trimmed > LiveEventId.Zero ? trimmed : null;
+        return TrimmedUpTo(info.EntriesAdded, info.Length, info.Length > 0 ? (string?)info.FirstEntry.Id : null, (string?)info.LastGeneratedId, (string?)info.MaxDeletedEntryId);
     }
+
+    /// <summary>
+    /// The newest event that may be gone from the stream. Valkey records only what <c>XDEL</c> deleted
+    /// (<c>max-deleted-entry-id</c>); trimming by length (<c>MAXLEN</c>, as <see cref="AppendAsync"/> does) leaves no
+    /// trace but the count. So once anything was ever removed, everything before the oldest entry left counts as gone,
+    /// or everything up to the last id when none is left. Erring this way only costs a page a reset.
+    /// </summary>
+    public static LiveEventId? TrimmedUpTo(long entriesAdded, long length, string? firstEntryId, string? lastGeneratedId, string? maxDeletedEntryId)
+    {
+        LiveEventId? gone = LiveEventId.TryParse(maxDeletedEntryId, out var deleted) && deleted > LiveEventId.Zero ? deleted : null;
+        if (entriesAdded <= length)
+        {
+            return gone;
+        }
+
+        LiveEventId? beforeFirst = length > 0
+            ? LiveEventId.TryParse(firstEntryId, out var first) ? Previous(first) : null
+            : LiveEventId.TryParse(lastGeneratedId, out var last) ? last : null;
+        return beforeFirst is { } trimmed && (gone is null || trimmed > gone) ? trimmed : gone;
+    }
+
+    private static LiveEventId Previous(LiveEventId id) =>
+        id.Sequence > 0 ? new LiveEventId(id.Milliseconds, id.Sequence - 1) : new LiveEventId(Math.Max(0, id.Milliseconds - 1), long.MaxValue);
 
     public async Task<LiveEventId?> LastIdAsync(CancellationToken cancellationToken) =>
         Id(await redis.GetDatabase().StreamRangeAsync(StreamKey, "-", "+", 1, Order.Descending));

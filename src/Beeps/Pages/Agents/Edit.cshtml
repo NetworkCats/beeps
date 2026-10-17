@@ -13,8 +13,9 @@
 @section Scripts {
     <script type="module" src="~/dist/avatar-crop.js" asp-append-version="true"></script>
 }
-<section class="feed">
-    <header class="profile-header">
+<section class="feed" data-live-subject="actor:@agent.Id">
+    @* Drawn again in place when the agent changes (its own avatar, a rename in another tab). *@
+    <header class="profile-header" data-live-region="agent-header" data-live-actors="@agent.Id">
         <span class="avatar avatar-xl"><img src="@agent.AvatarUrl" alt="" width="64" height="64"></span>
         <div class="profile-id">
             <h1 class="profile-name">@ViewData["Title"]</h1>
@@ -27,11 +28,16 @@
     <form-errors />
     @if (!agent.IsConnected)
     {
-        <div class="alert alert-info" role="status"><p class="alert-text">@L["AgentEdit.NotConnected"]</p></div>
+        @* Becomes the form below in place once the agent connects. *@
+        <div data-live-region="agent-setup" data-live-actors="@agent.Id">
+            <div class="alert alert-info" role="status"><p class="alert-text">@L["AgentEdit.NotConnected"]</p></div>
+        </div>
     }
     else
     {
-        <partial name="_AvatarEditor" model="new AvatarEditor(agent.AvatarUrl, agent.HasCustomAvatar)" />
+        @* Shows what is saved, also when changed elsewhere, unless it is being edited here (live.ts). *@
+        <div data-live-region="agent-setup" data-live-actors="@agent.Id">
+        <partial name="_AvatarEditor" model="new AvatarEditor(agent.Id, agent.AvatarUrl, agent.HasCustomAvatar)" />
         <form class="auth-form" method="post">
             <div class="field">
                 <label class="label" for="@ProfileFields.DisplayName">@L["Field.DisplayName"]</label>
@@ -58,5 +64,6 @@
                 <a class="btn btn-ghost" asp-page="/Agents/Index">@L["AgentEdit.Back"]</a>
             </div>
         </form>
+        </div>
     }
 </section>

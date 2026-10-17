@@ -117,6 +117,9 @@ public interface IMediaStore
     /// </summary>
     Task<bool> FinishProcessingAsync(Guid mediaId, MediaStatus status, int width, int height, CancellationToken cancellationToken);
 
+    /// <summary>The beeps this media item is attached to.</summary>
+    Task<IReadOnlyList<Guid>> ListBeepsUsingAsync(Guid mediaId, CancellationToken cancellationToken);
+
     /// <summary>The actors whose avatar this media item is.</summary>
     Task<IReadOnlyList<Guid>> ListAvatarUsersAsync(Guid mediaId, CancellationToken cancellationToken);
 

@@ -19,13 +19,19 @@ public enum LiveTopicKind
     Tag,
     Thread,
     Notifications,
+
+    /// <summary>Search results: drawn again when the search index changes.</summary>
+    Search,
+
+    /// <summary>The admin pages: drawn again when anything happens on the site.</summary>
+    Admin,
 }
 
 /// <summary>
 /// What new content a page shows as it arrives (PLAN 6.10: each tab subscribes to its page). Pages write it
 /// into <c>data-live-watch</c>; the browser passes it back as <c>watch</c> on the stream and on fragment
 /// requests. The text form is <c>home</c>, <c>public</c>, <c>profile:{id}</c>, <c>replies:{id}</c>,
-/// <c>tag:{normalized tag}</c>, <c>thread:{root id}</c>, <c>notifications</c>, or empty.
+/// <c>tag:{normalized tag}</c>, <c>thread:{root id}</c>, <c>notifications</c>, <c>search</c>, <c>admin</c>, or empty.
 /// </summary>
 public sealed record LiveTopic(LiveTopicKind Kind, Guid Id = default, string Tag = "")
 {
@@ -33,6 +39,8 @@ public sealed record LiveTopic(LiveTopicKind Kind, Guid Id = default, string Tag
     public static readonly LiveTopic Home = new(LiveTopicKind.Home);
     public static readonly LiveTopic Public = new(LiveTopicKind.Public);
     public static readonly LiveTopic Notifications = new(LiveTopicKind.Notifications);
+    public static readonly LiveTopic Search = new(LiveTopicKind.Search);
+    public static readonly LiveTopic Admin = new(LiveTopicKind.Admin);
 
     /// <summary>Lists that grow at the top, newest first; a thread grows at the bottom.</summary>
     public bool IsBeepList => Kind is LiveTopicKind.Home or LiveTopicKind.Public or LiveTopicKind.Profile or LiveTopicKind.ProfileReplies or LiveTopicKind.Tag;
@@ -60,6 +68,8 @@ public sealed record LiveTopic(LiveTopicKind Kind, Guid Id = default, string Tag
             ("home", null) => Home,
             ("public", null) => Public,
             ("notifications", null) => Notifications,
+            ("search", null) => Search,
+            ("admin", null) => Admin,
             ("profile", { } id) when TryParseId(id, out var actorId) => Profile(actorId, replies: false),
             ("replies", { } id) when TryParseId(id, out var actorId) => Profile(actorId, replies: true),
             ("thread", { } id) when TryParseId(id, out var rootId) => Thread(rootId),
@@ -96,6 +106,8 @@ public sealed record LiveTopic(LiveTopicKind Kind, Guid Id = default, string Tag
         LiveTopicKind.Home => "home",
         LiveTopicKind.Public => "public",
         LiveTopicKind.Notifications => "notifications",
+        LiveTopicKind.Search => "search",
+        LiveTopicKind.Admin => "admin",
         LiveTopicKind.Profile => $"profile:{Id:D}",
         LiveTopicKind.ProfileReplies => $"replies:{Id:D}",
         LiveTopicKind.Thread => $"thread:{Id:D}",

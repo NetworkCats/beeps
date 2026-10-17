@@ -23,12 +23,22 @@ public sealed class LiveUpdatesTests
         await live.InboxChangedAsync([owner], TestSupport.Ct);
         await live.ActorChangedAsync(owner, TestSupport.Ct);
         await live.CloseConnectionsAsync(["a"], TestSupport.Ct);
+        await live.BeepsChangedAsync([beep], TestSupport.Ct);
+        await live.LikeChangedAsync(beep, owner, liked: true, TestSupport.Ct);
+        await live.RelationChangedAsync(owner, agent, TestSupport.Ct);
+        await live.AgentsChangedAsync(owner, TestSupport.Ct);
+        await live.ResyncAsync(TestSupport.Ct);
 
         Assert.Equal([$$"""{"id":"{{beep:D}}"}"""], TestData.LiveEvents(store, LiveEventTypes.BeepRemoved));
         Assert.Equal([$$"""{"agent_id":"{{agent:D}}","owner_id":"{{owner:D}}"}"""], TestData.LiveEvents(store, LiveEventTypes.AgentConnected));
         Assert.Equal([$$"""{"recipient_ids":["{{owner:D}}"]}"""], TestData.LiveEvents(store, LiveEventTypes.Inbox));
         Assert.Equal([$$"""{"actor_id":"{{owner:D}}"}"""], TestData.LiveEvents(store, LiveEventTypes.ActorChanged));
         Assert.Equal(["""{"connection_ids":["a"]}"""], TestData.LiveEvents(store, LiveEventTypes.Close));
+        Assert.Equal([$$"""{"ids":["{{beep:D}}"]}"""], TestData.LiveEvents(store, LiveEventTypes.BeepsChanged));
+        Assert.Equal([$$"""{"beep_id":"{{beep:D}}","actor_id":"{{owner:D}}","liked":true}"""], TestData.LiveEvents(store, LiveEventTypes.LikeChanged));
+        Assert.Equal([$$"""{"actor_ids":["{{owner:D}}","{{agent:D}}"]}"""], TestData.LiveEvents(store, LiveEventTypes.RelationChanged));
+        Assert.Equal([$$"""{"owner_id":"{{owner:D}}"}"""], TestData.LiveEvents(store, LiveEventTypes.AgentsChanged));
+        Assert.Equal(["{}"], TestData.LiveEvents(store, LiveEventTypes.Resync));
     }
 
     [Fact]
@@ -38,6 +48,7 @@ public sealed class LiveUpdatesTests
 
         await live.InboxChangedAsync([], TestSupport.Ct);
         await live.CloseConnectionsAsync([], TestSupport.Ct);
+        await live.BeepsChangedAsync([], TestSupport.Ct);
 
         await store.DidNotReceiveWithAnyArgs().AppendAsync(default!, default!, TestSupport.Ct);
     }

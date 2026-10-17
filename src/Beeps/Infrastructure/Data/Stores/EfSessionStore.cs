@@ -28,6 +28,9 @@ public sealed class EfSessionStore(BeepsDbContext db, HybridCache cache, TimePro
         await cache.RemoveAsync(SharedCache.SessionKey(session.TokenHash), cancellationToken);
     }
 
+    public Task<bool> IsActiveAsync(Guid sessionId, DateTimeOffset now, CancellationToken cancellationToken) =>
+        db.Set<UserSession>().AnyAsync(s => s.Id == sessionId && s.RevokedAt == null && s.ExpiresAt > now, cancellationToken);
+
     public async Task RevokeAsync(string tokenHash, DateTimeOffset now, CancellationToken cancellationToken)
     {
         await db.Set<UserSession>()

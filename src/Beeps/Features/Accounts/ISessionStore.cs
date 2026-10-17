@@ -15,6 +15,9 @@ public interface ISessionStore
     /// <summary>Records activity and pushes the expiry out. Runs immediately.</summary>
     Task TouchAsync(SessionRow session, DateTimeOffset now, DateTimeOffset expiresAt, CancellationToken cancellationToken);
 
+    /// <summary>Whether the session is still signed in: not revoked, not expired. Always asks the database.</summary>
+    Task<bool> IsActiveAsync(Guid sessionId, DateTimeOffset now, CancellationToken cancellationToken);
+
     /// <summary>Ends one session (sign-out). Runs immediately, cache included.</summary>
     Task RevokeAsync(string tokenHash, DateTimeOffset now, CancellationToken cancellationToken);
 

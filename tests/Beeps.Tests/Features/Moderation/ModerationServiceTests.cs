@@ -122,6 +122,19 @@ public sealed class ModerationServiceTests
     }
 
     [Fact]
+    public async Task GivingUpPutsTheBeepInTheReviewQueueOnOpenAdminPages()
+    {
+        store.SetStatusAsync(BeepId, Arg.Any<IReadOnlyCollection<ModerationStatus>>(), ModerationStatus.Failed, Arg.Any<CancellationToken>()).Returns(true, false);
+        var service = CreateService();
+
+        await service.GiveUpAsync(BeepId, "HttpRequestException: down", TestSupport.Ct);
+        // Already given up on (another instance): nothing new to show.
+        await service.GiveUpAsync(BeepId, "HttpRequestException: down", TestSupport.Ct);
+
+        Assert.Single(TestData.LiveEvents(liveEvents, LiveEventTypes.AdminChanged));
+    }
+
+    [Fact]
     public async Task OverlongAnswersAreCutToTheirColumns()
     {
         Subject(ModerationStatus.Pending);
@@ -149,6 +162,7 @@ public sealed class ModerationServiceTests
         unitOfWork,
         outbox,
         TestData.Live(liveEvents, counters),
+        TestData.Inboxes(liveEvents),
         Options.Create(new ModerationOptions()),
         TestData.Time(),
         NullLogger<ModerationService>.Instance);

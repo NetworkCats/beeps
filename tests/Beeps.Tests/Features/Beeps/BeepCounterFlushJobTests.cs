@@ -1,4 +1,5 @@
 using Beeps.Features.Beeps;
+using Beeps.Features.Live;
 using Beeps.Tests.Support;
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -8,6 +9,7 @@ public sealed class BeepCounterFlushJobTests
 {
     private readonly IBeepCounterStore counters = Substitute.For<IBeepCounterStore>();
     private readonly IBeepStore beeps = Substitute.For<IBeepStore>();
+    private readonly ILiveEventStore liveEvents = Substitute.For<ILiveEventStore>();
 
     [Fact]
     public async Task EveryDirtyBeepIsRecountedAndPutBack()
@@ -23,6 +25,21 @@ public sealed class BeepCounterFlushJobTests
         await beeps.Received(1).RecountAsync(full, Arg.Any<CancellationToken>());
         await counters.Received(1).SetAsync(recounted, Arg.Any<CancellationToken>());
         await counters.Received(2).TakeDirtyAsync(Arg.Any<int>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task ACorrectedCountGoesToOpenPages()
+    {
+        var (drifted, right) = (Guid.NewGuid(), Guid.NewGuid());
+        IReadOnlyList<Guid> batch = [drifted, right];
+        counters.TakeDirtyAsync(BeepCounterFlushJob.BatchSize, Arg.Any<CancellationToken>()).Returns(batch, []);
+        counters.GetAsync(batch, Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, BeepCounts> { [drifted] = new(5, 0), [right] = new(1, 1) });
+        beeps.RecountAsync(batch, Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, BeepCounts> { [drifted] = new(4, 0), [right] = new(1, 1) });
+
+        await Create().RunAsync(TestSupport.Ct);
+
+        await liveEvents.Received(1).MarkCountsChangedAsync(drifted, Arg.Any<CancellationToken>());
+        await liveEvents.DidNotReceive().MarkCountsChangedAsync(right, Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -47,5 +64,5 @@ public sealed class BeepCounterFlushJobTests
         await counters.Received(1).MarkDirtyAsync(batch, Arg.Any<CancellationToken>());
     }
 
-    private BeepCounterFlushJob Create() => new(counters, beeps, NullLogger<BeepCounterFlushJob>.Instance);
+    private BeepCounterFlushJob Create() => new(counters, beeps, TestData.Live(liveEvents), NullLogger<BeepCounterFlushJob>.Instance);
 }

@@ -16,7 +16,8 @@ public sealed record BeepList(CursorPage<BeepView> Page, string EmptyTitle, stri
 
 /// <summary>The avatar upload and removal forms for <c>_AvatarEditor.cshtml</c>.</summary>
 /// <param name="HasCustomAvatar">An uploaded avatar, which can be removed to get the default pattern back.</param>
-public sealed record AvatarEditor(Uri AvatarUrl, bool HasCustomAvatar);
+/// <param name="ActorId">Whose avatar it is: the preview follows it live (an upload shows once processed).</param>
+public sealed record AvatarEditor(Guid ActorId, Uri AvatarUrl, bool HasCustomAvatar);
 
 /// <summary>
 /// The square picked in the avatar cropper, posted as the hidden fields <c>Crop.X</c>, <c>Crop.Y</c> and

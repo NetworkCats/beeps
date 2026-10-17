@@ -42,6 +42,9 @@ public static class BeepsClaims
     public const string OwnerId = "beeps:owner";
     public const string Connected = "beeps:connected";
 
+    /// <summary>The agent key a request was made with, so a stream it opened can end when the key stops working.</summary>
+    public const string AgentKeyId = "beeps:key";
+
     /// <summary>Storage key of the human's custom avatar, for the navigation bar; absent for the default pattern.</summary>
     public const string AvatarKey = "beeps:avatar";
 

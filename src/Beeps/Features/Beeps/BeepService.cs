@@ -23,6 +23,7 @@ public sealed partial class BeepService(
     IModerationJobs moderationJobs,
     RateLimitService rateLimits,
     LiveUpdates live,
+    InboxRecounter inboxes,
     IOptions<ModerationOptions> moderation,
     TimeProvider time,
     IStringLocalizer<SharedResource> localizer,
@@ -173,6 +174,20 @@ public sealed partial class BeepService(
         return built[0];
     }
 
+    /// <summary>The ones of these beeps the viewer can see, in the order asked for.</summary>
+    public async Task<IReadOnlyList<BeepView>> GetManyAsync(Viewer? viewer, IReadOnlyCollection<Guid> beepIds, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(beepIds);
+        if (beepIds.Count == 0)
+        {
+            return [];
+        }
+
+        var rows = await store.GetRowsAsync(beepIds, viewer?.ActorId, cancellationToken);
+        var built = (await views.BuildAsync(rows, viewer, cancellationToken)).ToDictionary(b => b.Id);
+        return [.. beepIds.Distinct().Where(built.ContainsKey).Select(id => built[id])];
+    }
+
     /// <summary>Handles of the authors of these beeps, for the visible ones; for "replying to @…" lines.</summary>
     public async Task<IReadOnlyDictionary<Guid, string?>> GetAuthorHandlesAsync(Viewer? viewer, IReadOnlyCollection<Guid> beepIds, CancellationToken cancellationToken)
     {
@@ -237,6 +252,7 @@ public sealed partial class BeepService(
 
         LogDeleted(logger, beepId, viewer.ActorId);
         await live.BeepRemovedAsync(beepId, cancellationToken);
+        await inboxes.RecountAsync([beepId], [], cancellationToken);
         if (beep.ReplyToId is { } parentId && await store.FindVisibleAsync(parentId, viewer.ActorId, cancellationToken) is { } parent)
         {
             await CountAsync(parent, new BeepCounts(0, -1), cancellationToken);
@@ -287,6 +303,7 @@ public sealed partial class BeepService(
         if (added)
         {
             await CountAsync(beep, new BeepCounts(1, 0), cancellationToken);
+            await live.LikeChangedAsync(beepId, viewer.ActorId, liked: true, cancellationToken);
         }
 
         return Result.Success;
@@ -311,6 +328,7 @@ public sealed partial class BeepService(
         if (await store.RemoveLikeAsync(viewer.ActorId, beepId, cancellationToken))
         {
             await CountAsync(beep, new BeepCounts(-1, 0), cancellationToken);
+            await live.LikeChangedAsync(beepId, viewer.ActorId, liked: false, cancellationToken);
         }
 
         return Result.Success;

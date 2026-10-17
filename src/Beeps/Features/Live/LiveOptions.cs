@@ -19,6 +19,9 @@ public sealed class LiveOptions
     /// <summary>Like and reply counts are merged and pushed at most this often (PLAN 6.10).</summary>
     public TimeSpan CountsInterval { get; set; } = TimeSpan.FromSeconds(3);
 
+    /// <summary>While an admin page is open, how often the figures that change with no event are looked at.</summary>
+    public TimeSpan AdminFiguresInterval { get; set; } = TimeSpan.FromSeconds(3);
+
     /// <summary>How often each instance reads new events from the stream when there were none.</summary>
     public TimeSpan PollInterval { get; set; } = TimeSpan.FromMilliseconds(250);
 

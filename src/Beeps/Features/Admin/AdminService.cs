@@ -2,6 +2,7 @@ using Beeps.Features.Accounts;
 using Beeps.Features.Agents;
 using Beeps.Features.Live;
 using Beeps.Features.Avatars;
+using Beeps.Features.Notifications;
 using Beeps.Features.Search;
 using Beeps.Features.Shared;
 using Microsoft.Extensions.Localization;
@@ -22,6 +23,7 @@ public sealed partial class AdminService(
     IUnitOfWork unitOfWork,
     IOutbox outbox,
     LiveUpdates live,
+    InboxRecounter inboxes,
     AvatarUrls avatars,
     TimeProvider time,
     IStringLocalizer<SharedResource> localizer,
@@ -102,6 +104,8 @@ public sealed partial class AdminService(
         if (result.IsSuccess)
         {
             await live.AuthorsRemovedAsync([userId, .. agentIds], cancellationToken);
+            await inboxes.RecountAsync([], [userId, .. agentIds], cancellationToken);
+            await live.SessionsEndedAsync(userId, cancellationToken);
         }
 
         return result;
@@ -110,6 +114,7 @@ public sealed partial class AdminService(
     /// <summary>Lifts a ban. The agents stay disabled until their owner turns them back on.</summary>
     public async Task<Result> UnbanUserAsync(Guid adminId, Guid userId, CancellationToken cancellationToken)
     {
+        var lifted = false;
         var result = await ChangeUserAsync(adminId, userId, (user, _, _) =>
         {
             if (user.BannedAt is null)
@@ -117,12 +122,21 @@ public sealed partial class AdminService(
                 return Task.FromResult(Result.Success);
             }
 
+            lifted = true;
             user.BannedAt = null;
             outbox.SyncAccountToSearch(user.Id, beeps: true);
             Audit(adminId, AuditActions.UnbanUser, AuditTargets.User, user.Id, null);
             return Task.FromResult(Result.Success);
         }, cancellationToken);
         await ForgetAsync(userId, result, endSessions: false, cancellationToken);
+        if (result.IsSuccess && lifted)
+        {
+            // Their beeps come back wherever they belong, and the notifications they caused with them.
+            var agentIds = (await agents.ListAgentsAsync(userId, cancellationToken)).Select(a => a.Id);
+            await live.ResyncAsync(cancellationToken);
+            await inboxes.RecountAsync([], [userId, .. agentIds], cancellationToken);
+        }
+
         return result;
     }
 
@@ -150,6 +164,8 @@ public sealed partial class AdminService(
         if (result.IsSuccess)
         {
             await live.AuthorsRemovedAsync([userId, .. agentIds], cancellationToken);
+            await inboxes.RecountAsync([], [userId, .. agentIds], cancellationToken);
+            await live.SessionsEndedAsync(userId, cancellationToken);
         }
 
         return result;
@@ -163,6 +179,7 @@ public sealed partial class AdminService(
             return denied;
         }
 
+        var changed = false;
         var result = await unitOfWork.InTransactionAsync(
             AdvisoryLocks.Admins,
             async ct =>
@@ -192,10 +209,17 @@ public sealed partial class AdminService(
                 Audit(adminId, isAdmin ? AuditActions.GrantAdmin : AuditActions.RevokeAdmin, AuditTargets.User, user.Id, null);
                 await unitOfWork.SaveChangesAsync(ct);
                 LogAdminChanged(logger, user.Id, isAdmin, adminId);
+                changed = true;
                 return Result.Success;
             },
             cancellationToken);
         await ForgetAsync(userId, result, endSessions: false, cancellationToken);
+        if (changed)
+        {
+            // Their open tabs gain or lose the admin pages.
+            await live.AccountChangedAsync(userId, cancellationToken);
+        }
+
         return result;
     }
 
@@ -268,6 +292,7 @@ public sealed partial class AdminService(
         if (result.IsSuccess)
         {
             await live.AuthorsRemovedAsync([agentId], cancellationToken);
+            await inboxes.RecountAsync([], [agentId], cancellationToken);
         }
 
         return result;
@@ -456,6 +481,10 @@ public sealed partial class AdminService(
         if (result.IsSuccess)
         {
             await agents.ForgetKeysAsync([agent.Id], cancellationToken);
+            if (agent.OwnerId is { } ownerId)
+            {
+                await live.AgentsChangedAsync(ownerId, cancellationToken);
+            }
         }
 
         return result;

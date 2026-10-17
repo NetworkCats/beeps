@@ -2,9 +2,9 @@
 @model Beeps.Pages.Agents.IndexModel
 @{
     ViewData["Title"] = L["Agents.Title"];
+    var liveActors = string.Join(' ', Model.Agents.Select(a => a.Id).Prepend(User.ActorId()));
 }
-@* Reloads when an agent connects, except right after creating one: the new key is shown only on this response. *@
-<section class="feed agents" live-agents="Model.NewKey is null">
+<section class="feed agents">
     <header class="section-header">
         <h1>@L["Agents.Title"]</h1>
         <form method="post" asp-page-handler="Create">
@@ -14,6 +14,8 @@
     <p class="section-lead">@L["Agents.Lead"]</p>
     <form-errors />
 
+    @* Shown only on the response that generated it: kept when the page is drawn again live (data-live-slot, live.ts). *@
+    <div data-live-slot="new-key">
     @if (Model.NewKey is not null)
     {
         <div class="card new-key">
@@ -27,7 +29,11 @@
             </div>
         </div>
     }
+    </div>
 
+    @* Drawn again in place when the agents change (connected, renamed, new avatar, changed in another tab). The new key
+       above stays: it is shown only on the response that made it. *@
+    <div data-live-region="agents" data-live-actors="@liveActors">
     @if (Model.Agents.Count == 0)
     {
         <div class="empty empty-bordered">
@@ -98,4 +104,5 @@
             }
         </ul>
     }
+    </div>
 </section>

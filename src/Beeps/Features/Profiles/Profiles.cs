@@ -47,6 +47,9 @@ public sealed record ProfileView(
 
 public interface IProfileStore
 {
+    /// <summary>The current handle of a visible actor that has one; for addresses that must survive a rename.</summary>
+    Task<string?> FindHandleAsync(Guid actorId, CancellationToken cancellationToken);
+
     /// <summary>A visible actor (see <see cref="BeepVisibility"/>) with this normalized handle.</summary>
     Task<ProfileRow?> FindByHandleAsync(string normalizedHandle, CancellationToken cancellationToken);
 

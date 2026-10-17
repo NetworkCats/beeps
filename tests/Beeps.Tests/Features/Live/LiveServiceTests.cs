@@ -1,4 +1,5 @@
 using Beeps.Features.Accounts;
+using Beeps.Features.Agents;
 using Beeps.Features.Beeps;
 using Beeps.Features.Live;
 using Beeps.Features.Notifications;
@@ -15,10 +16,14 @@ public sealed class LiveServiceTests : IAsyncDisposable
     private static readonly Guid Tom = Guid.NewGuid();
     private static readonly Guid Alice = Guid.NewGuid();
     private static readonly Viewer TomViewer = Viewer.Human(Tom);
+    private static readonly Guid TomSession = Guid.NewGuid();
 
     private readonly TestLiveFeed feed = new();
     private readonly ILiveEventStore store = Substitute.For<ILiveEventStore>();
     private readonly IProfileStore profiles = Substitute.For<IProfileStore>();
+    private readonly ISessionStore sessions = Substitute.For<ISessionStore>();
+    private readonly IAgentStore agents = Substitute.For<IAgentStore>();
+    private readonly AdminWatchers adminWatchers = new();
     private readonly INotificationStore notifications = Substitute.For<INotificationStore>();
     private readonly LiveOptions options = new() { HeartbeatInterval = TimeSpan.FromHours(1) };
     private readonly FixedTimeProvider time = new(TestData.Now);
@@ -39,7 +44,7 @@ public sealed class LiveServiceTests : IAsyncDisposable
     [InlineData("home", null, "yesterday", LiveErrorCodes.InvalidEventId)]
     public async Task BadSubscriptionsAreRejected(string watch, string? beeps, string? lastEventId, string code)
     {
-        var result = await CreateService().OpenAsync(TomViewer, new LiveRequest(watch, beeps, lastEventId, null), TestSupport.Ct);
+        var result = await CreateService().OpenAsync(TomViewer, new LiveSession(TomSession, Verified: true), new LiveRequest(watch, beeps, lastEventId, null), TestSupport.Ct);
 
         Assert.Equal(code, result.Error?.Code);
         Assert.Equal(ErrorKind.Validation, result.Error?.Kind);
@@ -50,7 +55,7 @@ public sealed class LiveServiceTests : IAsyncDisposable
     {
         var beeps = string.Join(',', Enumerable.Range(0, LiveService.MaxWatchedBeeps + 1).Select(_ => Guid.NewGuid()));
 
-        var result = await CreateService().OpenAsync(TomViewer, new LiveRequest("", beeps, null, null), TestSupport.Ct);
+        var result = await CreateService().OpenAsync(TomViewer, new LiveSession(TomSession, Verified: true), new LiveRequest("", beeps, null, null), TestSupport.Ct);
 
         Assert.Equal(LiveErrorCodes.InvalidBeeps, result.Error?.Code);
     }
@@ -128,17 +133,204 @@ public sealed class LiveServiceTests : IAsyncDisposable
     }
 
     [Fact]
-    public async Task AHiddenBeepIsRemovedForEveryoneButItsAuthorAndTheirOwner()
+    public async Task AHiddenBeepIsRemovedForEveryoneButItsAuthorAndTheirOwnerWhoSeeItMarked()
     {
         var (own, agents, others) = (Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid());
         await OpenAsync(new LiveRequest("", $"{own},{agents},{others}", null, null));
 
+        feed.Publish(LiveEventTypes.BeepHidden, $$"""{"id":"{{Guid.NewGuid():D}}","author_id":"{{Alice:D}}","author_owner_id":null}""");
         feed.Publish(LiveEventTypes.BeepHidden, $$"""{"id":"{{own:D}}","author_id":"{{Tom:D}}","author_owner_id":null}""");
+        var first = await NextAsync();
         feed.Publish(LiveEventTypes.BeepHidden, $$"""{"id":"{{agents:D}}","author_id":"{{Guid.NewGuid():D}}","author_owner_id":"{{Tom:D}}"}""");
+        var second = await NextAsync();
         feed.Publish(LiveEventTypes.BeepHidden, $$"""{"id":"{{others:D}}","author_id":"{{Alice:D}}","author_owner_id":null}""");
+        var third = await NextAsync();
 
-        var removed = await NextAsync();
-        Assert.Equal((LiveMessages.Removed, $$"""{"id":"{{others:D}}"}"""), (removed.Type, removed.Data));
+        Assert.Equal((LiveMessages.Changed, $$"""{"ids":["{{own:D}}"]}"""), (first.Type, first.Data));
+        Assert.Equal((LiveMessages.Changed, $$"""{"ids":["{{agents:D}}"]}"""), (second.Type, second.Data));
+        Assert.Equal((LiveMessages.Removed, $$"""{"id":"{{others:D}}"}"""), (third.Type, third.Data));
+    }
+
+    [Fact]
+    public async Task TheInboxPageFollowsTheBeepsOfNewNotifications()
+    {
+        var (mentioned, elsewhere) = (Guid.NewGuid(), Guid.NewGuid());
+        await OpenAsync(new LiveRequest("notifications", null, null, null));
+
+        feed.Publish(LiveEventTypes.Inbox, $$"""{"recipient_ids":["{{Alice:D}}"],"beep_ids":["{{elsewhere:D}}"]}""");
+        feed.Publish(LiveEventTypes.Inbox, $$"""{"recipient_ids":["{{Tom:D}}"],"beep_ids":["{{mentioned:D}}"]}""");
+        Assert.Equal(LiveMessages.Inbox, (await NextAsync()).Type);
+        feed.Publish(LiveEventTypes.Counts, $$"""{"beeps":[{"id":"{{elsewhere:D}}","like_count":1,"reply_count":0},{"id":"{{mentioned:D}}","like_count":2,"reply_count":0}]}""");
+
+        Assert.Equal($$"""[{"id":"{{mentioned:D}}","like_count":2,"reply_count":0}]""", (await NextAsync()).Data);
+    }
+
+    [Fact]
+    public async Task ATabWhoseSessionEndedSignsOutAndItsStreamEnds()
+    {
+        await OpenAsync(new LiveRequest("home", null, null, null));
+        sessions.IsActiveAsync(TomSession, TestData.Now, Arg.Any<CancellationToken>()).Returns(true, false);
+
+        // Another account's sessions, and one of Tom's other sessions: this tab is still signed in.
+        feed.Publish(LiveEventTypes.SessionsEnded, $$"""{"account_id":"{{Alice:D}}"}""");
+        feed.Publish(LiveEventTypes.SessionsEnded, $$"""{"account_id":"{{Tom:D}}"}""");
+        var id = feed.Publish(LiveEventTypes.SessionsEnded, $$"""{"account_id":"{{Tom:D}}"}""");
+
+        Assert.Equal(new LiveMessage(LiveMessages.SignedOut, "{}", id), await NextAsync());
+        Assert.False(await stream!.MoveNextAsync());
+        await sessions.Received(2).IsActiveAsync(TomSession, TestData.Now, Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task ALanguageOrRightsChangeShowsTheAccountsTabsAnew()
+    {
+        await OpenAsync(new LiveRequest("", null, null, null));
+
+        feed.Publish(LiveEventTypes.AccountChanged, $$"""{"account_id":"{{Alice:D}}"}""");
+        var id = feed.Publish(LiveEventTypes.AccountChanged, $$"""{"account_id":"{{Tom:D}}"}""");
+
+        Assert.Equal(new LiveMessage(LiveMessages.Reload, "{}", id), await NextAsync());
+    }
+
+    [Fact]
+    public async Task APageRenderedAfterTheChangeIsNotShownAnewForIt()
+    {
+        // The test feed stamps its events before this render time; a fresh page is replayed from a little before it.
+        await OpenAsync(new LiveRequest("", null, null, TestData.Now.ToUnixTimeMilliseconds() + 1000));
+
+        feed.Publish(LiveEventTypes.AccountChanged, $$"""{"account_id":"{{Tom:D}}"}""");
+        var id = feed.Publish(LiveEventTypes.Inbox, $$"""{"recipient_ids":["{{Tom:D}}"]}""");
+
+        Assert.Equal((LiveMessages.Inbox, id), ((await NextAsync()).Type, stream!.Current.Id));
+    }
+
+    [Fact]
+    public async Task SearchPagesAskAgainWhenTheIndexChanges()
+    {
+        await OpenAsync(new LiveRequest("", null, null, null));
+        await using var search = await OpenOtherAsync(new LiveRequest("search", null, null, null));
+
+        var id = feed.Publish(LiveEventTypes.SearchChanged, "{}");
+        feed.Publish(LiveEventTypes.AccountChanged, $$"""{"account_id":"{{Tom:D}}"}""");
+
+        Assert.Equal(new LiveMessage(LiveMessages.Search, "{}", id), await NextAsync(search));
+        // The page without search results skipped it.
+        Assert.Equal(LiveMessages.Reload, (await NextAsync()).Type);
+    }
+
+    [Fact]
+    public async Task AnOpenAdminPageIsCountedAsWatchingUntilItCloses()
+    {
+        await OpenAsync(new LiveRequest("home", null, null, null));
+        Assert.False(adminWatchers.Any);
+        await using var admin = await OpenOtherAsync(new LiveRequest("admin", null, null, null));
+
+        Assert.True(adminWatchers.Any);
+        await admin.DisposeAsync();
+        Assert.False(adminWatchers.Any);
+    }
+
+    [Fact]
+    public async Task AdminPagesHearOfAnyChangeToTheSite()
+    {
+        await OpenAsync(new LiveRequest("admin", null, null, null));
+
+        feed.Publish(LiveEventTypes.Counts, $$"""{"beeps":[{"id":"{{Guid.NewGuid():D}}","like_count":1,"reply_count":0}]}""");
+        feed.Publish(LiveEventTypes.LikeChanged, $$"""{"beep_id":"{{Guid.NewGuid():D}}","actor_id":"{{Alice:D}}","liked":true}""");
+        var posted = feed.Publish(LiveEventTypes.BeepPosted, Json(Posted(Alice)));
+        var reported = feed.Publish(LiveEventTypes.AdminChanged, "{}");
+
+        Assert.Equal(new LiveMessage(LiveMessages.Admin, "{}", posted), await NextAsync());
+        Assert.Equal(new LiveMessage(LiveMessages.Admin, "{}", reported), await NextAsync());
+    }
+
+    [Fact]
+    public async Task ChangedBeepsAreRedrawnWhereTheyAreShown()
+    {
+        var (shown, other) = (Guid.NewGuid(), Guid.NewGuid());
+        await OpenAsync(new LiveRequest("", $"{shown}", null, null));
+
+        feed.Publish(LiveEventTypes.BeepsChanged, $$"""{"ids":["{{other:D}}"]}""");
+        var id = feed.Publish(LiveEventTypes.BeepsChanged, $$"""{"ids":["{{other:D}}","{{shown:D}}"]}""");
+
+        Assert.Equal(new LiveMessage(LiveMessages.Changed, $$"""{"ids":["{{shown:D}}"]}""", id), await NextAsync());
+    }
+
+    [Fact]
+    public async Task OnlyTheViewersOwnLikesPressTheirButtons()
+    {
+        var shown = Guid.NewGuid();
+        await OpenAsync(new LiveRequest("", $"{shown}", null, null));
+
+        feed.Publish(LiveEventTypes.LikeChanged, $$"""{"beep_id":"{{shown:D}}","actor_id":"{{Alice:D}}","liked":true}""");
+        feed.Publish(LiveEventTypes.LikeChanged, $$"""{"beep_id":"{{Guid.NewGuid():D}}","actor_id":"{{Tom:D}}","liked":true}""");
+        var id = feed.Publish(LiveEventTypes.LikeChanged, $$"""{"beep_id":"{{shown:D}}","actor_id":"{{Tom:D}}","liked":false}""");
+
+        Assert.Equal(new LiveMessage(LiveMessages.Liked, $$"""{"id":"{{shown:D}}","liked":false}""", id), await NextAsync());
+    }
+
+    [Fact]
+    public async Task FollowingSomeoneBringsTheirBeepsToAnOpenHomeTimeline()
+    {
+        var bob = Guid.NewGuid();
+        await OpenAsync(new LiveRequest("home", null, null, null));
+        profiles.ListFollowedAsync(Tom, Arg.Any<CancellationToken>()).Returns([Alice, bob]);
+        unread = 4;
+
+        feed.Publish(LiveEventTypes.RelationChanged, $$"""{"actor_ids":["{{Alice:D}}","{{Guid.NewGuid():D}}"]}""");
+        var id = feed.Publish(LiveEventTypes.RelationChanged, $$"""{"actor_ids":["{{Tom:D}}","{{bob:D}}"]}""");
+        var resync = await NextAsync();
+        var inbox = await NextAsync();
+        var beep = Posted(bob);
+        feed.Publish(LiveEventTypes.BeepPosted, Json(beep));
+
+        Assert.Equal(new LiveMessage(LiveMessages.Resync, "{}", id), resync);
+        Assert.Equal(new LiveMessage(LiveMessages.Inbox, """{"unread_count":4}""", id), inbox);
+        Assert.Contains(beep.Id.ToString("D"), (await NextAsync()).Data, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task EveryPageCatchesUpWhenBeepsComeBackAndOnlyOwnersHearOfTheirKeys()
+    {
+        // An older page of a list (no topic) catches up too: it draws its list again.
+        await OpenAsync(new LiveRequest("", null, null, null));
+        await using (var listing = await OpenOtherAsync(new LiveRequest($"thread:{Guid.NewGuid():D}", null, null, null)))
+        {
+            var id = feed.Publish(LiveEventTypes.Resync, "{}");
+            // Alice's key use is for Alice's eyes only.
+            feed.Publish(LiveEventTypes.AgentsChanged, $$"""{"owner_id":"{{Alice:D}}","owner_only":true}""");
+            feed.Publish(LiveEventTypes.AgentsChanged, $$"""{"owner_id":"{{Alice:D}}"}""");
+
+            Assert.Equal(new LiveMessage(LiveMessages.Resync, "{}", id), await NextAsync(listing));
+            Assert.Equal(new LiveMessage(LiveMessages.Resync, "{}", id), await NextAsync());
+        }
+
+        var agents = await NextAsync();
+        Assert.Equal((LiveMessages.Agents, $$"""{"id":"{{Alice:D}}"}"""), (agents.Type, agents.Data));
+    }
+
+    [Fact]
+    public async Task AnUnverifiedTabFollowsOnlyItsAccount()
+    {
+        stream = (await CreateService().OpenAsync(TomViewer, new LiveSession(TomSession, Verified: false), new LiveRequest("home", null, null, null), stop.Token)).Value.GetAsyncEnumerator(stop.Token);
+        await NextAsync();
+
+        feed.Publish(LiveEventTypes.BeepPosted, Json(Posted(Alice)));
+        feed.Publish(LiveEventTypes.Resync, "{}");
+        feed.Publish(LiveEventTypes.ActorChanged, $$"""{"actor_id":"{{Alice:D}}"}""");
+        var id = feed.Publish(LiveEventTypes.AccountChanged, $$"""{"account_id":"{{Tom:D}}"}""");
+
+        Assert.Equal(new LiveMessage(LiveMessages.Reload, "{}", id), await NextAsync());
+    }
+
+    [Fact]
+    public async Task APageWithMoreBeepsThanItListsHearsOfEveryBeep()
+    {
+        await OpenAsync(new LiveRequest("", null, null, null, All: true));
+
+        var id = feed.Publish(LiveEventTypes.BeepRemoved, $$"""{"id":"{{Guid.NewGuid():D}}"}""");
+
+        Assert.Equal((LiveMessages.Removed, id), ((await NextAsync()).Type, stream!.Current.Id));
     }
 
     [Fact]
@@ -154,15 +346,15 @@ public sealed class LiveServiceTests : IAsyncDisposable
     }
 
     [Fact]
-    public async Task OwnersHearTheirAgentsConnectAndProfilePagesHearTheirProfileChange()
+    public async Task OwnersHearTheirAgentsConnectAndEveryPageHearsOfProfileChanges()
     {
         var agent = Guid.NewGuid();
-        await OpenAsync(new LiveRequest($"profile:{Alice:D}", null, null, null));
+        await OpenAsync(new LiveRequest("home", null, null, null));
 
         feed.Publish(LiveEventTypes.AgentConnected, $$"""{"agent_id":"{{Guid.NewGuid():D}}","owner_id":"{{Alice:D}}"}""");
         feed.Publish(LiveEventTypes.AgentConnected, $$"""{"agent_id":"{{agent:D}}","owner_id":"{{Tom:D}}"}""");
         var connected = await NextAsync();
-        feed.Publish(LiveEventTypes.ActorChanged, $$"""{"actor_id":"{{Tom:D}}"}""");
+        // Names and avatars show anywhere, so the page itself decides whether it shows Alice.
         feed.Publish(LiveEventTypes.ActorChanged, $$"""{"actor_id":"{{Alice:D}}"}""");
         var changed = await NextAsync();
 
@@ -186,13 +378,15 @@ public sealed class LiveServiceTests : IAsyncDisposable
     }
 
     [Fact]
-    public async Task MissedEventsMakeThePageCatchUp()
+    public async Task MissedEventsMakeThePageCatchUpTheUnreadCountWithIt()
     {
         await OpenAsync(new LiveRequest("home", null, "1760603400000-1", null));
+        unread = 7;
 
         feed.Publish(LiveEventTypes.Gap, "");
 
         Assert.Equal(new LiveMessage(LiveMessages.Reset, "{}"), await NextAsync());
+        Assert.Equal(new LiveMessage(LiveMessages.Inbox, """{"unread_count":7}"""), await NextAsync());
     }
 
     [Fact]
@@ -200,11 +394,14 @@ public sealed class LiveServiceTests : IAsyncDisposable
     {
         var agent = Viewer.Agent(Guid.NewGuid(), Tom);
         unread = 1;
-        stream = CreateService().OpenInbox(agent, null, stop.Token).Value.GetAsyncEnumerator(stop.Token);
+        stream = CreateService().OpenInbox(agent, null, null, stop.Token).Value.GetAsyncEnumerator(stop.Token);
         var first = await NextAsync();
 
         feed.Publish(LiveEventTypes.BeepPosted, Json(Posted(Tom)));
         feed.Publish(LiveEventTypes.AgentConnected, $$"""{"agent_id":"{{agent.ActorId:D}}","owner_id":"{{Tom:D}}"}""");
+        feed.Publish(LiveEventTypes.ActorChanged, $$"""{"actor_id":"{{agent.ActorId:D}}"}""");
+        feed.Publish(LiveEventTypes.RelationChanged, $$"""{"actor_ids":["{{agent.ActorId:D}}","{{Tom:D}}"]}""");
+        feed.Publish(LiveEventTypes.Resync, "{}");
         unread = 2;
         feed.Publish(LiveEventTypes.Inbox, $$"""{"recipient_ids":["{{agent.ActorId:D}}"]}""");
         var second = await NextAsync();
@@ -215,6 +412,43 @@ public sealed class LiveServiceTests : IAsyncDisposable
         Assert.Equal((LiveMessages.Inbox, """{"unread_count":2}"""), (second.Type, second.Data));
         Assert.Equal(LiveMessages.Inbox, afterGap.Type);
         await store.Received(1).AddConnectionAsync(agent.ActorId, Arg.Any<string>(), TestData.Now, options.MaxConnectionsPerAccount, Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task AnAgentsStreamEndsWhenItsKeyStopsWorking()
+    {
+        var (agent, key) = (Viewer.Agent(Guid.NewGuid(), Tom), Guid.NewGuid());
+        agents.IsKeyActiveAsync(key, Arg.Any<CancellationToken>()).Returns(true, false);
+        stream = CreateService().OpenInbox(agent, key, null, stop.Token).Value.GetAsyncEnumerator(stop.Token);
+        await NextAsync();
+
+        // Someone else's agents, and a change that leaves this key working (another agent disabled, say).
+        feed.Publish(LiveEventTypes.AgentsChanged, $$"""{"owner_id":"{{Alice:D}}"}""");
+        feed.Publish(LiveEventTypes.AgentsChanged, $$"""{"owner_id":"{{Tom:D}}","owner_only":true}""");
+        feed.Publish(LiveEventTypes.AgentsChanged, $$"""{"owner_id":"{{Tom:D}}"}""");
+        // The key was regenerated.
+        var id = feed.Publish(LiveEventTypes.AgentsChanged, $$"""{"owner_id":"{{Tom:D}}"}""");
+
+        Assert.Equal(new LiveMessage(LiveMessages.Close, "{}", id), await NextAsync());
+        Assert.False(await stream!.MoveNextAsync());
+        await agents.Received(2).IsKeyActiveAsync(key, Arg.Any<CancellationToken>());
+    }
+
+    [Theory]
+    [InlineData(LiveEventTypes.AuthorsRemoved, true)]
+    [InlineData(LiveEventTypes.SessionsEnded, false)]
+    public async Task AnAgentsStreamEndsWhenItOrItsOwnerIsRemoved(string type, bool agentItself)
+    {
+        var (agent, key) = (Viewer.Agent(Guid.NewGuid(), Tom), Guid.NewGuid());
+        agents.IsKeyActiveAsync(key, Arg.Any<CancellationToken>()).Returns(false);
+        stream = CreateService().OpenInbox(agent, key, null, stop.Token).Value.GetAsyncEnumerator(stop.Token);
+        await NextAsync();
+
+        var id = feed.Publish(type, type == LiveEventTypes.AuthorsRemoved
+            ? $$"""{"actor_ids":["{{(agentItself ? agent.ActorId : Tom):D}}"]}"""
+            : $$"""{"account_id":"{{Tom:D}}"}""");
+
+        Assert.Equal(new LiveMessage(LiveMessages.Close, "{}", id), await NextAsync());
     }
 
     [Fact]
@@ -263,16 +497,28 @@ public sealed class LiveServiceTests : IAsyncDisposable
 
     private async Task<LiveMessage> OpenAsync(LiveRequest request)
     {
-        var result = await CreateService().OpenAsync(TomViewer, request, stop.Token);
+        var result = await CreateService().OpenAsync(TomViewer, new LiveSession(TomSession, Verified: true), request, stop.Token);
         Assert.True(result.IsSuccess, result.Error?.Code);
         stream = result.Value.GetAsyncEnumerator(stop.Token);
         return await NextAsync();
     }
 
-    private async Task<LiveMessage> NextAsync()
+    private async Task<LiveMessage> NextAsync() => await NextAsync(stream!);
+
+    private static async Task<LiveMessage> NextAsync(IAsyncEnumerator<LiveMessage> messages)
     {
-        Assert.True(await stream!.MoveNextAsync().AsTask().WaitAsync(TimeSpan.FromSeconds(5), TestSupport.Ct));
-        return stream.Current;
+        Assert.True(await messages.MoveNextAsync().AsTask().WaitAsync(TimeSpan.FromSeconds(5), TestSupport.Ct));
+        return messages.Current;
+    }
+
+    /// <summary>A second tab of Tom's, already past its first message.</summary>
+    private async Task<IAsyncEnumerator<LiveMessage>> OpenOtherAsync(LiveRequest request)
+    {
+        var result = await CreateService().OpenAsync(TomViewer, new LiveSession(TomSession, Verified: true), request, stop.Token);
+        Assert.True(result.IsSuccess, result.Error?.Code);
+        var other = result.Value.GetAsyncEnumerator(stop.Token);
+        await NextAsync(other);
+        return other;
     }
 
     private static BeepPostedEvent Posted(Guid authorAccount)
@@ -295,7 +541,10 @@ public sealed class LiveServiceTests : IAsyncDisposable
             store,
             live,
             profiles,
+            sessions,
+            agents,
             new NotificationService(notifications, beeps, views, live, time),
+            adminWatchers,
             Options.Create(options),
             time,
             new TestLocalizer(),

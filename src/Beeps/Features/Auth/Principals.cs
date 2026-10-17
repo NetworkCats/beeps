@@ -47,6 +47,7 @@ public static class Principals
                 new Claim(BeepsClaims.Kind, BeepsClaims.AgentKind),
                 new Claim(BeepsClaims.OwnerId, agent.OwnerId.ToString("D")),
                 new Claim(BeepsClaims.Connected, agent.Connected ? "true" : "false"),
+                new Claim(BeepsClaims.AgentKeyId, agent.KeyId.ToString("D")),
             ],
             AuthSchemes.AgentKey));
     }
@@ -66,6 +67,10 @@ public static class Principals
             ? Features.Beeps.Viewer.Agent(actorId, Guid.Parse(owner, CultureInfo.InvariantCulture))
             : Features.Beeps.Viewer.Human(actorId);
     }
+
+    /// <summary>The key an agent's request was made with.</summary>
+    public static Guid? AgentKeyId(this ClaimsPrincipal principal) =>
+        Guid.TryParse(principal?.FindFirstValue(BeepsClaims.AgentKeyId), CultureInfo.InvariantCulture, out var id) ? id : null;
 
     /// <summary>The server-side session a signed-in human's request belongs to.</summary>
     public static Guid? SessionId(this ClaimsPrincipal principal) =>

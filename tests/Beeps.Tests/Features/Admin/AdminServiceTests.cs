@@ -116,6 +116,8 @@ public sealed class AdminServiceTests
         Assert.Equal(1, unitOfWork.Saves);
         // Open pages drop the beeps of the user and their agents.
         Assert.Equal([$$"""{"actor_ids":["{{user.Id:D}}","{{agentIds[0]:D}}","{{agentIds[1]:D}}"]}"""], TestData.LiveEvents(liveEvents, LiveEventTypes.AuthorsRemoved));
+        // Their open tabs sign out.
+        Assert.Equal([$$"""{"account_id":"{{user.Id:D}}"}"""], TestData.LiveEvents(liveEvents, LiveEventTypes.SessionsEnded));
         // Their profiles and beeps leave search in the same transaction.
         outbox.Received(1).Enqueue(SearchAccountSyncRequest.MessageType, new SearchAccountSyncRequest(user.Id, true), Arg.Any<System.Text.Json.Serialization.Metadata.JsonTypeInfo<SearchAccountSyncRequest>>());
     }
@@ -197,6 +199,8 @@ public sealed class AdminServiceTests
         // Only the successful change clears the cached rights.
         await accounts.Received(1).ForgetAccountAsync(user.Id, Arg.Any<CancellationToken>());
         await accounts.DidNotReceive().ForgetAccountAsync(banned.Id, Arg.Any<CancellationToken>());
+        // The new admin's open tabs show the admin pages.
+        Assert.Equal([$$"""{"account_id":"{{user.Id:D}}"}"""], TestData.LiveEvents(liveEvents, LiveEventTypes.AccountChanged));
     }
 
     [Fact]
@@ -212,6 +216,18 @@ public sealed class AdminServiceTests
         Assert.Equal(AuditActions.UnbanUser, Assert.Single(audit).Action);
         await accounts.Received(1).ForgetAccountAsync(user.Id, Arg.Any<CancellationToken>());
         await agents.DidNotReceiveWithAnyArgs().DisableAllAsync(default, default, TestSupport.Ct);
+        // Their beeps come back on every open page that lists beeps.
+        Assert.Equal(["{}"], TestData.LiveEvents(liveEvents, LiveEventTypes.Resync));
+    }
+
+    [Fact]
+    public async Task UnbanningSomeoneWhoIsNotBannedTellsNoPage()
+    {
+        var user = User();
+
+        await CreateService().UnbanUserAsync(AdminId, user.Id, TestSupport.Ct);
+
+        Assert.Empty(TestData.LiveEvents(liveEvents, LiveEventTypes.Resync));
     }
 
     [Fact]
@@ -454,8 +470,8 @@ public sealed class AdminServiceTests
         var avatars = TestData.Avatars;
         var localizer = new TestLocalizer();
         var agentService = new AgentService(
-            agents, unitOfWork, outbox, TestData.Live(Substitute.For<ILiveEventStore>()), TestData.AllowingRateLimits(), avatars, Options.Create(new AgentOptions()), TestData.Time(), localizer, NullLogger<AgentService>.Instance);
+            agents, unitOfWork, outbox, TestData.Live(Substitute.For<ILiveEventStore>()), TestData.Inboxes(Substitute.For<ILiveEventStore>()), TestData.AllowingRateLimits(), avatars, Options.Create(new AgentOptions()), TestData.Time(), localizer, NullLogger<AgentService>.Instance);
         var access = new AdminAccess(store, TestData.Time(), localizer);
-        return new AdminService(store, accounts, sessions, agents, agentService, access, unitOfWork, outbox, TestData.Live(liveEvents), avatars, TestData.Time(), localizer, NullLogger<AdminService>.Instance);
+        return new AdminService(store, accounts, sessions, agents, agentService, access, unitOfWork, outbox, TestData.Live(liveEvents), TestData.Inboxes(liveEvents), avatars, TestData.Time(), localizer, NullLogger<AdminService>.Instance);
     }
 }

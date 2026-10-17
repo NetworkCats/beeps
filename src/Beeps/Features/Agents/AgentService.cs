@@ -1,6 +1,7 @@
 using Beeps.Features.Accounts;
 using Beeps.Features.Avatars;
 using Beeps.Features.Live;
+using Beeps.Features.Notifications;
 using Beeps.Features.Profiles;
 using Beeps.Features.RateLimiting;
 using Beeps.Features.Search;
@@ -16,6 +17,7 @@ public sealed partial class AgentService(
     IUnitOfWork unitOfWork,
     IOutbox outbox,
     LiveUpdates live,
+    InboxRecounter inboxes,
     RateLimitService rateLimits,
     AvatarUrls avatars,
     IOptions<AgentOptions> options,
@@ -49,7 +51,7 @@ public sealed partial class AgentService(
             return limited;
         }
 
-        return await unitOfWork.InTransactionAsync<AgentWithKey>(
+        var created = await unitOfWork.InTransactionAsync<AgentWithKey>(
             AdvisoryLocks.OwnerAgents(ownerId),
             async ct =>
             {
@@ -69,6 +71,12 @@ public sealed partial class AgentService(
                 return new AgentWithKey(ToSummary(agent, record), key);
             },
             cancellationToken);
+        if (created.IsSuccess)
+        {
+            await live.AgentsChangedAsync(ownerId, cancellationToken);
+        }
+
+        return created;
     }
 
     /// <summary>Replaces the key; the old one stops working immediately.</summary>
@@ -98,6 +106,12 @@ public sealed partial class AgentService(
             },
             cancellationToken);
         await store.ForgetKeysAsync([agent.Id], cancellationToken);
+        if (result.IsSuccess)
+        {
+            // The agents page of another tab shows the key's prefix.
+            await live.AgentsChangedAsync(ownerId, cancellationToken);
+        }
+
         return result;
     }
 
@@ -138,6 +152,9 @@ public sealed partial class AgentService(
         {
             LogDeleted(logger, agent.Id, ownerId);
             await live.AuthorsRemovedAsync([agent.Id], cancellationToken);
+            await live.AgentsChangedAsync(ownerId, cancellationToken);
+            // Notifications from it go with it.
+            await inboxes.RecountAsync([], [agent.Id], cancellationToken);
         }
 
         return result;
@@ -246,9 +263,10 @@ public sealed partial class AgentService(
         if (match.LastUsedAt is not { } lastUsed || now - lastUsed >= LastUsedResolution)
         {
             await store.TouchKeyAsync(match, now, cancellationToken);
+            await live.AgentKeyUsedAsync(match.OwnerId, cancellationToken);
         }
 
-        return new AgentIdentity(match.AgentId, match.OwnerId, match.Connected);
+        return new AgentIdentity(match.AgentId, match.OwnerId, match.Connected, match.KeyId);
     }
 
     /// <summary>
@@ -302,6 +320,7 @@ public sealed partial class AgentService(
             LogConnected(logger, agentId, model);
             // The owner may be watching onboarding wait for exactly this (PLAN 3.1, step 5).
             await live.AgentConnectedAsync(agentId, agent.OwnerId, cancellationToken);
+            await live.AgentsChangedAsync(agent.OwnerId, cancellationToken);
         }
 
         return await GetSelfAsync(agentId, cancellationToken);
@@ -371,6 +390,7 @@ public sealed partial class AgentService(
         change(agent, time.GetUtcNow());
         await unitOfWork.SaveChangesAsync(cancellationToken);
         await store.ForgetKeysAsync([agent.Id], cancellationToken);
+        await live.AgentsChangedAsync(ownerId, cancellationToken);
         return Result.Success;
     }
 

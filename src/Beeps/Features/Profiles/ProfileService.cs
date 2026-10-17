@@ -1,5 +1,6 @@
 using Beeps.Features.Accounts;
 using Beeps.Features.Beeps;
+using Beeps.Features.Live;
 using Beeps.Features.RateLimiting;
 using Beeps.Features.Shared;
 using Microsoft.Extensions.Localization;
@@ -12,6 +13,7 @@ public sealed partial class ProfileService(
     BeepViews views,
     IUnitOfWork unitOfWork,
     RateLimitService rateLimits,
+    LiveUpdates live,
     TimeProvider time,
     IStringLocalizer<SharedResource> localizer,
     ILogger<ProfileService> logger)
@@ -77,6 +79,7 @@ public sealed partial class ProfileService(
         if (followed.Value)
         {
             LogFollowed(logger, viewer.ActorId, target.Value);
+            await live.RelationChangedAsync(viewer.ActorId, target.Value, cancellationToken);
         }
 
         return Result.Success;
@@ -95,14 +98,16 @@ public sealed partial class ProfileService(
             return limited;
         }
 
-        return await unitOfWork.InTransactionAsync(
+        var unfollowed = await unitOfWork.InTransactionAsync<bool>(
             null,
-            async ct =>
-            {
-                await store.RemoveFollowAsync(viewer.ActorId, target.Value, ct);
-                return Result.Success;
-            },
+            async ct => Result.Of(await store.RemoveFollowAsync(viewer.ActorId, target.Value, ct)),
             cancellationToken);
+        if (unfollowed.Value)
+        {
+            await live.RelationChangedAsync(viewer.ActorId, target.Value, cancellationToken);
+        }
+
+        return Result.Success;
     }
 
     /// <summary>
@@ -141,6 +146,7 @@ public sealed partial class ProfileService(
         if (added)
         {
             LogBlocked(logger, viewer.ActorId, actor.Id);
+            await live.RelationChangedAsync(viewer.ActorId, actor.Id, cancellationToken);
         }
 
         return Result.Success;
@@ -159,7 +165,11 @@ public sealed partial class ProfileService(
             return limited;
         }
 
-        await store.RemoveBlockAsync(viewer.ActorId, target.Value.Id, cancellationToken);
+        if (await store.RemoveBlockAsync(viewer.ActorId, target.Value.Id, cancellationToken))
+        {
+            await live.RelationChangedAsync(viewer.ActorId, target.Value.Id, cancellationToken);
+        }
+
         return Result.Success;
     }
 

@@ -139,7 +139,7 @@ public sealed class ProfilePagesTests : IDisposable
         var html = await client.GetStringAsync(new Uri("/notifications", UriKind.Relative), TestSupport.Ct);
         using var response = await WebAuth.PostFormAsync(client, "/notifications", "/notifications?handler=Read", ("upToId", notification.Id.ToString()));
 
-        Assert.Contains($"<li class=\"notification notification-unread\" data-notification=\"{notification.Id:D}\">", html, StringComparison.Ordinal);
+        Assert.Contains($"<li class=\"notification notification-unread\" data-notification=\"{notification.Id:D}\" data-from=\"{notification.From.Id:D}\">", html, StringComparison.Ordinal);
         Assert.Matches($"<form (?![^>]*hidden)[^>]*data-mark-read[^>]*>\\s*<input type=\"hidden\" name=\"upToId\" value=\"{notification.Id:D}\">", html);
         Assert.Contains("data-live-watch=\"notifications\"", html, StringComparison.Ordinal);
         Assert.Contains("<span>replied to you</span>", html, StringComparison.Ordinal);

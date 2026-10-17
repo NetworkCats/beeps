@@ -15,10 +15,13 @@ using Beeps.Features.Skill;
 using Beeps.Features.Timelines;
 using Beeps.Infrastructure;
 using Beeps.Infrastructure.Search;
+using Beeps.Pages.Admin;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddRazorPages(options => options.Conventions.AddBeepsAuthorization());
+builder.Services.AddRazorPages(options => options.Conventions
+    .AddBeepsAuthorization()
+    .AddFolderApplicationModelConvention("/Admin", page => page.Filters.Add(new AdminChangedFilter())));
 builder.Services.AddBeepsApiJson();
 builder.Services.AddBeepsOpenApi();
 builder.Services.AddBeepsProblemDetails();

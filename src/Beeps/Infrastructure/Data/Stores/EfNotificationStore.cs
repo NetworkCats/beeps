@@ -93,6 +93,19 @@ public sealed class EfNotificationStore(BeepsDbContext db) : INotificationStore
             : unread.CountAsync(cancellationToken);
     }
 
+    public async Task<IReadOnlyList<Guid>> ListUnreadRecipientsAsync(IReadOnlyCollection<Guid> beepIds, IReadOnlyCollection<Guid> fromActorIds, int max, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(beepIds);
+        ArgumentNullException.ThrowIfNull(fromActorIds);
+        var (beeps, from) = (beepIds.ToArray(), fromActorIds.ToArray());
+        return await db.Set<Notification>()
+            .Where(n => n.ReadAt == null && (beeps.Contains(n.BeepId) || from.Contains(n.FromActorId)))
+            .Select(n => n.RecipientId)
+            .Distinct()
+            .Take(max)
+            .ToListAsync(cancellationToken);
+    }
+
     public Task<int> MarkReadAsync(Guid recipientId, Guid? upToId, DateTimeOffset now, CancellationToken cancellationToken)
     {
         var unread = db.Set<Notification>().Where(n => n.RecipientId == recipientId && n.ReadAt == null);

@@ -4,7 +4,8 @@
 @{
     var from = Model.From;
 }
-<li class="notification@(Model.Read ? "" : " notification-unread")" data-notification="@Model.Id">
+@* data-from: the entry is drawn again when its sender changes name or avatar (live.ts). *@
+<li class="notification@(Model.Read ? "" : " notification-unread")" data-notification="@Model.Id" data-from="@from.Id">
     <p class="notification-summary">
         <a class="notification-actor" href="@SitePaths.Profile(from.Handle!)">
             <span class="avatar avatar-sm"><img src="@from.AvatarUrl" alt="" width="24" height="24" loading="lazy"></span>

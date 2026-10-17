@@ -105,7 +105,7 @@ public sealed class TimelinePagesTests : IDisposable
 
         var html = await client.GetStringAsync(new Uri($"/beeps/{reply.Id}", UriKind.Relative), TestSupport.Ct);
 
-        Assert.Contains($"<article class=\"beep beep-focused\" id=\"beep-{reply.Id:D}\" data-beep=\"{reply.Id:D}\" data-author=\"{reply.Author.Id:D}\">", html, StringComparison.Ordinal);
+        Assert.Contains($"<article class=\"beep beep-focused\" id=\"beep-{reply.Id:D}\" data-beep=\"{reply.Id:D}\" data-author=\"{reply.Author.Id:D}\" data-reply-to=\"{root.Id:D}\">", html, StringComparison.Ordinal);
         Assert.Contains($"<a href=\"#beep-{root.Id:D}\">Replying to @alice</a>", html, StringComparison.Ordinal);
         Assert.Matches($"<form class=\"composer\" method=\"post\"[^>]* id=\"reply\" action=\"/compose\\?replyTo={reply.Id:D}\"", html);
         Assert.Contains($"name=\"ReturnUrl\" value=\"/beeps/{reply.Id:D}\"", html, StringComparison.Ordinal);

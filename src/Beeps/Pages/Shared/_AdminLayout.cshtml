@@ -3,7 +3,8 @@
     var page = ViewContext.RouteData.Values["page"] as string ?? "";
     string? Current(string prefix) => page.StartsWith(prefix, StringComparison.Ordinal) ? "page" : null;
 }
-<div class="admin">
+@* Live: the figures and lists are drawn again as the site changes, including figures with no events of their own (AdminFiguresWorker). *@
+<div class="admin" live-watch="Beeps.Features.Live.LiveTopic.Admin">
     <nav class="nav nav-horizontal admin-nav" aria-label="@L["Admin.Nav"]">
         <a class="nav-item" asp-page="/Admin/Index" aria-current="@(page == "/Admin/Index" ? "page" : null)">@L["Admin.Overview"]</a>
         <a class="nav-item" asp-page="/Admin/Review/Index" aria-current="@Current("/Admin/Review")">@L["Admin.Review"]</a>
@@ -13,7 +14,7 @@
         <a class="nav-item" asp-page="/Admin/Settings" aria-current="@Current("/Admin/Settings")">@L["Admin.Settings"]</a>
         <a class="nav-item" asp-page="/Admin/AuditLog" aria-current="@Current("/Admin/AuditLog")">@L["Admin.AuditLog"]</a>
     </nav>
-    <div class="admin-content">
+    <div class="admin-content" data-live-region="admin">
         @RenderBody()
     </div>
 </div>

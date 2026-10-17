@@ -4,7 +4,7 @@
 @{
     ViewData["Title"] = L["Report.Title"];
 }
-<section class="feed">
+<section class="feed" data-live-subject="beep:@Model.Beep.Id">
     <h1 class="feed-title">@L["Report.Title"]</h1>
     <p class="section-lead">@L["Report.Lead"]</p>
     <form-errors />

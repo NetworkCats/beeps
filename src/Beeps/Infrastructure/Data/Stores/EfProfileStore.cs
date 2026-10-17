@@ -8,6 +8,9 @@ namespace Beeps.Infrastructure.Data.Stores;
 /// <remarks>Profiles and agent lists come from the content cache (<see cref="ContentReads"/>); follows and blocks are asked of PostgreSQL.</remarks>
 public sealed class EfProfileStore(BeepsDbContext db, ContentReads reads, PendingCacheChanges cacheChanges) : IProfileStore
 {
+    public async Task<string?> FindHandleAsync(Guid actorId, CancellationToken cancellationToken) =>
+        (await reads.GetActorsAsync([actorId], cancellationToken)).GetValueOrDefault(actorId) is { Visible: true } found ? found.Actor.Handle : null;
+
     public async Task<ProfileRow?> FindByHandleAsync(string normalizedHandle, CancellationToken cancellationToken)
     {
         var ids = await reads.GetActorIdsByHandleAsync([normalizedHandle], cancellationToken);

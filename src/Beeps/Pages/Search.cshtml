@@ -6,7 +6,7 @@
     var users = Model.Type == SearchTypes.Users;
     var type = users ? SearchTypes.Users : SearchTypes.Beeps;
 }
-<section class="feed search">
+<section class="feed search" live-watch="Model.Live">
     <h1 class="feed-title">@L["Search.Title"]</h1>
     <form class="search-form" role="search" method="get" asp-page="/Search">
         <input type="hidden" name="type" value="@type">
@@ -17,6 +17,8 @@
     <p class="section-lead">@L["Search.Hint"]</p>
     <form-errors />
 
+    @* Drawn again in place when the search index changes (new beeps, renamed people). *@
+    <div data-live-region="search-results" data-live-actors="@(Model.Results is { } shownResults ? string.Join(' ', shownResults.Users.Select(u => u.Actor.Id)) : "")">
     @if (Model.Results is { } results)
     {
         <nav class="tabs search-tabs" aria-label="@L["Search.Tabs"]">
@@ -70,4 +72,5 @@
             </nav>
         }
     }
+    </div>
 </section>

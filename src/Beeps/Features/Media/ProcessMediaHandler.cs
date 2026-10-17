@@ -44,6 +44,8 @@ public sealed partial class ProcessMediaHandler(
         {
             await FinishAsync(mediaId, MediaStatus.Failed, upload.Width, upload.Height, cancellationToken);
             LogUnreadable(logger, mediaId);
+            // Members never saw it; the admin page of the beep shows it as failed now.
+            await live.BeepsChangedAsync(await store.ListBeepsUsingAsync(mediaId, cancellationToken), cancellationToken);
             return;
         }
 
@@ -60,6 +62,9 @@ public sealed partial class ProcessMediaHandler(
         }
 
         LogProcessed(logger, mediaId, variants.Width, variants.Height);
+
+        // A beep posted while it was processing showed without it until now (PLAN 6.10: pages show it as it arrives).
+        await live.BeepsChangedAsync(await store.ListBeepsUsingAsync(mediaId, cancellationToken), cancellationToken);
 
         // An avatar set while it was processing showed the default pattern until now.
         foreach (var actorId in await store.ListAvatarUsersAsync(mediaId, cancellationToken))

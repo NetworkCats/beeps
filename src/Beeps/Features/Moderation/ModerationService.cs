@@ -1,5 +1,6 @@
 using Beeps.Features.Beeps;
 using Beeps.Features.Live;
+using Beeps.Features.Notifications;
 using Beeps.Features.Search;
 using Beeps.Features.Shared;
 using Microsoft.Extensions.Options;
@@ -17,6 +18,7 @@ public sealed partial class ModerationService(
     IUnitOfWork unitOfWork,
     IOutbox outbox,
     LiveUpdates live,
+    InboxRecounter inboxes,
     IOptions<ModerationOptions> options,
     TimeProvider time,
     ILogger<ModerationService> logger)
@@ -67,6 +69,7 @@ public sealed partial class ModerationService(
 
         LogHidden(logger, beepId, verdict.Categories, verdict.Severity);
         await live.BeepHiddenAsync(beepId, subject.AuthorId, subject.AuthorOwnerId, cancellationToken);
+        await inboxes.RecountAsync([beepId], [], cancellationToken);
         if (subject.ReplyToId is { } parentId)
         {
             await beeps.ReplyVisibilityChangedAsync(parentId, visible: false, cancellationToken);
@@ -81,6 +84,8 @@ public sealed partial class ModerationService(
         if (await store.SetStatusAsync(beepId, Unreviewed, ModerationStatus.Failed, cancellationToken))
         {
             LogFailed(logger, beepId, options.Value.MaxAttempts, error);
+            // It joins the review queue on open admin pages.
+            await live.AdminChangedAsync(cancellationToken);
         }
     }
 

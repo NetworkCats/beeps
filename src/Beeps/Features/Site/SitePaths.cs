@@ -13,6 +13,9 @@ public static class SitePaths
     /// <summary>The replies tab of a profile.</summary>
     public static string ProfileReplies(string handle) => Profile(handle) + "/replies";
 
+    /// <summary>A profile by id: redirects to its current address, so a page can find it again after a rename.</summary>
+    public static string ProfileById(Guid actorId, bool replies = false) => $"/actors/{actorId:D}" + (replies ? "/replies" : "");
+
     /// <summary>A beep with the thread it belongs to.</summary>
     public static string Beep(Guid id) => $"/beeps/{id:D}";
 

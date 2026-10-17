@@ -7,8 +7,8 @@
     var currentCulture = CultureInfo.CurrentUICulture.Name;
     var returnUrl = $"{Context.Request.PathBase}{Context.Request.Path}{Context.Request.QueryString}";
     var signedIn = User.IsHuman();
-    // PLAN 6.10: live updates for members only; everyone else gets static, cacheable pages.
-    var live = User.IsMember();
+    // PLAN 6.10: live updates for anyone signed in (unverified: only their account); signed-out pages stay static and cacheable.
+    var live = signedIn;
     var page = ViewContext.RouteData.Values["page"] as string;
     string? Current(string name) => page == name ? "page" : null;
     var (notice, alert) = Notices.Take(Context, TempData);
@@ -56,7 +56,7 @@
                     <li>
                         <details class="menu" data-menu>
                             <summary class="menu-toggle" aria-label="@L["Nav.Account"]">
-                                <span class="avatar avatar-sm"><img src="@Avatars.For(User.ActorId(), User.AvatarKey())" alt="" width="24" height="24"></span>
+                                <span class="avatar avatar-sm" data-live-region="nav-avatar" data-live-actors="@User.ActorId()"><img src="@Avatars.For(User.ActorId(), User.AvatarKey())" alt="" width="24" height="24"></span>
                                 <span class="menu-handle">@@@handle</span>
                             </summary>
                             <div class="dropdown-menu menu-panel">

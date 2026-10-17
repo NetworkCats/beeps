@@ -11,6 +11,7 @@ public static class LiveSetup
         services.AddSingleton<ILiveEventFeed>(sp => sp.GetRequiredService<LiveEventHub>());
         services.AddHostedService(sp => sp.GetRequiredService<LiveEventHub>());
         services.AddHostedService<LiveCountsWorker>();
+        services.AddHostedService<AdminFiguresWorker>();
         return services;
     }
 }

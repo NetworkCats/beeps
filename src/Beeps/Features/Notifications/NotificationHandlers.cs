@@ -38,7 +38,7 @@ public sealed class BeepNotificationsHandler(INotificationStore store, LiveUpdat
         if (notifications.Count > 0)
         {
             await store.AddAsync(notifications, cancellationToken);
-            await live.InboxChangedAsync([.. notifications.Select(n => n.RecipientId)], cancellationToken);
+            await live.NotifiedAsync([.. notifications.Select(n => n.RecipientId)], request.BeepId, cancellationToken);
         }
     }
 
@@ -71,6 +71,6 @@ public sealed class LikeNotificationHandler(INotificationStore store, LiveUpdate
         await store.AddAsync(
             [BeepNotificationsHandler.New(recipient, NotificationType.Like, request.ActorId, request.BeepId, time.GetUtcNow())],
             cancellationToken);
-        await live.InboxChangedAsync([recipient], cancellationToken);
+        await live.NotifiedAsync([recipient], request.BeepId, cancellationToken);
     }
 }

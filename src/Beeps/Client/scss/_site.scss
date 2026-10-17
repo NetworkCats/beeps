@@ -995,7 +995,13 @@ span.beep-action {
   gap: var(--cui-space-3);
   min-width: 0;
 
-  > form {
+  // Only groups the remove button for the live script, which draws it again; no box of its own.
+  > .avatar-remove {
+    display: contents;
+  }
+
+  > form,
+  > .avatar-remove > form {
     display: flex;
     flex-direction: column;
     align-items: flex-start;

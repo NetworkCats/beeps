@@ -1,4 +1,5 @@
 using Beeps.Features.Beeps;
+using Beeps.Features.Live;
 using Beeps.Features.Moderation;
 using Beeps.Features.RateLimiting;
 using Beeps.Features.Shared;
@@ -13,6 +14,7 @@ public sealed class ReportServiceTests
     private static readonly Guid Tom = Guid.NewGuid();
     private static readonly Guid TomsBeep = Guid.NewGuid();
 
+    private readonly ILiveEventStore liveEvents = Substitute.For<ILiveEventStore>();
     private readonly IModerationStore store = Substitute.For<IModerationStore>();
     private readonly IBeepStore beeps = Substitute.For<IBeepStore>();
     private readonly IRateLimitStore rateLimits = Substitute.For<IRateLimitStore>();
@@ -34,6 +36,8 @@ public sealed class ReportServiceTests
         await store.Received(1).AddReportAsync(
             Arg.Is<Report>(r => r.BeepId == TomsBeep && r.ReporterId == Alice && r.Reason == "spam" && r.Note == "same link\nevery hour" && r.CreatedAt == TestData.Now && r.ResolvedAt == null),
             Arg.Any<CancellationToken>());
+        // Open admin pages show it in the review queue.
+        Assert.Single(TestData.LiveEvents(liveEvents, LiveEventTypes.AdminChanged));
     }
 
     [Fact]
@@ -93,5 +97,5 @@ public sealed class ReportServiceTests
     }
 
     private ReportService Create() =>
-        new(store, beeps, TestData.RateLimits(rateLimits), TestData.Time(), new TestLocalizer(), NullLogger<ReportService>.Instance);
+        new(store, beeps, TestData.RateLimits(rateLimits), TestData.Live(liveEvents), TestData.Time(), new TestLocalizer(), NullLogger<ReportService>.Instance);
 }

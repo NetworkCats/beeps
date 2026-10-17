@@ -115,6 +115,7 @@ public sealed class ModerationProcessorTests
             new ImmediateUnitOfWork(),
             Substitute.For<IOutbox>(),
             TestData.Live(liveEvents, counters),
+            TestData.Inboxes(liveEvents),
             Options.Create(options),
             TestData.Time(),
             NullLogger<ModerationService>.Instance);

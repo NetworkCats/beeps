@@ -1,4 +1,6 @@
 @model BeepList
+@* A region for the pages that do not grow live (older pages): they draw the list again when it may have changed. *@
+<div live-region="list">
 @if (Model.Page.Items.Count == 0)
 {
     <div class="empty empty-bordered">
@@ -24,3 +26,4 @@ else
         </nav>
     }
 }
+</div>

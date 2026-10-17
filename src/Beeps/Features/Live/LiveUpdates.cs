@@ -30,6 +30,15 @@ public sealed partial class LiveUpdates(ILiveEventStore store, IBeepCounterStore
             : AppendAsync(LiveEventTypes.Inbox, new InboxEvent(recipientIds), LiveJsonContext.Default.InboxEvent, cancellationToken);
     }
 
+    /// <summary>New notifications about this beep: an open inbox page shows it, so its counts and removal concern that page.</summary>
+    public Task NotifiedAsync(IReadOnlyList<Guid> recipientIds, Guid beepId, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(recipientIds);
+        return recipientIds.Count == 0
+            ? Task.CompletedTask
+            : AppendAsync(LiveEventTypes.Inbox, new InboxEvent(recipientIds, [beepId]), LiveJsonContext.Default.InboxEvent, cancellationToken);
+    }
+
     public Task AgentConnectedAsync(Guid agentId, Guid ownerId, CancellationToken cancellationToken) =>
         AppendAsync(LiveEventTypes.AgentConnected, new AgentConnectedEvent(agentId, ownerId), LiveJsonContext.Default.AgentConnectedEvent, cancellationToken);
 
@@ -41,6 +50,50 @@ public sealed partial class LiveUpdates(ILiveEventStore store, IBeepCounterStore
             ? Task.CompletedTask
             : AppendAsync(LiveEventTypes.AuthorsRemoved, new AuthorsRemovedEvent(actorIds), LiveJsonContext.Default.AuthorsRemovedEvent, cancellationToken);
     }
+
+    /// <summary>The beeps look different (images ready or removed): pages showing them redraw them.</summary>
+    public Task BeepsChangedAsync(IReadOnlyList<Guid> beepIds, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(beepIds);
+        return beepIds.Count == 0
+            ? Task.CompletedTask
+            : AppendAsync(LiveEventTypes.BeepsChanged, new BeepsChangedEvent(beepIds), LiveJsonContext.Default.BeepsChangedEvent, cancellationToken);
+    }
+
+    /// <summary>So the actor's other tabs show the like button as it now is.</summary>
+    public Task LikeChangedAsync(Guid beepId, Guid actorId, bool liked, CancellationToken cancellationToken) =>
+        AppendAsync(LiveEventTypes.LikeChanged, new LikeChangedEvent(beepId, actorId, liked), LiveJsonContext.Default.LikeChangedEvent, cancellationToken);
+
+    /// <summary>A follow or block between the two changed: their home timelines, profiles and inboxes may show something else now.</summary>
+    public Task RelationChangedAsync(Guid actorId, Guid otherId, CancellationToken cancellationToken) =>
+        AppendAsync(LiveEventTypes.RelationChanged, new RelationChangedEvent([actorId, otherId]), LiveJsonContext.Default.RelationChangedEvent, cancellationToken);
+
+    /// <summary>The owner's agents changed: lists of them (the agents page, the owner's profile) redraw.</summary>
+    public Task AgentsChangedAsync(Guid ownerId, CancellationToken cancellationToken) =>
+        AppendAsync(LiveEventTypes.AgentsChanged, new AgentsChangedEvent(ownerId), LiveJsonContext.Default.AgentsChangedEvent, cancellationToken);
+
+    /// <summary>An agent's key was used (recorded every few minutes at most): the owner's agents page shows when.</summary>
+    public Task AgentKeyUsedAsync(Guid ownerId, CancellationToken cancellationToken) =>
+        AppendAsync(LiveEventTypes.AgentsChanged, new AgentsChangedEvent(ownerId, OwnerOnly: true), LiveJsonContext.Default.AgentsChangedEvent, cancellationToken);
+
+    /// <summary>Sessions of the account were ended: its tabs check whether theirs is among them.</summary>
+    public Task SessionsEndedAsync(Guid accountId, CancellationToken cancellationToken) =>
+        AppendAsync(LiveEventTypes.SessionsEnded, new AccountEvent(accountId), LiveJsonContext.Default.AccountEvent, cancellationToken);
+
+    /// <summary>The account's language or admin rights changed: its open tabs show the site anew.</summary>
+    public Task AccountChangedAsync(Guid accountId, CancellationToken cancellationToken) =>
+        AppendAsync(LiveEventTypes.AccountChanged, new AccountEvent(accountId), LiveJsonContext.Default.AccountEvent, cancellationToken);
+
+    /// <summary>The search index was written: open search pages ask again.</summary>
+    public Task SearchChangedAsync(CancellationToken cancellationToken) =>
+        AppendAsync(LiveEventTypes.SearchChanged, new EmptyMessage(), LiveJsonContext.Default.EmptyMessage, cancellationToken);
+
+    public Task AdminChangedAsync(CancellationToken cancellationToken) =>
+        AppendAsync(LiveEventTypes.AdminChanged, new EmptyMessage(), LiveJsonContext.Default.EmptyMessage, cancellationToken);
+
+    /// <summary>Beeps came back (a ban lifted, a hidden beep restored): every page listing beeps catches up.</summary>
+    public Task ResyncAsync(CancellationToken cancellationToken) =>
+        AppendAsync(LiveEventTypes.Resync, new EmptyMessage(), LiveJsonContext.Default.EmptyMessage, cancellationToken);
 
     public Task ActorChangedAsync(Guid actorId, CancellationToken cancellationToken) =>
         AppendAsync(LiveEventTypes.ActorChanged, new ActorChangedEvent(actorId), LiveJsonContext.Default.ActorChangedEvent, cancellationToken);

@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using Beeps.Features.Live;
 using Beeps.Features.Shared;
 
 namespace Beeps.Features.Search;
@@ -41,7 +42,7 @@ public static class SearchSync
     }
 }
 
-public sealed class SearchBeepSyncHandler(ISearchStore store, ISearchIndex index) : IOutboxHandler
+public sealed class SearchBeepSyncHandler(ISearchStore store, ISearchIndex index, LiveUpdates live) : IOutboxHandler
 {
     public string Type => SearchBeepSyncRequest.MessageType;
 
@@ -57,10 +58,13 @@ public sealed class SearchBeepSyncHandler(ISearchStore store, ISearchIndex index
         {
             await index.DeleteBeepsAsync([request.BeepId], cancellationToken);
         }
+
+        // Open search pages ask again, now that the index has it.
+        await live.SearchChangedAsync(cancellationToken);
     }
 }
 
-public sealed class SearchAccountSyncHandler(ISearchStore store, ISearchIndex index) : IOutboxHandler
+public sealed class SearchAccountSyncHandler(ISearchStore store, ISearchIndex index, LiveUpdates live) : IOutboxHandler
 {
     public const int BatchSize = 500;
 
@@ -69,7 +73,13 @@ public sealed class SearchAccountSyncHandler(ISearchStore store, ISearchIndex in
     public async Task HandleAsync(OutboxEnvelope message, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(message);
-        var request = message.ReadPayload(SearchJsonContext.Default.SearchAccountSyncRequest);
+        await SyncAsync(message.ReadPayload(SearchJsonContext.Default.SearchAccountSyncRequest), cancellationToken);
+        // Open search pages ask again, now that the index has it.
+        await live.SearchChangedAsync(cancellationToken);
+    }
+
+    private async Task SyncAsync(SearchAccountSyncRequest request, CancellationToken cancellationToken)
+    {
         var actors = await store.GetAccountAsync(request.ActorId, cancellationToken);
         List<ActorDocument> shown = [.. actors.Where(a => a.Document is not null).Select(a => a.Document!)];
         List<Guid> gone = [.. actors.Where(a => a.Document is null).Select(a => a.Id)];

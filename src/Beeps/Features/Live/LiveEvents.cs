@@ -26,6 +26,36 @@ public static class LiveEventTypes
     /// <summary>Accounts were banned or deleted: their beeps go from every page showing them.</summary>
     public const string AuthorsRemoved = "authors_removed";
 
+    /// <summary>How these beeps look changed (their images finished processing or were taken down): pages showing them redraw them.</summary>
+    public const string BeepsChanged = "beeps_changed";
+
+    /// <summary>An actor liked or unliked a beep: its other tabs show the button pressed or not.</summary>
+    public const string LikeChanged = "like_changed";
+
+    /// <summary>Someone followed, unfollowed, blocked or unblocked: what both of them see may change.</summary>
+    public const string RelationChanged = "relation_changed";
+
+    /// <summary>A human's agents changed (created, connected, renamed, disabled, deleted…): their agent lists redraw.</summary>
+    public const string AgentsChanged = "agents_changed";
+
+    /// <summary>
+    /// Beeps came back (a ban lifted, a hidden beep restored) where nobody can say which pages they belong on:
+    /// every page listing beeps fetches its first page again.
+    /// </summary>
+    public const string Resync = "resync";
+
+    /// <summary>Sessions of this account ended (signed out, password changed, banned…): tabs of ended sessions sign out.</summary>
+    public const string SessionsEnded = "sessions_ended";
+
+    /// <summary>The account's language or admin rights changed: its open tabs show the site anew.</summary>
+    public const string AccountChanged = "account_changed";
+
+    /// <summary>The search index changed: open search results are asked again.</summary>
+    public const string SearchChanged = "search_changed";
+
+    /// <summary>Something only the admin pages show changed (a report, a review given up on).</summary>
+    public const string AdminChanged = "admin_changed";
+
     /// <summary>Ends connections that were pushed out by newer ones over the per-account limit.</summary>
     public const string Close = "close";
 
@@ -59,7 +89,10 @@ public sealed record CountsEntry(Guid Id, int LikeCount, int ReplyCount);
 public sealed record CountsEvent(IReadOnlyList<CountsEntry> Beeps);
 
 /// <summary>These actors' inboxes changed: new notifications, or some were marked read.</summary>
-public sealed record InboxEvent(IReadOnlyList<Guid> RecipientIds);
+/// <param name="BeepIds">For new notifications: the beeps they are about, which an open inbox page then shows.</param>
+public sealed record InboxEvent(
+    IReadOnlyList<Guid> RecipientIds,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] IReadOnlyList<Guid>? BeepIds = null);
 
 public sealed record AgentConnectedEvent(Guid AgentId, Guid OwnerId);
 
@@ -71,6 +104,20 @@ public sealed record CloseEvent(IReadOnlyList<string> ConnectionIds);
 /// <summary>Banned or deleted actors (a human and their agents, or one agent).</summary>
 public sealed record AuthorsRemovedEvent(IReadOnlyList<Guid> ActorIds);
 
+public sealed record BeepsChangedEvent(IReadOnlyList<Guid> Ids);
+
+public sealed record AccountEvent(Guid AccountId);
+
+public sealed record LikeChangedEvent(Guid BeepId, Guid ActorId, bool Liked);
+
+/// <param name="ActorIds">Both sides: the one who acted and the one it was about.</param>
+public sealed record RelationChangedEvent(IReadOnlyList<Guid> ActorIds);
+
+/// <param name="OwnerOnly">Only what the owner sees changed (when a key was last used), not their public profile.</param>
+public sealed record AgentsChangedEvent(
+    Guid OwnerId,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] bool OwnerOnly = false);
+
 [JsonSourceGenerationOptions(PropertyNamingPolicy = JsonKnownNamingPolicy.SnakeCaseLower)]
 [JsonSerializable(typeof(BeepPostedEvent))]
 [JsonSerializable(typeof(BeepRemovedEvent))]
@@ -81,6 +128,12 @@ public sealed record AuthorsRemovedEvent(IReadOnlyList<Guid> ActorIds);
 [JsonSerializable(typeof(ActorChangedEvent))]
 [JsonSerializable(typeof(CloseEvent))]
 [JsonSerializable(typeof(AuthorsRemovedEvent))]
+[JsonSerializable(typeof(BeepsChangedEvent))]
+[JsonSerializable(typeof(AccountEvent))]
+[JsonSerializable(typeof(LikeChangedEvent))]
+[JsonSerializable(typeof(RelationChangedEvent))]
+[JsonSerializable(typeof(AgentsChangedEvent))]
+[JsonSerializable(typeof(LikedMessage))]
 [JsonSerializable(typeof(IdsMessage))]
 [JsonSerializable(typeof(BeepMessage))]
 [JsonSerializable(typeof(IdMessage))]

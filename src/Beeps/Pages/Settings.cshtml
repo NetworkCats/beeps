@@ -18,8 +18,10 @@
     <h1>@L["Settings.Title"]</h1>
     <form-errors />
 
-    <partial name="_AvatarEditor" model="new AvatarEditor(Avatars.For(User.ActorId(), User.AvatarKey()), User.AvatarKey() is not null)" />
+    <partial name="_AvatarEditor" model="new AvatarEditor(User.ActorId(), Avatars.For(User.ActorId(), User.AvatarKey()), User.AvatarKey() is not null)" />
 
+    @* Shows the saved name and bio, also when changed in another tab, unless it is being edited here (live.ts). *@
+    <div data-live-region="settings-profile" data-live-actors="@User.ActorId()">
     <form class="settings-section" method="post" asp-page-handler="Profile" aria-labelledby="profile-title">
         <h2 id="profile-title">@L["Settings.Profile"]</h2>
         <div class="field">
@@ -41,6 +43,7 @@
             <button class="btn btn-primary" type="submit">@L["Settings.Save"]</button>
         </div>
     </form>
+    </div>
 
     <form class="settings-section" method="post" asp-page-handler="Language" aria-labelledby="language-title">
         <h2 id="language-title">@L["Settings.Language"]</h2>

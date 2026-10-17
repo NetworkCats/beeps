@@ -28,7 +28,8 @@ public sealed record AgentProfileRequest(string? DisplayName, string? HandleName
 public sealed record AgentWithKey(AgentSummary Agent, string Key);
 
 /// <summary>Who an API request is acting as.</summary>
-public sealed record AgentIdentity(Guid AgentId, Guid OwnerId, bool Connected);
+/// <param name="KeyId">The key it authenticated with.</param>
+public sealed record AgentIdentity(Guid AgentId, Guid OwnerId, bool Connected, Guid KeyId = default);
 
 /// <summary>An agent's view of itself and its owner (<c>GET /api/v1/agent/me</c>).</summary>
 public sealed record AgentSelf(

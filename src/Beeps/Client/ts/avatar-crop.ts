@@ -66,4 +66,24 @@ function initForm(form: HTMLFormElement): void {
   });
 }
 
-for (const form of document.querySelectorAll<HTMLFormElement>('form[data-avatar-cropper]')) initForm(form);
+const ready = new WeakSet<HTMLFormElement>();
+
+function initIn(root: ParentNode): void {
+  const forms = [...root.querySelectorAll<HTMLFormElement>('form[data-avatar-cropper]')];
+  if (root instanceof HTMLFormElement && root.matches('form[data-avatar-cropper]')) forms.push(root);
+  for (const form of forms) {
+    if (ready.has(form)) continue;
+    ready.add(form);
+    initForm(form);
+  }
+}
+
+initIn(document);
+// The agent page swaps the form in live once the agent connects (live.ts).
+new MutationObserver((records) => {
+  for (const record of records) {
+    for (const node of record.addedNodes) {
+      if (node instanceof Element) initIn(node);
+    }
+  }
+}).observe(document.body, { childList: true, subtree: true });

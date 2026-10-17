@@ -1,3 +1,4 @@
+using Beeps.Features.Live;
 using Beeps.Features.Shared;
 
 namespace Beeps.Features.Beeps;
@@ -5,9 +6,9 @@ namespace Beeps.Features.Beeps;
 /// <summary>
 /// Writes the live like and reply counts back to the database (PLAN 6.6). It recounts from the like and
 /// reply rows instead of copying Valkey, so the columns end up exact even if a live count drifted, and
-/// then puts the exact numbers back into Valkey.
+/// then puts the exact numbers back into Valkey. A count that was corrected goes to open pages too.
 /// </summary>
-public sealed partial class BeepCounterFlushJob(IBeepCounterStore counters, IBeepStore beeps, ILogger<BeepCounterFlushJob> logger) : IScheduledJob
+public sealed partial class BeepCounterFlushJob(IBeepCounterStore counters, IBeepStore beeps, LiveUpdates live, ILogger<BeepCounterFlushJob> logger) : IScheduledJob
 {
     public const string JobName = "beeps.counters";
 
@@ -31,8 +32,16 @@ public sealed partial class BeepCounterFlushJob(IBeepCounterStore counters, IBee
 
             try
             {
+                var shown = await counters.GetAsync(batch, cancellationToken);
                 var counts = await beeps.RecountAsync(batch, cancellationToken);
                 await counters.SetAsync(counts, cancellationToken);
+                foreach (var (id, exact) in counts)
+                {
+                    if (!shown.TryGetValue(id, out var current) || current != exact)
+                    {
+                        await live.CountsChangedAsync(id, cancellationToken);
+                    }
+                }
             }
             catch
             {

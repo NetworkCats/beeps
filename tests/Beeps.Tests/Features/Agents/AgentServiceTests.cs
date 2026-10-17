@@ -2,6 +2,7 @@ using Beeps.Features.Accounts;
 using Beeps.Features.Agents;
 using Beeps.Features.RateLimiting;
 using Beeps.Features.Live;
+using Beeps.Features.Notifications;
 using Beeps.Features.Profiles;
 using Beeps.Features.Search;
 using Beeps.Features.Avatars;
@@ -25,6 +26,7 @@ public sealed class AgentServiceTests
     private readonly ImmediateUnitOfWork unitOfWork = new();
     private readonly IOutbox outbox = Substitute.For<IOutbox>();
     private readonly ILiveEventStore liveEvents = Substitute.For<ILiveEventStore>();
+    private readonly INotificationStore notifications = Substitute.For<INotificationStore>();
     private readonly AgentOptions options = new() { MaxPerOwner = 3 };
 
     [Fact]
@@ -122,6 +124,30 @@ public sealed class AgentServiceTests
         await store.Received(1).ForgetKeysAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>());
         outbox.Received(1).Enqueue(SearchAccountSyncRequest.MessageType, new SearchAccountSyncRequest(agent.Id, true), Arg.Any<System.Text.Json.Serialization.Metadata.JsonTypeInfo<SearchAccountSyncRequest>>());
         Assert.Equal([$$"""{"actor_ids":["{{agent.Id:D}}"]}"""], TestData.LiveEvents(liveEvents, LiveEventTypes.AuthorsRemoved));
+        // The notifications it caused go with it: their recipients' unread counts are sent again.
+        await notifications.Received(1).ListUnreadRecipientsAsync(
+            Arg.Is<IReadOnlyCollection<Guid>>(b => b.Count == 0), Arg.Is<IReadOnlyCollection<Guid>>(a => a.Single() == agent.Id), Arg.Any<int>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task EveryChangeToTheAgentsRedrawsTheOwnersListsOfThem()
+    {
+        var agent = Agent();
+        var row = new AgentWithOwnerRow(Guid.NewGuid(), null, null, null, TestData.Now, OwnerId, "tom", "Tom");
+        store.GetAgentWithOwnerAsync(row.Id, Arg.Any<CancellationToken>()).Returns(row);
+        store.TryConnectAsync(default, default!, default!, default!, TestSupport.Ct).ReturnsForAnyArgs(true);
+        var service = CreateService();
+
+        await service.CreateAsync(OwnerId, TestSupport.Ct);
+        await service.RegenerateKeyAsync(OwnerId, agent.Id, TestSupport.Ct);
+        await service.DisableAsync(OwnerId, agent.Id, TestSupport.Ct);
+        await service.EnableAsync(OwnerId, agent.Id, TestSupport.Ct);
+        await service.ConnectAsync(row.Id, "Claude", TestSupport.Ct);
+        await service.DeleteAsync(OwnerId, agent.Id, TestSupport.Ct);
+        // Someone else's agent changes nothing of the owner's.
+        await service.DisableAsync(OwnerId, Agent(owner: Guid.NewGuid()).Id, TestSupport.Ct);
+
+        Assert.Equal(Enumerable.Repeat($$"""{"owner_id":"{{OwnerId:D}}"}""", 6), TestData.LiveEvents(liveEvents, LiveEventTypes.AgentsChanged));
     }
 
     [Fact]
@@ -148,7 +174,7 @@ public sealed class AgentServiceTests
 
         var identity = await CreateService().AuthenticateAsync(key, TestSupport.Ct);
 
-        Assert.Equal(new AgentIdentity(match.AgentId, OwnerId, Connected: true), identity);
+        Assert.Equal(new AgentIdentity(match.AgentId, OwnerId, Connected: true, match.KeyId), identity);
         await store.DidNotReceiveWithAnyArgs().TouchKeyAsync(default!, default, TestSupport.Ct);
     }
 
@@ -160,8 +186,12 @@ public sealed class AgentServiceTests
         store.FindActiveKeyAsync(match.KeyHash, Arg.Any<CancellationToken>()).Returns(match);
 
         await CreateService().AuthenticateAsync(key, TestSupport.Ct);
+        store.FindActiveKeyAsync(match.KeyHash, Arg.Any<CancellationToken>()).Returns(match with { LastUsedAt = TestData.Now });
+        await CreateService().AuthenticateAsync(key, TestSupport.Ct);
 
         await store.Received(1).TouchKeyAsync(match, TestData.Now, Arg.Any<CancellationToken>());
+        // The owner's agents page shows when; only the owner's.
+        Assert.Equal([$$"""{"owner_id":"{{OwnerId:D}}","owner_only":true}"""], TestData.LiveEvents(liveEvents, LiveEventTypes.AgentsChanged));
     }
 
     [Fact]
@@ -374,6 +404,7 @@ public sealed class AgentServiceTests
         unitOfWork,
         outbox,
         TestData.Live(liveEvents),
+        TestData.Inboxes(liveEvents, notifications),
         TestData.RateLimits(rateLimitStore),
         TestData.Avatars,
         Options.Create(options),

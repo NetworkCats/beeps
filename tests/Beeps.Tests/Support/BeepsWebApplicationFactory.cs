@@ -109,6 +109,12 @@ public sealed class BeepsWebApplicationFactory : WebApplicationFactory<Program>
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Testing");
+        // As in Development: a singleton holding a scoped service fails here, not first in a real run.
+        builder.UseDefaultServiceProvider(o =>
+        {
+            o.ValidateScopes = true;
+            o.ValidateOnBuild = true;
+        });
         // Never contacted: nothing in these tests reaches the database or Valkey.
         builder.UseSetting("ConnectionStrings:Postgres", "Host=postgres.invalid;Database=beeps");
         builder.UseSetting("ConnectionStrings:Redis", "redis.invalid:6379");

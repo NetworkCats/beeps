@@ -11,7 +11,12 @@ namespace Beeps.Infrastructure.Live;
 /// polls; reading an empty stream end is cheap. It reads even with no connection open, so a new connection
 /// can rely on it being caught up.
 /// </summary>
-public sealed partial class LiveEventHub(ILiveEventStore store, IOptions<LiveOptions> options, TimeProvider time, ILogger<LiveEventHub> logger)
+public sealed partial class LiveEventHub(
+    ILiveEventStore store,
+    IOptions<LiveOptions> options,
+    TimeProvider time,
+    IHostApplicationLifetime lifetime,
+    ILogger<LiveEventHub> logger)
     : BackgroundService, ILiveEventFeed
 {
     /// <summary>Events a slow connection may have waiting before it is dropped (it reconnects and replays).</summary>
@@ -24,6 +29,9 @@ public sealed partial class LiveEventHub(ILiveEventStore store, IOptions<LiveOpt
     private readonly Lock gate = new();
     private readonly List<Subscription> subscriptions = [];
 
+    /// <summary>Set when the instance shuts down: nothing more will be delivered here.</summary>
+    private bool stopped;
+
     /// <summary>Completed once the hub knows where the stream ends; replays wait for it, so they and live delivery meet without a gap.</summary>
     private readonly TaskCompletionSource ready = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
@@ -32,7 +40,15 @@ public sealed partial class LiveEventHub(ILiveEventStore store, IOptions<LiveOpt
         var subscription = new Subscription(this, after);
         lock (gate)
         {
-            subscriptions.Add(subscription);
+            if (stopped)
+            {
+                // Shutting down: end at once, so the client reconnects to an instance that delivers.
+                subscription.End();
+            }
+            else
+            {
+                subscriptions.Add(subscription);
+            }
         }
 
         return subscription;
@@ -47,6 +63,10 @@ public sealed partial class LiveEventHub(ILiveEventStore store, IOptions<LiveOpt
             return;
         }
 
+        // Streams end as soon as the instance starts shutting down: the server would otherwise wait for them (up to its
+        // shutdown timeout) with nothing more to deliver, while their clients could already be on another instance.
+        using var stopping = lifetime.ApplicationStopping.Register(EndAll);
+        using var ending = stoppingToken.Register(EndAll);
         LiveEventId? position = null;
         while (!stoppingToken.IsCancellationRequested)
         {
@@ -103,6 +123,20 @@ public sealed partial class LiveEventHub(ILiveEventStore store, IOptions<LiveOpt
         }
     }
 
+    private void EndAll()
+    {
+        lock (gate)
+        {
+            stopped = true;
+            foreach (var subscription in subscriptions)
+            {
+                subscription.End();
+            }
+
+            subscriptions.Clear();
+        }
+    }
+
     private void Remove(Subscription subscription)
     {
         lock (gate)
@@ -138,6 +172,8 @@ public sealed partial class LiveEventHub(ILiveEventStore store, IOptions<LiveOpt
         public bool Offer(LiveEvent item) => channel.Writer.TryWrite(item);
 
         public void Overflow() => channel.Writer.TryComplete();
+
+        public void End() => channel.Writer.TryComplete();
 
         public async IAsyncEnumerable<LiveEvent> ReadAllAsync([EnumeratorCancellation] CancellationToken cancellationToken)
         {

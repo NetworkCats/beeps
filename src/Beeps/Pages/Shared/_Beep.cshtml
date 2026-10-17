@@ -11,8 +11,13 @@
     // A fragment fetched by a live page passes the page it will be shown on.
     var returnUrl = ViewData[LivePage.ReturnUrlKey] as string ?? $"{Context.Request.Path}{Context.Request.QueryString}";
     var likeHandler = beep.Liked ? "Unlike" : "Like";
+    // Razor writes data-* attributes even when null; most beeps mention nobody. The ids are GUIDs, nothing to escape.
+    var mentions = beep.Mentions.Count > 0 ? $" data-mentions=\"{string.Join(' ', beep.Mentions.Select(m => m.Id))}\"" : "";
+    // In a thread a reply names whom it answers: drawn again when that author is renamed.
+    var replyTo = beep.ReplyToId is { } parentId ? $" data-reply-to=\"{parentId}\"" : "";
 }
-<article class="beep@(Model.Focused ? " beep-focused" : "")" id="@SitePaths.BeepAnchor(beep.Id)" data-beep="@beep.Id" data-author="@beep.Author.Id">
+@* data-author, data-mentions, data-reply-to: the live script draws the card again when one of those people changes name or avatar. *@
+<article class="beep@(Model.Focused ? " beep-focused" : "")" id="@SitePaths.BeepAnchor(beep.Id)" data-beep="@beep.Id" data-author="@beep.Author.Id"@Html.Raw(mentions)@Html.Raw(replyTo)>
     <a class="beep-avatar" href="@profile" tabindex="-1" aria-hidden="true">
         <span class="avatar"><img src="@author.AvatarUrl" alt="" width="32" height="32" loading="lazy"></span>
     </a>

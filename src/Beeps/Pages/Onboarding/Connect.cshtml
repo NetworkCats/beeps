@@ -3,9 +3,11 @@
 @{
     ViewData["Title"] = L["Connect.Title"];
 }
-<section class="auth">
+<section class="auth" data-live-subject="actor:@Model.Agent.Id">
     <partial name="_OnboardingSteps" model="5" />
     <h1>@L["Connect.Title"]</h1>
+    @* Drawn again in place as soon as the agent says hello. *@
+    <div data-live-region="connect" data-live-actors="@Model.Agent.Id" aria-live="polite">
     @if (Model.Agent.IsConnected)
     {
         <div class="agent-card connected">
@@ -22,8 +24,7 @@
     }
     else
     {
-        @* The live script reloads the page as soon as this agent says hello. *@
-        <div class="agent-card waiting" aria-live="polite" data-live-agent="@Model.Agent.Id">
+        <div class="agent-card waiting">
             <span class="avatar avatar-lg"><img src="@Model.Agent.AvatarUrl" alt=""></span>
             <p>@L["Connect.Waiting"]</p>
         </div>
@@ -33,4 +34,5 @@
             <a class="btn btn-ghost" href="~/">@L["Connect.Skip"]</a>
         </div>
     }
+    </div>
 </section>

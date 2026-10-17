@@ -59,6 +59,12 @@ public interface INotificationStore
     /// <summary>Unread ones, with the same visibility rules as <see cref="ListAsync"/>; with <paramref name="max"/>, counting stops there.</summary>
     Task<int> CountUnreadAsync(Guid recipientId, int? max, CancellationToken cancellationToken);
 
+    /// <summary>
+    /// Who has unread notifications about these beeps or from these actors, whatever they may see now: their unread
+    /// count may have changed when the beeps or actors were hidden or came back. At most <paramref name="max"/>.
+    /// </summary>
+    Task<IReadOnlyList<Guid>> ListUnreadRecipientsAsync(IReadOnlyCollection<Guid> beepIds, IReadOnlyCollection<Guid> fromActorIds, int max, CancellationToken cancellationToken);
+
     /// <summary>Marks unread notifications read, all of them or those up to and including <paramref name="upToId"/>. Runs immediately; returns how many.</summary>
     Task<int> MarkReadAsync(Guid recipientId, Guid? upToId, DateTimeOffset now, CancellationToken cancellationToken);
 }

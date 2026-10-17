@@ -5,7 +5,8 @@
 <section class="settings-section" aria-labelledby="avatar-title">
     <h2 id="avatar-title">@L["Avatar.Title"]</h2>
     <div class="avatar-editor">
-        <span class="avatar avatar-2xl"><img src="@Model.AvatarUrl" alt="" width="96" height="96"></span>
+        @* Live: a new avatar shows here once processed, without touching the forms beside it. *@
+        <span class="avatar avatar-2xl" data-live-region="avatar-preview" data-live-actors="@Model.ActorId"><img src="@Model.AvatarUrl" alt="" width="96" height="96"></span>
         <div class="avatar-editor-forms">
             <form method="post" enctype="multipart/form-data" asp-page-handler="Avatar" data-avatar-cropper>
                 <div class="field">
@@ -30,12 +31,14 @@
                     <button class="btn" type="submit">@L["Avatar.Upload"]</button>
                 </div>
             </form>
-            @if (Model.HasCustomAvatar)
-            {
-                <form method="post" asp-page-handler="RemoveAvatar" data-confirm="@L["Avatar.Remove.Confirm"]">
-                    <button class="btn btn-ghost" type="submit">@L["Avatar.Remove"]</button>
-                </form>
-            }
+            <div class="avatar-remove" data-live-region="avatar-remove" data-live-actors="@Model.ActorId">
+                @if (Model.HasCustomAvatar)
+                {
+                    <form method="post" asp-page-handler="RemoveAvatar" data-confirm="@L["Avatar.Remove.Confirm"]">
+                        <button class="btn btn-ghost" type="submit">@L["Avatar.Remove"]</button>
+                    </form>
+                }
+            </div>
         </div>
     </div>
 </section>

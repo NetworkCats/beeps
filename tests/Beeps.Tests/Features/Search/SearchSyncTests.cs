@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Beeps.Features.Accounts;
+using Beeps.Features.Live;
 using Beeps.Features.Search;
 using Beeps.Features.Shared;
 using Beeps.Tests.Support;
@@ -10,6 +11,7 @@ public sealed class SearchSyncTests
 {
     private readonly ISearchStore store = Substitute.For<ISearchStore>();
     private readonly ISearchIndex index = Substitute.For<ISearchIndex>();
+    private readonly ILiveEventStore liveEvents = Substitute.For<ILiveEventStore>();
 
     [Fact]
     public async Task AVisibleBeepIsIndexedAndAnyOtherIsDropped()
@@ -17,13 +19,15 @@ public sealed class SearchSyncTests
         var shown = new BeepDocument(Guid.NewGuid(), "hi #Beeps", Guid.NewGuid(), ["beeps"], TestData.Now);
         var gone = Guid.NewGuid();
         store.FindBeepAsync(shown.Id, Arg.Any<CancellationToken>()).Returns(shown);
-        var handler = new SearchBeepSyncHandler(store, index);
+        var handler = new SearchBeepSyncHandler(store, index, TestData.Live(liveEvents));
 
         await handler.HandleAsync(Envelope(new SearchBeepSyncRequest(shown.Id)), TestSupport.Ct);
         await handler.HandleAsync(Envelope(new SearchBeepSyncRequest(gone)), TestSupport.Ct);
 
         await index.Received(1).UpsertBeepsAsync(Arg.Is<IReadOnlyCollection<BeepDocument>>(d => d.Single() == shown), Arg.Any<CancellationToken>());
         await index.Received(1).DeleteBeepsAsync(Arg.Is<IReadOnlyCollection<Guid>>(d => d.Single() == gone), Arg.Any<CancellationToken>());
+        // Open search pages ask again each time.
+        Assert.Equal(2, TestData.LiveEvents(liveEvents, LiveEventTypes.SearchChanged).Count);
     }
 
     [Fact]
@@ -33,12 +37,13 @@ public sealed class SearchSyncTests
         var deletedAgent = Guid.NewGuid();
         store.GetAccountAsync(tom.Id, Arg.Any<CancellationToken>()).Returns([new ActorDocumentState(tom.Id, tom), new ActorDocumentState(deletedAgent, null)]);
 
-        await new SearchAccountSyncHandler(store, index).HandleAsync(Envelope(new SearchAccountSyncRequest(tom.Id, Beeps: false)), TestSupport.Ct);
+        await new SearchAccountSyncHandler(store, index, TestData.Live(liveEvents)).HandleAsync(Envelope(new SearchAccountSyncRequest(tom.Id, Beeps: false)), TestSupport.Ct);
 
         await index.Received(1).UpsertActorsAsync(Arg.Is<IReadOnlyCollection<ActorDocument>>(d => d.Single() == tom), Arg.Any<CancellationToken>());
         await index.Received(1).DeleteActorsAsync(Arg.Is<IReadOnlyCollection<Guid>>(d => d.Single() == deletedAgent), Arg.Any<CancellationToken>());
         await index.DidNotReceiveWithAnyArgs().DeleteBeepsByAuthorsAsync(default!, TestSupport.Ct);
         await store.DidNotReceiveWithAnyArgs().ListBeepsAsync(default, default, default, TestSupport.Ct);
+        Assert.Single(TestData.LiveEvents(liveEvents, LiveEventTypes.SearchChanged));
     }
 
     [Fact]
@@ -48,7 +53,7 @@ public sealed class SearchSyncTests
         var agent = Guid.NewGuid();
         store.GetAccountAsync(tom, Arg.Any<CancellationToken>()).Returns([new ActorDocumentState(tom, null), new ActorDocumentState(agent, null)]);
 
-        await new SearchAccountSyncHandler(store, index).HandleAsync(Envelope(new SearchAccountSyncRequest(tom, Beeps: true)), TestSupport.Ct);
+        await new SearchAccountSyncHandler(store, index, TestData.Live(liveEvents)).HandleAsync(Envelope(new SearchAccountSyncRequest(tom, Beeps: true)), TestSupport.Ct);
 
         await index.Received(1).DeleteActorsAsync(Arg.Is<IReadOnlyCollection<Guid>>(d => d.SequenceEqual(new[] { tom, agent })), Arg.Any<CancellationToken>());
         await index.Received(1).DeleteBeepsByAuthorsAsync(Arg.Is<IReadOnlyCollection<Guid>>(d => d.SequenceEqual(new[] { tom, agent })), Arg.Any<CancellationToken>());
@@ -65,7 +70,7 @@ public sealed class SearchSyncTests
         store.ListBeepsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), null, SearchAccountSyncHandler.BatchSize, Arg.Any<CancellationToken>()).Returns(full);
         store.ListBeepsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), full[^1].Id, SearchAccountSyncHandler.BatchSize, Arg.Any<CancellationToken>()).Returns(rest);
 
-        await new SearchAccountSyncHandler(store, index).HandleAsync(Envelope(new SearchAccountSyncRequest(tom.Id, Beeps: true)), TestSupport.Ct);
+        await new SearchAccountSyncHandler(store, index, TestData.Live(liveEvents)).HandleAsync(Envelope(new SearchAccountSyncRequest(tom.Id, Beeps: true)), TestSupport.Ct);
 
         await index.Received(1).UpsertBeepsAsync(full, Arg.Any<CancellationToken>());
         await index.Received(1).UpsertBeepsAsync(rest, Arg.Any<CancellationToken>());

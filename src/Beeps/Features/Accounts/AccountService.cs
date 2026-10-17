@@ -153,7 +153,7 @@ public sealed partial class AccountService(
 
         try
         {
-            return await unitOfWork.InTransactionAsync<AccountState>(
+            var registered = await unitOfWork.InTransactionAsync<AccountState>(
                 AdvisoryLocks.Admins,
                 async ct =>
                 {
@@ -173,6 +173,13 @@ public sealed partial class AccountService(
                     return ToState(user);
                 },
                 cancellationToken);
+            if (registered.IsSuccess)
+            {
+                // The admin user list and the overview's figures.
+                await live.AdminChangedAsync(cancellationToken);
+            }
+
+            return registered;
         }
         catch (UniqueViolationException exception) when (exception.IndexName == AccountIndexes.UniqueHandle)
         {
@@ -213,6 +220,9 @@ public sealed partial class AccountService(
         outbox.SyncAccountToSearch(user.Id);
         await unitOfWork.SaveChangesAsync(cancellationToken);
         await store.ForgetAccountAsync(user.Id, cancellationToken);
+        // Their other open tabs become a member's pages; the admin user list drops the "unverified" mark.
+        await live.AccountChangedAsync(user.Id, cancellationToken);
+        await live.AdminChangedAsync(cancellationToken);
         return Result.Success;
     }
 
@@ -410,6 +420,7 @@ public sealed partial class AccountService(
 
         await sessions.ForgetAllAsync(user.Id, cancellationToken);
         await store.ForgetAccountAsync(user.Id, cancellationToken);
+        await live.SessionsEndedAsync(user.Id, cancellationToken);
         LogPasswordReset(logger, user.Id);
         return Result.Success;
     }
@@ -431,6 +442,8 @@ public sealed partial class AccountService(
         user.Locale = supported;
         await unitOfWork.SaveChangesAsync(cancellationToken);
         await store.ForgetAccountAsync(user.Id, cancellationToken);
+        // The account's other open tabs switch to the new language too.
+        await live.AccountChangedAsync(user.Id, cancellationToken);
         return Result.Success;
     }
 
@@ -537,6 +550,8 @@ public sealed partial class AccountService(
             },
             cancellationToken);
         await sessions.ForgetAllAsync(user.Id, cancellationToken);
+        // The other tabs of the sessions just ended sign out.
+        await live.SessionsEndedAsync(user.Id, cancellationToken);
         LogPasswordChanged(logger, user.Id);
         return Result.Success;
     }

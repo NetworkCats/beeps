@@ -111,7 +111,8 @@ public sealed class CacheInvalidatorTests : IAsyncDisposable
         Assert.Equal(
             [PageTags.Actor(Owner), PageTags.Actor(Agent), PageTags.Public, PageTags.Hashtag("weather"), PageTags.Hashtag("天气"), PageTags.Thread(Root)],
             message.PageTags.Order(StringComparer.Ordinal));
-        await pages.Received(1).EvictByTagAsync(PageTags.Thread(Root), Arg.Any<CancellationToken>());
+        // At least once: the second pass, 50 ms later, may already have evicted it again on a busy machine.
+        await pages.Received().EvictByTagAsync(PageTags.Thread(Root), Arg.Any<CancellationToken>());
     }
 
     [Fact]

@@ -3,6 +3,7 @@ using System.Text.RegularExpressions;
 using Beeps.Features.Accounts;
 using Beeps.Features.Admin;
 using Beeps.Features.Agents;
+using Beeps.Features.Live;
 using Beeps.Features.Shared;
 using Beeps.Tests.Support;
 
@@ -133,6 +134,9 @@ public sealed partial class AgentAndAdminPagesTests : IDisposable
         Assert.Matches("<code>[0-9A-Z]{4}-[0-9A-Z]{4}-[0-9A-Z]{4}-[0-9A-Z]{4}</code>", html);
         Assert.Contains("value=\"Open\" checked=\"checked\"", html, StringComparison.Ordinal);
         factory.Admin.Received(1).AddAuditLog(Arg.Is<AdminAuditLog>(l => l.Action == AuditActions.CreateInvite && l.AdminId == admin.Id));
+        // Kept when the page is drawn again live, and other admins' pages hear of it.
+        Assert.Matches("<div data-live-slot=\"new-invite\">\\s*<div class=\"alert alert-success\"", html);
+        Assert.Single(TestData.LiveEvents(factory.LiveEvents, LiveEventTypes.AdminChanged));
     }
 
     [Fact]

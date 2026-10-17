@@ -7,13 +7,16 @@
     var authors = Model.Thread.Items.ToDictionary(b => b.Id, b => b.Author.Handle);
     var focusShown = Model.Thread.Items.Any(b => b.Id == focus.Id);
 }
-<section class="feed thread" live-watch="Model.Live">
+@* data-live-subject: when this beep is deleted or hidden, the page is shown anew (live.ts), as a reload would. *@
+<section class="feed thread" live-watch="Model.Live" live-subject="@($"beep:{focus.Id:D}")">
     <h1 class="visually-hidden">@ViewData["Title"]</h1>
     @if (!focusShown)
     {
         <partial name="_Beep" model="new BeepCard(focus, Focused: true)" />
         <partial name="_ReplyBox" model="focus" />
     }
+    @* For a page of the thread that does not grow live (not the last one): drawn again when the thread may have changed. *@
+    <div live-region="list">
     <div class="beep-list">
         @foreach (var beep in Model.Thread.Items)
         {
@@ -31,4 +34,5 @@
             <a class="btn btn-sm" href="@SitePaths.Beep(focus.Id)?after=@next">@L["Pager.MoreReplies"]</a>
         </nav>
     }
+    </div>
 </section>
