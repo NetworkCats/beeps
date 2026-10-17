@@ -3,6 +3,7 @@
 @model Beeps.Pages.Admin.SettingsModel
 @{
     ViewData["Title"] = L["Admin.Settings"];
+    var inviteStillOpen = Model.NewInvite is { } shownInvite ? "[data-invite-open=\"" + shownInvite.Invite.Id + "\"]" : "";
 }
 <h1>@L["Admin.Settings"]</h1>
 
@@ -36,7 +37,8 @@
         </form>
     </header>
     @* Shown only on the response that created it: drawing the page again live keeps it (data-live-slot, live.ts). *@
-    <div data-live-slot="new-invite">
+    @* Checked against this page when the admin pages change: an invite revoked or used elsewhere is taken down. *@
+    <div data-live-slot="new-invite" data-live-slot-check="/admin/settings" data-live-slot-requires="@inviteStillOpen">
     @if (Model.NewInvite is not null)
     {
         <div class="alert alert-success" role="status">
@@ -70,7 +72,7 @@
                 <tbody>
                     @foreach (var invite in Model.Invites)
                     {
-                        <tr>
+                        <tr data-invite-open="@(invite.UsedAt is null ? invite.Id : null)">
                             <td data-label="@L["Admin.Invites.Code"]"><code>@(invite.CodePrefix)…</code></td>
                             <td data-label="@L["Admin.Invites.Created.At"]"><utc-time value="invite.CreatedAt" /></td>
                             <td data-label="@L["Admin.Invites.Expires"]"><utc-time value="invite.ExpiresAt" /></td>

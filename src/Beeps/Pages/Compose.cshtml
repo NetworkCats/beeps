@@ -3,7 +3,8 @@
 @{
     ViewData["Title"] = Model.ReplyTo is null ? L["Compose.Title"] : L["Compose.ReplyTitle"];
 }
-<section class="feed">
+@* Replying: when the beep answered goes, the page shows what a reload would (live.ts). *@
+<section class="feed" live-subject="@(Model.ReplyTo is { } replyTo ? $"beep:{replyTo:D}" : null)">
     <h1 class="feed-title">@ViewData["Title"]</h1>
     <form-errors />
     @if (Model.Parent is not null)

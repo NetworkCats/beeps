@@ -3,6 +3,7 @@
 @{
     ViewData["Title"] = L["Agents.Title"];
     var liveActors = string.Join(' ', Model.Agents.Select(a => a.Id).Prepend(User.ActorId()));
+    var keyStillShown = Model.NewKey is { } shownKey ? "[data-key-prefix=\"" + shownKey.Agent.KeyPrefix + "\"]" : "";
 }
 <section class="feed agents">
     <header class="section-header">
@@ -15,7 +16,8 @@
     <form-errors />
 
     @* Shown only on the response that generated it: kept when the page is drawn again live (data-live-slot, live.ts). *@
-    <div data-live-slot="new-key">
+    @* Checked against the agents page when they change: a key regenerated or deleted elsewhere is taken down (live.ts). *@
+    <div data-live-slot="new-key" data-live-slot-check="/agents" data-live-slot-requires="@keyStillShown">
     @if (Model.NewKey is not null)
     {
         <div class="card new-key">
@@ -71,7 +73,7 @@
                             }
                             @if (agent.KeyPrefix is not null)
                             {
-                                <code>@(agent.KeyPrefix)…</code>
+                                <code data-key-prefix="@agent.KeyPrefix">@(agent.KeyPrefix)…</code>
                             }
                             <span>@L["Agents.LastUsed"] @if (agent.KeyLastUsedAt is null) { @L["Agents.Never"] } else { <utc-time value="agent.KeyLastUsedAt" /> }</span>
                         </p>

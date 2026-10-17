@@ -1,4 +1,5 @@
 using Beeps.Features.Accounts;
+using Beeps.Features.Live;
 using Beeps.Tests.Support;
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -9,6 +10,7 @@ public sealed class AccountCleanupJobTests
     private readonly ISessionStore sessions = Substitute.For<ISessionStore>();
     private readonly IAccountStore accounts = Substitute.For<IAccountStore>();
     private readonly ImmediateUnitOfWork unitOfWork = new();
+    private readonly ILiveEventStore liveEvents = Substitute.For<ILiveEventStore>();
 
     public AccountCleanupJobTests() =>
         accounts.ReleaseUnverifiedAsync(default, default, default, TestSupport.Ct).ReturnsForAnyArgs(Array.Empty<Guid>());
@@ -47,6 +49,8 @@ public sealed class AccountCleanupJobTests
         Assert.Equal([null], unitOfWork.Locks);
         await sessions.Received(1).ForgetAllAsync(first, Arg.Any<CancellationToken>());
         await sessions.Received(1).ForgetAllAsync(second, Arg.Any<CancellationToken>());
+        // Their open tabs sign out.
+        Assert.Equal([$$"""{"account_id":"{{first:D}}"}""", $$"""{"account_id":"{{second:D}}"}"""], TestData.LiveEvents(liveEvents, LiveEventTypes.SessionsEnded));
         await accounts.Received(1).ForgetAccountAsync(first, Arg.Any<CancellationToken>());
         await accounts.Received(1).ForgetAccountAsync(second, Arg.Any<CancellationToken>());
     }
@@ -60,5 +64,5 @@ public sealed class AccountCleanupJobTests
         Assert.Equal(TimeSpan.FromHours(1), job.Interval);
     }
 
-    private AccountCleanupJob CreateJob() => new(sessions, accounts, unitOfWork, TestData.Time(), NullLogger<AccountCleanupJob>.Instance);
+    private AccountCleanupJob CreateJob() => new(sessions, accounts, unitOfWork, TestData.Live(liveEvents), TestData.Time(), NullLogger<AccountCleanupJob>.Instance);
 }

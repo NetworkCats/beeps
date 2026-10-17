@@ -48,6 +48,8 @@ public sealed class ModerationServiceTests
         Assert.Equal(1, unitOfWork.Saves);
         outbox.DidNotReceiveWithAnyArgs().Enqueue<SearchBeepSyncRequest>(default!, default!, default!);
         Assert.Empty(TestData.LiveEvents(liveEvents, LiveEventTypes.BeepHidden));
+        // The admin pages show the review's outcome.
+        Assert.Single(TestData.LiveEvents(liveEvents, LiveEventTypes.AdminChanged));
     }
 
     [Fact]

@@ -37,12 +37,23 @@ public static class LiveEndpoints
 
     public const string AgentPath = "/api/v1/stream";
 
+    /// <summary>How the request is signed in, as pages write it in <c>data-auth</c>; a page whose stream keeps failing asks.</summary>
+    public const string AuthPath = "/stream/auth";
+
     public static IEndpointRouteBuilder MapLiveEndpoints(this IEndpointRouteBuilder routes)
     {
         routes.MapGet(WebPath, OpenWebAsync)
             // Signed in, verified or not: an unverified tab follows its account (verified in another tab).
             .RequireAuthorization(AuthPolicies.SignedIn)
             .WithRateLimit(RateLimitPolicies.StreamConnect)
+            .ExcludeFromDescription();
+
+        // Open to everyone: a tab whose session ended while its stream was down finds out here, and shows itself signed out.
+        routes.MapGet(AuthPath, (ClaimsPrincipal user, HttpContext context) =>
+            {
+                context.Response.Headers.CacheControl = "no-store";
+                return TypedResults.Text(user.AuthState());
+            })
             .ExcludeFromDescription();
 
         routes.MapGet(AgentPath, OpenAgent)

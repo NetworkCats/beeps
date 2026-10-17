@@ -67,7 +67,7 @@ public sealed class LiveTagHelper(TimeProvider time) : TagHelper
         if (context.AllAttributes.ContainsName(StreamAttribute))
         {
             // How this tab is signed in, for the other tabs of the browser to compare with (Client/ts/auth-sync.ts).
-            output.Attributes.SetAttribute("data-auth", $"{(user.IsMember() ? "member" : "unverified")}:{user.ActorId():D}");
+            output.Attributes.SetAttribute("data-auth", user.AuthState());
             // Unverified too: such a tab follows its account (verified or signed out elsewhere), nothing else.
             output.Attributes.SetAttribute("data-live-stream", LiveEndpoints.WebPath);
             // The stream replays what happened between rendering this page and connecting.

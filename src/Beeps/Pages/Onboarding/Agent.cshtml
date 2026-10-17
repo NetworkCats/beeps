@@ -20,7 +20,10 @@
     else
     {
         <h1>@L["Handoff.Title"]</h1>
-        <partial name="_KeyHandoff" model="Model.Created" />
+        @* Taken down when the key is regenerated or the agent deleted elsewhere (live.ts). *@
+        <div data-live-slot="new-key" data-live-slot-check="/agents" data-live-slot-requires="@("[data-key-prefix=\"" + Model.Created.Agent.KeyPrefix + "\"]")">
+            <partial name="_KeyHandoff" model="Model.Created" />
+        </div>
         <div class="form-actions">
             <a class="btn btn-primary" asp-page="/Onboarding/Connect" asp-route-id="@Model.Created.Agent.Id">@L["Handoff.Next"]</a>
         </div>

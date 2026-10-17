@@ -12,7 +12,8 @@ public sealed record BeepCard(BeepView Beep, bool Focused = false, bool InThread
 
 /// <summary>A page of beeps for <c>_BeepList.cshtml</c>, with an empty state and a link to the next page.</summary>
 /// <param name="CursorName">The query parameter the next page is asked for with: <c>before</c>, or <c>after</c> for threads.</param>
-public sealed record BeepList(CursorPage<BeepView> Page, string EmptyTitle, string? EmptyText = null, string CursorName = "before");
+/// <param name="PagerPath">Where older pages are asked for; the page's own address when null.</param>
+public sealed record BeepList(CursorPage<BeepView> Page, string EmptyTitle, string? EmptyText = null, string CursorName = "before", string? PagerPath = null);
 
 /// <summary>The avatar upload and removal forms for <c>_AvatarEditor.cshtml</c>.</summary>
 /// <param name="HasCustomAvatar">An uploaded avatar, which can be removed to get the default pattern back.</param>

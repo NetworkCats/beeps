@@ -20,17 +20,20 @@ export function pageUrl(): string {
   return url.toString();
 }
 
-/** What the slots under `root` show now, by name (a one-time invite code, a new key): a fresh copy has them empty. */
-export function takeSlots(root: HTMLElement): Map<string, Node[]> {
-  const kept = new Map<string, Node[]>();
+/**
+ * The slots under `root` that show something (a one-time invite code, a new key): a fresh copy has them empty. The
+ * slot elements themselves are kept, with what they say about when their content is still good.
+ */
+export function takeSlots(root: HTMLElement): Map<string, HTMLElement> {
+  const kept = new Map<string, HTMLElement>();
   for (const slot of root.querySelectorAll<HTMLElement>('[data-live-slot]')) {
-    if (slot.childNodes.length > 0) kept.set(slot.dataset.liveSlot ?? '', [...slot.childNodes]);
+    if (slot.textContent?.trim()) kept.set(slot.dataset.liveSlot ?? '', slot);
   }
   return kept;
 }
 
-export function putSlots(root: HTMLElement, kept: Map<string, Node[]>): void {
-  for (const [name, nodes] of kept) root.querySelector<HTMLElement>(`[data-live-slot="${CSS.escape(name)}"]`)?.replaceChildren(...nodes);
+export function putSlots(root: HTMLElement, kept: Map<string, HTMLElement>): void {
+  for (const [name, slot] of kept) root.querySelector<HTMLElement>(`[data-live-slot="${CSS.escape(name)}"]`)?.replaceWith(slot);
 }
 
 /** Throws when the page cannot be fetched; the caller tries again. One swap at a time: a second call joins the first. */
@@ -45,6 +48,9 @@ async function swap(): Promise<void> {
   const response = await fetch(pageUrl(), { credentials: 'same-origin', headers: { Accept: 'text/html' } });
   const fresh = new DOMParser().parseFromString(await response.text(), 'text/html');
   if (response.url && response.url !== window.location.href) window.history.replaceState(null, '', response.url);
+  // What a reload shows may be an error page (not found, forbidden); something coming back can change that again.
+  if (response.ok) delete document.documentElement.dataset.liveStatus;
+  else document.documentElement.dataset.liveStatus = String(response.status);
   document.documentElement.lang = fresh.documentElement.lang;
   document.title = fresh.title;
   addMissingAssets(fresh);

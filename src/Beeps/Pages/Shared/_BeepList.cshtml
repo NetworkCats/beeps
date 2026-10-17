@@ -22,7 +22,7 @@ else
     @if (Model.Page.NextCursor is { } next)
     {
         <nav class="pager" aria-label="@L["Pager.Label"]">
-            <a class="btn btn-sm" href="@Context.Request.Path?@Model.CursorName=@next">@L["Pager.More"]</a>
+            <a class="btn btn-sm" href="@(Model.PagerPath ?? Context.Request.Path.Value)?@Model.CursorName=@next">@L["Pager.More"]</a>
         </nav>
     }
 }

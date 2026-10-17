@@ -64,6 +64,8 @@ public sealed partial class ModerationService(
         if (!hide)
         {
             LogAllowed(logger, beepId, verdict.Model, verdict.LatencyMs);
+            // Members see nothing new; the admin pages show the review's outcome and the backlog.
+            await live.AdminChangedAsync(cancellationToken);
             return;
         }
 

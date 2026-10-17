@@ -1,3 +1,4 @@
+using Beeps.Features.Live;
 using Beeps.Features.Shared;
 
 namespace Beeps.Features.Accounts;
@@ -10,6 +11,7 @@ public sealed partial class AccountCleanupJob(
     ISessionStore sessions,
     IAccountStore accounts,
     IUnitOfWork unitOfWork,
+    LiveUpdates live,
     TimeProvider time,
     ILogger<AccountCleanupJob> logger) : IScheduledJob
 {
@@ -52,6 +54,8 @@ public sealed partial class AccountCleanupJob(
         {
             await sessions.ForgetAllAsync(userId, cancellationToken);
             await accounts.ForgetAccountAsync(userId, cancellationToken);
+            // Its open tabs sign out.
+            await live.SessionsEndedAsync(userId, cancellationToken);
         }
 
         return released.Value.Count;

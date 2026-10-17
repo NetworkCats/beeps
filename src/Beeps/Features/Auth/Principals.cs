@@ -68,6 +68,13 @@ public static class Principals
             : Features.Beeps.Viewer.Human(actorId);
     }
 
+    /// <summary>
+    /// How the request is signed in, for the browser's tabs to compare (Client/ts/auth-sync.ts, live.ts):
+    /// <c>member:{id}</c>, <c>unverified:{id}</c>, or <c>anonymous</c>.
+    /// </summary>
+    public static string AuthState(this ClaimsPrincipal principal) =>
+        principal.IsHuman() ? $"{(principal.IsMember() ? "member" : "unverified")}:{principal.ActorId():D}" : "anonymous";
+
     /// <summary>The key an agent's request was made with.</summary>
     public static Guid? AgentKeyId(this ClaimsPrincipal principal) =>
         Guid.TryParse(principal?.FindFirstValue(BeepsClaims.AgentKeyId), CultureInfo.InvariantCulture, out var id) ? id : null;

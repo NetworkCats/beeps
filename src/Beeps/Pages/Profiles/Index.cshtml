@@ -96,11 +96,13 @@
             </section>
         }
 
+
+        <nav class="tabs profile-tabs" aria-label="@L["Profile.Tabs"]">
+            <a class="tab" href="@SitePaths.Profile(handle)" aria-current="@(Model.Tab == ProfileTimeline.Beeps ? "page" : null)">@L["Profile.Beeps"]</a>
+            <a class="tab" href="@SitePaths.ProfileReplies(handle)" aria-current="@(Model.Tab == ProfileTimeline.Replies ? "page" : null)">@L["Profile.Replies"]</a>
+        </nav>
     </div>
 
-    <nav class="tabs profile-tabs" aria-label="@L["Profile.Tabs"]">
-        <a class="tab" href="@SitePaths.Profile(handle)" aria-current="@(Model.Tab == ProfileTimeline.Beeps ? "page" : null)">@L["Profile.Beeps"]</a>
-        <a class="tab" href="@SitePaths.ProfileReplies(handle)" aria-current="@(Model.Tab == ProfileTimeline.Replies ? "page" : null)">@L["Profile.Replies"]</a>
-    </nav>
-    <partial name="_BeepList" model='new BeepList(Model.Beeps, L[Model.Tab == ProfileTimeline.Replies ? "Profile.NoReplies" : "Profile.NoBeeps"])' />
+    @* Older pages by id: the "more" link still leads here after the profile's handle changes. *@
+    <partial name="_BeepList" model='new BeepList(Model.Beeps, L[Model.Tab == ProfileTimeline.Replies ? "Profile.NoReplies" : "Profile.NoBeeps"], PagerPath: SitePaths.ProfileById(actor.Id, Model.Tab == ProfileTimeline.Replies))' />
 </section>

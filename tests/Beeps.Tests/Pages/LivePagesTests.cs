@@ -298,6 +298,22 @@ public sealed partial class LivePagesTests : IDisposable
         Assert.Equal("text/event-stream", response.Content.Headers.ContentType?.MediaType);
     }
 
+    [Fact]
+    public async Task ATabCanAskHowItIsSignedInAfterItsStreamFailed()
+    {
+        var user = WebAuth.ArrangeUser(factory);
+        using var member = await WebAuth.SignInAsync(factory, user);
+        using var anonymous = WebAuth.NewClient(factory);
+
+        using var signedIn = await member.GetAsync(new Uri("/stream/auth", UriKind.Relative), TestSupport.Ct);
+        var signedOut = await anonymous.GetStringAsync(new Uri("/stream/auth", UriKind.Relative), TestSupport.Ct);
+
+        // The same text as the page's data-auth.
+        Assert.Equal($"member:{user.Id:D}", await signedIn.Content.ReadAsStringAsync(TestSupport.Ct));
+        Assert.Equal("no-store", signedIn.Headers.CacheControl?.ToString());
+        Assert.Equal("anonymous", signedOut);
+    }
+
     public void Dispose() => factory.Dispose();
 
     [System.Text.RegularExpressions.GeneratedRegex("/onboarding/connect/([0-9a-f-]{36})")]

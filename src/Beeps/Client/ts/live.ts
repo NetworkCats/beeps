@@ -24,6 +24,7 @@ import { PAGE_SWAPPED, pageUrl, putSlots, swapPage, takeSlots } from './page-swa
 
 const LIVE_BEEPS = '/live/beeps';
 const LIVE_NOTIFICATIONS = '/live/notifications';
+const AUTH_STATE = '/stream/auth';
 // Several events in a row lead to one fetch.
 const FETCH_DELAY = 300;
 // Search results are asked again at most this often (searching has its own rate limit).
@@ -97,6 +98,8 @@ function connect(): void {
     source = undefined;
     retryDelay = nextRetryDelay(retryDelay);
     retryTimer = window.setTimeout(connect, retryDelay);
+    // The session may have ended while the stream was down (no event reached this tab then).
+    void checkSignedIn();
   });
   on(events, 'inbox', (data: { unread_count: number }) => {
     showUnread(data.unread_count);
@@ -107,11 +110,11 @@ function connect(): void {
     if (cards(data.id).length === 0) schedule(fetchBeeps);
   });
   on(events, 'removed', (data: { id: string }) => {
-    if (subject() === `beep:${data.id}`) void showSubjectGone();
+    if (subject() === `beep:${data.id}`) void showWhatReloadShows();
     removeBeep(data.id);
   });
   on(events, 'authors_removed', (data: { ids: string[] }) => {
-    if (data.ids.some((id) => subject() === `actor:${id}`)) void showSubjectGone();
+    if (data.ids.some((id) => subject() === `actor:${id}`)) void showWhatReloadShows();
     data.ids.forEach(removeAuthor);
     // Read entries about them go too, which no unread count announces.
     inboxChanged();
@@ -127,13 +130,26 @@ function connect(): void {
   on(events, 'actor', (data: { id: string }) => {
     redraw(actorCards(data.id));
     refreshRegionsOf(data.id);
+    // A thread page's title names the author of its beep.
+    const about = subject();
+    if (about?.startsWith('beep:') && document.querySelector(`[data-beep="${CSS.escape(about.slice(5))}"][data-author="${CSS.escape(data.id)}"]`)) schedule(refreshTitle);
     if (document.querySelector(`[data-notification][data-from="${CSS.escape(data.id)}"]`)) inboxChanged();
   });
-  on(events, 'agents', (data: { id: string }) => refreshRegionsOf(data.id));
+  on(events, 'agents', (data: { id: string }) => {
+    refreshRegionsOf(data.id);
+    schedule(checkSlots);
+  });
   on(events, 'agent_connected', (data: { id: string }) => refreshRegionsOf(data.id));
-  on(events, 'resync', () => resync());
+  on(events, 'resync', () => {
+    // Showing what was gone (an error page): it may be back (unblocked, unbanned, restored).
+    if (Number(document.documentElement.dataset.liveStatus) >= 400) void showWhatReloadShows();
+    else resync();
+  });
   on(events, 'search', () => refreshRegionNamed('search-results', SEARCH_INTERVAL));
-  on(events, 'admin', () => refreshRegionNamed('admin', ADMIN_INTERVAL));
+  on(events, 'admin', () => {
+    refreshRegionNamed('admin', ADMIN_INTERVAL);
+    schedule(checkSlots, ADMIN_INTERVAL);
+  });
   // The session ended elsewhere, or the account's language or rights changed: the page as a whole is different now.
   on(events, 'signed_out', () => void showAnew(events));
   on(events, 'reload', () => void showAnew(events));
@@ -169,16 +185,66 @@ function on<T>(events: EventSource, type: string, handle: (data: T) => void): vo
   });
 }
 
+/** Signed in as the page says? If not (signed out elsewhere while disconnected), show the page as it now is. */
+async function checkSignedIn(): Promise<void> {
+  let state: string;
+  try {
+    const response = await fetch(AUTH_STATE, { credentials: 'same-origin', cache: 'no-store' });
+    if (!response.ok) return;
+    state = await response.text();
+  } catch {
+    // Offline: the next failed reconnect asks again.
+    return;
+  }
+  if (state !== (document.body.dataset.auth ?? 'anonymous')) {
+    closed = true;
+    void showWhatReloadShows();
+  }
+}
+
+async function refreshTitle(): Promise<void> {
+  const response = await fetch(pageUrl(), { credentials: 'same-origin', headers: { Accept: 'text/html' } });
+  if (!response.ok && retryable(new HttpError(response.status))) throw new HttpError(response.status);
+  if (response.ok) document.title = new DOMParser().parseFromString(await response.text(), 'text/html').title;
+}
+
+/**
+ * One-time content (a new key, a new invite) stays only while it is still good: each slot names a page that lists
+ * what it shows and what to find there; when that is gone (key regenerated, agent deleted, invite revoked), so is it.
+ */
+async function checkSlots(): Promise<void> {
+  const slots = [...document.querySelectorAll<HTMLElement>('[data-live-slot][data-live-slot-check][data-live-slot-requires]')]
+    .filter((slot) => slot.dataset.liveSlotRequires && slot.textContent?.trim());
+  const pages = new Map<string, Promise<Document | null>>();
+  for (const slot of slots) {
+    const check = slot.dataset.liveSlotCheck ?? '';
+    if (!pages.has(check)) {
+      pages.set(check, fetch(check, { credentials: 'same-origin', headers: { Accept: 'text/html' } }).then(async (response) => {
+        if (!response.ok) {
+          if (retryable(new HttpError(response.status))) throw new HttpError(response.status);
+          return null;
+        }
+        return new DOMParser().parseFromString(await response.text(), 'text/html');
+      }));
+    }
+    const fresh = await pages.get(check);
+    if (fresh && !fresh.querySelector(slot.dataset.liveSlotRequires ?? '')) slot.replaceChildren();
+  }
+}
+
 function subject(): string | undefined {
   return document.querySelector<HTMLElement>('[data-live-subject]')?.dataset.liveSubject;
 }
 
-/** What the page is about is gone: show what a reload would (not found, or where the server sends instead). */
-async function showSubjectGone(): Promise<void> {
+/**
+ * The page as a whole is not what it was (what it is about is gone, or came back): show what a reload would — not
+ * found, the page again, or where the server sends instead.
+ */
+async function showWhatReloadShows(): Promise<void> {
   try {
     await swapPage();
   } catch {
-    window.setTimeout(() => void showSubjectGone(), 5000);
+    window.setTimeout(() => void showWhatReloadShows(), 5000);
   }
 }
 
@@ -619,7 +685,12 @@ async function refreshRegions(): Promise<void> {
     named.forEach((name) => changedRegions.add(name));
     throw error;
   }
-  if (!response.ok) return;
+  if (!response.ok) {
+    // The page itself is gone for this person now (the beep or person it is about hidden from them, say): a reload
+    // would show that, so the whole page shows it.
+    void showWhatReloadShows();
+    return;
+  }
   const fresh = new DOMParser().parseFromString(await response.text(), 'text/html');
   if (source && response.url) {
     const found = new URL(response.url);
