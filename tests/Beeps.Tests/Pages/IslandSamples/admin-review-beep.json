@@ -423,7 +423,8 @@
         ]
       },
       "errors": null,
-      "html": ""
+      "html": "",
+      "skeleton": "table"
     },
     {
       "name": "site-options",

@@ -1,0 +1,78 @@
+/* Skeleton placeholders. Each .skeleton is a shimmering block; shapes set size.
+ *
+ *   <div class="skeleton skeleton-title"></div>
+ *   <div class="skeleton skeleton-text"></div>
+ *   <div class="skeleton skeleton-text w-50"></div>             width utilities (.w-25/.w-50/.w-75) or inline style
+ *   <div class="skeleton skeleton-circle" style="--size: 3rem"></div>
+ *   <div class="skeleton skeleton-rect"></div>                   16:9 media block
+ *   <span class="skeleton skeleton-btn"></span>
+ *
+ * Composites (wrap in aria-busy="true" / aria-hidden="true"):
+ *   <div class="skeleton-post"><div class="skeleton skeleton-circle"></div>
+ *     <div class="skeleton-lines"><div class="skeleton skeleton-text w-25"></div><div class="skeleton skeleton-text"></div></div></div>
+ *   <div class="skeleton-row"><div class="skeleton skeleton-circle"></div><div class="skeleton-lines">…</div></div>
+ * Reduced motion: no shimmer, static blocks. */
+@use "../foundation/layers";
+@use "../abstracts" as *;
+
+@layer cui.components {
+  .#{$prefix}skeleton {
+    --_base: var(--cui-skeleton-base, var(--cui-surface-3));
+    --_shine: color-mix(in oklch, var(--_base) 55%, light-dark(var(--cui-neutral-0), var(--cui-neutral-600)));
+    position: relative;
+    display: block;
+    overflow: hidden;
+    color: transparent !important;
+    background: var(--_base);
+    border-radius: var(--cui-skeleton-radius, var(--cui-radius));
+    user-select: none;
+    pointer-events: none;
+    > * { visibility: hidden; }
+    @include mq(motion) {
+      &::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(90deg, transparent 0%, var(--_shine) 50%, transparent 100%);
+        transform: translateX(-100%);
+        animation: cui-shimmer 1.5s ease-in-out infinite;
+      }
+    }
+  }
+  @keyframes cui-shimmer { to { transform: translateX(100%); } }
+
+  /* Shapes */
+  .#{$prefix}skeleton-text { height: 0.875em; width: 100%; margin-block: 0.35em; border-radius: var(--cui-radius-sm); }
+  .#{$prefix}skeleton-title { height: 1.25em; width: 60%; margin-block: 0.35em; border-radius: var(--cui-radius-sm); }
+  .#{$prefix}skeleton-circle { --size: 2.5rem; width: var(--size); height: var(--size); flex-shrink: 0; border-radius: 50%; }
+  .#{$prefix}skeleton-rect { width: 100%; aspect-ratio: 16 / 9; border-radius: var(--cui-radius-lg); }
+  .#{$prefix}skeleton-square { --size: 4rem; width: var(--size); height: var(--size); flex-shrink: 0; border-radius: var(--cui-radius); }
+  .#{$prefix}skeleton-btn { display: inline-block; width: 6rem; height: var(--cui-control-height); border-radius: var(--cui-control-radius); }
+  .#{$prefix}skeleton-badge { display: inline-block; width: 3.5rem; height: 1.25rem; border-radius: var(--cui-radius-sm); }
+  .#{$prefix}skeleton-inline { display: inline-block; vertical-align: middle; }
+
+  /* Composites */
+  .#{$prefix}skeleton-lines { flex: 1 1 auto; min-width: 0; }
+  .#{$prefix}skeleton-post {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--cui-space-3);
+    padding: var(--cui-space-4);
+    > .#{$prefix}skeleton-lines > .#{$prefix}skeleton-rect { margin-block-start: var(--cui-space-3); }
+  }
+  .#{$prefix}skeleton-row {
+    display: flex;
+    align-items: center;
+    gap: var(--cui-space-4);
+    padding: var(--cui-space-3) var(--cui-space-4);
+    > .#{$prefix}skeleton-btn { margin-inline-start: auto; width: 4.5rem; height: var(--cui-control-height-sm); }
+  }
+  .#{$prefix}skeleton-card {
+    border: var(--cui-border-width) solid var(--cui-border);
+    border-radius: var(--cui-radius-lg);
+    background: var(--cui-surface);
+    overflow: clip;
+    > .#{$prefix}skeleton-rect { border-radius: 0; }
+    > .#{$prefix}skeleton-lines { padding: var(--cui-space-4); }
+  }
+}

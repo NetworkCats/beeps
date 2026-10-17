@@ -403,7 +403,8 @@
         "handleNameMaxLength": 30
       },
       "errors": null,
-      "html": ""
+      "html": "",
+      "skeleton": "form"
     },
     {
       "name": "site-options",

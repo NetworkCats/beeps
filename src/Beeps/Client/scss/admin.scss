@@ -1,0 +1,199 @@
+// The admin pages' styles (Pages/Admin), on top of main.scss and member.scss. The layout links it on those pages, and
+// every other page fetches it ahead once it has loaded. (The admin nav's component, nav, stays in main.scss: every
+// page's navigation rail is drawn with it.)
+@use "settings";
+@use "../collection-ui/foundation/layers";
+
+@use "../collection-ui/components/table";
+
+@use "../collection-ui/abstracts" as *;
+
+// ---- Admin -------------------------------------------------------------------------------------------
+
+.admin {
+  padding-block-end: var(--cui-space-8);
+}
+
+.admin-nav {
+  position: sticky;
+  inset-block-start: 0;
+  z-index: var(--cui-z-sticky);
+  flex-wrap: nowrap;
+  padding: var(--cui-space-2) var(--beeps-pad);
+  overflow-x: auto;
+  background: var(--cui-bg);
+  border-block-end: var(--cui-border-width) solid var(--cui-border);
+  scrollbar-width: none;
+
+  > .nav-item {
+    flex-shrink: 0;
+    padding: var(--cui-space-1-5) var(--cui-space-3);
+    color: var(--cui-text-2);
+    font-size: var(--beeps-text-size);
+    border-radius: var(--cui-radius-full);
+
+    &[aria-current="page"] {
+      color: var(--cui-text);
+      font-weight: var(--cui-weight-bold);
+      background: var(--cui-surface-2);
+    }
+  }
+}
+
+.admin-content {
+  padding: var(--cui-space-5) var(--beeps-pad) 0;
+
+  > h1 {
+    margin-block-end: var(--cui-space-5);
+  }
+
+  > .section-header > h1 {
+    margin: 0;
+  }
+}
+
+// Whom an admin page is about: avatar, name, handle and badges.
+.admin-person {
+  display: flex;
+  align-items: center;
+  gap: var(--cui-space-4);
+  margin-block-end: var(--cui-space-6);
+}
+
+.admin-search {
+  display: flex;
+  gap: var(--cui-space-2);
+  margin: 0;
+}
+
+.admin-section {
+  margin-block-end: var(--cui-space-8);
+
+  > h2 {
+    margin-block-end: var(--cui-space-3);
+    font-size: var(--cui-text-base);
+  }
+}
+
+.admin-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--cui-space-2);
+  margin-block-end: var(--cui-space-8);
+
+  > form {
+    margin: 0;
+  }
+}
+
+// Buttons for one row of a table: they wrap, and add no space below.
+.admin-actions-inline {
+  margin-block-end: 0;
+}
+
+// The overview's numbers: a figure per tile, the label above it.
+.stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr));
+  gap: var(--cui-space-3);
+  margin: 0 0 var(--cui-space-3);
+}
+
+.stat {
+  padding: var(--cui-space-4);
+  border: var(--cui-border-width) solid var(--cui-border);
+  border-radius: var(--cui-radius-xl);
+
+  > dt {
+    color: var(--cui-text-2);
+    font-size: var(--cui-text-sm);
+  }
+
+  > dd {
+    margin: var(--cui-space-1) 0 0;
+    font-size: var(--cui-text-2xl);
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+  }
+
+  > .stat-note {
+    margin: 0;
+    color: var(--cui-text-2);
+    font-size: var(--cui-text-sm);
+    font-weight: var(--cui-weight-normal);
+  }
+}
+
+// Something waits for an admin.
+.stat-attention {
+  border-color: var(--cui-warning);
+}
+
+.table-container {
+  border-radius: var(--cui-radius-xl);
+}
+
+// User-written text in the review pages: shown as written, line breaks and all, never as HTML.
+.review-text,
+.review-note {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.review-text {
+  margin-block-end: var(--cui-space-4);
+}
+
+.review-context {
+  margin-block-end: var(--cui-space-6);
+  padding-inline-start: var(--cui-space-4);
+  border-inline-start: 2px solid var(--cui-border);
+
+  > .review-text {
+    color: var(--cui-text-2);
+  }
+}
+
+.review-excerpt {
+  display: -webkit-box;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+}
+
+.review-media {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--cui-space-2);
+  margin: 0 0 var(--cui-space-6);
+  padding: 0;
+  list-style: none;
+
+  img {
+    display: block;
+    width: auto;
+    max-width: 10rem;
+    height: 10rem;
+    object-fit: cover;
+    border-radius: var(--cui-radius-lg);
+  }
+}
+
+.facts {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: var(--cui-space-2) var(--cui-space-6);
+  margin-block-end: var(--cui-space-6);
+
+  > dt {
+    color: var(--cui-text-2);
+  }
+
+  > dd {
+    margin: 0;
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+}

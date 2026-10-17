@@ -4,8 +4,8 @@
 // whitespace; no gradients, glass or decorative motion. Concretely:
 // - Colour: the page is one flat, pure colour (white, or near-black in dark mode) with no hue in it.
 //   Upstream washes every neutral with the brand ("tinted neutrals"); beeps turns that off and uses
-//   pure grays (the $neutral ladder in main.scss), so only the brand accent carries colour.
-// - Brand: indigo (set in main.scss). Calm, readable as link colour on both themes, and distinct
+//   pure grays (the $neutral ladder in _settings.scss), so only the brand accent carries colour.
+// - Brand: indigo (set in _settings.scss). Calm, readable as link colour on both themes, and distinct
 //   from the status colours (green/amber/red/cyan).
 // - Surfaces are flat: cards, inputs and menus sit on the page colour and are told apart by hairlines,
 //   not by fills or shadows. Buttons are pills without upstream's keycap relief.

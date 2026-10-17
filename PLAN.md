@@ -339,20 +339,30 @@ tests/Beeps.Tests/
 - 页面的外框（导航栏、侧栏、页脚）由服务器用 Razor 渲染；内容是 island：`<island name="…" props="…">标记</island>`（`Pages/Islands/IslandTagHelper.cs`），输出 `<div class="island" data-island="…">`（`display: contents`，不影响布局）和 `<script type="application/json">` 形式的 props（只是数据，不执行），由同名的 Preact 组件根据 props 渲染。
 - **未登录**：island 里的标记也由服务器渲染（时间线、话题、回复串、个人主页的正文都在 HTML 里，搜索引擎直接可读，SEO），组件在这份 HTML 上画出完全相同的标记。不需要 SEO 的页面（搜索结果）用 `client-only="true"`，未登录时也只输出 props。
 - **已登录**：island 只输出 props，内容全部由组件渲染（像 SPA 一样），服务器不再为登录用户渲染这些标记；只有登录用户能看到的页面和部件（通知、设置、发帖、举报、agent、管理后台、账号菜单等）在 Razor 里只有 props，没有模板。
-- 全站只有一个脚本 `Client/app/main.tsx`（`app.js`）：Preact 组件按名字接管各个 island，之后的变化（相对时间、菜单、无限滚动、站内跳转、实时更新）都由组件根据数据重绘，没有手写的 DOM 操作。每页一个页面 island（主内容列），布局里还有几个小 island（账号菜单、未读数、页脚设置、toast、确认框）以及 Turnstile 验证框。
+- 全站只有一个脚本入口 `Client/app/main.tsx`（`app.js`）：Preact 组件按名字接管各个 island，之后的变化（相对时间、菜单、无限滚动、站内跳转、实时更新）都由组件根据数据重绘，没有手写的 DOM 操作。每页一个页面 island（主内容列），布局里还有几个小 island（账号菜单、未读数、页脚设置、toast、确认框）以及 Turnstile 验证框。
 - 未登录时：不建实时连接；props 和 `app-config` 里没有任何个人数据和防伪令牌，页面仍可被 Output Caching 缓存（缓存按 `X-Beeps-Islands` 请求头区分 HTML 和 props）。已登录时：island 跟随实时事件更新。
 - 组件标记必须与 Razor 模板逐元素一致（类名、属性、文字），这样已登录和未登录看到的界面没有区别；`npm test` 会对照服务端生成的样例检查（见 12）。
 - props 是 `Pages/Islands/*Props.cs` 中的 record，用源生成的 `IslandJsonContext` 序列化成 camelCase。界面文字仍来自资源文件：组件用到的 key 写成字面量，`scripts/build-strings.ts` 收集到 `Client/strings.json`，布局把它们按当前语言放进 `<script id="app-config">`，一起给出的还有防伪令牌和当前用户。
 - **islands 请求**：带 `X-Beeps-Islands` 请求头访问任意页面时，页面照常执行（同样的处理器、同样的查询），但只返回各 island 的 props（JSON，`Pages/Shared/_Islands.cshtml`）。island 需要追上变化（某人改了名、管理后台的数字变了、重新同步）时用它取新的 props；island 里的表单也这样提交：成功时跟随重定向拿到目标页的 props 和提示，失败时拿到带错误的 props。
 - **单页应用式导航**：站内链接和 island 之外的表单由 `Client/app/router.ts` 在后台请求，换掉页面内容、接管新的 island，不重新加载脚本，实时连接和各条 beep 的状态保留。后退时用离开时的快照（包括已加载的更多页面和滚动位置）立即恢复，再追上期间的变化。登录身份变了的页面（登出、在别处换了账号）整页加载。
 - 列表（时间线、回复串、通知、搜索结果）滚动到底时用 islands 请求取下一页的 props 接在后面；实时新增的 beep 用 `/live/beeps`（JSON）取。
+- **鼠标悬停预加载**（仅登录用户、仅鼠标）：鼠标在站内页面链接上停留约 80 ms（或停在 beep 卡片上，整张卡片点击即打开它）时，`router.ts` 在后台取这个页面的 HTML，点击时直接使用，不再等待。取到的页面只用一次、30 秒内有效；提交任何表单都会丢弃已取的页面。由于页面可能比显示时早画出，实时连接从该页面的渲染时间（`data-live-from`）开始回放，而不是从上一个事件开始，期间的变化不会丢。只预加载 `<a>` 链接，`/theme`、`/culture` 这类会改设置的 GET 只由表单提交，不会被预取。
+- **加载态**：
+  - 骨架屏：没有服务器标记的页面 island（登录用户的页面、只在浏览器里画的搜索页）在组件画好之前显示与页面形状相近的骨架屏（`Pages/Shared/_Skeleton.cshtml`，`<island skeleton="feed|profile|list|form|table|block">`），带供读屏使用的“加载中…”。骨架屏在 0.15 秒后才淡入，组件已经加载好时不会闪一下。Turnstile 验证框加载前显示同样大小的占位块。
+  - 加载动画：站内跳转时页面顶部有加载条；表单提交时，提交按钮显示转圈动画并不再响应点击（`busy.ts`，collection-ui 的 `.btn-loading`）；列表加载下一页时显示转圈。点赞立即切换，失败时再恢复并提示。
 
 **脚本与样式只用独立文件**
 - 所有 JS 都写在 `Client/` 的 TypeScript 中，编译成独立文件引用；页面中不写内联 `<script>` 代码，不用 `onclick` 等内联事件属性，不用 `javascript:` 链接。
 - 样式同理：只用编译后的 CSS 文件，不写 `<style>` 块和 `style=""` 属性。
 - 服务端传给脚本的数据通过 `data-*` 属性传递；数据较多时用 `<script type="application/json">`（只是数据，不会执行）。
 - 脚本通过 `data-*` 属性或 CSS 类找到要增强的元素，自动初始化，页面不需要手动调用。
-- 打包入口只有 `app/main.tsx`。只有少数页面用到的大依赖（头像裁剪的 Cropper.js）由组件按需 `import()`，esbuild 拆成单独的 chunk；Turnstile 的脚本由验证框组件按需加载。
+- 打包入口只有 `app/main.tsx`，按需分块加载，首屏只加载当前页面用到的：
+  - `app.js` 只含每页都有的部分（路由、页脚设置、toast 等）。每个页面 island 的组件、只有登录用户才有的布局 island（账号菜单、未读数、确认框）、Turnstile 验证框和实时连接（`live.ts`）都是单独的 chunk（`lazyIsland`，`Client/app/islands.tsx`），页面第一次用到时才加载。头像裁剪的 Cropper.js 在选好文件后才 `import()`；Turnstile 的脚本由验证框组件按需加载。
+  - `scripts/build-client.ts` 从 esbuild 的 metafile 生成 `dist/chunks.json`：`app.js` 依赖的 chunk，以及每个 island 在此之外需要的 chunk。布局在 `<head>` 里、`<island>` 在自己前面用 `<link rel="modulepreload">` 列出它们（`Pages/Islands/ClientChunks.cs`），浏览器一次并行请求，不必等前一个 chunk 解析完才发现下一个。chunk 文件名带内容哈希，按此名字导入，服务器以 `immutable` 长期缓存。
+  - 样式分三份：`main.css` 给所有人；`member.css` 是只有登录用户才看到的部分（tab 栏、发帖框、通知、设置、agent、确认框），登录后才链接；`admin.css` 只在管理后台链接。`avatar-crop.css` 只在有头像表单的页面链接。站内跳转到需要新样式表的页面时，先等样式表加载完再换内容。
+  - 首屏加载完、浏览器空闲时，预先取全站其余的 JS 和 CSS（不需要节省带宽）：所有 island 的 chunk、实时连接、Cropper.js，以及本页没有链接的 `member.css`、`avatar-crop.css`（`<link rel="prefetch">`）。之后的页面（包括登录之后）不必再从网络取脚本和样式。不支持 `prefetch` 的浏览器（Safari）由脚本用低优先级的 `fetch` 取样式表。
+  - 管理后台的资源只给管理员：后台页面的 island 用 `adminIsland` 注册，只有管理员预加载它们和 `admin.css`。`chunks.json` 列出只有后台用到的文件（后台页面的 chunk 中，任何其他 island、`app.js`、实时连接、Cropper.js 都不会加载的那些，以及 `admin.css`），`ClientAssetsMiddleware` 对不是管理员的请求一律返回 404，管理员拿到的响应带 `Cache-Control: private`，不进共享缓存。`chunks.json` 本身不对外提供。
+  - chunk 加载失败（离线，或站点更新后旧 chunk 已不存在）时整页重新加载当前页面。
 - 不设置 Content-Security-Policy。
 
 ### 6.10 实时推送

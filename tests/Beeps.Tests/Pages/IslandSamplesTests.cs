@@ -303,13 +303,22 @@ public sealed partial class IslandSamplesTests : IDisposable
             }
 
             var envelope = JsonNode.Parse(match.Groups["json"].Value)!.AsObject();
-            yield return new JsonObject
+            var inner = html[start..position].Trim();
+            // A skeleton stands in until the component draws the island (_Skeleton.cshtml): not markup it draws itself.
+            var skeleton = SkeletonPattern().Match(inner);
+            var island = new JsonObject
             {
                 ["name"] = match.Groups["name"].Value,
                 ["props"] = envelope["props"]?.DeepClone(),
                 ["errors"] = envelope["errors"]?.DeepClone(),
-                ["html"] = html[start..position].Trim(),
+                ["html"] = skeleton.Success ? "" : inner,
             };
+            if (skeleton.Success)
+            {
+                island["skeleton"] = skeleton.Groups[1].Value;
+            }
+
+            yield return island;
         }
     }
 
@@ -345,6 +354,9 @@ public sealed partial class IslandSamplesTests : IDisposable
 
     [GeneratedRegex("<script type=\"application/json\" id=\"app-config\">(.*?)</script>")]
     private static partial Regex AppConfigPattern();
+
+    [GeneratedRegex("^<div class=\"skeleton-page\" data-skeleton=\"([a-z]+)\"")]
+    private static partial Regex SkeletonPattern();
 
     [GeneratedRegex("<(?<tag>div|span) class=\"island\" data-island=\"(?<name>[a-z-]+)\"><script data-island-props=\"\" type=\"application/json\">(?<json>.*?)</script>", RegexOptions.Singleline)]
     private static partial Regex IslandStartPattern();

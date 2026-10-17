@@ -26,6 +26,9 @@ export interface CardPlacement {
   replyingTo?: string | null;
 }
 
+// The beeps whose like is on its way (a beep may be shown in more than one card).
+const liking = new Set<string>();
+
 // Clicks on these are their own, not the card's.
 const OWN_CONTROLS = 'a, button, input, textarea, select, label, summary, details, form, dialog';
 
@@ -63,17 +66,19 @@ export function BeepCard({ id, focused, inThread, replyingTo }: CardPlacement & 
     else void visit(permalink).catch(() => {});
   };
 
+  // Pressed at once, as on other social sites, and let go again if it did not go through.
   const like = async (event: TargetedSubmitEvent<HTMLFormElement>): Promise<void> => {
     event.preventDefault();
-    const button = event.currentTarget.querySelector('button');
-    if (!button || button.disabled) return;
+    if (liking.has(beep.id)) return;
     // Decided now: by the time the answer comes, a live event may already have pressed the button.
     const liked = !beep.liked;
-    button.disabled = true;
+    liking.add(beep.id);
+    setLiked(beep.id, liked);
     const ok = await act(beep.id, liked ? 'Like' : 'Unlike');
-    button.disabled = false;
-    if (ok) setLiked(beep.id, liked);
-    else showToast(t('Error.ActionFailed'), true);
+    liking.delete(beep.id);
+    if (ok) return;
+    setLiked(beep.id, !liked);
+    showToast(t('Error.ActionFailed'), true);
   };
 
   const remove = async (event: TargetedSubmitEvent<HTMLFormElement>): Promise<void> => {

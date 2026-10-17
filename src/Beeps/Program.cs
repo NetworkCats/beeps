@@ -24,6 +24,7 @@ builder.Services.AddRazorPages(options => options.Conventions
     .AddBeepsAuthorization()
     .AddFolderApplicationModelConvention("/Admin", page => page.Filters.Add(new AdminChangedFilter())));
 builder.Services.AddScoped<ClientConfig>();
+builder.Services.AddSingleton<ClientChunks>();
 builder.Services.AddBeepsApiJson();
 builder.Services.AddBeepsOpenApi();
 builder.Services.AddBeepsProblemDetails();
@@ -66,6 +67,9 @@ app.UseAuthorization();
 // After localization (it varies by culture) and rate limiting (a cached page still counts).
 app.UseOutputCache();
 app.UseMiddleware<IdempotencyMiddleware>();
+
+// The admin pages' scripts and stylesheet for admins only; the other chunks kept for good.
+app.UseMiddleware<ClientAssetsMiddleware>();
 
 app.MapStaticAssets().WithoutRateLimit();
 app.MapRazorPages().WithStaticAssets();

@@ -184,14 +184,15 @@ public sealed class MediaPagesTests : IDisposable
     }
 
     [Fact]
-    public async Task OtherPagesDoNotLoadTheCropper()
+    public async Task OtherPagesOnlyFetchTheCropperAhead()
     {
         var user = WebAuth.ArrangeUser(factory);
         using var client = await WebAuth.SignInAsync(factory, user);
 
         var html = await client.GetStringAsync(new Uri("/", UriKind.Relative), TestSupport.Ct);
 
-        Assert.DoesNotContain("avatar-crop", html, StringComparison.Ordinal);
+        Assert.DoesNotMatch("<link rel=\"stylesheet\" href=\"/dist/avatar-crop", html);
+        Assert.Matches("<link rel=\"prefetch\" href=\"/dist/avatar-crop\\.[a-z0-9]+\\.css\"", html);
     }
 
     [Fact]

@@ -348,7 +348,7 @@
   inset-inline: 0 auto;
 }
 
-// ---- Top bar and tab bar (narrow screens) --------------------------------------------------------
+// ---- Top bar (narrow screens; the tab bar under it is signed in only, member.scss) ---------------
 
 .topbar {
   grid-area: top;
@@ -421,87 +421,6 @@
 
   &:focus-visible {
     @include focus-ring;
-  }
-}
-
-.tabbar {
-  position: fixed;
-  inset-inline: 0;
-  inset-block-end: 0;
-  z-index: var(--cui-z-sticky);
-  display: grid;
-  grid-auto-columns: 1fr;
-  grid-auto-flow: column;
-  height: calc(var(--beeps-tabbar-height) + env(safe-area-inset-bottom));
-  padding-block-end: env(safe-area-inset-bottom);
-  background: var(--cui-bg);
-  border-block-start: var(--cui-border-width) solid var(--cui-border);
-
-  @include mq(sm) {
-    display: none;
-  }
-}
-
-.tabbar-item {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--beeps-nav-fg);
-  -webkit-tap-highlight-color: transparent;
-
-  > .icon {
-    --cui-icon-size: 1.75rem;
-  }
-
-  &[aria-current="page"] {
-    color: var(--cui-text);
-
-    > .icon {
-      --cui-icon-fill: 1;
-    }
-  }
-
-  &:focus-visible {
-    @include focus-ring($inset: true);
-  }
-
-  .nav-count {
-    inset-block-start: 0.5rem;
-    inset-inline-start: 50%;
-  }
-}
-
-// The way to post on narrow screens, above the tab bar.
-.fab {
-  position: fixed;
-  inset-inline-end: var(--cui-space-4);
-  inset-block-end: calc(var(--beeps-tabbar-height) + env(safe-area-inset-bottom) + var(--cui-space-4));
-  z-index: var(--cui-z-sticky);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 3.5rem;
-  height: 3.5rem;
-  color: var(--cui-primary-contrast);
-  background: var(--cui-primary-solid);
-  border-radius: var(--cui-radius-full);
-  box-shadow: 0 4px 12px oklch(0% 0 0 / 0.2);
-
-  > .icon {
-    --cui-icon-size: 1.5rem;
-  }
-
-  &:hover {
-    background: var(--cui-primary-solid-hover);
-  }
-
-  &:focus-visible {
-    @include focus-ring;
-  }
-
-  @include mq(sm) {
-    display: none;
   }
 }
 
@@ -1397,133 +1316,9 @@ span.beep-action {
   }
 }
 
-// ---- Composer --------------------------------------------------------------------------------------
+// ---- Replies, signed out ------------------------------------------------------------------------
 
-// A blank page to write on: the avatar, the words, a row of tools under them. No boxes or lines inside.
-.composer {
-  display: grid;
-  grid-template-columns: 2.5rem minmax(0, 1fr);
-  gap: var(--cui-space-3);
-  margin: 0;
-  padding: var(--cui-space-3) var(--beeps-pad) var(--cui-space-2);
-  border-block-end: var(--cui-border-width) solid var(--cui-border);
-}
-
-.composer-avatar {
-  --cui-avatar-size: 2.5rem;
-}
-
-.composer-main {
-  display: flex;
-  flex-direction: column;
-  gap: var(--cui-space-2);
-  min-width: 0;
-}
-
-.composer-text {
-  --_border: transparent;
-  min-height: 3.25rem;
-  max-height: 60vh;
-  padding: var(--cui-space-1-5) 0;
-  font-size: var(--cui-text-xl);
-  line-height: 1.4;
-  background: transparent;
-  border: 0;
-  border-radius: 0;
-  resize: none;
-  field-sizing: content;
-
-  &:focus,
-  &:focus-visible {
-    box-shadow: none;
-  }
-
-  &::placeholder {
-    color: var(--cui-text-2);
-  }
-}
-
-.reply-box .composer-text {
-  min-height: 2.5rem;
-  font-size: var(--cui-text-lg);
-}
-
-.composer-previews {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--cui-space-2);
-
-  &[hidden] {
-    display: none;
-  }
-
-  > img {
-    width: 5rem;
-    height: 5rem;
-    object-fit: cover;
-    border: var(--cui-border-width) solid var(--cui-border);
-    border-radius: var(--cui-radius-lg);
-  }
-}
-
-.composer-footer {
-  display: flex;
-  align-items: center;
-  gap: var(--cui-space-3);
-}
-
-// An icon button wrapped round the real file input, which stays focusable but out of sight.
-.composer-images {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 2.125rem;
-  height: 2.125rem;
-  margin-inline: calc(-1 * var(--cui-space-2)) auto;
-  color: var(--cui-primary-text);
-  border-radius: var(--cui-radius-full);
-  cursor: pointer;
-  transition: background-color var(--cui-transition);
-
-  > .icon {
-    --cui-icon-size: 1.375rem;
-  }
-
-  &:hover {
-    background: var(--cui-primary-soft);
-  }
-
-  &:has(:focus-visible) {
-    @include focus-ring;
-  }
-
-  &:has(:user-invalid) {
-    color: var(--cui-danger-text);
-  }
-}
-
-.composer-file {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
-  opacity: 0;
-}
-
-.composer-count {
-  color: var(--cui-text-2);
-  font-size: 0.8125rem;
-  font-variant-numeric: tabular-nums;
-
-  &[data-over] {
-    color: var(--cui-danger-text);
-    font-weight: var(--cui-weight-bold);
-  }
-}
-
+// In place of the reply form under a thread (Pages/Shared/_ReplyBox.cshtml); members get the composer (member.scss).
 .reply-signin {
   margin: 0;
   padding: var(--cui-space-3) var(--beeps-pad);
@@ -1775,269 +1570,6 @@ span.beep-action {
   --cui-empty-padding: var(--cui-space-10) var(--cui-space-8);
 }
 
-// ---- Inbox -----------------------------------------------------------------------------------------
-
-.notification-list {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.notification {
-  border-block-end: var(--cui-border-width) solid var(--cui-border);
-
-  > .beep {
-    padding-block-start: var(--cui-space-1);
-    border-block-end: 0;
-  }
-}
-
-.notification-summary {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--cui-space-3);
-  margin: 0;
-  padding: var(--cui-space-3) var(--beeps-pad) 0;
-  color: var(--cui-text-2);
-  font-size: var(--beeps-text-size);
-}
-
-// Lined up with the avatars of the beeps below it.
-.notification-icon {
-  display: flex;
-  flex-shrink: 0;
-  justify-content: flex-end;
-  width: 2.5rem;
-
-  > .icon {
-    --cui-icon-size: 1.75rem;
-    --cui-icon-fill: 1;
-  }
-}
-
-.notification-icon-like {
-  color: light-dark(var(--cui-pink-600), var(--cui-pink-400));
-}
-
-.notification-icon-reply,
-.notification-icon-mention {
-  color: var(--cui-primary);
-}
-
-// Who did what, and when: one line of text that wraps like a sentence.
-.notification-text {
-  flex: 1 1 auto;
-  min-width: 0;
-  line-height: 1.75rem;
-}
-
-.notification-actor {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--cui-space-2);
-  margin-inline-end: var(--cui-space-0-5);
-  vertical-align: bottom;
-  color: var(--cui-text);
-  font-weight: var(--cui-weight-bold);
-  text-decoration: none;
-
-  &:hover > .notification-name {
-    text-decoration: underline;
-  }
-}
-
-.notification-time {
-  margin-inline-start: var(--cui-space-1);
-  white-space: nowrap;
-}
-
-.notification-dot {
-  flex-shrink: 0;
-  width: 0.5rem;
-  height: 0.5rem;
-  margin-block-start: 0.625rem;
-  margin-inline-start: auto;
-  background: var(--cui-primary);
-  border-radius: var(--cui-radius-full);
-}
-
-// ---- Forms in the column: settings, agents, reports ---------------------------------------------------
-
-// Sections of a form page are told apart by their headings and the space between them, not by lines.
-.settings-section {
-  display: flex;
-  flex-direction: column;
-  gap: var(--cui-space-5);
-  margin: 0;
-  padding: var(--cui-space-5) var(--beeps-pad) var(--cui-space-4);
-
-  & + & {
-    padding-block-start: var(--cui-space-6);
-  }
-
-  > h2 {
-    margin: 0;
-    font-size: var(--cui-text-lg);
-    font-weight: 800;
-  }
-
-  > .alert {
-    margin: 0;
-  }
-}
-
-.settings-select {
-  max-width: 20rem;
-}
-
-.settings-fixed {
-  margin: 0;
-  color: var(--cui-text-2);
-}
-
-fieldset.check-group {
-  margin: 0;
-  padding: 0;
-  min-width: 0;
-  border: 0;
-
-  > legend {
-    margin-block-end: var(--cui-space-3);
-  }
-}
-
-.avatar-editor {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  gap: var(--cui-space-5);
-}
-
-.avatar-editor-forms {
-  display: flex;
-  flex: 1 1 16rem;
-  flex-direction: column;
-  gap: var(--cui-space-3);
-  min-width: 0;
-
-  // Only groups the remove button for the live script, which draws it again; no box of its own.
-  > .avatar-remove {
-    display: contents;
-  }
-
-  > form,
-  > .avatar-remove > form {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: var(--cui-space-3);
-    margin: 0;
-  }
-
-  .field {
-    align-self: stretch;
-  }
-
-  .file {
-    max-width: 100%;
-  }
-}
-
-// ---- Agents ----------------------------------------------------------------------------------------
-
-.new-key {
-  margin: var(--cui-space-4) var(--beeps-pad);
-
-  .card-title {
-    margin-block-end: var(--cui-space-2);
-  }
-}
-
-.agent-list {
-  margin: var(--cui-space-2) 0 0;
-  padding: 0;
-  list-style: none;
-}
-
-.agent-row {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  gap: var(--cui-space-2) var(--cui-space-3);
-  padding: var(--cui-space-3) var(--beeps-pad) var(--cui-space-4);
-  border-block-end: var(--cui-border-width) solid var(--cui-border);
-
-  > .avatar {
-    --cui-avatar-size: 2.5rem;
-  }
-}
-
-.agent-info {
-  min-width: 0;
-}
-
-.agent-name {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--cui-space-2);
-  margin: 0;
-  font-size: var(--beeps-text-size);
-  font-weight: var(--cui-weight-bold);
-  line-height: 1.25rem;
-}
-
-.agent-handle,
-.agent-meta {
-  margin: 0;
-  color: var(--cui-text-2);
-  font-size: var(--beeps-text-size);
-}
-
-.agent-meta {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0 var(--cui-space-3);
-  line-height: 1.25rem;
-
-  a {
-    color: inherit;
-    text-decoration: none;
-
-    &:hover {
-      text-decoration: underline;
-    }
-  }
-
-  code {
-    font-size: 0.8125rem;
-  }
-}
-
-.agent-key {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--cui-space-1);
-
-  > .icon {
-    --cui-icon-size: 1rem;
-  }
-}
-
-// Under the name, lined up with it (the agents page's own buttons, or an admin's).
-.agent-actions,
-.agent-row > .admin-actions {
-  grid-column: 2;
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--cui-space-2);
-  margin-block-start: var(--cui-space-1);
-
-  > form {
-    margin: 0;
-  }
-}
-
 // ---- Sign-up, sign-in and onboarding ------------------------------------------------------------------
 
 .auth {
@@ -2142,197 +1674,7 @@ fieldset.check-group {
   }
 }
 
-// ---- Admin -------------------------------------------------------------------------------------------
-
-.admin {
-  padding-block-end: var(--cui-space-8);
-}
-
-.admin-nav {
-  position: sticky;
-  inset-block-start: 0;
-  z-index: var(--cui-z-sticky);
-  flex-wrap: nowrap;
-  padding: var(--cui-space-2) var(--beeps-pad);
-  overflow-x: auto;
-  background: var(--cui-bg);
-  border-block-end: var(--cui-border-width) solid var(--cui-border);
-  scrollbar-width: none;
-
-  > .nav-item {
-    flex-shrink: 0;
-    padding: var(--cui-space-1-5) var(--cui-space-3);
-    color: var(--cui-text-2);
-    font-size: var(--beeps-text-size);
-    border-radius: var(--cui-radius-full);
-
-    &[aria-current="page"] {
-      color: var(--cui-text);
-      font-weight: var(--cui-weight-bold);
-      background: var(--cui-surface-2);
-    }
-  }
-}
-
-.admin-content {
-  padding: var(--cui-space-5) var(--beeps-pad) 0;
-
-  > h1 {
-    margin-block-end: var(--cui-space-5);
-  }
-
-  > .section-header > h1 {
-    margin: 0;
-  }
-}
-
-// Whom an admin page is about: avatar, name, handle and badges.
-.admin-person {
-  display: flex;
-  align-items: center;
-  gap: var(--cui-space-4);
-  margin-block-end: var(--cui-space-6);
-}
-
-.admin-search {
-  display: flex;
-  gap: var(--cui-space-2);
-  margin: 0;
-}
-
-.admin-section {
-  margin-block-end: var(--cui-space-8);
-
-  > h2 {
-    margin-block-end: var(--cui-space-3);
-    font-size: var(--cui-text-base);
-  }
-}
-
-.admin-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--cui-space-2);
-  margin-block-end: var(--cui-space-8);
-
-  > form {
-    margin: 0;
-  }
-}
-
-// Buttons for one row of a table: they wrap, and add no space below.
-.admin-actions-inline {
-  margin-block-end: 0;
-}
-
-// The overview's numbers: a figure per tile, the label above it.
-.stats {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr));
-  gap: var(--cui-space-3);
-  margin: 0 0 var(--cui-space-3);
-}
-
-.stat {
-  padding: var(--cui-space-4);
-  border: var(--cui-border-width) solid var(--cui-border);
-  border-radius: var(--cui-radius-xl);
-
-  > dt {
-    color: var(--cui-text-2);
-    font-size: var(--cui-text-sm);
-  }
-
-  > dd {
-    margin: var(--cui-space-1) 0 0;
-    font-size: var(--cui-text-2xl);
-    font-weight: 800;
-    font-variant-numeric: tabular-nums;
-  }
-
-  > .stat-note {
-    margin: 0;
-    color: var(--cui-text-2);
-    font-size: var(--cui-text-sm);
-    font-weight: var(--cui-weight-normal);
-  }
-}
-
-// Something waits for an admin.
-.stat-attention {
-  border-color: var(--cui-warning);
-}
-
-.table-container {
-  border-radius: var(--cui-radius-xl);
-}
-
-// User-written text in the review pages: shown as written, line breaks and all, never as HTML.
-.review-text,
-.review-note {
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-}
-
-.review-text {
-  margin-block-end: var(--cui-space-4);
-}
-
-.review-context {
-  margin-block-end: var(--cui-space-6);
-  padding-inline-start: var(--cui-space-4);
-  border-inline-start: 2px solid var(--cui-border);
-
-  > .review-text {
-    color: var(--cui-text-2);
-  }
-}
-
-.review-excerpt {
-  display: -webkit-box;
-  overflow: hidden;
-  overflow-wrap: anywhere;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 3;
-  line-clamp: 3;
-}
-
-.review-media {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--cui-space-2);
-  margin: 0 0 var(--cui-space-6);
-  padding: 0;
-  list-style: none;
-
-  img {
-    display: block;
-    width: auto;
-    max-width: 10rem;
-    height: 10rem;
-    object-fit: cover;
-    border-radius: var(--cui-radius-lg);
-  }
-}
-
-.facts {
-  display: grid;
-  grid-template-columns: max-content 1fr;
-  gap: var(--cui-space-2) var(--cui-space-6);
-  margin-block-end: var(--cui-space-6);
-
-  > dt {
-    color: var(--cui-text-2);
-  }
-
-  > dd {
-    margin: 0;
-    min-width: 0;
-    overflow-wrap: anywhere;
-  }
-}
-
-// ---- Toasts and the confirmation dialog -----------------------------------------------------------------
+// ---- Toasts ------------------------------------------------------------------------------------------
 
 .toast-stack {
   @include mq(max-sm) {
@@ -2352,24 +1694,103 @@ fieldset.check-group {
   font-size: var(--beeps-text-size);
 }
 
-.confirm-dialog {
-  // A plain dim page behind it: no blur (no glass, see _theme.scss).
-  &::backdrop {
-    backdrop-filter: none;
-  }
+// ---- Loading: skeletons -------------------------------------------------------------------------
 
-  > form {
-    margin: 0;
-  }
+// A page island's skeleton (Pages/Shared/_Skeleton.cshtml), until its component draws it. It fades in after a moment:
+// a page whose code is already here (most are, fetched ahead) shows no flash of it.
+.skeleton-page {
+  animation: beeps-fade-in 0.2s ease-out 0.15s both;
+}
 
-  .dialog-footer {
-    border: 0;
-    background: none;
+@keyframes beeps-fade-in {
+  from {
+    opacity: 0;
   }
 }
 
-.confirm-message {
+@each $width in (20, 30, 40, 50, 60, 70, 80, 90) {
+  .skeleton-w-#{$width} {
+    width: #{$width}#{"%"};
+  }
+}
+
+.skeleton-heading {
+  width: 8rem;
   margin: 0;
-  font-size: var(--beeps-text-size);
-  line-height: var(--beeps-text-leading);
+}
+
+// Laid out as a beep is (avatar, then the author and the text), with its hairline.
+.skeleton-beep {
+  padding: var(--cui-space-3) var(--beeps-pad) var(--cui-space-4);
+  border-block-end: var(--cui-border-width) solid var(--cui-border);
+}
+
+.skeleton-item {
+  padding: var(--cui-space-3) var(--beeps-pad);
+}
+
+.skeleton-profile {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cui-space-1);
+  padding: var(--cui-space-3) var(--beeps-pad) var(--cui-space-4);
+  border-block-end: var(--cui-border-width) solid var(--cui-border);
+
+  > .skeleton-avatar-lg {
+    --size: 5.5rem;
+    margin-block-end: var(--cui-space-3);
+  }
+}
+
+.skeleton-form {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--cui-space-5);
+  padding: var(--cui-space-5) var(--beeps-pad);
+}
+
+.skeleton-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cui-space-2);
+  align-self: stretch;
+}
+
+.skeleton-input {
+  height: var(--cui-control-height);
+  border-radius: var(--cui-control-radius);
+}
+
+.skeleton-admin,
+.skeleton-block {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cui-space-2);
+}
+
+.skeleton-admin > .skeleton-title {
+  margin-block-end: var(--cui-space-4);
+}
+
+.skeleton-block {
+  margin-block: var(--cui-space-4);
+}
+
+// Turnstile's widget, until its script has drawn it (shell/Captcha.tsx): a block of its size, so the form does not move.
+.captcha:empty {
+  max-width: 300px;
+  height: 65px;
+  background: var(--cui-surface-3);
+  border-radius: var(--cui-radius);
+
+  @include mq(motion) {
+    animation: beeps-pulse 1.5s ease-in-out infinite;
+  }
+}
+
+@keyframes beeps-pulse {
+  50% {
+    opacity: 0.55;
+  }
 }

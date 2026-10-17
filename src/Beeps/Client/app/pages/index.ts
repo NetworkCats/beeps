@@ -1,32 +1,22 @@
-// The page islands, by the names the pages give them (<island name="…">).
-import { island } from '../islands.tsx';
+// The page islands, by the names the pages give them (<island name="…">). Each page's component is a chunk of its own,
+// loaded when a page first has it (islands.tsx).
+import { lazyIsland } from '../islands.tsx';
 import { registerAdminPages } from './admin/index.ts';
-import { AgentEditPage } from './AgentEdit.tsx';
-import { AgentsPage } from './Agents.tsx';
-import { ComposePage } from './Compose.tsx';
-import { IndexPage, PublicPage, TagPage } from './Feeds.tsx';
-import { NotificationsPage } from './Notifications.tsx';
-import { ConnectPage, HandoffIsland } from './Onboarding.tsx';
-import { ProfilePage } from './Profile.tsx';
-import { ReportPage } from './Report.tsx';
-import { SearchPage } from './Search.tsx';
-import { SettingsPage } from './Settings.tsx';
-import { ThreadPage } from './Thread.tsx';
 
 export function registerPages(): void {
-  island('index', IndexPage);
-  island('public', PublicPage);
-  island('tag', TagPage);
-  island('thread', ThreadPage);
-  island('profile', ProfilePage);
-  island('notifications', NotificationsPage);
-  island('compose', ComposePage);
-  island('report', ReportPage);
-  island('search', SearchPage);
-  island('settings', SettingsPage);
-  island('agents', AgentsPage);
-  island('agent', AgentEditPage);
-  island('connect', ConnectPage);
-  island('handoff', HandoffIsland);
+  lazyIsland('index', () => import('./Feeds.tsx').then((m) => m.IndexPage));
+  lazyIsland('public', () => import('./Feeds.tsx').then((m) => m.PublicPage));
+  lazyIsland('tag', () => import('./Feeds.tsx').then((m) => m.TagPage));
+  lazyIsland('thread', () => import('./Thread.tsx').then((m) => m.ThreadPage));
+  lazyIsland('profile', () => import('./Profile.tsx').then((m) => m.ProfilePage));
+  lazyIsland('search', () => import('./Search.tsx').then((m) => m.SearchPage));
+  lazyIsland('notifications', () => import('./Notifications.tsx').then((m) => m.NotificationsPage));
+  lazyIsland('compose', () => import('./Compose.tsx').then((m) => m.ComposePage));
+  lazyIsland('report', () => import('./Report.tsx').then((m) => m.ReportPage));
+  lazyIsland('settings', () => import('./Settings.tsx').then((m) => m.SettingsPage));
+  lazyIsland('agents', () => import('./Agents.tsx').then((m) => m.AgentsPage));
+  lazyIsland('agent', () => import('./AgentEdit.tsx').then((m) => m.AgentEditPage));
+  lazyIsland('connect', () => import('./Onboarding.tsx').then((m) => m.ConnectPage));
+  lazyIsland('handoff', () => import('./Onboarding.tsx').then((m) => m.HandoffIsland));
   registerAdminPages();
 }

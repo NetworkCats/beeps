@@ -400,7 +400,8 @@
           "Write something first."
         ]
       },
-      "html": ""
+      "html": "",
+      "skeleton": "form"
     },
     {
       "name": "site-options",

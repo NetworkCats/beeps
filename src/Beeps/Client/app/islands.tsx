@@ -3,6 +3,11 @@
 // the server has drawn the markup inside as well (search engines read it), and the component draws the same over it;
 // signed in the island arrives empty. New props for an island (it
 // caught up, a form it holds was answered) go into its envelope signal, and the component draws itself again.
+//
+// The islands of the layout that every page has come with the app; each page's own component is a chunk of its own
+// (lazyIsland), loaded when a page first has it. The server names those chunks in the page (modulepreload), so they
+// load alongside the app, and once a page has loaded the app fetches all the others ahead (preloadIslands). The admin
+// pages' (adminIsland) are fetched ahead for admins only, and the server gives them to no one else.
 import { createContext, render, type ComponentType } from 'preact';
 import { useContext, useEffect } from 'preact/hooks';
 import { signal, type Signal } from '@preact/signals';
@@ -13,26 +18,72 @@ export interface IslandProps<P> {
   errors: Errors;
 }
 
+type Component = ComponentType<IslandProps<any>>;
+
 interface Mounted {
   name: string;
   element: HTMLElement;
   envelope: Signal<Envelope>;
+  /** Drawn: its component has loaded (until then a signed-out island shows the server's markup). */
+  drawn?: boolean;
   /** The island's state as it is now (a list that loaded more pages), for going back to the page. */
   snapshot?: () => unknown;
 }
 
-const registry = new Map<string, ComponentType<IslandProps<any>>>();
+interface Lazy {
+  load: () => Promise<Component>;
+  admin: boolean;
+}
+
+const components = new Map<string, Component>();
+const lazy = new Map<string, Lazy>();
+const loading = new Map<string, Promise<Component>>();
 let mounted: Mounted[] = [];
 
 const IslandContext = createContext<Mounted | null>(null);
 
+/** An island whose component comes with the app. */
 export function island<P>(name: string, component: ComponentType<IslandProps<P>>): void {
-  registry.set(name, component);
+  components.set(name, component);
 }
 
-/** The component registered for an island's name. */
-export function componentFor(name: string): ComponentType<IslandProps<any>> | undefined {
-  return registry.get(name);
+/**
+ * An island whose component is a chunk of its own, loaded when it is first needed. `load` is a plain
+ * `() => import('./File.tsx').then((m) => m.Export)`: scripts/build-client.ts reads it to name the chunk to the server.
+ */
+export function lazyIsland<P>(name: string, load: () => Promise<ComponentType<IslandProps<P>>>): void {
+  lazy.set(name, { load, admin: false });
+}
+
+/** A lazy island of the admin pages: its chunk is for admins only (ClientAssetsMiddleware on the server). */
+export function adminIsland<P>(name: string, load: () => Promise<ComponentType<IslandProps<P>>>): void {
+  lazy.set(name, { load, admin: true });
+}
+
+/** The component registered for an island's name, its chunk loaded first when it has not been yet. */
+export function loadComponent(name: string): Promise<Component | undefined> {
+  const component = components.get(name);
+  if (component) return Promise.resolve(component);
+  const entry = lazy.get(name);
+  if (!entry) return Promise.resolve(undefined);
+  let pending = loading.get(name);
+  if (!pending) {
+    pending = entry.load().then((loaded) => {
+      components.set(name, loaded);
+      return loaded;
+    });
+    loading.set(name, pending);
+    // Offline for a moment: the next page that has it tries again.
+    pending.catch(() => loading.delete(name));
+  }
+  return pending;
+}
+
+/** Loads the components of all islands ahead of the pages that have them; the admin pages' only for an admin. */
+export function preloadIslands(admin: boolean): void {
+  for (const [name, entry] of lazy) {
+    if (admin || !entry.admin) loadComponent(name).catch(() => {});
+  }
 }
 
 function Host({ component: Component, envelope }: { component: ComponentType<IslandProps<unknown>>; envelope: Signal<Envelope> }) {
@@ -52,27 +103,50 @@ function read(element: HTMLElement): Envelope | null {
   }
 }
 
-/** Takes over the islands under `root`; `saved` holds props to draw instead (a page gone back to, as it was left). */
-export function mountIslands(root: ParentNode, saved?: ReadonlyMap<string, Envelope>): void {
+function draw(record: Mounted, component: Component): void {
+  record.drawn = true;
+  // The skeleton that stood in for it (Pages/Shared/_Skeleton.cshtml) goes: Preact only takes over markup it would draw.
+  record.element.querySelector(':scope > .skeleton-page')?.remove();
+  render(
+    <IslandContext.Provider value={record}>
+      <Host component={component} envelope={record.envelope} />
+    </IslandContext.Provider>,
+    record.element,
+  );
+}
+
+/**
+ * Takes over the islands under `root`; `saved` holds props to draw instead (a page gone back to, as it was left).
+ * Islands whose component is loaded already are drawn at once, the others as their chunks arrive; the promise settles
+ * once all are drawn, and fails when a chunk could not be loaded.
+ */
+export function mountIslands(root: ParentNode, saved?: ReadonlyMap<string, Envelope>): Promise<void> {
+  const waiting: Array<Promise<void>> = [];
   for (const element of root.querySelectorAll<HTMLElement>('[data-island]')) {
     const name = element.dataset.island ?? '';
-    const component = registry.get(name);
+    if (!components.has(name) && !lazy.has(name)) continue;
     const envelope = saved?.get(name) ?? read(element);
-    if (!component || !envelope) continue;
+    if (!envelope) continue;
     const record: Mounted = { name, element, envelope: signal(envelope) };
     mounted.push(record);
-    render(
-      <IslandContext.Provider value={record}>
-        <Host component={component} envelope={record.envelope} />
-      </IslandContext.Provider>,
-      element,
-    );
+    const component = components.get(name);
+    if (component) {
+      draw(record, component);
+      continue;
+    }
+    waiting.push(loadComponent(name).then((loaded) => {
+      // Another page may have been shown meanwhile.
+      if (loaded && mounted.includes(record)) draw(record, loaded);
+    }));
   }
+  return Promise.all(waiting).then(() => {});
 }
 
 /** Lets the islands go (their effects end); the page they were on is about to be replaced. */
 export function unmountIslands(): void {
-  for (const record of mounted) render(null, record.element);
+  for (const record of mounted) {
+    if (record.drawn) render(null, record.element);
+  }
   mounted = [];
 }
 

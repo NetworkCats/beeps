@@ -2,6 +2,7 @@
 // its redirect: when that is this page, its islands just catch up (and say what was done); when the form was refused,
 // the errors go next to it; anything else is shown as a page.
 import type { TargetedSubmitEvent } from 'preact';
+import { markSending } from './busy.ts';
 import { confirmAction } from './dialogs.ts';
 import { postIslands, type IslandsAnswer } from './http.ts';
 import { showAnswer } from './page.ts';
@@ -28,7 +29,7 @@ export async function sendForm(form: HTMLFormElement, submitter: HTMLElement | n
   if (form.dataset.confirm && !(await confirmAction(form.dataset.confirm))) return;
   const action = button?.getAttribute('formaction') ? button.formAction : form.action;
   const data = new FormData(form, button);
-  form.setAttribute('aria-busy', 'true');
+  const sent = markSending(form, button);
   let answer: IslandsAnswer;
   try {
     answer = await postIslands(action, data);
@@ -36,7 +37,7 @@ export async function sendForm(form: HTMLFormElement, submitter: HTMLElement | n
     showToast(t('Error.Offline'), true);
     return;
   } finally {
-    form.removeAttribute('aria-busy');
+    sent();
   }
   if (showAnswer(answer, samePage)) {
     options.onErrors?.(answer.page?.islands[options.answeredBy ?? '']?.errors ?? {});

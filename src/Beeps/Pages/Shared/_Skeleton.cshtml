@@ -1,0 +1,82 @@
+@model string
+@* What a page island shows until its component draws it (Pages/Islands/IslandTagHelper.cs): signed in, or for a page
+   drawn in the browser only, the island comes without markup, and this stands in for it, shaped like the page so that
+   little moves when the content arrives. The component draws over it. *@
+@{
+    // Line widths, so the placeholders do not all look the same.
+    string[] widths = ["w-90", "w-70", "w-80", "w-60", "w-90", "w-50"];
+}
+<div class="skeleton-page" data-skeleton="@Model" aria-busy="true">
+    <p class="visually-hidden" role="status">@L["Page.Loading"]</p>
+    <div aria-hidden="true">
+        @if (Model == "block")
+        {
+            <div class="skeleton-block">
+                <span class="skeleton skeleton-text skeleton-w-80"></span>
+                <span class="skeleton skeleton-text skeleton-w-60"></span>
+                <span class="skeleton skeleton-input"></span>
+            </div>
+        }
+        else if (Model == "table")
+        {
+            <div class="skeleton-admin">
+                <span class="skeleton skeleton-title skeleton-w-30"></span>
+                @for (var row = 0; row < 8; row++)
+                {
+                    <span class="skeleton skeleton-text skeleton-@widths[row % widths.Length]"></span>
+                }
+            </div>
+        }
+        else
+        {
+            <div class="column-header">
+                <span class="skeleton skeleton-title skeleton-heading"></span>
+            </div>
+            @switch (Model)
+            {
+                case "profile":
+                    <div class="skeleton-profile">
+                        <span class="skeleton skeleton-circle skeleton-avatar-lg"></span>
+                        <span class="skeleton skeleton-title skeleton-w-40"></span>
+                        <span class="skeleton skeleton-text skeleton-w-30"></span>
+                        <span class="skeleton skeleton-text skeleton-w-80"></span>
+                    </div>
+                    for (var beep = 0; beep < 3; beep++)
+                    {
+                        <partial name="_SkeletonBeep" model="widths[beep]" />
+                    }
+                    break;
+                case "list":
+                    for (var row = 0; row < 8; row++)
+                    {
+                        <div class="skeleton-row skeleton-item">
+                            <span class="skeleton skeleton-circle"></span>
+                            <div class="skeleton-lines">
+                                <span class="skeleton skeleton-text skeleton-w-40"></span>
+                                <span class="skeleton skeleton-text skeleton-@widths[row % widths.Length]"></span>
+                            </div>
+                        </div>
+                    }
+                    break;
+                case "form":
+                    <div class="skeleton-form">
+                        @for (var field = 0; field < 3; field++)
+                        {
+                            <div class="skeleton-field">
+                                <span class="skeleton skeleton-text skeleton-w-20"></span>
+                                <span class="skeleton skeleton-input"></span>
+                            </div>
+                        }
+                        <span class="skeleton skeleton-btn"></span>
+                    </div>
+                    break;
+                default:
+                    for (var beep = 0; beep < 6; beep++)
+                    {
+                        <partial name="_SkeletonBeep" model="widths[beep]" />
+                    }
+                    break;
+            }
+        }
+    </div>
+</div>

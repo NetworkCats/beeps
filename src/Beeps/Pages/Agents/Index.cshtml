@@ -12,4 +12,4 @@
         Model.NewKey is { } created ? NewKeyProps.From(created, L, Site.Value) : null);
 }
 @* Members only, so signed in: Client/app/pages/Agents.tsx draws the page from these props. *@
-<island name="agents" props="props" />
+<island name="agents" skeleton="list" props="props" />

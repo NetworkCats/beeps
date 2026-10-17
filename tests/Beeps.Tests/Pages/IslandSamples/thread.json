@@ -437,7 +437,8 @@
         }
       },
       "errors": null,
-      "html": ""
+      "html": "",
+      "skeleton": "feed"
     },
     {
       "name": "site-options",

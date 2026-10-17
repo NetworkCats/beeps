@@ -470,7 +470,8 @@
         }
       },
       "errors": null,
-      "html": ""
+      "html": "",
+      "skeleton": "list"
     },
     {
       "name": "site-options",

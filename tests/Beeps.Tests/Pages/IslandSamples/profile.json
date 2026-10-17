@@ -455,7 +455,8 @@
         }
       },
       "errors": null,
-      "html": ""
+      "html": "",
+      "skeleton": "profile"
     },
     {
       "name": "site-options",

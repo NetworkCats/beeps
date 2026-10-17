@@ -1,7 +1,10 @@
 @using System.Globalization
 @using Beeps.Features.Site
 @using Beeps.Pages.Islands
+@using Microsoft.AspNetCore.Authorization
 @inject ClientConfig AppConfig
+@inject ClientChunks Chunks
+@inject IAuthorizationService Authorization
 @{
     var currentCulture = CultureInfo.CurrentUICulture.Name;
     // PLAN 6.9, 6.10: pages are drawn here and taken over by the app's Preact islands. Signed in they follow the site
@@ -19,6 +22,11 @@
     var wide = ViewData["Wide"] is true;
     // Light or dark when picked by hand (settings, the footer, the top bar's menu); otherwise the device's.
     var theme = Themes.Scheme(Themes.For(User, Context.Request));
+    // What only signed-in people see, and the admin pages, have stylesheets of their own (Client/scss): linked where
+    // they are used, and otherwise fetched once the page has loaded, as the scripts are (Client/app/main.tsx). The
+    // admin pages' only for admins: no one else is given them (ClientAssetsMiddleware).
+    var adminPage = page?.StartsWith("/Admin/", StringComparison.Ordinal) == true;
+    var admin = signedIn && (await Authorization.AuthorizeAsync(User, AuthPolicies.Admin)).Succeeded;
 }
 <!DOCTYPE html>
 @* Razor writes a data-* attribute even when null; the theme is one of two fixed words. *@
@@ -35,8 +43,27 @@
     <link rel="apple-touch-icon" href="~/images/logo.png" asp-append-version="true">
     <link rel="preload" href="~/fonts/material-symbols-rounded.woff2" as="font" type="font/woff2" crossorigin>
     <link rel="stylesheet" href="~/dist/main.css" asp-append-version="true">
+    @if (signedIn)
+    {
+        <link rel="stylesheet" href="~/dist/member.css" asp-append-version="true">
+    }
+    @if (adminPage)
+    {
+        <link rel="stylesheet" href="~/dist/admin.css" asp-append-version="true">
+    }
     <script type="module" src="~/dist/app.js" asp-append-version="true"></script>
+    @Chunks.ForApp(Context)
     @await RenderSectionAsync("Head", required: false)
+    @if (!signedIn)
+    {
+        <link rel="prefetch" href="~/dist/member.css" asp-append-version="true">
+    }
+    @if (admin && !adminPage)
+    {
+        <link rel="prefetch" href="~/dist/admin.css" asp-append-version="true">
+    }
+    @* The avatar forms' (settings, an agent's page), which link it themselves. *@
+    <link rel="prefetch" href="~/dist/avatar-crop.css" asp-append-version="true">
 </head>
 <body class="page" live-stream>
     <a class="skip-link" href="#main">@L["Nav.SkipToContent"]</a>

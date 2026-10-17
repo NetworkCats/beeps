@@ -8,4 +8,4 @@
         PageProps.From(Model.Queue, item => ReviewQueueRowProps.From(item, L), next => Url.Page("/Admin/Review/Index", new { after = next })!));
 }
 @* Admins only, so signed in: Client/app/pages/admin/Review.tsx draws the page from these props. *@
-<island name="admin-review" props="props" />
+<island name="admin-review" skeleton="table" props="props" />

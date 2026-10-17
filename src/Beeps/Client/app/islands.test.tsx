@@ -10,7 +10,7 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { renderToString } from 'preact-render-to-string';
 import { setConfig, type AppConfig } from './config.ts';
-import { componentFor } from './islands.tsx';
+import { loadComponent } from './islands.tsx';
 import { registerPages } from './pages/index.ts';
 import type { Errors } from './props.ts';
 import { registerShell } from './shell/index.ts';
@@ -118,7 +118,7 @@ test('there are samples to compare with', () => {
 });
 
 for (const file of files) {
-  test(`the islands of ${file} draw what the server drew`, () => {
+  test(`the islands of ${file} draw what the server drew`, async () => {
     const sample = JSON.parse(readFileSync(join(samples, file), 'utf8')) as Sample;
     const location = new URL(sample.url, 'https://beeps.test');
     Object.assign(globalThis, {
@@ -128,7 +128,7 @@ for (const file of files) {
     setConfig(sample.config);
     toasts.value = [];
     for (const island of sample.islands) {
-      const Component = componentFor(island.name);
+      const Component = await loadComponent(island.name);
       assert.ok(Component, `no component for the island "${island.name}"`);
       const html = renderToString(<Component props={island.props} errors={island.errors ?? {}} />);
       if (island.html) sameMarkup(island.html, html, `${file} ${island.name}`);

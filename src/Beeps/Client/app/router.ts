@@ -5,13 +5,25 @@
 // scrolled), then lets it catch up.
 //
 // A page signed in as someone else, or signed out, is loaded in full instead: it needs other scripts.
-import { readConfig } from './config.ts';
+//
+// Signed in, a link the mouse rests on is fetched at once (the page of a beep too, which opens when clicked anywhere on
+// it), so following it shows the page without waiting.
+import { markSending } from './busy.ts';
+import { readConfig, viewer } from './config.ts';
 import { confirmAction } from './dialogs.ts';
 import { mountIslands, snapshotIslands, unmountIslands } from './islands.tsx';
 import type { Envelope } from './props.ts';
 
-/** Dispatched on the document once another page is shown; `detail.restored` when gone back to as it was left. */
+/**
+ * Dispatched on the document once another page is shown; `detail.restored` when gone back to as it was left,
+ * `detail.ahead` when it was fetched ahead (hovered) and so may have been drawn a while ago.
+ */
 export const PAGE_SHOWN = 'beeps:shown';
+
+export interface PageShown {
+  restored: boolean;
+  ahead: boolean;
+}
 
 interface Entry {
   key: string;
@@ -77,17 +89,28 @@ function setBodyAttributes(attributes: Iterable<[string, string]>): void {
   for (const [name, value] of attributes) document.body.setAttribute(name, value);
 }
 
-/** Stylesheets the new page uses that this one never loaded (the avatar cropper's). */
-function addMissingStyles(fresh: Document): void {
+/**
+ * Stylesheets the new page uses that this one never loaded (the admin pages', the avatar cropper's); settles once they
+ * have loaded (or failed to), so the page is never shown without them. They were fetched ahead, so this is quick.
+ */
+function addMissingStyles(fresh: Document): Promise<void> {
   const loaded = new Set([...document.querySelectorAll<HTMLLinkElement>('link[rel="stylesheet"]')].map((l) => l.href));
+  const adding: Array<Promise<void>> = [];
   for (const link of fresh.querySelectorAll<HTMLLinkElement>('link[rel="stylesheet"]')) {
-    if (!loaded.has(link.href)) document.head.append(document.importNode(link, true));
+    if (loaded.has(link.href)) continue;
+    const added = document.importNode(link, true);
+    adding.push(new Promise((resolve) => {
+      added.addEventListener('load', () => resolve(), { once: true });
+      added.addEventListener('error', () => resolve(), { once: true });
+    }));
+    document.head.append(added);
   }
+  return Promise.all(adding).then(() => {});
 }
 
-function shown(restored: boolean): void {
+function shown(detail: PageShown): void {
   readConfig();
-  document.dispatchEvent(new CustomEvent(PAGE_SHOWN, { detail: { restored } }));
+  document.dispatchEvent(new CustomEvent<PageShown>(PAGE_SHOWN, { detail }));
 }
 
 /** A new page is announced as the browser would: focus goes to its content (the old link is gone), not to the top of the document. */
@@ -98,27 +121,35 @@ function focusContent(): void {
   main.focus({ preventScroll: true });
 }
 
-function swapIn(fresh: Document): void {
+/**
+ * Takes over the islands of the page now in the body; settles once they are drawn (a page's component is loaded the
+ * first time a page has it). One whose code cannot be loaded (offline, or the site was updated and the old chunk is
+ * gone) has the page loaded in full instead.
+ */
+function mount(saved?: ReadonlyMap<string, Envelope>): Promise<void> {
+  return mountIslands(document.body, saved).catch(() => window.location.assign(pageUrl()));
+}
+
+function swapIn(fresh: Document, ahead: boolean): Promise<void> {
   unmountIslands();
   document.documentElement.lang = fresh.documentElement.lang;
   document.title = fresh.title;
-  addMissingStyles(fresh);
   setBodyAttributes([...fresh.body.attributes].map((a) => [a.name, a.value]));
   document.body.replaceChildren(...[...fresh.body.childNodes].map((node) => document.importNode(node, true)));
   readConfig();
-  mountIslands(document.body);
-  shown(false);
+  return mount().then(() => shown({ restored: false, ahead }));
 }
 
-function restore(snapshot: Snapshot): void {
+function restore(snapshot: Snapshot): Promise<void> {
   unmountIslands();
   document.title = snapshot.title;
   setBodyAttributes(snapshot.bodyAttributes);
   document.body.innerHTML = snapshot.body;
   readConfig();
-  mountIslands(document.body, snapshot.islands);
-  window.scrollTo(0, snapshot.scroll);
-  shown(true);
+  return mount(snapshot.islands).then(() => {
+    window.scrollTo(0, snapshot.scroll);
+    shown({ restored: true, ahead: false });
+  });
 }
 
 function scrollToTarget(hash: string): void {
@@ -132,12 +163,14 @@ interface ShowOptions {
   replace?: boolean;
   /** Where it was scrolled, for the same page shown anew. */
   keepScroll?: boolean;
+  /** Fetched ahead, when the link was hovered. */
+  ahead?: boolean;
   posted?: boolean;
   hash?: string;
 }
 
 /** Shows what came back for a link or a form; anything that is not a page of this site for the same person is loaded in full. */
-async function show(response: Response, options: ShowOptions): Promise<void> {
+async function show(response: Response, options: ShowOptions, signal: AbortSignal): Promise<void> {
   if (!response.headers.get('Content-Type')?.includes('text/html')) {
     window.location.assign(response.url);
     return;
@@ -147,21 +180,27 @@ async function show(response: Response, options: ShowOptions): Promise<void> {
     window.location.assign(response.url);
     return;
   }
+  await addMissingStyles(fresh);
+  if (signal.aborted) return;
   const url = response.url + (options.hash ?? '');
   const scroll = window.scrollY;
   manual();
   // An error page (not found, forbidden) may turn into the page again when what it is about comes back.
   if (response.ok) delete document.documentElement.dataset.liveStatus;
   else document.documentElement.dataset.liveStatus = String(response.status);
+  let drawn: Promise<void>;
   if (options.replace) {
-    swapIn(fresh);
+    drawn = swapIn(fresh, options.ahead ?? false);
     window.history.replaceState({ beeps: current }, '', url);
   } else {
     save();
     current = { key: newKey(), index: current.index + 1, posted: options.posted };
-    swapIn(fresh);
+    drawn = swapIn(fresh, options.ahead ?? false);
     window.history.pushState({ beeps: current }, '', url);
   }
+  // Scrolled once the islands are drawn: what is scrolled to may be in one.
+  await drawn;
+  if (signal.aborted) return;
   if (options.keepScroll) {
     window.scrollTo(0, scroll);
   } else {
@@ -176,9 +215,11 @@ async function request(url: string, init: RequestInit, options: ShowOptions): Pr
   visiting = controller;
   document.documentElement.dataset.loading = '';
   try {
-    const response = await fetch(url, { ...init, credentials: 'same-origin', signal: controller.signal, headers: { Accept: 'text/html' } });
+    const ahead = init.method === undefined && !options.replace ? await takeFetchedAhead(url) : null;
     if (controller.signal.aborted) return;
-    await show(response, options);
+    const response = ahead ?? await fetch(url, { ...init, credentials: 'same-origin', signal: controller.signal, headers: { Accept: 'text/html' } });
+    if (controller.signal.aborted) return;
+    await show(response, { ...options, ahead: ahead !== null }, controller.signal);
   } catch (error) {
     if (controller.signal.aborted) return;
     // Offline, or the request failed: the browser shows what is wrong.
@@ -211,6 +252,71 @@ export function submitPage(action: string, data: FormData): Promise<void> {
   return request(new URL(action, window.location.href).href, { method: 'POST', body: data }, { posted: true }).catch(() => {});
 }
 
+// ---- Fetched ahead on hover --------------------------------------------------------------------
+
+// How long the mouse rests on a link before its page is fetched (passing over it on the way elsewhere fetches nothing).
+const HOVER_DELAY = 80;
+// A page fetched ahead is shown at most this long after; the live connection catches it up from when it was drawn.
+const AHEAD_TTL = 30_000;
+const MAX_AHEAD = 10;
+
+interface FetchedAhead {
+  at: number;
+  response: Promise<Response | null>;
+}
+
+const fetchedAhead = new Map<string, FetchedAhead>();
+let hovered: string | undefined;
+let hoverTimer: number | undefined;
+
+function withoutHash(url: string): string {
+  const target = new URL(url, window.location.href);
+  target.hash = '';
+  return target.href;
+}
+
+/** The page fetched ahead for this address, once: null when there is none (or it failed), so it is fetched now. */
+async function takeFetchedAhead(url: string): Promise<Response | null> {
+  const key = withoutHash(url);
+  const entry = fetchedAhead.get(key);
+  fetchedAhead.delete(key);
+  if (!entry || Date.now() - entry.at > AHEAD_TTL) return null;
+  return entry.response;
+}
+
+function fetchAhead(url: string): void {
+  const key = withoutHash(url);
+  const entry = fetchedAhead.get(key);
+  if (entry && Date.now() - entry.at <= AHEAD_TTL) return;
+  // A page that did not come back as one (an error, a redirect off the site) is fetched again when followed.
+  const response = fetch(key, { credentials: 'same-origin', headers: { Accept: 'text/html' } })
+    .then((r) => (r.ok && r.headers.get('Content-Type')?.includes('text/html') ? r : null), () => null);
+  fetchedAhead.set(key, { at: Date.now(), response });
+  while (fetchedAhead.size > MAX_AHEAD) fetchedAhead.delete(fetchedAhead.keys().next().value as string);
+}
+
+/** The page the element under the mouse leads to: a link's, or a beep's (the card opens it, components/BeepCard.tsx). */
+function hoverTarget(element: Element): URL | undefined {
+  const link = element.closest<HTMLAnchorElement>('a[href]');
+  if (link) {
+    if ((link.target && link.target !== '_self') || link.hasAttribute('download') || goesBack(link)) return undefined;
+    return new URL(link.href);
+  }
+  const permalink = element.closest('article.beep:not(.beep-focused)')?.querySelector<HTMLAnchorElement>('a.beep-time');
+  return permalink ? new URL(permalink.href) : undefined;
+}
+
+function onPointerOver(event: PointerEvent): void {
+  if (event.pointerType !== 'mouse' || !(event.target instanceof Element)) return;
+  const url = hoverTarget(event.target);
+  const here = url !== undefined && url.pathname === window.location.pathname && url.search === window.location.search;
+  const target = url && isPage(url) && !here ? url.href : undefined;
+  if (target === hovered) return;
+  window.clearTimeout(hoverTimer);
+  hovered = target;
+  if (target) hoverTimer = window.setTimeout(() => fetchAhead(target), HOVER_DELAY);
+}
+
 // ---- Links, forms and going back ---------------------------------------------------------------
 
 /** Addresses that are pages of this site, not files, the API or the live connection. */
@@ -240,6 +346,8 @@ function onClick(event: MouseEvent): void {
 
 /** Forms outside the islands (settings, signing out, searching): sent in the background, their answer shown in place. */
 async function onSubmit(event: SubmitEvent): Promise<void> {
+  // Whatever it does (the islands' forms send themselves), the pages fetched ahead may no longer be what they would be.
+  fetchedAhead.clear();
   if (event.defaultPrevented || !(event.target instanceof HTMLFormElement)) return;
   const form = event.target;
   const submitter = event.submitter instanceof HTMLButtonElement || event.submitter instanceof HTMLInputElement ? event.submitter : null;
@@ -249,14 +357,19 @@ async function onSubmit(event: SubmitEvent): Promise<void> {
   event.preventDefault();
   const data = new FormData(form, submitter);
   if (form.dataset.confirm && !(await confirmAction(form.dataset.confirm))) return;
-  if (method === 'get') {
-    url.search = new URLSearchParams([...data].map(([name, value]) => [name, String(value)])).toString();
-    await visit(url.href).catch(() => {});
-  } else {
-    await request(url.href, { method: 'POST', body: data }, { posted: true }).catch(() => {
-      // The page stays as it was; sent the plain way, the browser shows what went wrong.
-      form.submit();
-    });
+  const sent = markSending(form, submitter);
+  try {
+    if (method === 'get') {
+      url.search = new URLSearchParams([...data].map(([name, value]) => [name, String(value)])).toString();
+      await visit(url.href).catch(() => {});
+    } else {
+      await request(url.href, { method: 'POST', body: data }, { posted: true }).catch(() => {
+        // The page stays as it was; sent the plain way, the browser shows what went wrong.
+        form.submit();
+      });
+    }
+  } finally {
+    sent();
   }
 }
 
@@ -268,7 +381,7 @@ function onPop(event: PopStateEvent): void {
   save();
   current = entry;
   const snapshot = snapshots.get(entry.key);
-  if (snapshot && snapshot.url === window.location.href) restore(snapshot);
+  if (snapshot && snapshot.url === window.location.href) void restore(snapshot);
   else void request(window.location.href, {}, { replace: true }).catch(() => {});
 }
 
@@ -281,5 +394,7 @@ export function startRouter(): void {
   window.history.replaceState({ ...(window.history.state as object | null), beeps: current }, '');
   document.addEventListener('click', onClick);
   document.addEventListener('submit', (event) => void onSubmit(event));
+  // A page signed in as someone else is loaded in full, so this holds for as long as the app runs.
+  if (viewer.value.human) document.addEventListener('pointerover', onPointerOver);
   window.addEventListener('popstate', onPop);
 }

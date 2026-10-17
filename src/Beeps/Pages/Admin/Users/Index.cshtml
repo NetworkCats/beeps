@@ -9,4 +9,4 @@
         PageProps.From(Model.Users, AdminUserProps.From, next => Url.Page("/Admin/Users/Index", new { q = Model.Q, before = next })!));
 }
 @* Admins only, so signed in: Client/app/pages/admin/Users.tsx draws the page from these props. *@
-<island name="admin-users" props="props" />
+<island name="admin-users" skeleton="table" props="props" />

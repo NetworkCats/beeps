@@ -1,0 +1,11 @@
+@model string
+@* One beep in a page's skeleton (_Skeleton.cshtml): the avatar, the author, two lines of text; `Model` is the second
+   line's width. *@
+<div class="skeleton-post skeleton-beep">
+    <span class="skeleton skeleton-circle"></span>
+    <div class="skeleton-lines">
+        <span class="skeleton skeleton-text skeleton-w-30"></span>
+        <span class="skeleton skeleton-text"></span>
+        <span class="skeleton skeleton-text skeleton-@Model"></span>
+    </div>
+</div>

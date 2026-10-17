@@ -439,7 +439,8 @@
           "Enter a display name of at most 50 characters."
         ]
       },
-      "html": ""
+      "html": "",
+      "skeleton": "form"
     },
     {
       "name": "site-options",

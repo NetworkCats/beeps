@@ -409,7 +409,8 @@
         "usersUrl": "/search?q=alice&type=users"
       },
       "errors": null,
-      "html": ""
+      "html": "",
+      "skeleton": "list"
     },
     {
       "name": "site-options",

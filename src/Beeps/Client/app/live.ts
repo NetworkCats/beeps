@@ -6,7 +6,7 @@ import { isShown, redraw, removeAuthors, removeBeep, setCounts, setLiked, shownC
 import { viewer } from './config.ts';
 import { liveStreamUrl, nextRetryDelay } from './live-url.ts';
 import { emit, pageLive, refreshPage, showAnew } from './page.ts';
-import { PAGE_SHOWN } from './router.ts';
+import { PAGE_SHOWN, type PageShown } from './router.ts';
 import { schedule } from './schedule.ts';
 import { theme, unread } from './state.ts';
 
@@ -228,8 +228,12 @@ async function reconnect(): Promise<void> {
   connect();
 }
 
-/** Another page is shown: the connection follows it from where it was, so nothing in between is lost. */
-function followPage(): void {
+/**
+ * Another page is shown: the connection follows it from where it was, so nothing in between is lost. A page fetched
+ * ahead may have been drawn before that, so it is followed from when it was drawn instead.
+ */
+function followPage(event?: Event): void {
+  if ((event as CustomEvent<PageShown> | undefined)?.detail?.ahead) lastEventId = undefined;
   disconnect();
   closed = false;
   retryDelay = 0;

@@ -14,11 +14,12 @@ namespace Beeps.Pages.Islands;
 /// also holds the markup inside, drawn here: what search engines read, and what the page shows before the script runs,
 /// which then draws the very same markup over it; the props hold nothing personal, so the page can still be cached for
 /// everyone. Signed in, the component draws the island from its props alone, so the markup inside is never drawn (and
-/// parts only signed-in people see have no markup here at all). For an islands request (<see cref="IslandRequests"/>)
-/// only the props are kept.
+/// parts only signed-in people see have no markup here at all); a page island then shows its <see cref="Skeleton"/>
+/// until the component has drawn it. For an islands request (<see cref="IslandRequests"/>) only the props are kept. Before it come the chunks its component needs (<see cref="ClientChunks"/>), so they load
+/// alongside the app.
 /// </remarks>
 [HtmlTargetElement("island", Attributes = "name")]
-public sealed class IslandTagHelper : TagHelper
+public sealed class IslandTagHelper(ClientChunks chunks, IHtmlHelper html) : TagHelper
 {
     public string Name { get; set; } = "";
 
@@ -31,11 +32,18 @@ public sealed class IslandTagHelper : TagHelper
     /// <summary>The wrapper element: <c>span</c> inside phrasing content (a link, a label).</summary>
     public string Tag { get; set; } = "div";
 
+    /// <summary>
+    /// The shape shown while the component is on its way, when the island comes without markup (<c>_Skeleton.cshtml</c>):
+    /// <c>feed</c>, <c>profile</c>, <c>list</c>, <c>form</c> or <c>table</c> for a page's island, <c>block</c> for one
+    /// within a page; none for the small islands of the layout.
+    /// </summary>
+    public string? Skeleton { get; set; }
+
     [ViewContext]
     [HtmlAttributeNotBound]
     public ViewContext ViewContext { get; set; } = null!;
 
-    public override void Process(TagHelperContext context, TagHelperOutput output)
+    public override async Task ProcessAsync(TagHelperContext context, TagHelperOutput output)
     {
         ArgumentNullException.ThrowIfNull(output);
         var http = ViewContext.HttpContext;
@@ -47,13 +55,22 @@ public sealed class IslandTagHelper : TagHelper
             return;
         }
 
+        output.PreElement.SetHtmlContent(chunks.ForIsland(http, Name));
         output.TagName = Tag;
         output.TagMode = TagMode.StartTagAndEndTag;
         output.Attributes.SetAttribute("class", "island");
         output.Attributes.SetAttribute("data-island", Name);
         if (ClientOnly || http.User.IsHuman())
         {
-            output.Content.SetHtmlContent(string.Empty);
+            if (Skeleton is null)
+            {
+                output.Content.SetHtmlContent(string.Empty);
+            }
+            else
+            {
+                ((IViewContextAware)html).Contextualize(ViewContext);
+                output.Content.SetHtmlContent(await html.PartialAsync("_Skeleton", Skeleton));
+            }
         }
 
         var script = new TagBuilder("script");

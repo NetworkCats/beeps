@@ -416,7 +416,8 @@
         "returnUrl": "/admin/users/10000000-0000-7000-8000-000000000001"
       },
       "errors": null,
-      "html": ""
+      "html": "",
+      "skeleton": "table"
     },
     {
       "name": "site-options",

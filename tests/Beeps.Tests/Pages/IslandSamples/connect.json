@@ -385,7 +385,8 @@
         }
       },
       "errors": null,
-      "html": ""
+      "html": "",
+      "skeleton": "block"
     },
     {
       "name": "site-options",
