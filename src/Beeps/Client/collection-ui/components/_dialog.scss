@@ -1,0 +1,221 @@
+/* Dialogs on the native <dialog>, opened with showModal() by dialog.js:
+ *
+ *   <button class="btn" data-cui-dialog="confirm">Delete…</button>
+ *   <dialog id="confirm" class="dialog dialog-sm">
+ *     <div class="dialog-header"><h2 class="dialog-title">Delete project?</h2><button class="btn-close" data-cui-close aria-label="Close"></button></div>
+ *     <div class="dialog-body"><div class="dialog-icon dialog-icon-danger"><span class="icon">delete</span></div><p>This cannot be undone.</p></div>
+ *     <div class="dialog-footer"><a class="dialog-footer-start" href="#">Learn more</a><button class="btn" data-cui-close>Cancel</button><button class="btn btn-danger" data-cui-close="confirm">Delete</button></div>
+ *   </dialog>
+ *
+ * Sizes: .dialog-sm / -lg / -xl / -full. .dialog-sheet (alias .dialog-bottom) becomes a bottom
+ * sheet below the sm breakpoint. .dialog-plain drops the header/footer bands. Entry animates with
+ * @starting-style; dialog.js adds .is-closing before close() to run the exit keyframes.
+ * data-cui-static (JS) disables backdrop / Esc closing.
+ *
+ * Hooks: dialog.dialog (+ [open], .is-closing, ::backdrop), .dialog-sm/-lg/-xl/-full, .dialog-sheet,
+ * .dialog-plain, .dialog-header, .dialog-title, .dialog-body, .dialog-footer, .dialog-footer-start,
+ * .dialog-icon (+ -primary / -success / -warning / -danger / -info). */
+@use "../foundation/layers";
+@use "../abstracts" as *;
+
+@layer cui.components {
+  .#{$prefix}dialog {
+    --_width: var(--cui-dialog-width, min(32rem, calc(100vw - 2rem)));
+    --_bg: var(--cui-dialog-bg, var(--cui-surface));
+    --_fg: var(--cui-dialog-fg, var(--cui-text));
+    --_border: var(--cui-dialog-border, var(--cui-border));
+    --_radius: var(--cui-dialog-radius, var(--cui-radius-xl));
+    --_shadow: var(--cui-dialog-shadow, var(--cui-shadow-xl));
+    --_enter: var(--cui-duration-slow);
+    --_exit: var(--cui-duration);
+
+    margin: auto;
+    padding: 0;
+    width: var(--_width);
+    max-width: calc(100vw - 2rem);
+    max-height: min(85dvh, 48rem);
+    flex-direction: column;
+    overflow: hidden;
+    color: var(--_fg);
+    background: var(--_bg);
+    border: var(--cui-border-width) solid var(--_border);
+    border-radius: var(--_radius);
+    box-shadow: var(--_shadow);
+    z-index: var(--cui-z-dialog);
+    /* Enter: fade + scale up + lift, decelerating. Exit (dialog.js keyframes, or this
+     * transition when closed natively, e.g. form method="dialog") is shorter and accelerates.
+     * The transition on the [open] rule drives the entry, the base one the exit. */
+    opacity: 0;
+    scale: 0.98;
+    translate: 0 4px;
+    transition:
+      opacity var(--_exit) var(--cui-ease-in),
+      scale var(--_exit) var(--cui-ease-in),
+      translate var(--_exit) var(--cui-ease-in),
+      display var(--_exit) allow-discrete,
+      overlay var(--_exit) allow-discrete;
+
+    &:not([open]) { pointer-events: none; }
+    &[open] {
+      display: flex;
+      opacity: 1;
+      scale: 1;
+      translate: 0 0;
+      transition:
+        opacity var(--_enter) var(--cui-ease),
+        scale var(--_enter) var(--cui-ease-out),
+        translate var(--_enter) var(--cui-ease-out),
+        display var(--_enter) allow-discrete,
+        overlay var(--_enter) allow-discrete;
+    }
+    @starting-style {
+      &[open] { opacity: 0; scale: 0.96; translate: 0 8px; }
+    }
+
+    &::backdrop {
+      background: var(--cui-overlay);
+      backdrop-filter: blur(2px);
+      opacity: 0;
+      transition:
+        opacity var(--_exit) var(--cui-ease-in),
+        display var(--_exit) allow-discrete,
+        overlay var(--_exit) allow-discrete;
+    }
+    &[open]::backdrop {
+      opacity: 1;
+      transition:
+        opacity var(--_enter) var(--cui-ease),
+        display var(--_enter) allow-discrete,
+        overlay var(--_enter) allow-discrete;
+    }
+    @starting-style {
+      &[open]::backdrop { opacity: 0; }
+    }
+
+    /* Exit via dialog.js: .is-closing runs keyframes, then close() */
+    &.#{$prefix}is-closing { animation: cui-dialog-out var(--_exit) var(--cui-ease-in) forwards; pointer-events: none; }
+    &.#{$prefix}is-closing::backdrop { animation: cui-fade-out var(--_exit) var(--cui-ease-in) forwards; }
+  }
+
+  /* Sizes */
+  .#{$prefix}dialog-sm { --_width: min(24rem, calc(100vw - 2rem)); }
+  .#{$prefix}dialog-lg { --_width: min(44rem, calc(100vw - 2rem)); }
+  .#{$prefix}dialog-xl { --_width: min(60rem, calc(100vw - 2rem)); }
+  .#{$prefix}dialog-full {
+    --_width: calc(100vw - 2rem);
+    height: calc(100dvh - 2rem);
+    max-height: calc(100dvh - 2rem);
+  }
+
+  /* Bottom sheet on small screens */
+  @include mq(max-sm) {
+    .#{$prefix}dialog-sheet, .#{$prefix}dialog-bottom {
+      --_width: 100vw;
+      margin: auto 0 0;
+      max-width: 100vw;
+      max-height: 92dvh;
+      border-inline: 0;
+      border-block-end: 0;
+      border-radius: var(--_radius) var(--_radius) 0 0;
+      /* A sheet travels its whole height, so it gets more time. */
+      --_enter: var(--cui-duration-slower);
+      --_exit: var(--cui-duration-slow);
+      scale: 1;
+      translate: 0 100%;
+      &[open] { translate: 0 0; }
+      @starting-style {
+        &[open] { opacity: 1; scale: 1; translate: 0 100%; }
+      }
+      &.#{$prefix}is-closing { animation-name: cui-dialog-sheet-out; }
+    }
+  }
+
+  /* ---- Sections ---------------------------------------------------------- */
+  .#{$prefix}dialog-header {
+    display: flex;
+    align-items: center;
+    gap: var(--cui-space-3);
+    flex-shrink: 0;
+    padding: var(--cui-space-4) var(--cui-space-5);
+    border-block-end: var(--cui-border-width) solid var(--_border, var(--cui-border));
+    > .#{$prefix}btn-close { margin-inline-end: calc(-1 * var(--cui-space-2)); flex-shrink: 0; }
+    > .#{$prefix}icon { color: var(--cui-text-3); flex-shrink: 0; }
+  }
+  .#{$prefix}dialog-title {
+    flex: 1 1 auto;
+    min-width: 0;
+    margin: 0;
+    font-size: var(--cui-text-lg);
+    font-weight: var(--cui-weight-semibold);
+    line-height: var(--cui-leading-snug);
+    color: var(--cui-text);
+    overflow-wrap: anywhere;
+  }
+  .#{$prefix}dialog-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    padding: var(--cui-space-5);
+    overflow: auto;
+    overscroll-behavior: contain;
+    font-size: var(--cui-text-sm);
+    line-height: var(--cui-leading-base);
+    color: var(--cui-text);
+    p { color: var(--cui-text-2); margin: 0; }
+    p + p { margin-block-start: var(--cui-space-3); }
+    > :last-child { margin-block-end: 0; }
+  }
+  .#{$prefix}dialog-footer {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: var(--cui-space-2);
+    flex-shrink: 0;
+    padding: var(--cui-space-3) var(--cui-space-5);
+    border-block-start: var(--cui-border-width) solid var(--_border, var(--cui-border));
+    background: var(--cui-surface-2);
+    font-size: var(--cui-text-sm);
+    > .#{$prefix}dialog-footer-start { margin-inline-end: auto; }
+  }
+  .#{$prefix}dialog-footer-start { color: var(--cui-text-2); }
+  .#{$prefix}dialog-plain {
+    > .#{$prefix}dialog-header { border-block-end: 0; padding-block-end: 0; }
+    > .#{$prefix}dialog-footer { border-block-start: 0; background: transparent; padding-block-start: 0; padding-block-end: var(--cui-space-5); }
+  }
+
+  /* Leading status icon for confirm dialogs */
+  .#{$prefix}dialog-icon {
+    --_bg: var(--cui-primary-soft);
+    --_fg: var(--cui-primary-text);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 3rem;
+    height: 3rem;
+    margin-block-end: var(--cui-space-4);
+    color: var(--_fg);
+    background: var(--_bg);
+    border-radius: 50%;
+    > .#{$prefix}icon { --cui-icon-size: 1.5rem; }
+  }
+  @each $tone in tones() {
+    .#{$prefix}dialog-icon-#{$tone} { --_bg: var(--cui-#{$tone}-soft); --_fg: var(--cui-#{$tone}-text); }
+  }
+
+  /* Lock page scroll while any modal dialog or drawer is open */
+  html:has(dialog.#{$prefix}dialog:modal, dialog.#{$prefix}drawer:modal) { overflow: hidden; }
+
+  @keyframes cui-dialog-out {
+    to { opacity: 0; scale: 0.98; translate: 0 4px; }
+  }
+  @keyframes cui-dialog-sheet-out {
+    to { translate: 0 100%; }
+  }
+  @keyframes cui-fade-out {
+    to { opacity: 0; }
+  }
+
+  @include mq(reduced-motion) {
+    .#{$prefix}dialog, .#{$prefix}dialog::backdrop { animation: none; }
+  }
+}

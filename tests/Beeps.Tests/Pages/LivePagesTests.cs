@@ -27,7 +27,7 @@ public sealed partial class LivePagesTests : IDisposable
         // The render time lets the stream replay what happened before the script connected.
         Assert.Matches($"<body class=\"page\" data-auth=\"member:{user.Id:D}\" data-live-stream=\"/stream\" data-live-from=\"[0-9]{{13}}\">", html);
         Assert.Contains("data-live-watch=\"home\"", html, StringComparison.Ordinal);
-        Assert.Contains("<span class=\"indicator-count nav-count\" data-inbox-count hidden></span>", html, StringComparison.Ordinal);
+        Assert.Contains("<span class=\"count count-primary nav-count\" data-inbox-count hidden></span>", html, StringComparison.Ordinal);
         PageAssert.NoInlineScriptsOrStyles(html);
     }
 
@@ -82,7 +82,7 @@ public sealed partial class LivePagesTests : IDisposable
         Assert.Contains($"data-live-watch=\"thread:{root.Id:D}\"", lastPage, StringComparison.Ordinal);
         Assert.Contains($"data-beep=\"{root.Id:D}\"", lastPage, StringComparison.Ordinal);
         // Beeps in it: the empty state is there for when they go, hidden.
-        Assert.Contains("class=\"empty empty-bordered\" hidden=\"hidden\" data-live-empty=\"\">", first, StringComparison.Ordinal);
+        Assert.Contains("class=\"empty\" hidden=\"hidden\" data-live-empty=\"\">", first, StringComparison.Ordinal);
         Assert.Contains("data-live-watch=\"\"", notLast, StringComparison.Ordinal);
     }
 
@@ -104,8 +104,8 @@ public sealed partial class LivePagesTests : IDisposable
         Assert.Contains("data-live-watch=\"tag:beeps\"", tag, StringComparison.Ordinal);
         Assert.Contains("data-live-watch=\"notifications\"", inbox, StringComparison.Ordinal);
         // Nothing in them: the empty state shows, marked for the live script to hide once something comes.
-        Assert.Contains("class=\"empty empty-bordered\" data-live-empty=\"\">", profile, StringComparison.Ordinal);
-        Assert.Contains("class=\"empty empty-bordered\" data-live-empty=\"\">", inbox, StringComparison.Ordinal);
+        Assert.Contains("class=\"empty\" data-live-empty=\"\">", profile, StringComparison.Ordinal);
+        Assert.Contains("class=\"empty\" data-live-empty=\"\">", inbox, StringComparison.Ordinal);
     }
 
     [Fact]

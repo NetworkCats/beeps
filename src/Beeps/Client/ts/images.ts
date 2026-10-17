@@ -18,8 +18,22 @@ function validate(input: HTMLInputElement): void {
   if (message) input.reportValidity();
 }
 
+// The composer shows the picked images small (<div data-image-previews> in the same form), so a picker that is
+// only an icon still says what will be posted.
+function preview(input: HTMLInputElement): void {
+  const box = input.form?.querySelector<HTMLElement>('[data-image-previews]');
+  if (!box) return;
+  for (const image of box.querySelectorAll('img')) URL.revokeObjectURL(image.src);
+  box.replaceChildren(
+    ...Array.from(input.files ?? [], (file) => Object.assign(document.createElement('img'), { src: URL.createObjectURL(file), alt: file.name })),
+  );
+  box.hidden = box.childElementCount === 0;
+}
+
 export function initImages(): void {
   document.addEventListener('change', (event) => {
-    if (event.target instanceof HTMLInputElement && event.target.matches('input[type="file"][data-images]')) validate(event.target);
+    if (!(event.target instanceof HTMLInputElement) || !event.target.matches('input[type="file"][data-images]')) return;
+    validate(event.target);
+    preview(event.target);
   });
 }

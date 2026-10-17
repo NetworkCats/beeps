@@ -5,18 +5,18 @@
     var items = Model.Notifications.Items;
 }
 <section class="feed" live-watch="Model.Live">
-    <header class="section-header">
-        <h1>@L["Notifications.Title"]</h1>
+    <header class="column-header">
+        <h1 class="column-title">@L["Notifications.Title"]</h1>
         @* Marks up to the newest one shown; the live script moves that along as new ones arrive, and shows the form once one is unread. *@
-        <form method="post" asp-page-handler="Read" data-mark-read hidden="@(items.Any(n => !n.Read) ? null : "hidden")">
+        <form class="column-actions" method="post" asp-page-handler="Read" data-mark-read hidden="@(items.Any(n => !n.Read) ? null : "hidden")">
             <input type="hidden" name="upToId" value="@items.FirstOrDefault()?.Id">
-            <button class="btn btn-sm" type="submit">@L["Notifications.MarkRead"]</button>
+            <button class="btn btn-sm btn-ghost" type="submit"><icon name="done_all" />@L["Notifications.MarkRead"]</button>
         </form>
     </header>
     @* For older pages of the inbox, which do not follow it live: drawn again when it changes. *@
     <div data-live-region="notifications">
     @* There either way, hidden while there are entries: the live inbox shows it again once its last one goes. *@
-    <div class="empty empty-bordered" live-empty hidden="@(items.Count == 0 ? null : "hidden")">
+    <div class="empty" live-empty hidden="@(items.Count == 0 ? null : "hidden")">
         <h2 class="empty-title">@L["Notifications.Empty.Title"]</h2>
         <p class="empty-text">@L["Notifications.Empty.Text"]</p>
     </div>
@@ -31,7 +31,7 @@
         @if (Model.Notifications.NextCursor is { } next)
         {
             <nav class="pager" aria-label="@L["Pager.Label"]">
-                <a class="btn btn-sm" href="?before=@next">@L["Pager.More"]</a>
+                <a class="btn" href="?before=@next">@L["Pager.More"]</a>
             </nav>
         }
     }

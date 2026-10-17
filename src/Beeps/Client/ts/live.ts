@@ -353,8 +353,9 @@ function showCounts(entry: CountsEntry): void {
   for (const beep of cards(entry.id)) {
     const likes = beep.querySelector('[data-like-count]');
     const replies = beep.querySelector('[data-reply-count]');
-    if (likes) likes.textContent = String(entry.like_count);
-    if (replies) replies.textContent = String(entry.reply_count);
+    // Nothing is left blank, as the server draws it.
+    if (likes) likes.textContent = entry.like_count > 0 ? String(entry.like_count) : '';
+    if (replies) replies.textContent = entry.reply_count > 0 ? String(entry.reply_count) : '';
   }
 }
 

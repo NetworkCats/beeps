@@ -1,0 +1,44 @@
+/* Icons: Material Symbols (variable font). Load the font yourself, e.g.
+ *   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200">
+ * then <span class="icon">search</span>. Size follows the parent's font size (1.25em),
+ * so icons inside buttons, lists and headings scale automatically. */
+@use "../foundation/layers";
+@use "../abstracts" as *;
+
+@layer cui.components {
+  .#{$prefix}icon {
+    font-family: var(--cui-icon-font, "#{$icon-font}");
+    font-weight: normal;
+    font-style: normal;
+    font-size: var(--cui-icon-size, 1.25em);
+    line-height: 1;
+    display: inline-block;
+    width: 1em;
+    height: 1em;
+    overflow: hidden;
+    flex-shrink: 0;
+    vertical-align: -0.2em;
+    letter-spacing: normal;
+    text-transform: none;
+    white-space: nowrap;
+    word-wrap: normal;
+    direction: ltr;
+    user-select: none;
+    -webkit-font-feature-settings: "liga";
+    font-feature-settings: "liga";
+    -webkit-font-smoothing: antialiased;
+    font-variation-settings: "FILL" var(--cui-icon-fill, 0), "wght" var(--cui-icon-weight, 400), "GRAD" var(--cui-icon-grade, 0), "opsz" var(--cui-icon-opsz, 24);
+  }
+  .#{$prefix}icon-fill { --cui-icon-fill: 1; }
+  .#{$prefix}icon-rounded { --cui-icon-font: "Material Symbols Rounded"; }
+  .#{$prefix}icon-sharp { --cui-icon-font: "Material Symbols Sharp"; }
+  .#{$prefix}icon-xs { --cui-icon-size: 1em; }
+  .#{$prefix}icon-sm { --cui-icon-size: 1.125em; }
+  .#{$prefix}icon-lg { --cui-icon-size: 1.5em; }
+  .#{$prefix}icon-xl { --cui-icon-size: 2em; }
+  .#{$prefix}icon-2xl { --cui-icon-size: 3em; }
+  .#{$prefix}icon-muted { color: var(--cui-text-3); }
+
+  /* Inline SVG icons (any set) get the same box. */
+  svg.#{$prefix}icon { font-family: inherit; fill: currentColor; }
+}

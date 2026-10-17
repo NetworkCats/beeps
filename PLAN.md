@@ -328,6 +328,10 @@ tests/Beeps.Tests/
 - 使用 collection-ui 中的组件代码，**不照搬**，按 beeps 的整体设计调整，保持风格统一。
 - onboarding 使用 collection-ui 的分步骤组件。
 - 设计方向：克制、内容优先，层级靠排版和留白，不用花哨的渐变、毛玻璃和无意义动画。
+- 布局借鉴 Twitter / Mastodon / Bluesky 这类现代社交网站（不照抄）：宽屏是左侧导航栏、中间内容列（两侧细线）、右侧栏（搜索、介绍、页脚）；中等宽度导航栏只显示图标、右侧栏收起；窄屏是顶栏 + 底部标签栏 + 发帖悬浮按钮。每页的标题是内容列顶部吸顶的小标题（20px），不用大号页面标题。
+- 页面背景是纯色：浅色模式纯白，深色模式近黑，不带任何色调；灰色一律是无彩度的中性灰（覆盖 collection-ui 默认带蓝调的 `$neutral` 和品牌色 tint）。颜色只出现在品牌色和状态色上。
+- 分割线只用来分开列表项（beep、通知、用户）和内容列与吸顶标题，同一个东西内部（发帖框、设置页各分区）用留白区分，不画线。
+- 图标用 Material Symbols Rounded 图标字体，自托管，并且只包含实际用到的图标：名单在 `Client/icons.json`，`npm run icons`（`scripts/build-icons.ts`）从 Google Fonts 下载裁剪后的字体到 `wwwroot/fonts/` 并提交；页面里写 `<icon name="…" />`。`npm test` 检查名单和页面、样式里用到的图标完全一致。
 - 先确定 beeps 的设计 token（颜色、字体、间距），再统一应用到 collection-ui 组件上。
 - 实时更新使用浏览器原生 `EventSource`（SSE）。
 

@@ -1,0 +1,138 @@
+/* Search field: inline (navbar), standard, or jumbo. */
+@use "../foundation/layers";
+@use "../abstracts" as *;
+
+@layer cui.components {
+  /* <form class="search"><span class="icon">search</span><input class="search-input"><kbd>/</kbd><button class="btn btn-primary">Search</button></form>
+   *
+   * A two-column grid: the input, icon and kbd share column 1 (icon at its start, kbd at its
+   * end), the optional button is column 2. So the hint always sits at the input's own end,
+   * whatever the button's width. Every child but the input is optional. */
+  .#{$prefix}search {
+    --_height: var(--cui-search-height, var(--cui-control-height));
+    --_radius: var(--cui-search-radius, var(--cui-control-radius));
+    --_icon-x: 0.75rem;   /* icon inset from the start */
+    --_pad: 2.5rem;       /* input start padding that clears the icon */
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: stretch;
+    width: 100%;
+    min-width: 0;
+    > .#{$prefix}search-input { grid-area: 1 / 1; }
+    > .#{$prefix}icon {
+      grid-area: 1 / 1;
+      align-self: center;
+      justify-self: start;
+      margin-inline-start: var(--_icon-x);
+      --cui-icon-size: 1.25rem;
+      color: var(--cui-text-3);
+      pointer-events: none;
+      z-index: 1;
+      transition: color var(--cui-transition);
+    }
+    > kbd, > .#{$prefix}kbd {
+      grid-area: 1 / 1;
+      align-self: center;
+      justify-self: end;
+      margin-inline-end: 0.625rem;
+      pointer-events: none;
+      z-index: 1;
+    }
+    > .#{$prefix}btn {
+      grid-area: 1 / 2;
+      min-height: var(--_height);
+      border-start-start-radius: 0;
+      border-end-start-radius: 0;
+      margin-inline-start: calc(-1 * var(--cui-border-width));
+      &:active { translate: none; }
+      &:focus-visible { z-index: 1; }
+    }
+    &:has(> .#{$prefix}btn) > .#{$prefix}search-input { border-start-end-radius: 0; border-end-end-radius: 0; }
+    &:has(> kbd, > .#{$prefix}kbd) > .#{$prefix}search-input { padding-inline-end: 3rem; }
+    &:focus-within > .#{$prefix}icon { color: var(--cui-primary); }
+  }
+  .#{$prefix}search-input {
+    --_border: var(--cui-search-border, var(--cui-control-border));
+    --_ring: var(--cui-search-ring, var(--cui-ring));
+    --_bg: var(--cui-search-bg, var(--cui-control-bg));
+    flex: 1 1 auto;
+    width: 100%;
+    min-width: 0;
+    min-height: var(--_height);
+    padding-block: 0;
+    padding-inline: var(--_pad, 2.5rem) var(--cui-control-padding-x);
+    font-size: var(--cui-text-sm);
+    color: var(--cui-text);
+    background: var(--_bg);
+    border: var(--cui-border-width) solid var(--_border);
+    border-radius: var(--_radius);
+    box-shadow: var(--cui-shadow-well);
+    appearance: none;
+    transition: border-color var(--cui-transition), box-shadow var(--cui-transition), background-color var(--cui-transition);
+    &:hover:not(:focus) { --_border: color-mix(in oklch, var(--cui-search-border, var(--cui-control-border)) 55%, var(--cui-text-3)); }
+    &:focus { outline: none; --_border: var(--cui-primary); box-shadow: var(--cui-shadow-well), var(--_ring); }
+    &:disabled { background: var(--cui-surface-2); color: var(--cui-text-2); box-shadow: none; opacity: 0.7; cursor: not-allowed; }
+  }
+  .#{$prefix}search:not(:has(> .#{$prefix}icon)) > .#{$prefix}search-input { padding-inline-start: var(--cui-control-padding-x); }
+
+  /* On the dark navbar band: translucent well (declared here, after .search-input, so it
+   * outranks the generic look). */
+  .#{$prefix}navbar:not(.#{$prefix}navbar-light) .#{$prefix}navbar-search .#{$prefix}search-input {
+    --_border: var(--cui-band-border);
+    --_ring: 0 0 0 3px var(--cui-primary-ring);
+    background: oklch(100% 0 0 / 0.08);
+    color: var(--cui-band-text);
+    box-shadow: inset 0 1px 2px oklch(0% 0 0 / 0.25);
+    &::placeholder { color: var(--cui-band-muted); }
+    &:hover:not(:focus) { --_border: oklch(100% 0 0 / 0.25); background: oklch(100% 0 0 / 0.1); }
+    &:focus { background: oklch(100% 0 0 / 0.12); --_border: var(--cui-primary); box-shadow: inset 0 1px 2px oklch(0% 0 0 / 0.25), var(--_ring); }
+  }
+  .#{$prefix}navbar-light .#{$prefix}navbar-search .#{$prefix}search-input {
+    background: var(--cui-surface-2);
+    --_border: var(--cui-border);
+    &:focus { background: var(--cui-surface); }
+  }
+  .#{$prefix}navbar:not(.#{$prefix}navbar-light) :is(.#{$prefix}navbar-search.#{$prefix}search, .#{$prefix}navbar-search .#{$prefix}search) {
+    > .#{$prefix}icon { color: var(--cui-band-muted); }
+    &:focus-within > .#{$prefix}icon { color: var(--cui-band-text); }
+  }
+
+  .#{$prefix}search-sm { --_height: var(--cui-control-height-sm); --_radius: var(--cui-radius); --_icon-x: 0.625rem; --_pad: 2.25rem; > .#{$prefix}icon { --cui-icon-size: 1.125rem; } }
+  .#{$prefix}search-lg {
+    --_height: var(--cui-control-height-lg);
+    --_radius: var(--cui-radius-lg);
+    --_icon-x: 0.875rem;
+    --_pad: 2.75rem;
+    > .#{$prefix}search-input { font-size: var(--cui-text-base); }
+    > .#{$prefix}icon { --cui-icon-size: 1.375rem; }
+  }
+  /* Jumbo: landing-page search. Big, white, soft shadow instead of a border. */
+  .#{$prefix}search-xl {
+    --_height: 3.5rem;
+    --_radius: var(--cui-radius-xl);
+    --_icon-x: 1.125rem;
+    --_pad: 3.25rem;
+    > .#{$prefix}search-input {
+      --_border: transparent;
+      font-size: var(--cui-text-lg);
+      background: light-dark(var(--cui-neutral-0), var(--cui-neutral-900));
+      color: light-dark(var(--cui-neutral-900), var(--cui-neutral-50));
+      box-shadow: var(--cui-shadow-lg), 0 0 0 1px oklch(0% 0 0 / 0.06);
+      &::placeholder { color: light-dark(var(--cui-neutral-400), var(--cui-neutral-500)); }
+      &:focus { box-shadow: var(--cui-shadow-lg), 0 0 0 1px oklch(0% 0 0 / 0.06), var(--cui-ring); }
+    }
+    > .#{$prefix}icon { --cui-icon-size: 1.5rem; color: light-dark(var(--cui-neutral-400), var(--cui-neutral-500)); }
+    > .#{$prefix}btn { font-size: var(--cui-text-base); padding-inline: var(--cui-space-6); }
+  }
+  .#{$prefix}search-pill { --_radius: var(--cui-radius-full); > .#{$prefix}btn { border-radius: 0 var(--cui-radius-full) var(--cui-radius-full) 0; padding-inline-end: var(--cui-space-5); } }
+
+  /* Search syntax tokens: from:user in a typeahead */
+  .#{$prefix}search-token {
+    padding: 0.05em 0.3em;
+    border-radius: var(--cui-radius-sm);
+    background: var(--cui-primary-soft);
+    color: var(--cui-primary-text);
+    font-family: var(--cui-font-mono);
+    font-size: 0.9em;
+  }
+}

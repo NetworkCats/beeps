@@ -1,5 +1,6 @@
 @{
     Layout = "_Layout";
+    ViewData["Wide"] = true;
     var page = ViewContext.RouteData.Values["page"] as string ?? "";
     string? Current(string prefix) => page.StartsWith(prefix, StringComparison.Ordinal) ? "page" : null;
 }

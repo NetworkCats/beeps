@@ -9,7 +9,10 @@
 }
 @* data-live-subject: when this beep is deleted or hidden, the page is shown anew (live.ts), as a reload would. *@
 <section class="feed thread" live-watch="Model.Live" live-subject="@($"beep:{focus.Id:D}")">
-    <h1 class="visually-hidden">@ViewData["Title"]</h1>
+    <header class="column-header">
+        <a class="column-back" href="~/" aria-label="@L["Nav.Back"]"><icon name="arrow_back" /></a>
+        <h1 class="column-title">@L["Thread.Title"]</h1>
+    </header>
     @if (!focusShown)
     {
         <partial name="_Beep" model="new BeepCard(focus, Focused: true)" />
@@ -31,7 +34,7 @@
     @if (Model.Thread.NextCursor is { } next)
     {
         <nav class="pager" aria-label="@L["Pager.Label"]">
-            <a class="btn btn-sm" href="@SitePaths.Beep(focus.Id)?after=@next">@L["Pager.MoreReplies"]</a>
+            <a class="btn" href="@SitePaths.Beep(focus.Id)?after=@next">@L["Pager.MoreReplies"]</a>
         </nav>
     }
     </div>

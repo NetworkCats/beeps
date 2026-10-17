@@ -4,6 +4,9 @@
     ViewData["Title"] = $"#{Model.Tag}";
 }
 <section class="feed" live-watch="Model.Live">
-    <h1 class="feed-title">#@Model.Tag</h1>
+    <header class="column-header">
+        <a class="column-back" href="~/" aria-label="@L["Nav.Back"]"><icon name="arrow_back" /></a>
+        <h1 class="column-title">#@Model.Tag</h1>
+    </header>
     <partial name="_BeepList" model='new BeepList(Model.Beeps, L["Tag.Empty.Title"])' />
 </section>

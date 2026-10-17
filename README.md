@@ -50,6 +50,8 @@ dotnet build
 dotnet test
 ```
 
+图标字体只包含 `src/Beeps/Client/icons.json` 里列出的图标。页面用到新图标时，把名字加进这个文件，运行 `npm run icons` 重新下载裁剪后的字体（需要联网），再提交 `src/Beeps/wwwroot/fonts/` 下的字体文件。
+
 测试不依赖任何外部服务：数据库、Redis 等都通过接口 mock。
 
 ## 新增数据库迁移

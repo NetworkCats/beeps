@@ -62,9 +62,9 @@ public sealed class TimelinePagesTests : IDisposable
 
         var html = await client.GetStringAsync(new Uri("/public", UriKind.Relative), TestSupport.Ct);
 
-        Assert.Contains("<a class=\"navbar-link\" aria-current=\"page\" href=\"/public\">Public</a>", html, StringComparison.Ordinal);
-        Assert.Contains("<details class=\"menu\" data-menu>", html, StringComparison.Ordinal);
-        Assert.Contains("<a class=\"dropdown-item\" href=\"/tom\">Profile</a>", html, StringComparison.Ordinal);
+        Assert.Contains("<a class=\"sidenav-item\" aria-current=\"page\" href=\"/public\"><span class=\"icon\" aria-hidden=\"true\">public</span><span class=\"sidenav-label\">Public</span></a>", html, StringComparison.Ordinal);
+        Assert.Contains("<details class=\"menu sidenav-menu\" data-menu>", html, StringComparison.Ordinal);
+        Assert.Contains("<a class=\"dropdown-item\" href=\"/tom\"><span class=\"icon\" aria-hidden=\"true\">person</span>Profile</a>", html, StringComparison.Ordinal);
         Assert.DoesNotContain("/admin/users", html, StringComparison.Ordinal);
     }
 
@@ -89,7 +89,7 @@ public sealed class TimelinePagesTests : IDisposable
 
         var html = await client.GetStringAsync(new Uri("/public", UriKind.Relative), TestSupport.Ct);
 
-        Assert.Contains("<h1 class=\"feed-title\">公共时间线</h1>", html, StringComparison.Ordinal);
+        Assert.Contains("<h1 class=\"column-title\">公共时间线</h1>", html, StringComparison.Ordinal);
         Assert.Contains("还没有 beep", html, StringComparison.Ordinal);
     }
 
@@ -150,9 +150,9 @@ public sealed class TimelinePagesTests : IDisposable
         var empty = await client.GetStringAsync(new Uri("/tags/Beeps", UriKind.Relative), TestSupport.Ct);
         using var invalid = await client.GetAsync(new Uri("/tags/%21%21", UriKind.Relative), TestSupport.Ct);
 
-        Assert.Contains("<h1 class=\"feed-title\">#天气</h1>", html, StringComparison.Ordinal);
+        Assert.Contains("<h1 class=\"column-title\">#天气</h1>", html, StringComparison.Ordinal);
         Assert.Contains("about <a class=\"hashtag\"", html, StringComparison.Ordinal);
-        Assert.Contains("<h1 class=\"feed-title\">#Beeps</h1>", empty, StringComparison.Ordinal);
+        Assert.Contains("<h1 class=\"column-title\">#Beeps</h1>", empty, StringComparison.Ordinal);
         Assert.Contains("No beeps with this hashtag yet", empty, StringComparison.Ordinal);
         Assert.Equal(HttpStatusCode.NotFound, invalid.StatusCode);
         PageAssert.NoInlineScriptsOrStyles(html);

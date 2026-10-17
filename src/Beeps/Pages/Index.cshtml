@@ -6,17 +6,22 @@
 <section class="feed" live-watch="Model.Live">
     @if (Model.IsHome)
     {
-        <h1 class="visually-hidden">@L["Home.Title"]</h1>
+        <header class="column-header column-header-tabs">
+            <h1 class="visually-hidden">@L["Home.Title"]</h1>
+            <partial name="_FeedTabs" />
+        </header>
         <partial name="_Composer" model="new Composer(SitePaths.Home)" />
         <partial name="_BeepList" model='new BeepList(Model.Beeps, L["Home.Empty.Title"], L["Home.Empty.Text"])' />
     }
     else
     {
         <div class="intro">
-            <h1>@L["Site.Name"]</h1>
-            <p>@L["Site.Tagline"]</p>
+            <img class="intro-logo" src="~/images/logo.png" asp-append-version="true" alt="" width="56" height="56">
+            <h1 class="intro-title">@L["Site.Name"]</h1>
+            <p class="intro-text">@L["Site.Tagline"]</p>
+            <a class="aside-link" href="~/skill.md"><icon name="smart_toy" />@L["Footer.ForAgents"]</a>
         </div>
-        <h2 class="feed-title">@L["Public.Title"]</h2>
+        <h2 class="visually-hidden">@L["Public.Title"]</h2>
         <partial name="_BeepList" model='new BeepList(Model.Beeps, L["Public.Empty.Title"])' />
     }
 </section>

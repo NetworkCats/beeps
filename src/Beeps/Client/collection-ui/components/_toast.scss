@@ -1,0 +1,119 @@
+/* Toasts. toast.js renders into a fixed .toast-stack (created on demand):
+ *
+ *   <div class="toast-stack" data-position="bottom-end" role="region" aria-label="Notifications">
+ *     <div class="toast toast-success" role="status">
+ *       <span class="icon toast-icon" aria-hidden="true">check_circle</span>
+ *       <div class="toast-content"><div class="toast-title">Saved</div><div class="toast-message">Your changes are live.</div></div>
+ *       <button class="btn btn-xs btn-ghost toast-action">Undo</button>
+ *       <button class="btn-close toast-close" aria-label="Dismiss"></button>
+ *     </div>
+ *   </div>
+ *
+ * Positions: data-position="bottom-end" (default) | bottom-start | bottom-center | top-end | top-start | top-center.
+ * Variants set the accent stripe + icon colour: .toast-info / -success / -warning / -danger; .toast-dark
+ * is a solid dark toast in both themes. toast.js adds .toast-leaving before removing the element.
+ *
+ * Hooks: .toast-stack[data-position], .toast (+ -info / -success / -warning / -danger / -dark, .toast-leaving),
+ * .toast-icon, .toast-content, .toast-title, .toast-message, .toast-action, .toast-close. */
+@use "../foundation/layers";
+@use "../abstracts" as *;
+
+@layer cui.components {
+  .#{$prefix}toast-stack {
+    position: fixed;
+    /* start / end are logical, so they swap sides in RTL; centre is physical (symmetric). */
+    inset-block: auto 0;
+    inset-inline: auto 0;
+    z-index: var(--cui-z-toast);
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--cui-space-2);
+    width: min(24rem, 100vw);
+    max-height: 100dvh;
+    padding: var(--cui-space-4);
+    pointer-events: none;
+    > * { pointer-events: auto; }
+
+    &[data-position$="-start"] { inset-inline: 0 auto; }
+    &[data-position$="-center"] { inset-inline: auto; left: 50%; translate: -50% 0; align-items: center; }
+    &[data-position^="top"] { inset-block: 0 auto; flex-direction: column-reverse; --_enter-y: -0.75rem; }
+
+    @include mq(max-sm) {
+      width: 100vw;
+      inset-inline: 0;
+      translate: none;
+      align-items: stretch;
+      padding: var(--cui-space-3);
+      &[data-position$="-center"] { left: 0; }
+    }
+  }
+
+  .#{$prefix}toast {
+    --_accent: var(--cui-toast-accent, var(--cui-primary));
+    --_bg: var(--cui-toast-bg, var(--cui-surface));
+    --_fg: var(--cui-toast-fg, var(--cui-text));
+    --_border: var(--cui-toast-border, var(--cui-border));
+    --_radius: var(--cui-toast-radius, var(--cui-radius-lg));
+
+    display: flex;
+    align-items: flex-start;
+    gap: var(--cui-space-3);
+    width: 100%;
+    padding: var(--cui-space-3) var(--cui-space-3) var(--cui-space-3) var(--cui-space-4);
+    font-size: var(--cui-text-sm);
+    line-height: var(--cui-leading-snug);
+    color: var(--_fg);
+    background: var(--_bg);
+    border: var(--cui-border-width) solid var(--_border);
+    border-radius: var(--_radius);
+    box-shadow: inset 3px 0 0 var(--_accent), var(--cui-shadow-lg);
+    &:dir(rtl) { box-shadow: inset -3px 0 0 var(--_accent), var(--cui-shadow-lg); }
+    /* Rises in from the stack's edge and settles; toast.js slides the rest of the stack
+     * (FLIP) when one arrives or leaves, so nothing jumps. */
+    transform-origin: 50% 100%;
+    animation: cui-toast-in var(--cui-duration-slower) var(--cui-ease-out) both;
+    [data-position^="top"] > & { transform-origin: 50% 0; }
+
+    &.#{$prefix}toast-leaving, &.#{$prefix}is-dismissing {
+      animation: cui-toast-out var(--cui-duration) var(--cui-ease-in) forwards;
+      pointer-events: none;
+    }
+  }
+  .#{$prefix}toast-icon { --cui-icon-size: 1.25rem; color: var(--_accent); flex-shrink: 0; }
+  .#{$prefix}toast-content { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; }
+  .#{$prefix}toast-title { font-weight: var(--cui-weight-semibold); color: var(--_fg); }
+  .#{$prefix}toast-message { color: var(--cui-text-2); }
+  .#{$prefix}toast-title + .#{$prefix}toast-message { margin-block-start: 0.125rem; }
+  .#{$prefix}toast-action { align-self: flex-start; flex-shrink: 0; margin-block-start: -0.1875rem; }
+  .#{$prefix}toast-close { flex-shrink: 0; margin: -0.25rem -0.25rem auto 0; }
+
+  /* Variants */
+  @each $status in statuses() {
+    .#{$prefix}toast-#{$status} { --_accent: var(--cui-#{$status}); }
+  }
+
+  /* Solid dark toast in both themes (text tokens remapped like the navbar band). */
+  .#{$prefix}toast-dark {
+    --_bg: var(--cui-band-2);
+    --_fg: var(--cui-band-text);
+    --_border: var(--cui-band-border);
+    --cui-text: var(--cui-band-text);
+    --cui-text-2: var(--cui-band-muted);
+    --cui-text-3: var(--cui-band-muted);
+    --cui-text-4: color-mix(in oklch, var(--cui-band-muted) 60%, transparent);
+    --cui-border: var(--cui-band-border);
+    --cui-surface-hover: var(--cui-band-hover);
+    --cui-ring: var(--cui-band-ring);
+    --cui-shadow-color: oklch(0% 0 0);
+  }
+
+  @keyframes cui-toast-in {
+    from { opacity: 0; translate: 0 var(--_enter-y, 0.75rem); scale: 0.96; }
+    40% { opacity: 1; }
+    to { opacity: 1; translate: 0 0; scale: 1; }
+  }
+  @keyframes cui-toast-out {
+    to { opacity: 0; scale: 0.94; }
+  }
+}

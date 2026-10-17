@@ -10,7 +10,7 @@
 <section class="admin-section">
     <h2>@L["Admin.Registration"]</h2>
     <form method="post" asp-page-handler="Mode">
-        <fieldset class="check-list">
+        <fieldset class="check-group">
             <legend class="visually-hidden">@L["Admin.Registration"]</legend>
             @foreach (var mode in Enum.GetValues<RegistrationMode>())
             {

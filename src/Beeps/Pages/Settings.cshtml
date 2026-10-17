@@ -15,7 +15,9 @@
     <script type="module" src="~/dist/avatar-crop.js" asp-append-version="true"></script>
 }
 <section class="feed settings">
-    <h1>@L["Settings.Title"]</h1>
+    <header class="column-header">
+        <h1 class="column-title">@L["Settings.Title"]</h1>
+    </header>
     <form-errors />
 
     <partial name="_AvatarEditor" model="new AvatarEditor(User.ActorId(), Avatars.For(User.ActorId(), User.AvatarKey()), User.AvatarKey() is not null)" />
@@ -47,7 +49,7 @@
 
     <form class="settings-section" method="post" asp-page-handler="Language" aria-labelledby="language-title">
         <h2 id="language-title">@L["Settings.Language"]</h2>
-        <fieldset class="check-list">
+        <fieldset class="check-group">
             <legend class="visually-hidden">@L["Settings.Language"]</legend>
             @foreach (var culture in SupportedCultures.All)
             {

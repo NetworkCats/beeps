@@ -104,7 +104,7 @@ public sealed partial class AgentAndAdminPagesTests : IDisposable
         Assert.Contains("aria-current=\"page\"", html, StringComparison.Ordinal);
         Assert.Contains("before=", html, StringComparison.Ordinal);
         // The account menu opens the admin area on its overview.
-        Assert.Contains("href=\"/admin\">Admin</a>", html, StringComparison.Ordinal);
+        Assert.Contains("href=\"/admin\"><span class=\"icon\" aria-hidden=\"true\">admin_panel_settings</span>Admin</a>", html, StringComparison.Ordinal);
         PageAssert.NoInlineScriptsOrStyles(html);
     }
 

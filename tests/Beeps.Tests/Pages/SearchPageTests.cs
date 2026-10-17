@@ -100,7 +100,7 @@ public sealed class SearchPageTests : IDisposable
 
         var html = await client.GetStringAsync(new Uri("/public", UriKind.Relative), TestSupport.Ct);
 
-        Assert.Matches("<a class=\"navbar-link nav-search\" href=\"/search\">\\s*<svg[^>]*aria-hidden=\"true\"[^>]*>.*</svg>\\s*<span class=\"nav-label\">Search</span>", html);
+        Assert.Contains("<a class=\"sidenav-item\" href=\"/search\"><span class=\"icon\" aria-hidden=\"true\">search</span><span class=\"sidenav-label\">Search</span></a>", html, StringComparison.Ordinal);
     }
 
     public void Dispose() => factory.Dispose();

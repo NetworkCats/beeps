@@ -5,10 +5,10 @@
     ViewData["Title"] = $"@{user.Handle}";
     var here = Request.Path.Value ?? "";
 }
-<header class="profile-header">
-    <span class="avatar avatar-xl"><img src="@Model.Details.AvatarUrl" alt=""></span>
+<header class="admin-person">
+    <span class="avatar avatar-xl"><img src="@Model.Details.AvatarUrl" alt="" width="64" height="64"></span>
     <div>
-        <h1>@user.DisplayName</h1>
+        <h1 class="profile-name">@user.DisplayName</h1>
         <p class="profile-handle">@@@user.Handle <partial name="_UserBadges" model="user" /></p>
     </div>
 </header>

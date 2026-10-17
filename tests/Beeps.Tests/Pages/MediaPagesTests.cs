@@ -198,7 +198,8 @@ public sealed class MediaPagesTests : IDisposable
 
         var html = await client.GetStringAsync(new Uri("/settings", UriKind.Relative), TestSupport.Ct);
 
-        Assert.Equal(2, html.Split("https://media.beeps.test/face/avatar.webp").Length - 1);
+        // The avatar editor, the navigation rail and the narrow screens' top bar.
+        Assert.Equal(3, html.Split("https://media.beeps.test/face/avatar.webp").Length - 1);
         Assert.Contains("handler=RemoveAvatar", html, StringComparison.Ordinal);
         PageAssert.NoInlineScriptsOrStyles(html);
     }

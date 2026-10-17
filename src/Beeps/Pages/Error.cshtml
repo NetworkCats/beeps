@@ -3,8 +3,14 @@
 @{
     ViewData["Title"] = L[$"{Model.Kind}.Title"];
 }
-<section class="error-page feed">
-    <h1>@ViewData["Title"]</h1>
-    <p>@L[$"{Model.Kind}.Detail"]</p>
-    <a class="btn" href="~/">@L["Error.BackHome"]</a>
+<section class="feed">
+    <header class="column-header">
+        <h1 class="column-title">@ViewData["Title"]</h1>
+    </header>
+    <div class="empty error-page">
+        <p class="empty-text">@L[$"{Model.Kind}.Detail"]</p>
+        <div class="empty-actions">
+            <a class="btn btn-primary" href="~/">@L["Error.BackHome"]</a>
+        </div>
+    </div>
 </section>

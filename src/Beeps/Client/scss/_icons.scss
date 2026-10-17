@@ -1,0 +1,10 @@
+// The icon font: Material Symbols Rounded, only the glyphs listed in Client/icons.json (scripts/build-icons.ts).
+// `block`: a missing glyph would otherwise show its ligature name ("home") until the font arrives; the layout
+// preloads the file, so the wait is short.
+@font-face {
+  font-family: "Material Symbols Rounded";
+  font-style: normal;
+  font-weight: 400;
+  font-display: block;
+  src: url("../fonts/material-symbols-rounded.woff2") format("woff2");
+}

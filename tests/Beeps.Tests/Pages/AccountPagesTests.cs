@@ -21,6 +21,25 @@ public sealed class AccountPagesTests : IDisposable
         PageAssert.NoInlineScriptsOrStyles(html);
     }
 
+    [Theory]
+    [InlineData("/login")]
+    [InlineData("/register")]
+    [InlineData("/forgot-password")]
+    public async Task TheWayInPagesOfferNoOtherWayIn(string path)
+    {
+        using var client = WebAuth.NewClient(factory);
+
+        var html = await client.GetStringAsync(new Uri(path, UriKind.Relative), TestSupport.Ct);
+        var elsewhere = await client.GetStringAsync(new Uri("/public", UriKind.Relative), TestSupport.Ct);
+
+        // The top bar's buttons, the rail's sign-up button and the side column's sign-up card: elsewhere, not here.
+        foreach (var offer in new[] { "class=\"topbar-actions\"", "sidenav-cta", "id=\"join-title\"" })
+        {
+            Assert.DoesNotContain(offer, html, StringComparison.Ordinal);
+            Assert.Contains(offer, elsewhere, StringComparison.Ordinal);
+        }
+    }
+
     [Fact]
     public async Task RegisteringSignsInAndContinuesToVerification()
     {

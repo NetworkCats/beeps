@@ -3,19 +3,30 @@
 @* One inbox entry: the inbox page and the fragment it fetches when new ones arrive. *@
 @{
     var from = Model.From;
+    var tone = Model.Type.ToString().ToLowerInvariant();
 }
 @* data-from: the entry is drawn again when its sender changes name or avatar (live.ts). *@
 <li class="notification@(Model.Read ? "" : " notification-unread")" data-notification="@Model.Id" data-from="@from.Id">
     <p class="notification-summary">
-        <a class="notification-actor" href="@SitePaths.Profile(from.Handle!)">
-            <span class="avatar avatar-sm"><img src="@from.AvatarUrl" alt="" width="24" height="24" loading="lazy"></span>
-            @(from.DisplayName ?? from.Handle)
-        </a>
-        <span>@L[$"Notifications.{Model.Type}"]</span>
-        <utc-time value="Model.CreatedAt" />
+        <span class="notification-icon notification-icon-@tone">
+            @switch (Model.Type)
+            {
+                case NotificationType.Like: <icon name="favorite" /> break;
+                case NotificationType.Reply: <icon name="chat_bubble" /> break;
+                default: <icon name="alternate_email" /> break;
+            }
+        </span>
+        <span class="notification-text">
+            <a class="notification-actor" href="@SitePaths.Profile(from.Handle!)">
+                <span class="avatar avatar-sm"><img src="@from.AvatarUrl" alt="" width="24" height="24" loading="lazy"></span>
+                <span class="notification-name">@(from.DisplayName ?? from.Handle)</span>
+            </a>
+            @L[$"Notifications.{Model.Type}"]
+            <span class="notification-time"><utc-time value="Model.CreatedAt" /></span>
+        </span>
         @if (!Model.Read)
         {
-            <span class="badge badge-primary">@L["Notifications.New"]</span>
+            <span class="notification-dot" title="@L["Notifications.New"]"><span class="visually-hidden">@L["Notifications.New"]</span></span>
         }
     </p>
     <partial name="_Beep" model="new BeepCard(Model.Beep)" />

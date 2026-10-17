@@ -5,12 +5,15 @@
     ViewData["Title"] = L["Report.Title"];
 }
 <section class="feed" data-live-subject="beep:@Model.Beep.Id">
-    <h1 class="feed-title">@L["Report.Title"]</h1>
-    <p class="section-lead">@L["Report.Lead"]</p>
+    <header class="column-header">
+        <a class="column-back" href="@SitePaths.Beep(Model.Beep.Id)" aria-label="@L["Nav.Back"]"><icon name="arrow_back" /></a>
+        <h1 class="column-title">@L["Report.Title"]</h1>
+    </header>
+    <p class="column-lead">@L["Report.Lead"]</p>
     <form-errors />
     <partial name="_Beep" model="new BeepCard(Model.Beep)" />
-    <form class="report-form" method="post">
-        <fieldset class="check-list">
+    <form class="report-form settings-section" method="post">
+        <fieldset class="check-group">
             <legend class="label">@L["Report.Reason"]</legend>
             @foreach (var reason in ReportModel.Reasons)
             {

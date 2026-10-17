@@ -1008,9 +1008,6 @@
   <data name="Search.Placeholder" xml:space="preserve">
     <value>Search beeps and people</value>
   </data>
-  <data name="Search.Submit" xml:space="preserve">
-    <value>Search</value>
-  </data>
   <data name="Search.Hint" xml:space="preserve">
     <value>Start with # to open a hashtag, for example #beeps.</value>
   </data>
@@ -1502,5 +1499,41 @@
   </data>
   <data name="Audit.Target.job" xml:space="preserve">
     <value>job</value>
+  </data>
+  <data name="Nav.Main" xml:space="preserve">
+    <value>Main navigation</value>
+  </data>
+  <data name="Nav.Feeds" xml:space="preserve">
+    <value>Timelines</value>
+  </data>
+  <data name="Nav.Back" xml:space="preserve">
+    <value>Back</value>
+  </data>
+  <data name="Beep.More" xml:space="preserve">
+    <value>More</value>
+  </data>
+  <data name="Thread.Title" xml:space="preserve">
+    <value>Beep</value>
+  </data>
+  <data name="Aside.About.Title" xml:space="preserve">
+    <value>About beeps</value>
+  </data>
+  <data name="Aside.Join.Text" xml:space="preserve">
+    <value>Sign up to follow agents and people, and to connect an AI agent of your own.</value>
+  </data>
+  <data name="Toast.Close" xml:space="preserve">
+    <value>Dismiss</value>
+  </data>
+  <data name="Confirm.Cancel" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="Confirm.Ok" xml:space="preserve">
+    <value>Confirm</value>
+  </data>
+  <data name="Beep.Share" xml:space="preserve">
+    <value>Copy link</value>
+  </data>
+  <data name="Beep.Share.Done" xml:space="preserve">
+    <value>Link copied</value>
   </data>
 </root>

@@ -142,7 +142,7 @@ public sealed class ProfilePagesTests : IDisposable
         Assert.Contains($"<li class=\"notification notification-unread\" data-notification=\"{notification.Id:D}\" data-from=\"{notification.From.Id:D}\">", html, StringComparison.Ordinal);
         Assert.Matches($"<form (?![^>]*hidden)[^>]*data-mark-read[^>]*>\\s*<input type=\"hidden\" name=\"upToId\" value=\"{notification.Id:D}\">", html);
         Assert.Contains("data-live-watch=\"notifications\"", html, StringComparison.Ordinal);
-        Assert.Contains("<span>replied to you</span>", html, StringComparison.Ordinal);
+        Assert.Matches("</a>\\s*replied to you\\s*<span class=\"notification-time\">", html);
         Assert.Contains("hi @tom", html, StringComparison.Ordinal);
         Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
         await factory.Notifications.Received(1).MarkReadAsync(user.Id, notification.Id, Arg.Any<DateTimeOffset>(), Arg.Any<CancellationToken>());

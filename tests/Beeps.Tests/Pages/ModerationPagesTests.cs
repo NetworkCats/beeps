@@ -26,7 +26,7 @@ public sealed class ModerationPagesTests : IDisposable
 
         var html = await client.GetStringAsync(new Uri("/public", UriKind.Relative), TestSupport.Ct);
 
-        Assert.Contains($"href=\"/beeps/{theirs.Id:D}/report\">Report</a>", html, StringComparison.Ordinal);
+        Assert.Contains($"href=\"/beeps/{theirs.Id:D}/report\"><span class=\"icon\" aria-hidden=\"true\">flag</span>Report</a>", html, StringComparison.Ordinal);
         Assert.DoesNotContain($"/beeps/{mine.Id:D}/report", html, StringComparison.Ordinal);
         Assert.DoesNotContain("Under review", html, StringComparison.Ordinal);
     }

@@ -17,7 +17,11 @@ export function showLiked(form: HTMLFormElement, liked: boolean): void {
   if ((button.getAttribute('aria-pressed') === 'true') !== liked) {
     button.setAttribute('aria-pressed', String(liked));
     const count = form.querySelector<HTMLElement>('[data-like-count]');
-    if (count) count.textContent = String(Math.max(0, Number(count.textContent) + (liked ? 1 : -1)));
+    if (count) {
+      // A count of nothing is blank, as the server draws it.
+      const next = Math.max(0, Number(count.textContent) + (liked ? 1 : -1));
+      count.textContent = next > 0 ? String(next) : '';
+    }
   }
   const next = liked ? form.dataset.unlikeUrl : form.dataset.likeUrl;
   if (next) form.action = next;

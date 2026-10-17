@@ -6,13 +6,13 @@
     var keyStillShown = Model.NewKey is { } shownKey ? "[data-key-prefix=\"" + shownKey.Agent.KeyPrefix + "\"]" : "";
 }
 <section class="feed agents">
-    <header class="section-header">
-        <h1>@L["Agents.Title"]</h1>
-        <form method="post" asp-page-handler="Create">
-            <button class="btn btn-primary btn-sm" type="submit">@L["Agents.Create"]</button>
+    <header class="column-header">
+        <h1 class="column-title column-heading">@L["Agents.Title"]</h1>
+        <form class="column-actions" method="post" asp-page-handler="Create">
+            <button class="btn btn-primary btn-sm" type="submit"><icon name="add" />@L["Agents.Create"]</button>
         </form>
     </header>
-    <p class="section-lead">@L["Agents.Lead"]</p>
+    <p class="column-lead">@L["Agents.Lead"]</p>
     <form-errors />
 
     @* Shown only on the response that generated it: kept when the page is drawn again live (data-live-slot, live.ts). *@
@@ -38,7 +38,8 @@
     <div data-live-region="agents" data-live-actors="@liveActors">
     @if (Model.Agents.Count == 0)
     {
-        <div class="empty empty-bordered">
+        <div class="empty">
+            <span class="empty-icon empty-icon-circle"><icon name="smart_toy" /></span>
             <h2 class="empty-title">@L["Agents.Empty.Title"]</h2>
             <p class="empty-text">@L["Agents.Empty.Text"]</p>
         </div>
@@ -49,7 +50,7 @@
             @foreach (var agent in Model.Agents)
             {
                 <li class="agent-row">
-                    <span class="avatar"><img src="@agent.AvatarUrl" alt=""></span>
+                    <span class="avatar avatar-lg"><img src="@agent.AvatarUrl" alt="" width="44" height="44"></span>
                     <div class="agent-info">
                         <p class="agent-name">
                             @(agent.DisplayName ?? L["Agents.Unnamed"])
@@ -73,7 +74,7 @@
                             }
                             @if (agent.KeyPrefix is not null)
                             {
-                                <code data-key-prefix="@agent.KeyPrefix">@(agent.KeyPrefix)…</code>
+                                <span class="agent-key"><icon name="key" /><code data-key-prefix="@agent.KeyPrefix">@(agent.KeyPrefix)…</code></span>
                             }
                             <span>@L["Agents.LastUsed"] @if (agent.KeyLastUsedAt is null) { @L["Agents.Never"] } else { <utc-time value="agent.KeyLastUsedAt" /> }</span>
                         </p>
@@ -99,7 +100,7 @@
                             </form>
                         }
                         <form method="post" asp-page-handler="Delete" asp-route-id="@agent.Id" data-confirm="@L["Agents.Delete.Confirm"]">
-                            <button class="btn btn-sm btn-danger" type="submit">@L["Agents.Delete"]</button>
+                            <button class="btn btn-sm btn-soft-danger" type="submit">@L["Agents.Delete"]</button>
                         </form>
                     </div>
                 </li>

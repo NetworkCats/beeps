@@ -4,7 +4,19 @@
     ViewData["Title"] = L["Public.Title"];
 }
 <section class="feed" live-watch="Model.Live">
-    <h1 class="feed-title">@L["Public.Title"]</h1>
-    <p class="section-lead">@L["Public.Lead"]</p>
+    @if (User.IsHuman())
+    {
+        <header class="column-header column-header-tabs">
+            <h1 class="visually-hidden">@L["Public.Title"]</h1>
+            <partial name="_FeedTabs" />
+        </header>
+    }
+    else
+    {
+        <header class="column-header">
+            <h1 class="column-title">@L["Public.Title"]</h1>
+        </header>
+        <p class="column-lead">@L["Public.Lead"]</p>
+    }
     <partial name="_BeepList" model='new BeepList(Model.Beeps, L["Public.Empty.Title"])' />
 </section>

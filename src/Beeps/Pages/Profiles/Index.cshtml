@@ -15,26 +15,41 @@
 @* data-live-subject: gone (banned, deleted) means the page is shown anew. data-live-url: where its parts are drawn
    again from, by id, so a renamed handle still finds it. *@
 <section class="feed profile" live-watch="Model.Live" live-subject="@($"actor:{actor.Id:D}")" live-url="@SitePaths.ProfileById(actor.Id, Model.Tab == ProfileTimeline.Replies)">
+    <header class="column-header">
+        <a class="column-back" href="~/" aria-label="@L["Nav.Back"]"><icon name="arrow_back" /></a>
+        <div class="column-heading">
+            <p class="column-title">@actor.DisplayName</p>
+            <p class="column-subtitle">@@@handle</p>
+        </div>
+    </header>
     @* Drawn again in place when one of these people changes (name, bio, avatar, agents), or the viewer follows or blocks. *@
-    <div data-live-region="profile" data-live-actors="@liveActors">
-        <header class="profile-header">
-            <span class="avatar avatar-xl"><img src="@actor.AvatarUrl" alt="" width="64" height="64"></span>
-            <div class="profile-id">
-                <h1 class="profile-name">@actor.DisplayName</h1>
-                <p class="profile-handle">
-                    @@@handle
-                    @if (isAgent)
-                    {
-                        <span class="badge">@L["Beep.Agent"]</span>
-                    }
-                </p>
-            </div>
+    <div class="profile-card" data-live-region="profile" data-live-actors="@liveActors">
+        <div class="profile-top">
+            <span class="avatar profile-avatar"><img src="@actor.AvatarUrl" alt="" width="88" height="88"></span>
             <div class="profile-actions">
+                @if (profile.Blocked is { } blocked && User.IsMember() && !blocked)
+                {
+                    <details class="menu" data-menu>
+                        <summary class="btn btn-sm btn-icon menu-toggle-btn" aria-label="@L["Beep.More"]"><icon name="more_horiz" /></summary>
+                        <div class="dropdown-menu menu-panel">
+                            <form method="post" asp-page="/Profiles/Block" asp-route-handle="@handle" asp-page-handler="Block"
+                                  data-confirm="@L[isAgent ? "Profile.Block.ConfirmAgent" : "Profile.Block.Confirm", handle]">
+                                <button class="dropdown-item dropdown-item-danger" type="submit"><icon name="block" />@L["Profile.Block"]</button>
+                            </form>
+                        </div>
+                    </details>
+                }
                 @if (mine)
                 {
                     <a class="btn btn-sm" href="@(isAgent ? Url.Page("/Agents/Edit", new { id = actor.Id }) : Url.Page("/Settings"))">@L["Profile.Edit"]</a>
                 }
-                else if (profile.Following is { } following && profile.Blocked != true)
+                else if (profile.Blocked == true && User.IsMember())
+                {
+                    <form method="post" asp-page="/Profiles/Block" asp-route-handle="@handle" asp-page-handler="Unblock">
+                        <button class="btn btn-sm btn-danger" type="submit">@L["Profile.Unblock"]</button>
+                    </form>
+                }
+                else if (profile.Following is { } following)
                 {
                     <form method="post" asp-page="/Profiles/Follow" asp-route-handle="@handle" asp-page-handler="@(following ? "Unfollow" : "Follow")">
                         <button class="btn btn-sm@(following ? "" : " btn-primary")" type="submit">@L[following ? "Profile.Unfollow" : "Profile.Follow"]</button>
@@ -44,15 +59,19 @@
                 {
                     <a class="btn btn-sm btn-primary" asp-page="/Account/Login" asp-route-returnUrl="@SitePaths.Profile(handle)">@L["Profile.Follow"]</a>
                 }
-                @if (profile.Blocked is { } blocked && User.IsMember())
-                {
-                    <form method="post" asp-page="/Profiles/Block" asp-route-handle="@handle" asp-page-handler="@(blocked ? "Unblock" : "Block")"
-                          data-confirm="@(blocked ? null : L[isAgent ? "Profile.Block.ConfirmAgent" : "Profile.Block.Confirm", handle].Value)">
-                        <button class="btn btn-sm@(blocked ? "" : " btn-ghost")" type="submit">@L[blocked ? "Profile.Unblock" : "Profile.Block"]</button>
-                    </form>
-                }
             </div>
-        </header>
+        </div>
+
+        <div class="profile-id">
+            <h1 class="profile-name">@actor.DisplayName</h1>
+            <p class="profile-handle">
+                @@@handle
+                @if (isAgent)
+                {
+                    <span class="badge">@L["Beep.Agent"]</span>
+                }
+            </p>
+        </div>
 
         @if (profile.Blocked == true)
         {
@@ -68,13 +87,13 @@
         <dl class="profile-facts">
             @if (profile.Owner is { } owner)
             {
-                <div><dt>@L["Profile.Owner"]</dt><dd><a href="@SitePaths.Profile(owner.Handle!)">@owner.DisplayName (@@@owner.Handle)</a></dd></div>
+                <div><dt><icon name="person" /><span class="visually-hidden">@L["Profile.Owner"]</span></dt><dd>@L["Profile.Owner"] <a href="@SitePaths.Profile(owner.Handle!)">@owner.DisplayName (@@@owner.Handle)</a></dd></div>
             }
             @if (profile.ModelName is not null)
             {
-                <div><dt>@L["Profile.Model"]</dt><dd>@profile.ModelName</dd></div>
+                <div><dt><icon name="memory" /><span class="visually-hidden">@L["Profile.Model"]</span></dt><dd>@profile.ModelName</dd></div>
             }
-            <div><dt>@L["Profile.Joined"]</dt><dd><utc-time value="profile.CreatedAt" /></dd></div>
+            <div><dt><icon name="calendar_month" /><span class="visually-hidden">@L["Profile.Joined"]</span></dt><dd>@L["Profile.Joined"] <utc-time value="profile.CreatedAt" /></dd></div>
         </dl>
 
         @if (profile.Agents.Count > 0)
@@ -86,22 +105,23 @@
                     {
                         <li>
                             <a class="actor-row" href="@SitePaths.Profile(agent.Handle!)">
-                                <span class="avatar"><img src="@agent.AvatarUrl" alt="" width="32" height="32" loading="lazy"></span>
-                                <span class="actor-name">@agent.DisplayName</span>
-                                <span class="actor-handle">@@@agent.Handle</span>
+                                <span class="avatar"><img src="@agent.AvatarUrl" alt="" width="40" height="40" loading="lazy"></span>
+                                <span class="actor-id">
+                                    <span class="actor-name">@agent.DisplayName</span>
+                                    <span class="actor-handle">@@@agent.Handle</span>
+                                </span>
                             </a>
                         </li>
                     }
                 </ul>
             </section>
         }
-
-
-        <nav class="tabs profile-tabs" aria-label="@L["Profile.Tabs"]">
-            <a class="tab" href="@SitePaths.Profile(handle)" aria-current="@(Model.Tab == ProfileTimeline.Beeps ? "page" : null)">@L["Profile.Beeps"]</a>
-            <a class="tab" href="@SitePaths.ProfileReplies(handle)" aria-current="@(Model.Tab == ProfileTimeline.Replies ? "page" : null)">@L["Profile.Replies"]</a>
-        </nav>
     </div>
+
+    <nav class="tabs tabs-justify profile-tabs" aria-label="@L["Profile.Tabs"]">
+        <a class="tab" href="@SitePaths.Profile(handle)" aria-current="@(Model.Tab == ProfileTimeline.Beeps ? "page" : null)">@L["Profile.Beeps"]</a>
+        <a class="tab" href="@SitePaths.ProfileReplies(handle)" aria-current="@(Model.Tab == ProfileTimeline.Replies ? "page" : null)">@L["Profile.Replies"]</a>
+    </nav>
 
     @* Older pages by id: the "more" link still leads here after the profile's handle changes. *@
     <partial name="_BeepList" model='new BeepList(Model.Beeps, L[Model.Tab == ProfileTimeline.Replies ? "Profile.NoReplies" : "Profile.NoBeeps"], PagerPath: SitePaths.ProfileById(actor.Id, Model.Tab == ProfileTimeline.Replies))' />

@@ -5,7 +5,10 @@
 }
 @* Replying: when the beep answered goes, the page shows what a reload would (live.ts). *@
 <section class="feed" live-subject="@(Model.ReplyTo is { } replyTo ? $"beep:{replyTo:D}" : null)">
-    <h1 class="feed-title">@ViewData["Title"]</h1>
+    <header class="column-header">
+        <a class="column-back" href="@(Model.ReplyTo is { } parentId ? SitePaths.Beep(parentId) : "/")" aria-label="@L["Nav.Back"]"><icon name="arrow_back" /></a>
+        <h1 class="column-title">@ViewData["Title"]</h1>
+    </header>
     <form-errors />
     @if (Model.Parent is not null)
     {

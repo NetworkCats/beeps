@@ -31,6 +31,10 @@
 | `components/_timeline.scss` | 分步骤组件（Stepper，`.steps`），用于 onboarding |
 | `components/_tabs.scss` | 个人主页的"beep / 回复"标签（2026-10-16 阶段 3 复制，只用链接形式，不用 `indicator.js`） |
 | `components/_dropdown.scss` | 导航栏账号菜单的菜单项样式（2026-10-16 阶段 3 复制；菜单本身用 `<details>`，不用 Popover 和 `dropdown.js`） |
+| `components/_icon.scss` | 图标（Material Symbols，2026-10-17 UI 重构时复制） |
+| `components/_search.scss` | 搜索框（侧栏和搜索页，2026-10-17 复制） |
+| `components/_toast.scss` | 操作结果提示（2026-10-17 复制；不用 `toast.js`，见 `Client/ts/toast.ts`） |
+| `components/_dialog.scss` | 删除等操作的确认对话框（2026-10-17 复制；不用 `dialog.js`，见 `Client/ts/confirm.ts`） |
 | `_utilities.scss` | 工具类（`visually-hidden` 等） |
 
 只复制用到的组件；新增组件时从上游复制对应文件并更新上表。
@@ -38,10 +42,14 @@
 ## 与上游的差异
 
 - beeps 不在这里改上游文件，而是通过 Sass 配置（`Client/scss/main.scss` 中的 `@use … with (…)`）
-  和 `Client/scss/_tokens.scss` 中的 token 覆盖来调整设计，方便与上游对比。
-- 不使用 Material Symbols 图标字体（不加载第三方字体），需要图标时使用内联 SVG。依赖图标字体的
-  地方在 `Client/scss/_site.scss` 中覆盖：Stepper 已完成步骤的勾改用普通字符 `✓`；复制按钮
-  一律带文字（`.btn-copy` 非空时上游会隐藏图标）。
+  和 `Client/scss/_theme.scss` 中的 token 覆盖来调整设计，方便与上游对比。
+- 图标字体用 Material Symbols Rounded（`$icon-font`），但自托管并裁剪到只含用到的图标：名单在
+  `Client/icons.json`，由 `scripts/build-icons.ts` 下载到 `wwwroot/fonts/`（见 PLAN 6.9）。组件
+  用 `icon-glyph()` 画的图标（Stepper 的勾、关闭按钮）也要列进名单；复制按钮一律带文字
+  （`.btn-copy` 非空时上游会隐藏图标），所以不需要 `content_copy`。
+- 中性灰改成无彩度的纯灰（`main.scss` 里覆盖 `$neutral`），并关掉品牌色对中性色的 tint
+  （`_theme.scss`），页面背景是纯白 / 近黑。圆角比上游大（`$radii`），按钮是胶囊形、没有上游的
+  键帽立体效果。
 - 脚本没有复制上游的 `src/ts/`：`Client/ts/copy.ts` 参照上游 `copy.ts` 改写（去掉 toast 和
   图标切换，按钮改为切换文字），`data-cui-copy` 改为 `data-copy`。
 

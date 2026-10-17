@@ -62,7 +62,7 @@ public sealed class HomePageTests(BeepsWebApplicationFactory factory) : IClassFi
         var html = await client.GetStringAsync(new Uri("/", UriKind.Relative), TestSupport.Ct);
 
         Assert.Matches("<link rel=\"icon\" type=\"image/png\" href=\"/images/logo[^\"]*\\.png\"", html);
-        Assert.Matches("<a class=\"navbar-brand site-brand\" href=\"/\">\\s*<img src=\"/images/logo[^\"]*\\.png\" alt=\"\"", html);
+        Assert.Matches("<a class=\"sidenav-brand site-brand\" href=\"/\">\\s*<img src=\"/images/logo[^\"]*\\.png\" alt=\"\"", html);
     }
 
     [Fact]

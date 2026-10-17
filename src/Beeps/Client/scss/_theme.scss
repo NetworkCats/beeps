@@ -1,16 +1,19 @@
 // beeps design tokens, applied on top of collection-ui's defaults.
 //
-// Direction: restrained and content-first. Hierarchy comes from type and whitespace; no
-// gradients, glass or decorative motion. Concretely:
+// Direction: a modern social feed, restrained and content-first. Hierarchy comes from type and
+// whitespace; no gradients, glass or decorative motion. Concretely:
+// - Colour: the page is one flat, pure colour (white, or near-black in dark mode) with no hue in it.
+//   Upstream washes every neutral with the brand ("tinted neutrals"); beeps turns that off and uses
+//   pure grays (the $neutral ladder in main.scss), so only the brand accent carries colour.
 // - Brand: indigo (set in main.scss). Calm, readable as link colour on both themes, and distinct
 //   from the status colours (green/amber/red/cyan).
-// - Fonts: the system stack with explicit Simplified Chinese fallbacks. beeps is bilingual and
-//   upstream's IBM Plex has no CJK glyphs; system fonts also mean no web-font download.
-// - Width: a feed of short posts reads best in a narrow column, so the page container is narrower
-//   than upstream's and the feed column narrower still.
-// - Header and footer are light (page surface + hairline) instead of upstream's dark band, so the
-//   content, not the chrome, carries the page.
+// - Surfaces are flat: cards, inputs and menus sit on the page colour and are told apart by hairlines,
+//   not by fills or shadows. Buttons are pills without upstream's keycap relief.
+// - Type: the system stack with explicit Simplified Chinese fallbacks (upstream's IBM Plex has no CJK
+//   glyphs; system fonts also mean no web-font download). Headings are small: a page is named in its
+//   column header, the way social apps do, instead of with a display-sized title.
 @use "../collection-ui/foundation/layers";
+@use "../collection-ui/abstracts" as *;
 
 // Same layer as upstream's tokens and loaded after them, so these win while any unlayered page
 // CSS still wins over both.
@@ -21,8 +24,112 @@
       "Apple Color Emoji", "Segoe UI Emoji";
     --cui-font-mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, "Liberation Mono", monospace;
 
-    --cui-container: 64rem;
-    --beeps-feed-width: 40rem;
-    --beeps-text-leading: var(--cui-leading-relaxed);
+    // ---- Colour: pure neutrals, no tint ------------------------------------------------------
+    --cui-tint: var(--cui-neutral-500);
+    --cui-bg: light-dark(#fff, oklch(14.5% 0 0));
+    --cui-surface: var(--cui-bg);
+    --cui-surface-2: light-dark(oklch(97% 0 0), oklch(20.5% 0 0));
+    --cui-surface-3: light-dark(oklch(92.2% 0 0), oklch(26.9% 0 0));
+    --cui-surface-hover: light-dark(oklch(97.6% 0 0), oklch(18% 0 0));
+    // The hover pill behind navigation and icon buttons: a clearer wash than a row's.
+    --beeps-hover-strong: light-dark(oklch(94% 0 0), oklch(22% 0 0));
+    // Menus and other things that float above the page.
+    --beeps-surface-raised: light-dark(#fff, oklch(20.5% 0 0));
+    --cui-overlay: oklch(0% 0 0 / 0.45);
+    // Dark bands (the dark toast): neutral too.
+    --cui-band: light-dark(oklch(20.5% 0 0), oklch(26.9% 0 0));
+    --cui-band-2: var(--cui-band);
+    --cui-band-muted: oklch(76% 0 0);
+
+    // Hairlines are light: they separate, the content carries the page.
+    --cui-border: light-dark(oklch(94% 0 0), oklch(27% 0 0));
+    --cui-border-strong: light-dark(oklch(88% 0 0), oklch(34% 0 0));
+    --cui-control-border: light-dark(oklch(87% 0 0), oklch(36% 0 0));
+
+    // Ink, and one secondary gray for everything around it (handles, times, counts, icons), as feeds do.
+    --cui-text: light-dark(oklch(18% 0 0), oklch(95% 0 0));
+    --cui-text-2: light-dark(oklch(47% 0 0), oklch(70% 0 0));
+    --cui-text-3: var(--cui-text-2);
+    --cui-text-4: light-dark(oklch(70% 0 0), oklch(48% 0 0));
+    // Navigation reads quieter than content; the current page is in full ink.
+    --beeps-nav-fg: light-dark(oklch(32% 0 0), oklch(86% 0 0));
+
+    // Flat: no keycap highlight, no sunken wells, neutral shadows only where something floats.
+    --cui-shadow-color: oklch(0% 0 0);
+    --cui-highlight: transparent;
+    --cui-edge: transparent;
+    --cui-shadow-key: none;
+    --cui-shadow-well: none;
+    --cui-shadow-pressed: none;
+    --cui-shadow-md: 0 4px 16px -2px oklch(0% 0 0 / 0.1), 0 1px 3px oklch(0% 0 0 / 0.06);
+    --cui-shadow-lg: 0 12px 32px -6px oklch(0% 0 0 / 0.16), 0 2px 6px oklch(0% 0 0 / 0.06);
+
+    // ---- Controls ------------------------------------------------------------------------------
+    --cui-control-height-xs: 1.75rem;
+    --cui-control-height-sm: 2rem;
+    --cui-control-height: 2.625rem;
+    --cui-control-height-lg: 3rem;
+    // Buttons are a step lower than fields, as on social sites (36px; small 32px).
+    --cui-btn-height: 2.25rem;
+    --cui-btn-font: var(--beeps-text-size);
+    --cui-control-padding-x: 1rem;
+    --cui-control-font-size: 0.9375rem;
+    --cui-control-radius: 10px;
+    --cui-btn-radius: var(--cui-radius-full);
+    --cui-btn-weight: var(--cui-weight-bold);
+    --cui-icon-weight: 300;
+    --cui-weight-bold: 700;
+    --cui-badge-radius: var(--cui-radius-full);
+    --cui-tabs-active-bg: transparent;
+    --cui-card-radius: var(--cui-radius-xl);
+    --cui-dropdown-bg: var(--beeps-surface-raised);
+
+    // ---- Layout --------------------------------------------------------------------------------
+    // The app shell: a navigation rail, the content column and, on wide screens, a side column.
+    --beeps-nav-width: 15rem;
+    --beeps-column-width: 37.5rem;
+    --beeps-aside-width: 20rem;
+    --beeps-column-header-height: 3.3125rem;
+    --beeps-topbar-height: 3.3125rem;
+    --beeps-tabbar-height: 3.5rem;
+    --beeps-pad: 1rem;
+    // 15px on a 21px line: close to the 20px feeds use, with the room Chinese text needs.
+    --beeps-text-leading: 1.4;
+    --beeps-text-size: 0.9375rem;
+    --cui-navbar-height: 0px;
   }
+}
+
+// Headings are kept small: the page title is a 20px column header, sections are 16–17px.
+// In cui.base, after upstream's element defaults, so components (card titles, empty states) still win.
+@layer cui.base {
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  h1, .h1 { font-size: var(--cui-text-xl); font-weight: 800; letter-spacing: -0.01em; }
+  h2, .h2 { font-size: 1.0625rem; font-weight: var(--cui-weight-bold); letter-spacing: -0.005em; }
+  h3, .h3 { font-size: var(--cui-text-base); letter-spacing: 0; }
+  h4, .h4 { font-size: var(--cui-text-sm); }
+
+  @include mq(max-sm) {
+    h1, .h1 { font-size: var(--cui-text-lg); }
+    h2, .h2 { font-size: var(--cui-text-base); }
+  }
+
+  :where(code):not(pre code, .cmd code) {
+    background: var(--cui-surface-2);
+    color: var(--cui-text);
+  }
+}
+
+// Component tuning that only touches collection-ui's own knobs, in its own layer so page CSS still wins.
+@layer cui.components {
+  .btn-sm { --_height: var(--cui-control-height-sm); --_font: 0.875rem; --_px: 1rem; }
+  .btn-lg { --_height: var(--cui-control-height-lg); --_font: 1.0625rem; --_px: 1.5rem; }
+  .btn:active { translate: none; }
+  .btn-primary, .btn-danger { --_border: transparent; }
+  .input, .select, .textarea { font-size: var(--cui-text-base); }
 }

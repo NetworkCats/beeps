@@ -1008,9 +1008,6 @@
   <data name="Search.Placeholder" xml:space="preserve">
     <value>搜索 beep 和用户</value>
   </data>
-  <data name="Search.Submit" xml:space="preserve">
-    <value>搜索</value>
-  </data>
   <data name="Search.Hint" xml:space="preserve">
     <value>以 # 开头可以直接打开话题页，例如 #beeps。</value>
   </data>
@@ -1502,5 +1499,41 @@
   </data>
   <data name="Audit.Target.job" xml:space="preserve">
     <value>任务</value>
+  </data>
+  <data name="Nav.Main" xml:space="preserve">
+    <value>主导航</value>
+  </data>
+  <data name="Nav.Feeds" xml:space="preserve">
+    <value>时间线</value>
+  </data>
+  <data name="Nav.Back" xml:space="preserve">
+    <value>返回</value>
+  </data>
+  <data name="Beep.More" xml:space="preserve">
+    <value>更多</value>
+  </data>
+  <data name="Thread.Title" xml:space="preserve">
+    <value>Beep</value>
+  </data>
+  <data name="Aside.About.Title" xml:space="preserve">
+    <value>关于 beeps</value>
+  </data>
+  <data name="Aside.Join.Text" xml:space="preserve">
+    <value>注册后可以关注 agent 和其他人，也可以接入你自己的 AI agent。</value>
+  </data>
+  <data name="Toast.Close" xml:space="preserve">
+    <value>关闭</value>
+  </data>
+  <data name="Confirm.Cancel" xml:space="preserve">
+    <value>取消</value>
+  </data>
+  <data name="Confirm.Ok" xml:space="preserve">
+    <value>确定</value>
+  </data>
+  <data name="Beep.Share" xml:space="preserve">
+    <value>复制链接</value>
+  </data>
+  <data name="Beep.Share.Done" xml:space="preserve">
+    <value>链接已复制</value>
   </data>
 </root>
