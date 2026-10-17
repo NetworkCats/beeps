@@ -1,8 +1,6 @@
 @using System.Globalization
-@using Beeps.Features.Avatars
 @using Beeps.Features.Site
 @using Beeps.Pages.Islands
-@inject AvatarUrls Avatars
 @inject ClientConfig AppConfig
 @{
     var currentCulture = CultureInfo.CurrentUICulture.Name;
@@ -15,7 +13,6 @@
     var handle = signedIn ? User.Identity?.Name ?? "" : "";
     var profilePath = signedIn ? SitePaths.Profile(handle) : "";
     var onOwnProfile = signedIn && page == "/Profiles/Index" && string.Equals(Context.Request.Path.Value?.TrimStart('/').Split('/')[0], handle, StringComparison.OrdinalIgnoreCase);
-    var avatar = signedIn ? Avatars.For(User.ActorId(), User.AvatarKey()) : null;
     // The pages that are themselves the way in: the shell offers no other sign-in or sign-up there.
     var offerSignIn = !signedIn && page is not ("/Account/Login" or "/Account/Register" or "/Account/ForgotPassword" or "/Account/ResetPassword");
     // Admin pages hold tables: a wider column and no side column.
@@ -48,14 +45,8 @@
         <header class="topbar">
             @if (signedIn)
             {
-                <island name="account-menu" props="new AccountMenuProps(Rail: false)">
-                    <details class="menu topbar-menu">
-                        <summary class="menu-toggle" aria-label="@L["Nav.Account"]">
-                            <span class="avatar"><img src="@avatar" alt="" width="32" height="32"></span>
-                        </summary>
-                        <partial name="_AccountMenu" />
-                    </details>
-                </island>
+                @* The account's menu, drawn by shell/AccountMenu.tsx, as is everything else only signed-in people see. *@
+                <island name="account-menu" props="new AccountMenuProps(Rail: false)" />
             }
             <a class="topbar-brand" href="~/" aria-label="@L["Site.Name"]">
                 <img src="~/images/logo.png" asp-append-version="true" alt="" width="32" height="32">
@@ -86,7 +77,7 @@
                 <a class="sidenav-item" asp-page="/Notifications" aria-current="@Current("/Notifications")">
                     <icon name="notifications" /><span class="sidenav-label">@L["Nav.Notifications"]</span>
                     @* The unread count, once the live connection says it. *@
-                    <island name="inbox-count" tag="span"><span class="count count-primary nav-count" hidden></span></island>
+                    <island name="inbox-count" tag="span" />
                 </a>
                 <a class="sidenav-item" asp-page="/Agents/Index" aria-current="@Current("/Agents/Index", "/Agents/Edit")"><icon name="smart_toy" /><span class="sidenav-label">@L["Nav.Agents"]</span></a>
                 <a class="sidenav-item" href="@profilePath" aria-current="@(onOwnProfile ? "page" : null)"><icon name="person" /><span class="sidenav-label">@L["Nav.Profile"]</span></a>
@@ -96,16 +87,7 @@
                     <a class="btn btn-primary sidenav-cta" asp-page="/Compose" aria-label="@L["Compose.Title"]"><icon name="edit_square" /><span class="sidenav-label">@L["Compose.Title"]</span></a>
                 }
                 <div class="sidenav-footer">
-                    <island name="account-menu" props="new AccountMenuProps(Rail: true)">
-                        <details class="menu sidenav-menu">
-                            <summary class="menu-toggle" aria-label="@L["Nav.Account"]">
-                                <span class="avatar"><img src="@avatar" alt="" width="32" height="32"></span>
-                                <span class="menu-handle">@@@handle</span>
-                                <icon name="more_horiz" class="menu-more" />
-                            </summary>
-                            <partial name="_AccountMenu" />
-                        </details>
-                    </island>
+                    <island name="account-menu" props="new AccountMenuProps(Rail: true)" />
                 </div>
             }
             else
@@ -161,7 +143,7 @@
                 <a class="tabbar-item" asp-page="/Search" aria-current="@Current("/Search")"><icon name="search" /><span class="visually-hidden">@L["Nav.Search"]</span></a>
                 <a class="tabbar-item" asp-page="/Notifications" aria-current="@Current("/Notifications")">
                     <icon name="notifications" /><span class="visually-hidden">@L["Nav.Notifications"]</span>
-                    <island name="inbox-count" tag="span"><span class="count count-primary nav-count" hidden></span></island>
+                    <island name="inbox-count" tag="span" />
                 </a>
                 <a class="tabbar-item" asp-page="/Agents/Index" aria-current="@Current("/Agents/Index", "/Agents/Edit")"><icon name="smart_toy" /><span class="visually-hidden">@L["Nav.Agents"]</span></a>
             </nav>
@@ -172,7 +154,8 @@
         }
     </div>
 
-    @* What the last action did: a toast at the bottom that goes by itself (notice) or stays until closed (alert). *@
+    @* What the last action did: a toast at the bottom that goes by itself (notice) or stays until closed (alert)
+       (shell/Toasts.tsx). *@
     <island name="toasts" props="new ToastsProps(notice, alert)">
     @if (notice is not null || alert is not null)
     {
@@ -201,19 +184,7 @@
     {
         @* The confirmation asked before a destructive action, with the question filled in (shell/ConfirmDialog.tsx). Signed
            out there is nothing to destroy. *@
-        <island name="confirm">
-            <dialog class="dialog dialog-sm dialog-plain confirm-dialog">
-                <!form method="dialog">
-                    <div class="dialog-body">
-                        <p class="confirm-message"></p>
-                    </div>
-                    <div class="dialog-footer">
-                        <button class="btn" value="cancel" autofocus>@L["Confirm.Cancel"]</button>
-                        <button class="btn btn-danger" value="confirm">@L["Confirm.Ok"]</button>
-                    </div>
-                </!form>
-            </dialog>
-        </island>
+        <island name="confirm" />
     }
     @* What the app needs besides the islands' props (Client/app/config.ts). *@
     <script type="application/json" id="app-config">@Html.Raw(AppConfig.For(Context))</script>

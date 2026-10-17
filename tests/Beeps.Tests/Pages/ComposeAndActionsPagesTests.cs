@@ -41,9 +41,10 @@ public sealed class ComposeAndActionsPagesTests : IDisposable
         var html = await response.Content.ReadAsStringAsync(TestSupport.Ct);
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-        Assert.Contains($">{text}</textarea>", html, StringComparison.Ordinal);
-        Assert.Contains("aria-invalid=\"true\"", html, StringComparison.Ordinal);
-        Assert.Contains("<p class=\"error\" id=\"text-error\">", html, StringComparison.Ordinal);
+        // The composer keeps the text, its field marked with why it was refused.
+        var compose = Islands.Envelope(html, "compose");
+        Assert.Equal(text, compose.GetProperty("props").GetProperty("composer").GetProperty("text").GetString());
+        Assert.True(compose.GetProperty("errors").TryGetProperty("Text", out _));
         factory.Beeps.DidNotReceiveWithAnyArgs().AddBeep(default!, default!, default!);
         PageAssert.NoInlineScriptsOrStyles(html);
     }
@@ -63,7 +64,8 @@ public sealed class ComposeAndActionsPagesTests : IDisposable
 
         Assert.Equal(HttpStatusCode.TooManyRequests, response.StatusCode);
         Assert.Equal(TimeSpan.FromMinutes(20), response.Headers.RetryAfter?.Delta);
-        Assert.Contains(">one too many</textarea>", await response.Content.ReadAsStringAsync(TestSupport.Ct), StringComparison.Ordinal);
+        var refused = Islands.Props(await response.Content.ReadAsStringAsync(TestSupport.Ct), "compose");
+        Assert.Equal("one too many", refused.GetProperty("composer").GetProperty("text").GetString());
     }
 
     [Fact]
@@ -77,8 +79,10 @@ public sealed class ComposeAndActionsPagesTests : IDisposable
         var html = await client.GetStringAsync(new Uri($"/compose?replyTo={parent.Id}", UriKind.Relative), TestSupport.Ct);
         using var missing = await client.GetAsync(new Uri($"/compose?replyTo={Guid.NewGuid()}", UriKind.Relative), TestSupport.Ct);
 
-        Assert.Contains("answer me", html, StringComparison.Ordinal);
-        Assert.Contains("placeholder=\"Write a reply\"", html, StringComparison.Ordinal);
+        var compose = Islands.Props(html, "compose");
+        Assert.Equal("answer me", compose.GetProperty("parent").GetProperty("html").GetString());
+        // A reply's composer (its placeholder says so).
+        Assert.Equal(parent.Id, compose.GetProperty("composer").GetProperty("replyTo").GetGuid());
         Assert.Equal(HttpStatusCode.NotFound, missing.StatusCode);
     }
 
@@ -185,10 +189,12 @@ public sealed class ComposeAndActionsPagesTests : IDisposable
 
         var html = await client.GetStringAsync(new Uri("/", UriKind.Relative), TestSupport.Ct);
 
-        Assert.Contains($"/beeps/{mine.Id:D}/actions?returnUrl=%2F&amp;handler=Delete", html, StringComparison.Ordinal);
-        Assert.Contains($"/beeps/{myAgents.Id:D}/actions?returnUrl=%2F&amp;handler=Delete", html, StringComparison.Ordinal);
-        Assert.DoesNotContain($"/beeps/{theirs.Id:D}/actions?returnUrl=%2F&amp;handler=Delete", html, StringComparison.Ordinal);
-        Assert.Contains("data-confirm=\"Delete this beep? This cannot be undone.\"", html, StringComparison.Ordinal);
+        var items = Islands.Props(html, "index").GetProperty("list").GetProperty("items").EnumerateArray().ToDictionary(b => b.GetProperty("id").GetGuid());
+        Assert.True(items[mine.Id].GetProperty("canDelete").GetBoolean());
+        Assert.True(items[myAgents.Id].GetProperty("canDelete").GetBoolean());
+        Assert.False(items[theirs.Id].TryGetProperty("canDelete", out _));
+        // The question asked before deleting.
+        Assert.Equal("Delete this beep? This cannot be undone.", Islands.Config(html).GetProperty("strings").GetProperty("Beep.Delete.Confirm").GetString());
     }
 
     public void Dispose() => factory.Dispose();

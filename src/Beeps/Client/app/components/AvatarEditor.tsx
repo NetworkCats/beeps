@@ -1,4 +1,4 @@
-// The avatar upload and removal forms (Pages/Shared/_AvatarEditor.cshtml), on the settings page and an agent's page.
+// The avatar upload and removal forms, on the settings page and an agent's page.
 // Picking a file shows it in Cropper.js (loaded only then) with a square selection; the selection, in pixels of the
 // original image, goes into the hidden Crop.X / Crop.Y / Crop.Size fields. The original file is uploaded as it is and
 // the server does the cropping, so nothing here has to be trusted. A new avatar shows once the server has processed it.

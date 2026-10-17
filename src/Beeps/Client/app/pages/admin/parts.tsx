@@ -1,5 +1,5 @@
-// What several admin pages draw the same way: a person's badges (_UserBadges.cshtml), a beep's moderation status
-// (_ModerationStatus.cshtml), an admin's buttons for an agent (_AdminAgentActions.cshtml), and the admin addresses.
+// What several admin pages draw the same way: a person's badges, a beep's moderation status, an admin's buttons for
+// an agent, and the admin addresses.
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { copyText } from '../../clipboard.ts';
 import { Antiforgery } from '../../components/Forms.tsx';

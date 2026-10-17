@@ -384,7 +384,8 @@ PLAN 6.10 要求登录用户看到的所有数据都实时刷新。逐页检查�
 - 修复时发现：`<form method="dialog">` 会被 Razor 加上 antiforgery token，导致未登录页面不能输出缓存（测试抓到），已加 `asp-antiforgery="false"`；搜索页的 `class="search"` 和 collection-ui 的 `.search` 组件重名，已改为 `search-page`。
 
 ## 前端重构：island 架构（2026-10-17）
-- [x] 页面由 Razor 服务端渲染（未登录时关键内容同样在 HTML 里，SEO 不受影响），交互和会变化的部分是 island，由 Preact 组件接管（`Pages/Islands`、`Client/app`）
+- [x] 页面内容是 island，由 Preact 组件根据 props 渲染（`Pages/Islands`、`Client/app`）：未登录时服务端同时渲染出标记（SEO），已登录时只给 props、全部客户端渲染；搜索页不需要 SEO，对所有人都只给 props
+- [x] 删除只给登录用户的模板和分支（账号菜单、发帖框、头像编辑、key 交接、通知条目、后台的 partial，以及点赞表单、删除菜单、关注和屏蔽按钮等）
 - [x] 已登录页面的实时更新全部由组件按数据重绘：`/live/beeps`、`/live/notifications` 改为 JSON，island 用 islands 请求（`X-Beeps-Islands`）追上变化和提交表单
 - [x] 站内跳转不整页刷新（`Client/app/router.ts`），实时连接保留；后退恢复离开时的状态
 - [x] 删除手写 DOM 操作的旧脚本（整个 `Client/ts`）、`data-live-*` 属性和 HTML 片段接口

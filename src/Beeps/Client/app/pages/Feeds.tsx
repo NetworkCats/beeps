@@ -35,7 +35,7 @@ function withList<P extends { list: BeepListProps }>(props: P, list: FeedSource)
   return { ...props, list: { ...props.list, items: list.items, next: list.next } };
 }
 
-/** Signed in, home and public are two feeds of one place: tabs in the column header switch between them (_FeedTabs.cshtml). */
+/** Signed in, home and public are two feeds of one place: tabs in the column header switch between them. */
 function FeedTabs({ current }: { current: 'home' | 'public' }) {
   return (
     <nav class="tabs tabs-justify column-tabs" aria-label={t('Nav.Feeds')}>

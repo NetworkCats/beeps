@@ -47,8 +47,10 @@ public sealed class MediaPagesTests : IDisposable
         var html = await response.Content.ReadAsStringAsync(TestSupport.Ct);
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-        Assert.Contains(">five</textarea>", html, StringComparison.Ordinal);
-        Assert.Contains("id=\"Images-error\"", html, StringComparison.Ordinal);
+        // The composer keeps the text, its image picker marked with why.
+        var compose = Islands.Envelope(html, "compose");
+        Assert.Equal("five", compose.GetProperty("props").GetProperty("composer").GetProperty("text").GetString());
+        Assert.True(compose.GetProperty("errors").TryGetProperty("Images", out _));
         await factory.Storage.DidNotReceiveWithAnyArgs().PutAsync(default!, default, default!, TestSupport.Ct);
     }
 
@@ -99,10 +101,13 @@ public sealed class MediaPagesTests : IDisposable
 
         var html = await client.GetStringAsync(new Uri("/", UriKind.Relative), TestSupport.Ct);
 
-        Assert.Contains("enctype=\"multipart/form-data\"", html, StringComparison.Ordinal);
-        Assert.Contains("type=\"file\" name=\"Images\" multiple", html, StringComparison.Ordinal);
+        // The composer (which the app draws with its image picker) and the picker's label.
+        Assert.True(Islands.Props(html, "index").TryGetProperty("composer", out _));
+        var config = Islands.Config(html);
+        Assert.Equal("Add images (at most {0})", config.GetProperty("strings").GetProperty("Compose.Images").GetString());
         // The app checks the picked images against the same limits before they are sent.
-        Assert.Contains("\"imagesPerBeep\":4", html, StringComparison.Ordinal);
+        Assert.Equal(MediaRules.MaxImagesPerBeep, config.GetProperty("limits").GetProperty("imagesPerBeep").GetInt32());
+        Assert.Equal(MediaRules.MaxBytes, config.GetProperty("limits").GetProperty("mediaBytes").GetInt64());
     }
 
     [Fact]
@@ -169,11 +174,13 @@ public sealed class MediaPagesTests : IDisposable
             [new AgentRow(agentId, "tom.claude", "tom's Claude", "Claude", TestData.Now, null, "beeps_abc", TestData.Now, TestData.Now)]);
         using var client = await WebAuth.SignInAsync(factory, user);
 
-        var html = await client.GetStringAsync(new Uri(string.Format(System.Globalization.CultureInfo.InvariantCulture, path, agentId), UriKind.Relative), TestSupport.Ct);
+        var url = string.Format(System.Globalization.CultureInfo.InvariantCulture, path, agentId);
+        var html = await client.GetStringAsync(new Uri(url, UriKind.Relative), TestSupport.Ct);
 
         // The cropper itself comes with the app, once a file is picked.
         Assert.Matches("<link rel=\"stylesheet\" href=\"/dist/avatar-crop\\.[a-z0-9]+\\.css\"", html);
-        Assert.Contains("name=\"Crop.Size\"", html, StringComparison.Ordinal);
+        // The avatar form (with the crop the cropper picks), posting back to the page.
+        Assert.Equal(url, Islands.Props(html, path == "/settings" ? "settings" : "agent").GetProperty("avatar").GetProperty("action").GetString());
         PageAssert.NoInlineScriptsOrStyles(html);
     }
 
@@ -198,9 +205,13 @@ public sealed class MediaPagesTests : IDisposable
 
         var html = await client.GetStringAsync(new Uri("/settings", UriKind.Relative), TestSupport.Ct);
 
-        // The avatar editor, the navigation rail and the narrow screens' top bar.
-        Assert.Equal(3, html.Split("src=\"https://media.beeps.test/face/avatar.webp\"").Length - 1);
-        Assert.Contains("handler=RemoveAvatar", html, StringComparison.Ordinal);
+        // The avatar editor, which offers to remove it, and the account menus of the navigation rail and the narrow
+        // screens' top bar, drawn from who is signed in.
+        var avatar = Islands.Props(html, "settings").GetProperty("avatar");
+        Assert.Equal("https://media.beeps.test/face/avatar.webp", avatar.GetProperty("avatarUrl").GetString());
+        Assert.True(avatar.GetProperty("hasCustomAvatar").GetBoolean());
+        Assert.Equal(2, Islands.Names(html).Count(name => name == "account-menu"));
+        Assert.Equal("https://media.beeps.test/face/avatar.webp", Islands.Config(html).GetProperty("viewer").GetProperty("avatar").GetString());
         PageAssert.NoInlineScriptsOrStyles(html);
     }
 
@@ -212,8 +223,9 @@ public sealed class MediaPagesTests : IDisposable
 
         var html = await client.GetStringAsync(new Uri("/settings", UriKind.Relative), TestSupport.Ct);
 
-        Assert.Contains($"https://beeps.test/avatars/{user.Id:D}.svg", html, StringComparison.Ordinal);
-        Assert.DoesNotContain("handler=RemoveAvatar", html, StringComparison.Ordinal);
+        var avatar = Islands.Props(html, "settings").GetProperty("avatar");
+        Assert.Equal($"https://beeps.test/avatars/{user.Id:D}.svg", avatar.GetProperty("avatarUrl").GetString());
+        Assert.False(avatar.TryGetProperty("hasCustomAvatar", out _));
     }
 
     [Fact]
@@ -245,8 +257,10 @@ public sealed class MediaPagesTests : IDisposable
         using var set = await PostMultipartAsync(client, $"/agents/{agentId}", $"/agents/{agentId}?handler=Avatar", [], [TestImages.Png()], "Avatar");
         using var removed = await WebAuth.PostFormAsync(client, $"/agents/{agentId}", $"/agents/{agentId}?handler=RemoveAvatar");
 
-        Assert.Contains("https://media.beeps.test/face/avatar.webp", page, StringComparison.Ordinal);
-        Assert.Contains("handler=RemoveAvatar", page, StringComparison.Ordinal);
+        var avatar = Islands.Props(page, "agent").GetProperty("avatar");
+        Assert.Equal("https://media.beeps.test/face/avatar.webp", avatar.GetProperty("avatarUrl").GetString());
+        // So it can be removed.
+        Assert.True(avatar.GetProperty("hasCustomAvatar").GetBoolean());
         Assert.Equal(HttpStatusCode.Redirect, set.StatusCode);
         Assert.Equal($"/agents/{agentId}", set.Headers.Location?.OriginalString);
         Assert.Equal(HttpStatusCode.Redirect, removed.StatusCode);

@@ -1,5 +1,4 @@
 @page "/admin/settings"
-@using Beeps.Features.Accounts
 @using Beeps.Pages.Islands
 @model Beeps.Pages.Admin.SettingsModel
 @{
@@ -11,90 +10,5 @@
         [.. Model.Invites.Select(InviteProps.From)],
         Model.NewInvite is { } created ? new NewInviteProps(created.Invite.Id, created.Code) : null);
 }
-@* Client/app/pages/admin/Settings.tsx: a new invite's code stays shown while the invite is still open. *@
-<island name="admin-settings" props="props">
-<h1>@L["Admin.Settings"]</h1>
-
-<section class="admin-section">
-    <h2>@L["Admin.Registration"]</h2>
-    <form method="post" asp-page-handler="Mode">
-        <fieldset class="check-group">
-            <legend class="visually-hidden">@L["Admin.Registration"]</legend>
-            @foreach (var mode in Enum.GetValues<RegistrationMode>())
-            {
-                <label class="radio">
-                    <input type="radio" name="Mode" value="@mode" checked="@(Model.Mode == mode)">
-                    <span>
-                        <strong>@L[$"Admin.Registration.{mode}"]</strong>
-                        <span class="help">@L[$"Admin.Registration.{mode}.Help"]</span>
-                    </span>
-                </label>
-            }
-        </fieldset>
-        <div class="form-actions">
-            <button class="btn btn-primary btn-sm" type="submit">@L["Admin.Save"]</button>
-        </div>
-    </form>
-</section>
-
-<section class="admin-section">
-    <header class="section-header">
-        <h2>@L["Admin.Invites"]</h2>
-        <form method="post" asp-page-handler="CreateInvite">
-            <button class="btn btn-sm" type="submit">@L["Admin.Invites.Create"]</button>
-        </form>
-    </header>
-    @* Shown only on the response that created it. *@
-    @if (Model.NewInvite is not null)
-    {
-        <div class="alert alert-success" role="status">
-            <div class="alert-content">
-                <p class="alert-text">@L["Admin.Invites.Created"]</p>
-                <div class="copy-box">
-                    <code>@Model.NewInvite.Code</code>
-                    <button class="btn-copy" type="button">@L["Copy.Action"]</button>
-                </div>
-            </div>
-        </div>
-    }
-    @if (Model.Invites.Count == 0)
-    {
-        <p class="section-lead">@L["Admin.Invites.None"]</p>
-    }
-    else
-    {
-        <div class="table-container">
-            <table class="table table-stack">
-                <thead>
-                    <tr>
-                        <th>@L["Admin.Invites.Code"]</th>
-                        <th>@L["Admin.Invites.Created.At"]</th>
-                        <th>@L["Admin.Invites.Expires"]</th>
-                        <th>@L["Admin.Invites.UsedBy"]</th>
-                        <th><span class="visually-hidden">@L["Admin.Actions"]</span></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var invite in Model.Invites)
-                    {
-                        <tr>
-                            <td data-label="@L["Admin.Invites.Code"]"><code>@(invite.CodePrefix)…</code></td>
-                            <td data-label="@L["Admin.Invites.Created.At"]"><utc-time value="invite.CreatedAt" /></td>
-                            <td data-label="@L["Admin.Invites.Expires"]"><utc-time value="invite.ExpiresAt" /></td>
-                            <td data-label="@L["Admin.Invites.UsedBy"]">@(invite.UsedByHandle is null ? "—" : $"@{invite.UsedByHandle}")</td>
-                            <td class="table-actions">
-                                @if (invite.UsedAt is null)
-                                {
-                                    <form method="post" asp-page-handler="RevokeInvite" asp-route-id="@invite.Id" data-confirm="@L["Admin.Invites.Revoke.Confirm"]">
-                                        <button class="btn btn-ghost btn-xs" type="submit">@L["Admin.Invites.Revoke"]</button>
-                                    </form>
-                                }
-                            </td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
-        </div>
-    }
-</section>
-</island>
+@* Admins only, so signed in: Client/app/pages/admin/Settings.tsx draws the page from these props. *@
+<island name="admin-settings" props="props" />

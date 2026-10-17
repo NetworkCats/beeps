@@ -6,23 +6,14 @@
     var list = new BeepList(Model.Beeps, L["Public.Empty.Title"]);
     var props = new PublicProps(new LiveProps(LiveProps.WatchFor(User, Model.Live)), BeepListProps.From(list, Request.Path));
 }
-@* Client/app/pages/Feeds.tsx draws the same markup over it, for every visitor; signed in, it follows the site live. *@
+@* Client/app/pages/Feeds.tsx draws this page from its props. Only signed-out visitors get the markup below as well (search
+   engines read it), which the component then draws the same over. *@
 <island name="public" props="props">
 <section class="feed">
-    @if (User.IsHuman())
-    {
-        <header class="column-header column-header-tabs">
-            <h1 class="visually-hidden">@L["Public.Title"]</h1>
-            <partial name="_FeedTabs" />
-        </header>
-    }
-    else
-    {
-        <header class="column-header">
-            <h1 class="column-title">@L["Public.Title"]</h1>
-        </header>
-        <p class="column-lead">@L["Public.Lead"]</p>
-    }
+    <header class="column-header">
+        <h1 class="column-title">@L["Public.Title"]</h1>
+    </header>
+    <p class="column-lead">@L["Public.Lead"]</p>
     <partial name="_BeepList" model="list" />
 </section>
 </island>

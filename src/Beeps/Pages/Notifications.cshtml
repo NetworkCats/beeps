@@ -3,42 +3,10 @@
 @model NotificationsModel
 @{
     ViewData["Title"] = L["Notifications.Title"];
-    var items = Model.Notifications.Items;
     // Older pages of the inbox do not grow live: they are drawn again when it changes.
     var props = new NotificationsProps(
         new LiveProps(LiveProps.WatchFor(User, Model.Live), On: Model.Before is null ? null : "inbox"),
         PageProps.From(Model.Notifications, NotificationProps.From, next => $"?before={next}"));
 }
-@* Members only, so signed in: Client/app/pages/Notifications.tsx. *@
-<island name="notifications" props="props">
-<section class="feed">
-    <header class="column-header">
-        <h1 class="column-title">@L["Notifications.Title"]</h1>
-        @* Marks up to the newest one shown, so ones that arrive meanwhile stay unread; there once one is unread. *@
-        <form class="column-actions" method="post" asp-page-handler="Read" hidden="@(items.Any(n => !n.Read) ? null : "hidden")">
-            <input type="hidden" name="upToId" value="@items.FirstOrDefault()?.Id">
-            <button class="btn btn-sm btn-ghost" type="submit"><icon name="done_all" />@L["Notifications.MarkRead"]</button>
-        </form>
-    </header>
-    @* There either way, hidden while there are entries: the live inbox shows it again once its last one goes. *@
-    <div class="empty" hidden="@(items.Count == 0 ? null : "hidden")">
-        <h2 class="empty-title">@L["Notifications.Empty.Title"]</h2>
-        <p class="empty-text">@L["Notifications.Empty.Text"]</p>
-    </div>
-    @if (items.Count > 0)
-    {
-        <ol class="notification-list">
-            @foreach (var notification in items)
-            {
-                <partial name="_Notification" model="notification" />
-            }
-        </ol>
-        @if (Model.Notifications.NextCursor is { } next)
-        {
-            <nav class="pager" aria-label="@L["Pager.Label"]">
-                <a class="btn" href="?before=@next">@L["Pager.More"]</a>
-            </nav>
-        }
-    }
-</section>
-</island>
+@* Members only, so signed in: Client/app/pages/Notifications.tsx draws the page from these props. *@
+<island name="notifications" props="props" />

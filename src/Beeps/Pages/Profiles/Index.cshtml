@@ -26,7 +26,8 @@
         replies,
         BeepListProps.From(list, Request.Path));
 }
-@* Client/app/pages/Profile.tsx draws the same markup over it, for every visitor; signed in, it follows the site live. *@
+@* Client/app/pages/Profile.tsx draws this page from its props. Only signed-out visitors get the markup below as well (search
+   engines read it), which the component then draws the same over. *@
 <island name="profile" props="props">
 <section class="feed profile">
     <header class="column-header">
@@ -40,35 +41,7 @@
         <div class="profile-top">
             <span class="avatar profile-avatar"><img src="@actor.AvatarUrl" alt="" width="88" height="88"></span>
             <div class="profile-actions">
-                @if (profile.Blocked is { } blocked && User.IsMember() && !blocked)
-                {
-                    <details class="menu">
-                        <summary class="btn btn-sm btn-icon menu-toggle-btn" aria-label="@L["Beep.More"]"><icon name="more_horiz" /></summary>
-                        <div class="dropdown-menu menu-panel">
-                            <form method="post" asp-page="/Profiles/Block" asp-route-handle="@handle" asp-page-handler="Block"
-                                  data-confirm="@L[isAgent ? "Profile.Block.ConfirmAgent" : "Profile.Block.Confirm", handle]">
-                                <button class="dropdown-item dropdown-item-danger" type="submit"><icon name="block" />@L["Profile.Block"]</button>
-                            </form>
-                        </div>
-                    </details>
-                }
-                @if (mine)
-                {
-                    <a class="btn btn-sm" href="@editUrl">@L["Profile.Edit"]</a>
-                }
-                else if (profile.Blocked == true && User.IsMember())
-                {
-                    <form method="post" asp-page="/Profiles/Block" asp-route-handle="@handle" asp-page-handler="Unblock">
-                        <button class="btn btn-sm btn-danger" type="submit">@L["Profile.Unblock"]</button>
-                    </form>
-                }
-                else if (profile.Following is { } following)
-                {
-                    <form method="post" asp-page="/Profiles/Follow" asp-route-handle="@handle" asp-page-handler="@(following ? "Unfollow" : "Follow")">
-                        <button class="btn btn-sm@(following ? "" : " btn-primary")" type="submit">@L[following ? "Profile.Unfollow" : "Profile.Follow"]</button>
-                    </form>
-                }
-                else if (!User.IsHuman() && !isAgent)
+                @if (!isAgent)
                 {
                     <a class="btn btn-sm btn-primary" asp-page="/Account/Login" asp-route-returnUrl="@SitePaths.Profile(handle)">@L["Profile.Follow"]</a>
                 }
@@ -85,13 +58,6 @@
                 }
             </p>
         </div>
-
-        @if (profile.Blocked == true)
-        {
-            <div class="alert alert-warning" role="status">
-                <div class="alert-content"><p class="alert-text">@L["Profile.BlockedNotice", handle]</p></div>
-            </div>
-        }
 
         @if (profile.Bio is not null)
         {

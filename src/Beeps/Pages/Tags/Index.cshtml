@@ -6,7 +6,8 @@
     var list = new BeepList(Model.Beeps, L["Tag.Empty.Title"]);
     var props = new TagProps(new LiveProps(LiveProps.WatchFor(User, Model.Live)), Model.Tag, BeepListProps.From(list, Request.Path));
 }
-@* Client/app/pages/Feeds.tsx draws the same markup over it, for every visitor; signed in, it follows the site live. *@
+@* Client/app/pages/Feeds.tsx draws this page from its props. Only signed-out visitors get the markup below as well (search
+   engines read it), which the component then draws the same over. *@
 <island name="tag" props="props">
 <section class="feed">
     <header class="column-header">

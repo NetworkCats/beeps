@@ -1,8 +1,0 @@
-@* Signed in, the home and public timelines are two feeds of one place: tabs in the column header switch between them. *@
-@{
-    var page = ViewContext.RouteData.Values["page"] as string;
-}
-<nav class="tabs tabs-justify column-tabs" aria-label="@L["Nav.Feeds"]">
-    <a class="tab" href="~/" aria-current="@(page == "/Index" ? "page" : null)">@L["Nav.Home"]</a>
-    <a class="tab" asp-page="/Public" aria-current="@(page == "/Public" ? "page" : null)">@L["Nav.Public"]</a>
-</nav>

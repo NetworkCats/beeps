@@ -2,16 +2,15 @@
 @using Beeps.Features.Localization
 @using Beeps.Features.Site
 @inject TimeProvider Time
-@* The options themselves (_SiteOptions.cshtml). Signed out these are GET forms: public pages are output-cached, so they
-   must not carry an antiforgery token. Signed in, the choice is saved to the account. *@
+@* The options themselves (_SiteOptions.cshtml), as signed-out visitors get them (signed in, the island draws them, and
+   saves the choice to the account). GET forms: public pages are output-cached, so they carry no antiforgery token. *@
 @{
     var currentCulture = CultureInfo.CurrentUICulture.Name;
     var returnUrl = $"{Context.Request.PathBase}{Context.Request.Path}{Context.Request.QueryString}";
-    var signedIn = User.IsHuman();
     var theme = Themes.For(User, Context.Request);
 }
 <a class="footer-link" href="@SitePaths.About">@L["Footer.About"]</a>
-<form class="footer-switch" method="@(signedIn ? "post" : "get")" asp-page="/Culture">
+<form class="footer-switch" method="get" asp-page="/Culture">
     <input type="hidden" name="returnUrl" value="@returnUrl">
     <icon name="language" />
     <select class="footer-select" name="culture" aria-label="@L["Footer.Language"]">
@@ -22,7 +21,7 @@
     </select>
     <button class="footer-apply" type="submit">@L["Footer.Apply"]</button>
 </form>
-<form class="footer-switch" method="@(signedIn ? "post" : "get")" asp-page="/Theme">
+<form class="footer-switch" method="get" asp-page="/Theme">
     <input type="hidden" name="returnUrl" value="@returnUrl">
     <icon name="contrast" />
     <select class="footer-select" name="theme" aria-label="@L["Footer.Theme"]">

@@ -321,7 +321,7 @@
       "name": "account-menu",
       "props": {},
       "errors": null,
-      "html": "<details class=\"menu topbar-menu\">\n                        <summary class=\"menu-toggle\" aria-label=\"Account menu\">\n                            <span class=\"avatar\"><img src=\"https://beeps.test/avatars/10000000-0000-7000-8000-000000000001.svg\" alt=\"\" width=\"32\" height=\"32\"></span>\n                        </summary>\n                        <div class=\"dropdown-menu menu-panel\">\n    <p class=\"menu-header\">@tom</p>\n    <a class=\"dropdown-item\" href=\"/tom\"><span class=\"icon\" aria-hidden=\"true\">person</span>Profile</a>\n    <a class=\"dropdown-item\" href=\"/settings\"><span class=\"icon\" aria-hidden=\"true\">settings</span>Settings</a>\n        <a class=\"dropdown-item\" href=\"/admin\"><span class=\"icon\" aria-hidden=\"true\">admin_panel_settings</span>Admin</a>\n    <hr class=\"dropdown-divider\">\n    <form method=\"post\" action=\"/logout\">\n        <button class=\"dropdown-item\" type=\"submit\"><span class=\"icon\" aria-hidden=\"true\">logout</span>Log out</button>\n    <input name=\"__RequestVerificationToken\" type=\"hidden\" value=\"TOKEN\" /></form>\n</div>\n\n                    </details>"
+      "html": ""
     },
     {
       "name": "site-options",
@@ -360,13 +360,13 @@
         "year": 2026
       },
       "errors": null,
-      "html": "<details class=\"menu topbar-more\">\n        <summary class=\"topbar-more-toggle\" aria-label=\"More\"><span class=\"icon\" aria-hidden=\"true\">more_horiz</span></summary>\n        <div class=\"dropdown-menu menu-panel site-menu\">\n            <a class=\"footer-link\" href=\"/about\">About</a>\n<form class=\"footer-switch\" method=\"post\" action=\"/culture\">\n    <input type=\"hidden\" name=\"returnUrl\" value=\"/admin/settings\">\n    <span class=\"icon\" aria-hidden=\"true\">language</span>\n    <select class=\"footer-select\" name=\"culture\" aria-label=\"Language\">\n            <option value=\"en\" lang=\"en\" selected=\"selected\">English</option>\n            <option value=\"zh-Hans\" lang=\"zh-Hans\">简体中文</option>\n    </select>\n    <button class=\"footer-apply\" type=\"submit\">Apply</button>\n<input name=\"__RequestVerificationToken\" type=\"hidden\" value=\"TOKEN\" /></form>\n<form class=\"footer-switch\" method=\"post\" action=\"/theme\">\n    <input type=\"hidden\" name=\"returnUrl\" value=\"/admin/settings\">\n    <span class=\"icon\" aria-hidden=\"true\">contrast</span>\n    <select class=\"footer-select\" name=\"theme\" aria-label=\"Colour scheme\">\n            <option value=\"system\" selected=\"selected\">Auto</option>\n            <option value=\"light\">Light</option>\n            <option value=\"dark\">Dark</option>\n    </select>\n    <button class=\"footer-apply\" type=\"submit\">Apply</button>\n<input name=\"__RequestVerificationToken\" type=\"hidden\" value=\"TOKEN\" /></form>\n<p class=\"footer-note\">© 2026 beeps</p>\n\n        </div>\n    </details>"
+      "html": ""
     },
     {
       "name": "inbox-count",
       "props": null,
       "errors": null,
-      "html": "<span class=\"count count-primary nav-count\" hidden></span>"
+      "html": ""
     },
     {
       "name": "account-menu",
@@ -374,7 +374,7 @@
         "rail": true
       },
       "errors": null,
-      "html": "<details class=\"menu sidenav-menu\">\n                            <summary class=\"menu-toggle\" aria-label=\"Account menu\">\n                                <span class=\"avatar\"><img src=\"https://beeps.test/avatars/10000000-0000-7000-8000-000000000001.svg\" alt=\"\" width=\"32\" height=\"32\"></span>\n                                <span class=\"menu-handle\">@tom</span>\n                                <span class=\"icon menu-more\" aria-hidden=\"true\">more_horiz</span>\n                            </summary>\n                            <div class=\"dropdown-menu menu-panel\">\n    <p class=\"menu-header\">@tom</p>\n    <a class=\"dropdown-item\" href=\"/tom\"><span class=\"icon\" aria-hidden=\"true\">person</span>Profile</a>\n    <a class=\"dropdown-item\" href=\"/settings\"><span class=\"icon\" aria-hidden=\"true\">settings</span>Settings</a>\n        <a class=\"dropdown-item\" href=\"/admin\"><span class=\"icon\" aria-hidden=\"true\">admin_panel_settings</span>Admin</a>\n    <hr class=\"dropdown-divider\">\n    <form method=\"post\" action=\"/logout\">\n        <button class=\"dropdown-item\" type=\"submit\"><span class=\"icon\" aria-hidden=\"true\">logout</span>Log out</button>\n    <input name=\"__RequestVerificationToken\" type=\"hidden\" value=\"TOKEN\" /></form>\n</div>\n\n                        </details>"
+      "html": ""
     },
     {
       "name": "admin-settings",
@@ -419,7 +419,7 @@
         ]
       },
       "errors": null,
-      "html": "<h1>Site settings</h1>\n\n<section class=\"admin-section\">\n    <h2>Registration</h2>\n    <form method=\"post\" action=\"/admin/settings?handler=Mode\">\n        <fieldset class=\"check-group\">\n            <legend class=\"visually-hidden\">Registration</legend>\n                <label class=\"radio\">\n                    <input type=\"radio\" name=\"Mode\" value=\"Open\" checked=\"checked\">\n                    <span>\n                        <strong>Open</strong>\n                        <span class=\"help\">Anyone can sign up.</span>\n                    </span>\n                </label>\n                <label class=\"radio\">\n                    <input type=\"radio\" name=\"Mode\" value=\"InviteOnly\">\n                    <span>\n                        <strong>Invite only</strong>\n                        <span class=\"help\">Sign-up needs an invite code from an admin.</span>\n                    </span>\n                </label>\n                <label class=\"radio\">\n                    <input type=\"radio\" name=\"Mode\" value=\"Closed\">\n                    <span>\n                        <strong>Closed</strong>\n                        <span class=\"help\">Nobody can sign up.</span>\n                    </span>\n                </label>\n        </fieldset>\n        <div class=\"form-actions\">\n            <button class=\"btn btn-primary btn-sm\" type=\"submit\">Save</button>\n        </div>\n    <input name=\"__RequestVerificationToken\" type=\"hidden\" value=\"TOKEN\" /></form>\n</section>\n\n<section class=\"admin-section\">\n    <header class=\"section-header\">\n        <h2>Invite codes</h2>\n        <form method=\"post\" action=\"/admin/settings?handler=CreateInvite\">\n            <button class=\"btn btn-sm\" type=\"submit\">New invite code</button>\n        <input name=\"__RequestVerificationToken\" type=\"hidden\" value=\"TOKEN\" /></form>\n    </header>\n        <div class=\"table-container\">\n            <table class=\"table table-stack\">\n                <thead>\n                    <tr>\n                        <th>Code</th>\n                        <th>Created</th>\n                        <th>Expires</th>\n                        <th>Used by</th>\n                        <th><span class=\"visually-hidden\">Actions</span></th>\n                    </tr>\n                </thead>\n                <tbody>\n                        <tr>\n                            <td data-label=\"Code\"><code>ABCD…</code></td>\n                            <td data-label=\"Created\"><time datetime=\"2026-10-16T08:30:00Z\">2026-10-16T08:30:00Z</time></td>\n                            <td data-label=\"Expires\"><time datetime=\"2026-10-23T08:30:00Z\">2026-10-23T08:30:00Z</time></td>\n                            <td data-label=\"Used by\">—</td>\n                            <td class=\"table-actions\">\n                                    <form method=\"post\" data-confirm=\"Revoke this invite code?\" action=\"/admin/settings?id=00000000-0000-7000-8000-000000000037&amp;handler=RevokeInvite\">\n                                        <button class=\"btn btn-ghost btn-xs\" type=\"submit\">Revoke</button>\n                                    <input name=\"__RequestVerificationToken\" type=\"hidden\" value=\"TOKEN\" /></form>\n                            </td>\n                        </tr>\n                        <tr>\n                            <td data-label=\"Code\"><code>EFGH…</code></td>\n                            <td data-label=\"Created\"><time datetime=\"2026-10-16T08:30:00Z\">2026-10-16T08:30:00Z</time></td>\n                            <td data-label=\"Expires\"><time datetime=\"2026-10-23T08:30:00Z\">2026-10-23T08:30:00Z</time></td>\n                            <td data-label=\"Used by\">@alice</td>\n                            <td class=\"table-actions\">\n                            </td>\n                        </tr>\n                </tbody>\n            </table>\n        </div>\n</section>"
+      "html": ""
     },
     {
       "name": "site-options",
@@ -457,13 +457,13 @@
         "year": 2026
       },
       "errors": null,
-      "html": "<a class=\"footer-link\" href=\"/about\">About</a>\n<form class=\"footer-switch\" method=\"post\" action=\"/culture\">\n    <input type=\"hidden\" name=\"returnUrl\" value=\"/admin/settings\">\n    <span class=\"icon\" aria-hidden=\"true\">language</span>\n    <select class=\"footer-select\" name=\"culture\" aria-label=\"Language\">\n            <option value=\"en\" lang=\"en\" selected=\"selected\">English</option>\n            <option value=\"zh-Hans\" lang=\"zh-Hans\">简体中文</option>\n    </select>\n    <button class=\"footer-apply\" type=\"submit\">Apply</button>\n<input name=\"__RequestVerificationToken\" type=\"hidden\" value=\"TOKEN\" /></form>\n<form class=\"footer-switch\" method=\"post\" action=\"/theme\">\n    <input type=\"hidden\" name=\"returnUrl\" value=\"/admin/settings\">\n    <span class=\"icon\" aria-hidden=\"true\">contrast</span>\n    <select class=\"footer-select\" name=\"theme\" aria-label=\"Colour scheme\">\n            <option value=\"system\" selected=\"selected\">Auto</option>\n            <option value=\"light\">Light</option>\n            <option value=\"dark\">Dark</option>\n    </select>\n    <button class=\"footer-apply\" type=\"submit\">Apply</button>\n<input name=\"__RequestVerificationToken\" type=\"hidden\" value=\"TOKEN\" /></form>\n<p class=\"footer-note\">© 2026 beeps</p>"
+      "html": ""
     },
     {
       "name": "inbox-count",
       "props": null,
       "errors": null,
-      "html": "<span class=\"count count-primary nav-count\" hidden></span>"
+      "html": ""
     },
     {
       "name": "toasts",
@@ -475,7 +475,7 @@
       "name": "confirm",
       "props": null,
       "errors": null,
-      "html": "<dialog class=\"dialog dialog-sm dialog-plain confirm-dialog\">\n                <form method=\"dialog\">\n                    <div class=\"dialog-body\">\n                        <p class=\"confirm-message\"></p>\n                    </div>\n                    <div class=\"dialog-footer\">\n                        <button class=\"btn\" value=\"cancel\" autofocus>Cancel</button>\n                        <button class=\"btn btn-danger\" value=\"confirm\">Confirm</button>\n                    </div>\n                </form>\n            </dialog>"
+      "html": ""
     }
   ]
 }

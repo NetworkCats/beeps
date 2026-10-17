@@ -44,7 +44,7 @@ public sealed record AdminOverviewProps(
     }
 }
 
-/// <summary>A person as the admin pages list them, with what <c>_UserBadges.cshtml</c> shows about them.</summary>
+/// <summary>A person as the admin pages list them, with the badges shown next to them.</summary>
 public sealed record AdminUserProps(
     Guid Id,
     string Handle,

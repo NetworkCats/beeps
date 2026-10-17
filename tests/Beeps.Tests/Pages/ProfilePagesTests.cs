@@ -23,12 +23,16 @@ public sealed class ProfilePagesTests : IDisposable
 
         var html = await client.GetStringAsync(new Uri("/tom", UriKind.Relative), TestSupport.Ct);
 
-        Assert.Contains("<h1 class=\"profile-name\">tom</h1>", html, StringComparison.Ordinal);
-        Assert.Contains("<p class=\"profile-bio\">Line one&#xA;line two</p>", html, StringComparison.Ordinal);
-        Assert.Contains("<a class=\"actor-row\" href=\"/tom.claude\">", html, StringComparison.Ordinal);
-        Assert.Matches("<form method=\"post\" action=\"/tom/follow\\?handler=Follow\">", html);
-        Assert.Contains("<a class=\"tab\" href=\"/tom\" aria-current=\"page\">Beeps</a>", html, StringComparison.Ordinal);
-        Assert.Contains("<a class=\"tab\" href=\"/tom/replies\">Replies</a>", html, StringComparison.Ordinal);
+        var page = Islands.Props(html, "profile");
+        var profile = page.GetProperty("profile");
+        Assert.Equal("tom", profile.GetProperty("actor").GetProperty("displayName").GetString());
+        Assert.Equal("Line one\nline two", profile.GetProperty("bio").GetString());
+        Assert.Equal(["tom.claude"], profile.GetProperty("agents").EnumerateArray().Select(a => a.GetProperty("handle").GetString()));
+        // Not followed yet, and someone else's: a follow button.
+        Assert.False(profile.GetProperty("following").GetBoolean());
+        Assert.False(profile.TryGetProperty("mine", out _));
+        // The beeps tab, not the replies.
+        Assert.False(page.TryGetProperty("replies", out _));
         await factory.Timelines.Received(1).ProfileAsync(tom.Id, ProfileTimeline.Beeps, Arg.Any<PageRequest>(), viewer.Id, Arg.Any<CancellationToken>());
         PageAssert.NoInlineScriptsOrStyles(html);
     }
@@ -89,8 +93,12 @@ public sealed class ProfilePagesTests : IDisposable
         var own = await client.GetStringAsync(new Uri("/tom", UriKind.Relative), TestSupport.Ct);
         var agents = await client.GetStringAsync(new Uri("/tom.claude", UriKind.Relative), TestSupport.Ct);
 
-        Assert.Contains("<a class=\"btn btn-sm\" href=\"/settings\">Edit profile</a>", own, StringComparison.Ordinal);
-        Assert.Contains($"<a class=\"btn btn-sm\" href=\"/agents/{agent.Id:D}\">Edit profile</a>", agents, StringComparison.Ordinal);
+        var ownCard = Islands.Props(own, "profile").GetProperty("profile");
+        Assert.True(ownCard.GetProperty("mine").GetBoolean());
+        Assert.Equal("/settings", ownCard.GetProperty("editUrl").GetString());
+        var agentsCard = Islands.Props(agents, "profile").GetProperty("profile");
+        Assert.True(agentsCard.GetProperty("mine").GetBoolean());
+        Assert.Equal($"/agents/{agent.Id:D}", agentsCard.GetProperty("editUrl").GetString());
     }
 
     [Fact]
@@ -120,7 +128,8 @@ public sealed class ProfilePagesTests : IDisposable
 
         Assert.Equal("/tom", response.Headers.Location?.OriginalString);
         Assert.Contains("Following. Their beeps and their agents", html, StringComparison.Ordinal);
-        Assert.Contains("action=\"/tom/follow?handler=Unfollow\"", html, StringComparison.Ordinal);
+        // Followed now: the button unfollows.
+        Assert.True(Islands.Props(html, "profile").GetProperty("profile").GetProperty("following").GetBoolean());
         await factory.Profiles.Received(1).AddFollowAsync(viewer.Id, tom.Id, Arg.Any<DateTimeOffset>(), Arg.Any<CancellationToken>());
     }
 
@@ -139,11 +148,15 @@ public sealed class ProfilePagesTests : IDisposable
         var html = await client.GetStringAsync(new Uri("/notifications", UriKind.Relative), TestSupport.Ct);
         using var response = await WebAuth.PostFormAsync(client, "/notifications", "/notifications?handler=Read", ("upToId", notification.Id.ToString()));
 
-        Assert.Contains($"<li class=\"notification notification-unread\">", html, StringComparison.Ordinal);
-        Assert.Matches($"<form class=\"column-actions\" method=\"post\" action=\"/notifications\\?handler=Read\">\\s*<input type=\"hidden\" name=\"upToId\" value=\"{notification.Id:D}\">", html);
-        Assert.Equal("notifications", Islands.Props(html, "notifications").GetProperty("live").GetProperty("watch").GetString());
-        Assert.Matches("</a>\\s*replied to you\\s*<span class=\"notification-time\">", html);
-        Assert.Contains("hi @tom", html, StringComparison.Ordinal);
+        var inbox = Islands.Props(html, "notifications");
+        Assert.Equal("notifications", inbox.GetProperty("live").GetProperty("watch").GetString());
+        // Unread, and the newest shown: what "mark read" marks read up to.
+        var entry = inbox.GetProperty("page").GetProperty("items").EnumerateArray().Single();
+        Assert.Equal(notification.Id, entry.GetProperty("id").GetGuid());
+        Assert.False(entry.TryGetProperty("read", out _));
+        Assert.Equal("reply", entry.GetProperty("type").GetString());
+        Assert.Equal("alice", entry.GetProperty("from").GetProperty("handle").GetString());
+        Assert.Equal("hi @tom", entry.GetProperty("beep").GetProperty("html").GetString());
         Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
         await factory.Notifications.Received(1).MarkReadAsync(user.Id, notification.Id, Arg.Any<DateTimeOffset>(), Arg.Any<CancellationToken>());
         PageAssert.NoInlineScriptsOrStyles(html);
@@ -157,9 +170,9 @@ public sealed class ProfilePagesTests : IDisposable
 
         var html = await client.GetStringAsync(new Uri("/notifications", UriKind.Relative), TestSupport.Ct);
 
-        Assert.Contains("还没有通知", html, StringComparison.Ordinal);
-        // There for when something unread arrives, hidden till then.
-        Assert.Contains("<form class=\"column-actions\" method=\"post\" hidden=\"hidden\" action=\"/notifications?handler=Read\">", html, StringComparison.Ordinal);
+        // Nothing in it, so the empty state shows, in the page's language (and no "mark read" until something arrives).
+        Assert.Empty(Islands.Props(html, "notifications").GetProperty("page").GetProperty("items").EnumerateArray());
+        Assert.Equal("还没有通知", Islands.Config(html).GetProperty("strings").GetProperty("Notifications.Empty.Title").GetString());
     }
 
     private ActorRow ArrangeProfile(string handle, string? bio = null)

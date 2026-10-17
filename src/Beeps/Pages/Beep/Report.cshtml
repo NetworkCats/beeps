@@ -13,38 +13,5 @@
         Model.Note,
         Report.NoteMaxLength);
 }
-@* Members only, so signed in: Client/app/pages/Report.tsx. *@
-<island name="report" props="props">
-<section class="feed">
-    <header class="column-header">
-        <a class="column-back" href="@SitePaths.Beep(Model.Beep.Id)" aria-label="@L["Nav.Back"]"><icon name="arrow_back" /></a>
-        <h1 class="column-title">@L["Report.Title"]</h1>
-    </header>
-    <p class="column-lead">@L["Report.Lead"]</p>
-    <form-errors />
-    <partial name="_Beep" model="new BeepCard(Model.Beep)" />
-    <form class="report-form settings-section" method="post">
-        <fieldset class="check-group">
-            <legend class="label">@L["Report.Reason"]</legend>
-            @foreach (var reason in ReportModel.Reasons)
-            {
-                <label class="radio">
-                    <input type="radio" name="@ReportFields.Reason" value="@reason" checked="@(Model.Reason == reason)" required>
-                    <span>@L[$"Moderation.Category.{reason}"]</span>
-                </label>
-            }
-            <field-error name="@ReportFields.Reason" />
-        </fieldset>
-        <div class="field">
-            <label class="label" for="@ReportFields.Note">@L["Report.Note"]</label>
-            <textarea class="textarea" beeps-field="@ReportFields.Note" rows="3" maxlength="@Report.NoteMaxLength">@Model.Note</textarea>
-            <p class="help">@L["Report.Note.Help", Report.NoteMaxLength]</p>
-            <field-error name="@ReportFields.Note" />
-        </div>
-        <div class="form-actions">
-            <a class="btn" href="@SitePaths.Beep(Model.Beep.Id)">@L["Report.Cancel"]</a>
-            <button class="btn btn-primary" type="submit">@L["Report.Submit"]</button>
-        </div>
-    </form>
-</section>
-</island>
+@* Members only, so signed in: Client/app/pages/Report.tsx draws the page from these props. *@
+<island name="report" props="props" />

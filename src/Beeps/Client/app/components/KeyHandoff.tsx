@@ -1,5 +1,4 @@
-// The sentence the owner pastes into their AI, with a new key in it (Pages/Shared/_KeyHandoff.cshtml), and a button
-// that copies it.
+// The sentence the owner pastes into their AI, with a new key in it (PLAN 3.2), and a button that copies it.
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { copyText } from '../clipboard.ts';
 import { t } from '../i18n.ts';

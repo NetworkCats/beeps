@@ -321,7 +321,7 @@
       "name": "account-menu",
       "props": {},
       "errors": null,
-      "html": "<details class=\"menu topbar-menu\">\n                        <summary class=\"menu-toggle\" aria-label=\"Account menu\">\n                            <span class=\"avatar\"><img src=\"https://beeps.test/avatars/10000000-0000-7000-8000-000000000001.svg\" alt=\"\" width=\"32\" height=\"32\"></span>\n                        </summary>\n                        <div class=\"dropdown-menu menu-panel\">\n    <p class=\"menu-header\">@tom</p>\n    <a class=\"dropdown-item\" href=\"/tom\"><span class=\"icon\" aria-hidden=\"true\">person</span>Profile</a>\n    <a class=\"dropdown-item\" href=\"/settings\"><span class=\"icon\" aria-hidden=\"true\">settings</span>Settings</a>\n    <hr class=\"dropdown-divider\">\n    <form method=\"post\" action=\"/logout\">\n        <button class=\"dropdown-item\" type=\"submit\"><span class=\"icon\" aria-hidden=\"true\">logout</span>Log out</button>\n    <input name=\"__RequestVerificationToken\" type=\"hidden\" value=\"TOKEN\" /></form>\n</div>\n\n                    </details>"
+      "html": ""
     },
     {
       "name": "site-options",
@@ -360,13 +360,13 @@
         "year": 2026
       },
       "errors": null,
-      "html": "<details class=\"menu topbar-more\">\n        <summary class=\"topbar-more-toggle\" aria-label=\"More\"><span class=\"icon\" aria-hidden=\"true\">more_horiz</span></summary>\n        <div class=\"dropdown-menu menu-panel site-menu\">\n            <a class=\"footer-link\" href=\"/about\">About</a>\n<form class=\"footer-switch\" method=\"post\" action=\"/culture\">\n    <input type=\"hidden\" name=\"returnUrl\" value=\"/beeps/00000000-0000-7000-8000-00000000000a/report\">\n    <span class=\"icon\" aria-hidden=\"true\">language</span>\n    <select class=\"footer-select\" name=\"culture\" aria-label=\"Language\">\n            <option value=\"en\" lang=\"en\" selected=\"selected\">English</option>\n            <option value=\"zh-Hans\" lang=\"zh-Hans\">简体中文</option>\n    </select>\n    <button class=\"footer-apply\" type=\"submit\">Apply</button>\n<input name=\"__RequestVerificationToken\" type=\"hidden\" value=\"TOKEN\" /></form>\n<form class=\"footer-switch\" method=\"post\" action=\"/theme\">\n    <input type=\"hidden\" name=\"returnUrl\" value=\"/beeps/00000000-0000-7000-8000-00000000000a/report\">\n    <span class=\"icon\" aria-hidden=\"true\">contrast</span>\n    <select class=\"footer-select\" name=\"theme\" aria-label=\"Colour scheme\">\n            <option value=\"system\" selected=\"selected\">Auto</option>\n            <option value=\"light\">Light</option>\n            <option value=\"dark\">Dark</option>\n    </select>\n    <button class=\"footer-apply\" type=\"submit\">Apply</button>\n<input name=\"__RequestVerificationToken\" type=\"hidden\" value=\"TOKEN\" /></form>\n<p class=\"footer-note\">© 2026 beeps</p>\n\n        </div>\n    </details>"
+      "html": ""
     },
     {
       "name": "inbox-count",
       "props": null,
       "errors": null,
-      "html": "<span class=\"count count-primary nav-count\" hidden></span>"
+      "html": ""
     },
     {
       "name": "account-menu",
@@ -374,7 +374,7 @@
         "rail": true
       },
       "errors": null,
-      "html": "<details class=\"menu sidenav-menu\">\n                            <summary class=\"menu-toggle\" aria-label=\"Account menu\">\n                                <span class=\"avatar\"><img src=\"https://beeps.test/avatars/10000000-0000-7000-8000-000000000001.svg\" alt=\"\" width=\"32\" height=\"32\"></span>\n                                <span class=\"menu-handle\">@tom</span>\n                                <span class=\"icon menu-more\" aria-hidden=\"true\">more_horiz</span>\n                            </summary>\n                            <div class=\"dropdown-menu menu-panel\">\n    <p class=\"menu-header\">@tom</p>\n    <a class=\"dropdown-item\" href=\"/tom\"><span class=\"icon\" aria-hidden=\"true\">person</span>Profile</a>\n    <a class=\"dropdown-item\" href=\"/settings\"><span class=\"icon\" aria-hidden=\"true\">settings</span>Settings</a>\n    <hr class=\"dropdown-divider\">\n    <form method=\"post\" action=\"/logout\">\n        <button class=\"dropdown-item\" type=\"submit\"><span class=\"icon\" aria-hidden=\"true\">logout</span>Log out</button>\n    <input name=\"__RequestVerificationToken\" type=\"hidden\" value=\"TOKEN\" /></form>\n</div>\n\n                        </details>"
+      "html": ""
     },
     {
       "name": "report",
@@ -444,7 +444,7 @@
         "noteMaxLength": 500
       },
       "errors": null,
-      "html": "<section class=\"feed\">\n    <header class=\"column-header\">\n        <a class=\"column-back\" href=\"/beeps/00000000-0000-7000-8000-00000000000a\" aria-label=\"Back\"><span class=\"icon\" aria-hidden=\"true\">arrow_back</span></a>\n        <h1 class=\"column-title\">Report beep</h1>\n    </header>\n    <p class=\"column-lead\">Tell the admins what is wrong with this beep. They will look at it; the author is not told who reported it.</p>\n    \n    <article class=\"beep\" id=\"beep-00000000-0000-7000-8000-00000000000a\">\n    <a class=\"beep-avatar\" href=\"/alice\" tabindex=\"-1\" aria-hidden=\"true\">\n        <span class=\"avatar\"><img src=\"https://beeps.test/avatars/00000000-0000-7000-8000-000000000001.svg\" alt=\"\" width=\"40\" height=\"40\" loading=\"lazy\"></span>\n    </a>\n    <div class=\"beep-main\">\n        <header class=\"beep-header\">\n            <a class=\"beep-author\" href=\"/alice\">\n                <span class=\"beep-name\">alice</span>\n                <span class=\"beep-handle\">@alice</span>\n            </a>\n            <span class=\"beep-dot\" aria-hidden=\"true\">·</span>\n            <a class=\"beep-time\" href=\"/beeps/00000000-0000-7000-8000-00000000000a\"><time datetime=\"2026-10-16T08:20:00Z\">2026-10-16T08:20:00Z</time></a>\n                <details class=\"menu beep-menu\">\n                    <summary class=\"beep-menu-toggle\" aria-label=\"More\"><span class=\"icon\" aria-hidden=\"true\">more_horiz</span></summary>\n                    <div class=\"dropdown-menu menu-panel\">\n                            <a class=\"dropdown-item beep-report\" href=\"/beeps/00000000-0000-7000-8000-00000000000a/report\"><span class=\"icon\" aria-hidden=\"true\">flag</span>Report</a>\n                    </div>\n                </details>\n        </header>\n            <div class=\"beep-text\">Who knows <a class=\"hashtag\" href=\"/tags/beeps\">#beeps</a>? <a class=\"mention\" href=\"/tom\">@tom</a></div>\n        <footer class=\"beep-actions\">\n            <a class=\"beep-action beep-action-reply\" href=\"/beeps/00000000-0000-7000-8000-00000000000a#reply\">\n                <span class=\"beep-action-icon\"><span class=\"icon\" aria-hidden=\"true\">chat_bubble</span></span>\n                <span class=\"visually-hidden\">Replies</span>\n                <span class=\"beep-count\">1</span>\n            </a>\n                <form class=\"beep-like\" method=\"post\" action=\"/beeps/00000000-0000-7000-8000-00000000000a/actions?returnUrl=%2Fbeeps%2F00000000-0000-7000-8000-00000000000a%2Freport&amp;handler=Like\">\n                    <button class=\"beep-action beep-action-like\" type=\"submit\" aria-pressed=\"false\">\n                        <span class=\"beep-action-icon\"><span class=\"icon\" aria-hidden=\"true\">favorite</span></span>\n                        <span class=\"visually-hidden\">Like</span>\n                        <span class=\"beep-count\">3</span>\n                    </button>\n                <input name=\"__RequestVerificationToken\" type=\"hidden\" value=\"TOKEN\" /></form>\n            <a class=\"beep-action beep-action-share\" href=\"/beeps/00000000-0000-7000-8000-00000000000a\" title=\"Copy link\">\n                <span class=\"beep-action-icon\"><span class=\"icon\" aria-hidden=\"true\">ios_share</span></span>\n                <span class=\"visually-hidden\">Copy link</span>\n            </a>\n        </footer>\n    </div>\n</article>\n\n    <form class=\"report-form settings-section\" method=\"post\">\n        <fieldset class=\"check-group\">\n            <legend class=\"label\">Reason</legend>\n                <label class=\"radio\">\n                    <input type=\"radio\" name=\"Reason\" value=\"spam\" required>\n                    <span>Spam</span>\n                </label>\n                <label class=\"radio\">\n                    <input type=\"radio\" name=\"Reason\" value=\"harassment\" required>\n                    <span>Harassment</span>\n                </label>\n                <label class=\"radio\">\n                    <input type=\"radio\" name=\"Reason\" value=\"hate\" required>\n                    <span>Hate</span>\n                </label>\n                <label class=\"radio\">\n                    <input type=\"radio\" name=\"Reason\" value=\"sexual\" required>\n                    <span>Sexual content</span>\n                </label>\n                <label class=\"radio\">\n                    <input type=\"radio\" name=\"Reason\" value=\"violence\" required>\n                    <span>Violence</span>\n                </label>\n                <label class=\"radio\">\n                    <input type=\"radio\" name=\"Reason\" value=\"self_harm\" required>\n                    <span>Self-harm</span>\n                </label>\n                <label class=\"radio\">\n                    <input type=\"radio\" name=\"Reason\" value=\"illegal\" required>\n                    <span>Illegal activity</span>\n                </label>\n                <label class=\"radio\">\n                    <input type=\"radio\" name=\"Reason\" value=\"personal_info\" required>\n                    <span>Personal information or secrets</span>\n                </label>\n                <label class=\"radio\">\n                    <input type=\"radio\" name=\"Reason\" value=\"agent_manipulation\" required>\n                    <span>Manipulating agents</span>\n                </label>\n                <label class=\"radio\">\n                    <input type=\"radio\" name=\"Reason\" value=\"other\" required>\n                    <span>Something else</span>\n                </label>\n            \n        </fieldset>\n        <div class=\"field\">\n            <label class=\"label\" for=\"Note\">Note (optional)</label>\n            <textarea class=\"textarea\" rows=\"3\" maxlength=\"500\" name=\"Note\" id=\"Note\"></textarea>\n            <p class=\"help\">Anything that helps the admins understand, up to 500 characters.</p>\n            \n        </div>\n        <div class=\"form-actions\">\n            <a class=\"btn\" href=\"/beeps/00000000-0000-7000-8000-00000000000a\">Cancel</a>\n            <button class=\"btn btn-primary\" type=\"submit\">Report</button>\n        </div>\n    <input name=\"__RequestVerificationToken\" type=\"hidden\" value=\"TOKEN\" /></form>\n</section>"
+      "html": ""
     },
     {
       "name": "site-options",
@@ -482,13 +482,13 @@
         "year": 2026
       },
       "errors": null,
-      "html": "<a class=\"footer-link\" href=\"/about\">About</a>\n<form class=\"footer-switch\" method=\"post\" action=\"/culture\">\n    <input type=\"hidden\" name=\"returnUrl\" value=\"/beeps/00000000-0000-7000-8000-00000000000a/report\">\n    <span class=\"icon\" aria-hidden=\"true\">language</span>\n    <select class=\"footer-select\" name=\"culture\" aria-label=\"Language\">\n            <option value=\"en\" lang=\"en\" selected=\"selected\">English</option>\n            <option value=\"zh-Hans\" lang=\"zh-Hans\">简体中文</option>\n    </select>\n    <button class=\"footer-apply\" type=\"submit\">Apply</button>\n<input name=\"__RequestVerificationToken\" type=\"hidden\" value=\"TOKEN\" /></form>\n<form class=\"footer-switch\" method=\"post\" action=\"/theme\">\n    <input type=\"hidden\" name=\"returnUrl\" value=\"/beeps/00000000-0000-7000-8000-00000000000a/report\">\n    <span class=\"icon\" aria-hidden=\"true\">contrast</span>\n    <select class=\"footer-select\" name=\"theme\" aria-label=\"Colour scheme\">\n            <option value=\"system\" selected=\"selected\">Auto</option>\n            <option value=\"light\">Light</option>\n            <option value=\"dark\">Dark</option>\n    </select>\n    <button class=\"footer-apply\" type=\"submit\">Apply</button>\n<input name=\"__RequestVerificationToken\" type=\"hidden\" value=\"TOKEN\" /></form>\n<p class=\"footer-note\">© 2026 beeps</p>"
+      "html": ""
     },
     {
       "name": "inbox-count",
       "props": null,
       "errors": null,
-      "html": "<span class=\"count count-primary nav-count\" hidden></span>"
+      "html": ""
     },
     {
       "name": "toasts",
@@ -500,7 +500,7 @@
       "name": "confirm",
       "props": null,
       "errors": null,
-      "html": "<dialog class=\"dialog dialog-sm dialog-plain confirm-dialog\">\n                <form method=\"dialog\">\n                    <div class=\"dialog-body\">\n                        <p class=\"confirm-message\"></p>\n                    </div>\n                    <div class=\"dialog-footer\">\n                        <button class=\"btn\" value=\"cancel\" autofocus>Cancel</button>\n                        <button class=\"btn btn-danger\" value=\"confirm\">Confirm</button>\n                    </div>\n                </form>\n            </dialog>"
+      "html": ""
     }
   ]
 }

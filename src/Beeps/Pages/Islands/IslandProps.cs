@@ -102,7 +102,7 @@ public sealed record BeepListProps(
     }
 }
 
-/// <summary>One inbox entry, as <c>_Notification.cshtml</c> shows it.</summary>
+/// <summary>One inbox entry.</summary>
 /// <param name="Type"><c>mention</c>, <c>reply</c> or <c>like</c>.</param>
 public sealed record NotificationProps(
     Guid Id,
@@ -125,18 +125,12 @@ public sealed record NotificationProps(
     }
 }
 
-/// <summary>The posting form, as <c>_Composer.cshtml</c> shows it. The text field's errors come with the island's.</summary>
+/// <summary>The posting form (components/Composer.tsx). The text field's errors come with the island's.</summary>
+/// <param name="ReturnUrl">Where to go once the beep is posted.</param>
 public sealed record ComposerProps(
     string ReturnUrl,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] Guid? ReplyTo,
-    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Text)
-{
-    public static ComposerProps From(Composer composer)
-    {
-        ArgumentNullException.ThrowIfNull(composer);
-        return new ComposerProps(composer.ReturnUrl, composer.ReplyTo, composer.Text);
-    }
-}
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Text);
 
 /// <summary>What <c>/live/beeps</c> and <c>/live/notifications</c> answer.</summary>
 public sealed record LiveItems<T>(IReadOnlyList<T> Items);

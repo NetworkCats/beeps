@@ -18,6 +18,15 @@ internal static partial class Islands
 
     public static JsonElement Props(string html, string name) => Envelope(html, name).GetProperty("props");
 
+    /// <summary>The layout's app config (Client/app/config.ts): interface text, the antiforgery token, who is signed in.</summary>
+    public static JsonElement Config(string html)
+    {
+        var match = AppConfigPattern().Match(html);
+        Assert.True(match.Success, "The page has no app config.");
+        using var document = JsonDocument.Parse(match.Groups[1].Value);
+        return document.RootElement.Clone();
+    }
+
     public static IReadOnlyList<string> Names(string html) => [.. IslandPattern().Matches(html).Select(m => m.Groups["name"].Value)];
 
     /// <summary>An islands request: the page's props alone, as JSON.</summary>
@@ -52,4 +61,7 @@ internal static partial class Islands
 
     [GeneratedRegex("<(?:div|span) class=\"island\" data-island=\"(?<name>[a-z-]+)\"><script data-island-props=\"\" type=\"application/json\">(?<json>.*?)</script>", RegexOptions.Singleline)]
     private static partial Regex IslandPattern();
+
+    [GeneratedRegex("<script type=\"application/json\" id=\"app-config\">(.*?)</script>", RegexOptions.Singleline)]
+    private static partial Regex AppConfigPattern();
 }

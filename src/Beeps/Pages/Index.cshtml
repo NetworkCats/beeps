@@ -6,39 +6,27 @@
 @{
     ViewData["Title"] = Model.IsHome ? L["Home.Title"] : L["Public.Title"];
     var list = Model.IsHome ? new BeepList(Model.Beeps, L["Home.Empty.Title"], L["Home.Empty.Text"]) : new BeepList(Model.Beeps, L["Public.Empty.Title"]);
-    var composer = new Composer(SitePaths.Home);
     var introArt = Versions.AddFileVersionToPath(Request.PathBase, "/images/chill.png");
     var props = new IndexProps(
         new LiveProps(LiveProps.WatchFor(User, Model.Live)),
         Model.IsHome,
-        Model.IsHome ? ComposerProps.From(composer) : null,
+        Model.IsHome ? new ComposerProps(SitePaths.Home, null, null) : null,
         Model.IsHome ? null : introArt,
         BeepListProps.From(list, Request.Path));
 }
-@* Client/app/pages/Feeds.tsx draws the same markup over it, for every visitor; signed in, it follows the site live. *@
+@* Client/app/pages/Feeds.tsx draws this page from its props. Only signed-out visitors get the markup below as well (search
+   engines read it), which the component then draws the same over. *@
 <island name="index" props="props">
 <section class="feed">
-    @if (Model.IsHome)
-    {
-        <header class="column-header column-header-tabs">
-            <h1 class="visually-hidden">@L["Home.Title"]</h1>
-            <partial name="_FeedTabs" />
-        </header>
-        <partial name="_Composer" model="composer" />
-        <partial name="_BeepList" model="list" />
-    }
-    else
-    {
-        <div class="intro">
-            <img class="intro-art" src="@introArt" alt="" width="534" height="534">
-            <div class="intro-body">
-                <h1 class="intro-title">@L["Site.Name"]</h1>
-                <p class="intro-text">@L["Site.Tagline"]</p>
-                <a class="aside-link" href="@SitePaths.About">@L["About.LearnMore"]</a>
-            </div>
+    <div class="intro">
+        <img class="intro-art" src="@introArt" alt="" width="534" height="534">
+        <div class="intro-body">
+            <h1 class="intro-title">@L["Site.Name"]</h1>
+            <p class="intro-text">@L["Site.Tagline"]</p>
+            <a class="aside-link" href="@SitePaths.About">@L["About.LearnMore"]</a>
         </div>
-        <h2 class="visually-hidden">@L["Public.Title"]</h2>
-        <partial name="_BeepList" model="list" />
-    }
+    </div>
+    <h2 class="visually-hidden">@L["Public.Title"]</h2>
+    <partial name="_BeepList" model="list" />
 </section>
 </island>

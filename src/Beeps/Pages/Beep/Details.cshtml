@@ -15,9 +15,10 @@
         [.. Model.Thread.Items.Select(BeepProps.From)],
         next,
         Model.After,
-        User.IsMember() ? ComposerProps.From(new Composer(SitePaths.Beep(focus.Id), focus.Id)) : null);
+        User.IsMember() ? new ComposerProps(SitePaths.Beep(focus.Id), focus.Id, null) : null);
 }
-@* Client/app/pages/Thread.tsx draws the same markup over it, for every visitor; signed in, it follows the site live. *@
+@* Client/app/pages/Thread.tsx draws this page from its props. Only signed-out visitors get the markup below as well (search
+   engines read it), which the component then draws the same over. *@
 <island name="thread" props="props">
 <section class="feed thread">
     <header class="column-header">

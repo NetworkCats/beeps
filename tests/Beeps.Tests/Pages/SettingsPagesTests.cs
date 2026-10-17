@@ -18,10 +18,13 @@ public sealed class SettingsPagesTests : IDisposable
 
         var html = await client.GetStringAsync(new Uri("/settings", UriKind.Relative), TestSupport.Ct);
 
-        Assert.Contains("<p class=\"settings-fixed\">@tom</p>", html, StringComparison.Ordinal);
-        Assert.Contains("value=\"tom\"", html, StringComparison.Ordinal);
-        Assert.Contains(">about me</textarea>", html, StringComparison.Ordinal);
-        Assert.Contains("<option value=\"en\" lang=\"en\" selected=\"selected\">English</option>", html, StringComparison.Ordinal);
+        var settings = Islands.Props(html, "settings");
+        Assert.Equal("tom", settings.GetProperty("handle").GetString());
+        Assert.Equal("tom", settings.GetProperty("displayName").GetString());
+        Assert.Equal("about me", settings.GetProperty("bio").GetString());
+        // English chosen, among the languages offered under their own names.
+        Assert.Equal("en", settings.GetProperty("culture").GetString());
+        Assert.Contains(settings.GetProperty("cultures").EnumerateArray(), c => c.GetProperty("value").GetString() == "en" && c.GetProperty("label").GetString() == "English");
         PageAssert.NoInlineScriptsOrStyles(html);
     }
 
@@ -49,7 +52,7 @@ public sealed class SettingsPagesTests : IDisposable
         var html = await response.Content.ReadAsStringAsync(TestSupport.Ct);
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-        Assert.Contains("<p class=\"error\" id=\"DisplayName-error\">", html, StringComparison.Ordinal);
+        Assert.True(Islands.Envelope(html, "settings").GetProperty("errors").TryGetProperty("DisplayName", out _));
         Assert.Equal("tom", user.Actor.DisplayName);
     }
 
@@ -116,7 +119,9 @@ public sealed class SettingsPagesTests : IDisposable
         Assert.Equal("/", page.Headers.Location?.OriginalString);
         Assert.Equal("/", response.Headers.Location?.OriginalString);
         Assert.Contains("You are already signed in as @tom.", html, StringComparison.Ordinal);
-        Assert.Contains("class=\"menu-handle\">@tom<", html, StringComparison.Ordinal);
+        // Still tom's account menu.
+        Assert.Contains("account-menu", Islands.Names(html));
+        Assert.Equal("tom", Islands.Config(html).GetProperty("viewer").GetProperty("handle").GetString());
         Assert.DoesNotContain(factory.Sessions.All, s => s.UserId == alice.Id);
     }
 
@@ -139,13 +144,18 @@ public sealed class SettingsPagesTests : IDisposable
             ("DisplayName", "Helper"), ("HandleName", "helper"), ("Bio", "I help."));
         var list = await client.GetStringAsync(new Uri("/agents", UriKind.Relative), TestSupport.Ct);
 
-        Assert.Contains("<span class=\"input-addon\" aria-hidden=\"true\">@tom.</span>", html, StringComparison.Ordinal);
-        Assert.Contains("value=\"claude\"", html, StringComparison.Ordinal);
+        // The name after "@tom.", which is fixed.
+        var edit = Islands.Props(html, "agent");
+        Assert.Equal("tom", edit.GetProperty("ownerHandle").GetString());
+        Assert.Equal("claude", edit.GetProperty("handleName").GetString());
         PageAssert.NoInlineScriptsOrStyles(html);
         Assert.Equal("/agents", response.Headers.Location?.OriginalString);
         Assert.Equal(("Helper", "tom.helper", "I help."), (agent.DisplayName, agent.Handle, agent.Bio));
         Assert.Contains("Agent saved.", list, StringComparison.Ordinal);
-        Assert.Contains($"href=\"/agents/{agent.Id:D}\">Edit</a>", list, StringComparison.Ordinal);
+        // Connected, so the list offers to edit it.
+        var row = Islands.Props(list, "agents").GetProperty("agents").EnumerateArray().Single();
+        Assert.Equal(agent.Id, row.GetProperty("id").GetGuid());
+        Assert.True(row.GetProperty("connected").GetBoolean());
     }
 
     [Fact]

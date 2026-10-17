@@ -117,8 +117,8 @@ public sealed partial class LivePagesTests : IDisposable
         Assert.Equal(root.Id, thread.GetProperty("focus").GetProperty("id").GetGuid());
         Assert.False(Islands.Props(notLast, "thread").GetProperty("live").TryGetProperty("watch", out _));
         Assert.Equal($"/beeps/{root.Id:D}?after={root.Id:D}", Islands.Props(notLast, "thread").GetProperty("next").GetString());
-        // Beeps in it: the empty state is there for when they go, hidden.
-        Assert.Contains("class=\"empty\" hidden=\"hidden\">", first, StringComparison.Ordinal);
+        // Beeps in it: the empty state comes with them, for when they go.
+        Assert.False(string.IsNullOrEmpty(Islands.Props(first, "public").GetProperty("list").GetProperty("emptyTitle").GetString()));
     }
 
     [Fact]
@@ -143,8 +143,10 @@ public sealed partial class LivePagesTests : IDisposable
         Assert.Equal("tag:beeps", Islands.Props(tag, "tag").GetProperty("live").GetProperty("watch").GetString());
         Assert.Equal("notifications", Islands.Props(inbox, "notifications").GetProperty("live").GetProperty("watch").GetString());
         // Nothing in them: the empty state shows.
-        Assert.Contains("<div class=\"empty\">", profile, StringComparison.Ordinal);
-        Assert.Contains("<div class=\"empty\">", inbox, StringComparison.Ordinal);
+        var profileList = Islands.Props(profile, "profile").GetProperty("list");
+        Assert.Empty(profileList.GetProperty("items").EnumerateArray());
+        Assert.False(string.IsNullOrEmpty(profileList.GetProperty("emptyTitle").GetString()));
+        Assert.Empty(Islands.Props(inbox, "notifications").GetProperty("page").GetProperty("items").EnumerateArray());
     }
 
     [Fact]
@@ -156,7 +158,7 @@ public sealed partial class LivePagesTests : IDisposable
         var list = await client.GetStringAsync(new Uri("/agents", UriKind.Relative), TestSupport.Ct);
         using var created = await WebAuth.PostFormAsync(client, "/agents", "/agents?handler=Create");
         var withKey = await created.Content.ReadAsStringAsync(TestSupport.Ct);
-        var agentId = AgentIdPattern().Match(withKey).Groups[1].Value;
+        var agentId = Islands.Props(withKey, "agents").GetProperty("newKey").GetProperty("agentId").GetString()!;
         factory.Agents.ListAgentsAsync(user.Id, Arg.Any<CancellationToken>())
             .Returns([new AgentRow(Guid.Parse(agentId), null, null, null, TestData.Now, null, "beeps_abc", TestData.Now, null)]);
         var waiting = await client.GetStringAsync(new Uri($"/onboarding/connect/{agentId}", UriKind.Relative), TestSupport.Ct);
@@ -164,7 +166,6 @@ public sealed partial class LivePagesTests : IDisposable
 
         Assert.Equal([user.Id.ToString("D")], Islands.Strings(Islands.Props(list, "agents").GetProperty("live").GetProperty("actors")));
         var newKey = Islands.Props(withKey, "agents").GetProperty("newKey");
-        Assert.Equal(agentId, newKey.GetProperty("agentId").GetString());
         Assert.Contains("beeps_", newKey.GetProperty("prompt").GetString(), StringComparison.Ordinal);
         Assert.False(Islands.Props(again, "agents").TryGetProperty("newKey", out _));
         var connect = Islands.Props(waiting, "connect").GetProperty("live");
@@ -425,9 +426,6 @@ public sealed partial class LivePagesTests : IDisposable
     }
 
     public void Dispose() => factory.Dispose();
-
-    [System.Text.RegularExpressions.GeneratedRegex("/onboarding/connect/([0-9a-f-]{36})")]
-    private static partial System.Text.RegularExpressions.Regex AgentIdPattern();
 
     [System.Text.RegularExpressions.GeneratedRegex("<script data-island-props=\"\" type=\"application/json\">.*?</script>")]
     private static partial System.Text.RegularExpressions.Regex IslandPropsPattern();

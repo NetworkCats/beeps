@@ -2,15 +2,13 @@
 @using Beeps.Features.Beeps
 @using Beeps.Features.Site
 @model BeepCard
-@* The one beep markup: timelines, threads, profiles, the inbox. Signed in, Client/app/components/BeepCard.tsx draws the
-   same markup over it, and keeps it up to date. *@
+@* A beep as signed-out visitors get it (timelines, threads, profiles, search): Client/app/components/BeepCard.tsx draws
+   the same markup over it. Signed in, the component alone draws it, with what members can do to a beep. *@
 @{
     var beep = Model.Beep;
     var author = beep.Author;
     var profile = SitePaths.Profile(author.Handle ?? "");
     var permalink = SitePaths.Beep(beep.Id);
-    var returnUrl = $"{Context.Request.Path}{Context.Request.QueryString}";
-    var likeHandler = beep.Liked ? "Unlike" : "Like";
     // As on other social sites a count of nothing is left blank.
     string Count(int n) => n > 0 ? n.ToString(System.Globalization.CultureInfo.InvariantCulture) : "";
 }
@@ -30,30 +28,6 @@
             </a>
             <span class="beep-dot" aria-hidden="true">·</span>
             <a class="beep-time" href="@permalink"><utc-time value="beep.CreatedAt" /></a>
-            @if (beep.UnderReview)
-            {
-                @* Only its author and their owner ever get here (PLAN 6.20). *@
-                <span class="badge badge-warning" title="@L["Beep.UnderReview.Help"]">@L["Beep.UnderReview"]</span>
-            }
-            @if (beep.CanDelete || User.IsMember())
-            {
-                @* What is done to a beep rather than with it: out of the way, behind a menu. *@
-                <details class="menu beep-menu">
-                    <summary class="beep-menu-toggle" aria-label="@L["Beep.More"]"><icon name="more_horiz" /></summary>
-                    <div class="dropdown-menu menu-panel">
-                        @if (beep.CanDelete)
-                        {
-                            <form class="beep-delete" method="post" asp-page="/Beep/Actions" asp-route-id="@beep.Id" asp-page-handler="Delete" asp-route-returnUrl="@returnUrl" data-confirm="@L["Beep.Delete.Confirm"]">
-                                <button class="dropdown-item dropdown-item-danger" type="submit"><icon name="delete" />@L["Beep.Delete"]</button>
-                            </form>
-                        }
-                        else
-                        {
-                            <a class="dropdown-item beep-report" asp-page="/Beep/Report" asp-route-id="@beep.Id"><icon name="flag" />@L["Beep.Report"]</a>
-                        }
-                    </div>
-                </details>
-            }
         </header>
         @if (beep.IsReply)
         {
@@ -89,24 +63,11 @@
                 <span class="visually-hidden">@L["Beep.Replies"]</span>
                 <span class="beep-count">@Count(beep.ReplyCount)</span>
             </a>
-            @if (User.IsMember())
-            {
-                <form class="beep-like" method="post" asp-page="/Beep/Actions" asp-route-id="@beep.Id" asp-page-handler="@likeHandler" asp-route-returnUrl="@returnUrl">
-                    <button class="beep-action beep-action-like" type="submit" aria-pressed="@(beep.Liked ? "true" : "false")">
-                        <span class="beep-action-icon"><icon name="favorite" /></span>
-                        <span class="visually-hidden">@L["Beep.Like"]</span>
-                        <span class="beep-count">@Count(beep.LikeCount)</span>
-                    </button>
-                </form>
-            }
-            else
-            {
-                <span class="beep-action beep-action-like">
-                    <span class="beep-action-icon"><icon name="favorite" /></span>
-                    <span class="visually-hidden">@L["Beep.Likes", beep.LikeCount]</span>
-                    <span class="beep-count" aria-hidden="true">@Count(beep.LikeCount)</span>
-                </span>
-            }
+            <span class="beep-action beep-action-like">
+                <span class="beep-action-icon"><icon name="favorite" /></span>
+                <span class="visually-hidden">@L["Beep.Likes", beep.LikeCount]</span>
+                <span class="beep-count" aria-hidden="true">@Count(beep.LikeCount)</span>
+            </span>
             @* Copies the beep's address (BeepCard.tsx); without script it is that address, as a link. *@
             <a class="beep-action beep-action-share" href="@permalink" title="@L["Beep.Share"]">
                 <span class="beep-action-icon"><icon name="ios_share" /></span>

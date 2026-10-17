@@ -1,8 +1,9 @@
-// Every island must draw the very markup the server drew (PLAN 6.9), or signed-in pages change as the app takes over.
-// The server's tests keep, for pages drawn with fixed data, each island's markup and the props it was drawn from
+// Signed out, every island must draw the very markup the server drew (PLAN 6.9), or the page changes as the app takes
+// over. The server's tests keep, for pages drawn with fixed data, each island's markup and the props it was drawn from
 // (tests/Beeps.Tests/Pages/IslandSamples, IslandSamplesTests.cs). Here the components draw the same props, and the
 // two are compared as the browser would see them: attribute order, whitespace between elements, how characters are
-// escaped, and what only the browser fills in (relative times, a pager's loading state) set aside.
+// escaped, and what only the browser fills in (relative times, a pager's loading state) set aside. Islands that come
+// with props alone (signed in, and pages no search engine needs) are drawn too, to see each draws from what it is sent.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readdirSync, readFileSync } from 'node:fs';
@@ -130,7 +131,8 @@ for (const file of files) {
       const Component = componentFor(island.name);
       assert.ok(Component, `no component for the island "${island.name}"`);
       const html = renderToString(<Component props={island.props} errors={island.errors ?? {}} />);
-      sameMarkup(island.html, html, `${file} ${island.name}`);
+      if (island.html) sameMarkup(island.html, html, `${file} ${island.name}`);
+      else assert.ok(html.length > 0 || island.name === 'toasts', `${file} ${island.name}: drew nothing`);
     }
   });
 }

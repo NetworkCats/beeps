@@ -321,7 +321,7 @@
       "name": "account-menu",
       "props": {},
       "errors": null,
-      "html": "<details class=\"menu topbar-menu\">\n                        <summary class=\"menu-toggle\" aria-label=\"Account menu\">\n                            <span class=\"avatar\"><img src=\"https://beeps.test/avatars/10000000-0000-7000-8000-000000000001.svg\" alt=\"\" width=\"32\" height=\"32\"></span>\n                        </summary>\n                        <div class=\"dropdown-menu menu-panel\">\n    <p class=\"menu-header\">@tom</p>\n    <a class=\"dropdown-item\" href=\"/tom\"><span class=\"icon\" aria-hidden=\"true\">person</span>Profile</a>\n    <a class=\"dropdown-item\" href=\"/settings\"><span class=\"icon\" aria-hidden=\"true\">settings</span>Settings</a>\n        <a class=\"dropdown-item\" href=\"/admin\"><span class=\"icon\" aria-hidden=\"true\">admin_panel_settings</span>Admin</a>\n    <hr class=\"dropdown-divider\">\n    <form method=\"post\" action=\"/logout\">\n        <button class=\"dropdown-item\" type=\"submit\"><span class=\"icon\" aria-hidden=\"true\">logout</span>Log out</button>\n    <input name=\"__RequestVerificationToken\" type=\"hidden\" value=\"TOKEN\" /></form>\n</div>\n\n                    </details>"
+      "html": ""
     },
     {
       "name": "site-options",
@@ -360,13 +360,13 @@
         "year": 2026
       },
       "errors": null,
-      "html": "<details class=\"menu topbar-more\">\n        <summary class=\"topbar-more-toggle\" aria-label=\"More\"><span class=\"icon\" aria-hidden=\"true\">more_horiz</span></summary>\n        <div class=\"dropdown-menu menu-panel site-menu\">\n            <a class=\"footer-link\" href=\"/about\">About</a>\n<form class=\"footer-switch\" method=\"post\" action=\"/culture\">\n    <input type=\"hidden\" name=\"returnUrl\" value=\"/admin/review\">\n    <span class=\"icon\" aria-hidden=\"true\">language</span>\n    <select class=\"footer-select\" name=\"culture\" aria-label=\"Language\">\n            <option value=\"en\" lang=\"en\" selected=\"selected\">English</option>\n            <option value=\"zh-Hans\" lang=\"zh-Hans\">简体中文</option>\n    </select>\n    <button class=\"footer-apply\" type=\"submit\">Apply</button>\n<input name=\"__RequestVerificationToken\" type=\"hidden\" value=\"TOKEN\" /></form>\n<form class=\"footer-switch\" method=\"post\" action=\"/theme\">\n    <input type=\"hidden\" name=\"returnUrl\" value=\"/admin/review\">\n    <span class=\"icon\" aria-hidden=\"true\">contrast</span>\n    <select class=\"footer-select\" name=\"theme\" aria-label=\"Colour scheme\">\n            <option value=\"system\" selected=\"selected\">Auto</option>\n            <option value=\"light\">Light</option>\n            <option value=\"dark\">Dark</option>\n    </select>\n    <button class=\"footer-apply\" type=\"submit\">Apply</button>\n<input name=\"__RequestVerificationToken\" type=\"hidden\" value=\"TOKEN\" /></form>\n<p class=\"footer-note\">© 2026 beeps</p>\n\n        </div>\n    </details>"
+      "html": ""
     },
     {
       "name": "inbox-count",
       "props": null,
       "errors": null,
-      "html": "<span class=\"count count-primary nav-count\" hidden></span>"
+      "html": ""
     },
     {
       "name": "account-menu",
@@ -374,7 +374,7 @@
         "rail": true
       },
       "errors": null,
-      "html": "<details class=\"menu sidenav-menu\">\n                            <summary class=\"menu-toggle\" aria-label=\"Account menu\">\n                                <span class=\"avatar\"><img src=\"https://beeps.test/avatars/10000000-0000-7000-8000-000000000001.svg\" alt=\"\" width=\"32\" height=\"32\"></span>\n                                <span class=\"menu-handle\">@tom</span>\n                                <span class=\"icon menu-more\" aria-hidden=\"true\">more_horiz</span>\n                            </summary>\n                            <div class=\"dropdown-menu menu-panel\">\n    <p class=\"menu-header\">@tom</p>\n    <a class=\"dropdown-item\" href=\"/tom\"><span class=\"icon\" aria-hidden=\"true\">person</span>Profile</a>\n    <a class=\"dropdown-item\" href=\"/settings\"><span class=\"icon\" aria-hidden=\"true\">settings</span>Settings</a>\n        <a class=\"dropdown-item\" href=\"/admin\"><span class=\"icon\" aria-hidden=\"true\">admin_panel_settings</span>Admin</a>\n    <hr class=\"dropdown-divider\">\n    <form method=\"post\" action=\"/logout\">\n        <button class=\"dropdown-item\" type=\"submit\"><span class=\"icon\" aria-hidden=\"true\">logout</span>Log out</button>\n    <input name=\"__RequestVerificationToken\" type=\"hidden\" value=\"TOKEN\" /></form>\n</div>\n\n                        </details>"
+      "html": ""
     },
     {
       "name": "admin-review",
@@ -400,7 +400,7 @@
         }
       },
       "errors": null,
-      "html": "<header class=\"section-header\">\n    <h1>Review</h1>\n</header>\n<p class=\"section-lead\">Beeps hidden by the AI, beeps whose AI review failed, and reported beeps, oldest first.</p>\n    <div class=\"table-container\">\n        <table class=\"table table-hover table-stack\">\n            <thead>\n                <tr>\n                    <th>Beep</th>\n                    <th>Author</th>\n                    <th>Status</th>\n                    <th>Why</th>\n                    <th>Posted</th>\n                </tr>\n            </thead>\n            <tbody>\n                    <tr>\n                        <td data-label=\"Beep\">\n                            <a class=\"review-excerpt\" href=\"/admin/beeps/00000000-0000-7000-8000-000000000032\">&lt;b&gt;buy&lt;/b&gt; now</a>\n                        </td>\n                        <td data-label=\"Author\">@alice.claude</td>\n                        <td data-label=\"Status\"><span class=\"badge badge-danger\">Hidden by AI</span>\n</td>\n                        <td data-label=\"Why\">\n                            <span class=\"tag-group\">\n                                    <span class=\"badge badge-warning\">2 reports</span>\n                                        <span class=\"badge\">Spam</span>\n                            </span>\n                        </td>\n                        <td data-label=\"Posted\"><time datetime=\"2026-10-16T08:30:00Z\">2026-10-16T08:30:00Z</time></td>\n                    </tr>\n            </tbody>\n        </table>\n    </div>"
+      "html": ""
     },
     {
       "name": "site-options",
@@ -438,13 +438,13 @@
         "year": 2026
       },
       "errors": null,
-      "html": "<a class=\"footer-link\" href=\"/about\">About</a>\n<form class=\"footer-switch\" method=\"post\" action=\"/culture\">\n    <input type=\"hidden\" name=\"returnUrl\" value=\"/admin/review\">\n    <span class=\"icon\" aria-hidden=\"true\">language</span>\n    <select class=\"footer-select\" name=\"culture\" aria-label=\"Language\">\n            <option value=\"en\" lang=\"en\" selected=\"selected\">English</option>\n            <option value=\"zh-Hans\" lang=\"zh-Hans\">简体中文</option>\n    </select>\n    <button class=\"footer-apply\" type=\"submit\">Apply</button>\n<input name=\"__RequestVerificationToken\" type=\"hidden\" value=\"TOKEN\" /></form>\n<form class=\"footer-switch\" method=\"post\" action=\"/theme\">\n    <input type=\"hidden\" name=\"returnUrl\" value=\"/admin/review\">\n    <span class=\"icon\" aria-hidden=\"true\">contrast</span>\n    <select class=\"footer-select\" name=\"theme\" aria-label=\"Colour scheme\">\n            <option value=\"system\" selected=\"selected\">Auto</option>\n            <option value=\"light\">Light</option>\n            <option value=\"dark\">Dark</option>\n    </select>\n    <button class=\"footer-apply\" type=\"submit\">Apply</button>\n<input name=\"__RequestVerificationToken\" type=\"hidden\" value=\"TOKEN\" /></form>\n<p class=\"footer-note\">© 2026 beeps</p>"
+      "html": ""
     },
     {
       "name": "inbox-count",
       "props": null,
       "errors": null,
-      "html": "<span class=\"count count-primary nav-count\" hidden></span>"
+      "html": ""
     },
     {
       "name": "toasts",
@@ -456,7 +456,7 @@
       "name": "confirm",
       "props": null,
       "errors": null,
-      "html": "<dialog class=\"dialog dialog-sm dialog-plain confirm-dialog\">\n                <form method=\"dialog\">\n                    <div class=\"dialog-body\">\n                        <p class=\"confirm-message\"></p>\n                    </div>\n                    <div class=\"dialog-footer\">\n                        <button class=\"btn\" value=\"cancel\" autofocus>Cancel</button>\n                        <button class=\"btn btn-danger\" value=\"confirm\">Confirm</button>\n                    </div>\n                </form>\n            </dialog>"
+      "html": ""
     }
   ]
 }

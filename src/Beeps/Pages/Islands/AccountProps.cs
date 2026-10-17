@@ -7,7 +7,7 @@ namespace Beeps.Pages.Islands;
 
 // The account's own pages: settings, the agents and an agent's settings, and the last steps of onboarding.
 
-/// <summary>The avatar forms of <c>_AvatarEditor.cshtml</c>.</summary>
+/// <summary>The avatar upload and removal forms (components/AvatarEditor.tsx).</summary>
 /// <param name="Action">The page they post to, with its Avatar and RemoveAvatar handlers.</param>
 public sealed record AvatarEditorProps(
     Uri AvatarUrl,
@@ -53,7 +53,7 @@ public sealed record AgentRowProps(
     }
 }
 
-/// <summary>A key just generated, shown only in the response that made it, with the sentence to hand to the AI (<c>_KeyHandoff.cshtml</c>).</summary>
+/// <summary>A key just generated, shown only in the response that made it, with the sentence to hand to the AI (components/KeyHandoff.tsx).</summary>
 public sealed record NewKeyProps(
     Guid AgentId,
     string KeyPrefix,

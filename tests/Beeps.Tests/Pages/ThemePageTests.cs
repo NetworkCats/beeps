@@ -74,7 +74,10 @@ public sealed class ThemePageTests : IDisposable
         Assert.Equal("dark", user.Theme);
         // Another browser, with no cookie of its own.
         Assert.Contains("<html lang=\"en\" data-theme=\"dark\">", html, StringComparison.Ordinal);
-        Assert.Matches("<form class=\"footer-switch\" method=\"post\" action=\"/theme\">", html);
+        // The scheme switch posts it to the account, with dark chosen.
+        var options = Islands.Props(html, "site-options");
+        Assert.True(options.GetProperty("signedIn").GetBoolean());
+        Assert.Equal("dark", options.GetProperty("theme").GetString());
     }
 
     [Fact]
@@ -112,7 +115,9 @@ public sealed class ThemePageTests : IDisposable
         var page = await client.GetStringAsync(new Uri("/settings", UriKind.Relative), TestSupport.Ct);
         using var response = await WebAuth.PostFormAsync(client, "/settings", "/settings?handler=Theme", ("Theme", "light"));
 
-        Assert.Contains("<select class=\"select settings-select\" id=\"Theme\" name=\"Theme\">", page, StringComparison.Ordinal);
+        var settings = Islands.Props(page, "settings");
+        Assert.Equal("system", settings.GetProperty("theme").GetString());
+        Assert.Equal(["system", "light", "dark"], settings.GetProperty("themes").EnumerateArray().Select(t => t.GetProperty("value").GetString()));
         Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
         Assert.Equal("light", user.Theme);
         Assert.Contains(response.Headers.GetValues("Set-Cookie"), c => c.StartsWith("beeps.theme=light", StringComparison.Ordinal));

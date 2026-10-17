@@ -1,6 +1,5 @@
-// The posting form, drawn as Pages/Shared/_Composer.cshtml draws it. It counts what is left in the characters people
-// see (one Chinese character or emoji is one), posts with Ctrl/⌘+Enter, shows the picked images small and flags too
-// many or too large ones at once. It posts in the background: the page it was written on catches up with the new beep,
+// The posting form, for members. It counts what is left in the characters people see (one Chinese character or emoji
+// is one), posts with Ctrl/⌘+Enter, shows the picked images small and flags too many or too large ones at once. It posts in the background: the page it was written on catches up with the new beep,
 // and a refused post shows why next to the form, with the text kept.
 import type { TargetedEvent, TargetedKeyboardEvent, TargetedSubmitEvent } from 'preact';
 import { useEffect, useState } from 'preact/hooks';

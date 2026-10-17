@@ -44,13 +44,15 @@ public sealed class TimelinePagesTests : IDisposable
 
         var html = await client.GetStringAsync(new Uri("/", UriKind.Relative), TestSupport.Ct);
 
-        Assert.Contains("from someone I follow", html, StringComparison.Ordinal);
-        Assert.Matches("<form class=\"composer\" method=\"post\"[^>]* action=\"/compose\"", html);
-        Assert.Equal("/", Islands.Props(html, "index").GetProperty("composer").GetProperty("returnUrl").GetString());
-        Assert.Contains($"action=\"/beeps/{beep.Id:D}/actions?returnUrl=%2F&amp;handler=Unlike\"", html, StringComparison.Ordinal);
-        Assert.Contains("aria-pressed=\"true\"", html, StringComparison.Ordinal);
-        Assert.Contains("<span class=\"beep-count\">3</span>", html, StringComparison.Ordinal);
-        Assert.DoesNotContain("class=\"intro\"", html, StringComparison.Ordinal);
+        var index = Islands.Props(html, "index");
+        Assert.True(index.GetProperty("home").GetBoolean());
+        Assert.Equal("/", index.GetProperty("composer").GetProperty("returnUrl").GetString());
+        var shown = index.GetProperty("list").GetProperty("items").EnumerateArray().Single();
+        Assert.Equal("from someone I follow", shown.GetProperty("html").GetString());
+        // Liked already: the button unlikes.
+        Assert.True(shown.GetProperty("liked").GetBoolean());
+        Assert.Equal(3, shown.GetProperty("likeCount").GetInt32());
+        Assert.False(index.TryGetProperty("introArt", out _));
         PageAssert.NoInlineScriptsOrStyles(html);
     }
 
@@ -63,8 +65,11 @@ public sealed class TimelinePagesTests : IDisposable
         var html = await client.GetStringAsync(new Uri("/public", UriKind.Relative), TestSupport.Ct);
 
         Assert.Contains("<a class=\"sidenav-item\" aria-current=\"page\" href=\"/public\"><span class=\"icon\" aria-hidden=\"true\">public</span><span class=\"sidenav-label\">Public</span></a>", html, StringComparison.Ordinal);
-        Assert.Contains("<details class=\"menu sidenav-menu\">", html, StringComparison.Ordinal);
-        Assert.Contains("<a class=\"dropdown-item\" href=\"/tom\"><span class=\"icon\" aria-hidden=\"true\">person</span>Profile</a>", html, StringComparison.Ordinal);
+        // The account menus (the rail's and the top bar's) are drawn from who is signed in: the profile is tom's, no admin link.
+        Assert.Equal(2, Islands.Names(html).Count(name => name == "account-menu"));
+        var viewer = Islands.Config(html).GetProperty("viewer");
+        Assert.Equal("tom", viewer.GetProperty("handle").GetString());
+        Assert.False(viewer.GetProperty("admin").GetBoolean());
         Assert.DoesNotContain("/admin/users", html, StringComparison.Ordinal);
     }
 
@@ -109,13 +114,17 @@ public sealed class TimelinePagesTests : IDisposable
 
         var html = await client.GetStringAsync(new Uri($"/beeps/{reply.Id}", UriKind.Relative), TestSupport.Ct);
 
-        Assert.Contains($"<article class=\"beep beep-focused\" id=\"beep-{reply.Id:D}\">", html, StringComparison.Ordinal);
-        Assert.Contains($"<a href=\"#beep-{root.Id:D}\">Replying to @alice</a>", html, StringComparison.Ordinal);
-        Assert.Matches($"<form class=\"composer\" method=\"post\"[^>]* id=\"reply\" action=\"/compose\\?replyTo={reply.Id:D}\"", html);
-        Assert.Contains($"name=\"ReturnUrl\" value=\"/beeps/{reply.Id:D}\"", html, StringComparison.Ordinal);
-        // In the markup, after the island's props.
-        var markup = html[html.IndexOf("<section class=\"feed thread\">", StringComparison.Ordinal)..];
-        Assert.True(markup.IndexOf("the question", StringComparison.Ordinal) < markup.IndexOf("the answer", StringComparison.Ordinal));
+        var thread = Islands.Props(html, "thread");
+        Assert.Equal(reply.Id, thread.GetProperty("focus").GetProperty("id").GetGuid());
+        // It answers alice's beep, which is in the thread above it, oldest first.
+        Assert.Equal(root.Id, thread.GetProperty("focus").GetProperty("replyToId").GetGuid());
+        var items = thread.GetProperty("items").EnumerateArray().ToList();
+        Assert.Equal([root.Id, reply.Id], items.Select(b => b.GetProperty("id").GetGuid()));
+        Assert.Equal("alice", items[0].GetProperty("author").GetProperty("handle").GetString());
+        Assert.Equal(["the question", "the answer"], items.Select(b => b.GetProperty("html").GetString()));
+        var form = thread.GetProperty("reply");
+        Assert.Equal(reply.Id, form.GetProperty("replyTo").GetGuid());
+        Assert.Equal($"/beeps/{reply.Id:D}", form.GetProperty("returnUrl").GetString());
         PageAssert.NoInlineScriptsOrStyles(html);
     }
 

@@ -1,4 +1,4 @@
-// The signed-in person's menu (Pages/Shared/_AccountMenu.cshtml): in the navigation rail on wide screens, in the top
+// The signed-in person's menu: in the navigation rail on wide screens, in the top
 // bar on narrow ones. Their avatar shows as soon as a new one is processed.
 import { Antiforgery } from '../components/Forms.tsx';
 import { Icon } from '../components/Icon.tsx';

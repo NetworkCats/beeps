@@ -321,7 +321,7 @@
       "name": "account-menu",
       "props": {},
       "errors": null,
-      "html": "<details class=\"menu topbar-menu\">\n                        <summary class=\"menu-toggle\" aria-label=\"Account menu\">\n                            <span class=\"avatar\"><img src=\"https://beeps.test/avatars/10000000-0000-7000-8000-000000000001.svg\" alt=\"\" width=\"32\" height=\"32\"></span>\n                        </summary>\n                        <div class=\"dropdown-menu menu-panel\">\n    <p class=\"menu-header\">@tom</p>\n    <a class=\"dropdown-item\" href=\"/tom\"><span class=\"icon\" aria-hidden=\"true\">person</span>Profile</a>\n    <a class=\"dropdown-item\" href=\"/settings\"><span class=\"icon\" aria-hidden=\"true\">settings</span>Settings</a>\n        <a class=\"dropdown-item\" href=\"/admin\"><span class=\"icon\" aria-hidden=\"true\">admin_panel_settings</span>Admin</a>\n    <hr class=\"dropdown-divider\">\n    <form method=\"post\" action=\"/logout\">\n        <button class=\"dropdown-item\" type=\"submit\"><span class=\"icon\" aria-hidden=\"true\">logout</span>Log out</button>\n    <input name=\"__RequestVerificationToken\" type=\"hidden\" value=\"TOKEN\" /></form>\n</div>\n\n                    </details>"
+      "html": ""
     },
     {
       "name": "site-options",
@@ -360,13 +360,13 @@
         "year": 2026
       },
       "errors": null,
-      "html": "<details class=\"menu topbar-more\">\n        <summary class=\"topbar-more-toggle\" aria-label=\"More\"><span class=\"icon\" aria-hidden=\"true\">more_horiz</span></summary>\n        <div class=\"dropdown-menu menu-panel site-menu\">\n            <a class=\"footer-link\" href=\"/about\">About</a>\n<form class=\"footer-switch\" method=\"post\" action=\"/culture\">\n    <input type=\"hidden\" name=\"returnUrl\" value=\"/admin/system\">\n    <span class=\"icon\" aria-hidden=\"true\">language</span>\n    <select class=\"footer-select\" name=\"culture\" aria-label=\"Language\">\n            <option value=\"en\" lang=\"en\" selected=\"selected\">English</option>\n            <option value=\"zh-Hans\" lang=\"zh-Hans\">简体中文</option>\n    </select>\n    <button class=\"footer-apply\" type=\"submit\">Apply</button>\n<input name=\"__RequestVerificationToken\" type=\"hidden\" value=\"TOKEN\" /></form>\n<form class=\"footer-switch\" method=\"post\" action=\"/theme\">\n    <input type=\"hidden\" name=\"returnUrl\" value=\"/admin/system\">\n    <span class=\"icon\" aria-hidden=\"true\">contrast</span>\n    <select class=\"footer-select\" name=\"theme\" aria-label=\"Colour scheme\">\n            <option value=\"system\" selected=\"selected\">Auto</option>\n            <option value=\"light\">Light</option>\n            <option value=\"dark\">Dark</option>\n    </select>\n    <button class=\"footer-apply\" type=\"submit\">Apply</button>\n<input name=\"__RequestVerificationToken\" type=\"hidden\" value=\"TOKEN\" /></form>\n<p class=\"footer-note\">© 2026 beeps</p>\n\n        </div>\n    </details>"
+      "html": ""
     },
     {
       "name": "inbox-count",
       "props": null,
       "errors": null,
-      "html": "<span class=\"count count-primary nav-count\" hidden></span>"
+      "html": ""
     },
     {
       "name": "account-menu",
@@ -374,7 +374,7 @@
         "rail": true
       },
       "errors": null,
-      "html": "<details class=\"menu sidenav-menu\">\n                            <summary class=\"menu-toggle\" aria-label=\"Account menu\">\n                                <span class=\"avatar\"><img src=\"https://beeps.test/avatars/10000000-0000-7000-8000-000000000001.svg\" alt=\"\" width=\"32\" height=\"32\"></span>\n                                <span class=\"menu-handle\">@tom</span>\n                                <span class=\"icon menu-more\" aria-hidden=\"true\">more_horiz</span>\n                            </summary>\n                            <div class=\"dropdown-menu menu-panel\">\n    <p class=\"menu-header\">@tom</p>\n    <a class=\"dropdown-item\" href=\"/tom\"><span class=\"icon\" aria-hidden=\"true\">person</span>Profile</a>\n    <a class=\"dropdown-item\" href=\"/settings\"><span class=\"icon\" aria-hidden=\"true\">settings</span>Settings</a>\n        <a class=\"dropdown-item\" href=\"/admin\"><span class=\"icon\" aria-hidden=\"true\">admin_panel_settings</span>Admin</a>\n    <hr class=\"dropdown-divider\">\n    <form method=\"post\" action=\"/logout\">\n        <button class=\"dropdown-item\" type=\"submit\"><span class=\"icon\" aria-hidden=\"true\">logout</span>Log out</button>\n    <input name=\"__RequestVerificationToken\" type=\"hidden\" value=\"TOKEN\" /></form>\n</div>\n\n                        </details>"
+      "html": ""
     },
     {
       "name": "admin-system",
@@ -407,7 +407,7 @@
         ]
       },
       "errors": null,
-      "html": "<h1>System</h1>\n\n<section class=\"admin-section\">\n    <h2>Failed jobs</h2>\n    <p class=\"section-lead\">Background jobs that failed every attempt. Retry once the cause is fixed, or discard them.</p>\n        <div class=\"table-container\">\n            <table class=\"table table-stack\">\n                <thead>\n                    <tr>\n                        <th>Type</th>\n                        <th>Failed</th>\n                        <th>Last error</th>\n                        <th>Actions</th>\n                    </tr>\n                </thead>\n                <tbody>\n                        <tr>\n                            <td data-label=\"Type\"><code>media.process</code> <span class=\"help\">8 attempts</span></td>\n                            <td data-label=\"Failed\"><time datetime=\"2026-10-16T08:30:00Z\">2026-10-16T08:30:00Z</time></td>\n                            <td data-label=\"Last error\"><span class=\"review-note\" lang=\"en\">IOException: disk full</span></td>\n                            <td data-label=\"Actions\">\n                                <div class=\"admin-actions admin-actions-inline\">\n                                    <form method=\"post\" action=\"/admin/system?id=00000000-0000-7000-8000-000000000036&amp;handler=Retry\">\n                                        <button class=\"btn btn-sm\" type=\"submit\">Retry</button>\n                                    <input name=\"__RequestVerificationToken\" type=\"hidden\" value=\"TOKEN\" /></form>\n                                    <form method=\"post\" data-confirm=\"Discard this job for good?\" action=\"/admin/system?id=00000000-0000-7000-8000-000000000036&amp;handler=Discard\">\n                                        <button class=\"btn btn-sm btn-danger\" type=\"submit\">Discard</button>\n                                    <input name=\"__RequestVerificationToken\" type=\"hidden\" value=\"TOKEN\" /></form>\n                                </div>\n                            </td>\n                        </tr>\n                </tbody>\n            </table>\n        </div>\n</section>\n\n<section class=\"admin-section\">\n    <h2>Scheduled jobs</h2>\n        <div class=\"table-container\">\n            <table class=\"table table-stack\">\n                <thead>\n                    <tr>\n                        <th>Job</th>\n                        <th>Last started</th>\n                        <th>Last finished</th>\n                        <th>Last error</th>\n                    </tr>\n                </thead>\n                <tbody>\n                        <tr>\n                            <td data-label=\"Job\"><code>accounts.cleanup</code></td>\n                            <td data-label=\"Last started\"> <time datetime=\"2026-10-16T08:30:00Z\">2026-10-16T08:30:00Z</time> </td>\n                            <td data-label=\"Last finished\"> <time datetime=\"2026-10-16T08:30:00Z\">2026-10-16T08:30:00Z</time> </td>\n                            <td data-label=\"Last error\">\n                                    <span class=\"review-note\" lang=\"en\">NpgsqlException: timeout</span>\n                            </td>\n                        </tr>\n                        <tr>\n                            <td data-label=\"Job\"><code>media.cleanup</code></td>\n                            <td data-label=\"Last started\"></td>\n                            <td data-label=\"Last finished\"></td>\n                            <td data-label=\"Last error\">\n                                    <span class=\"badge badge-success\">OK</span>\n                            </td>\n                        </tr>\n                </tbody>\n            </table>\n        </div>\n</section>"
+      "html": ""
     },
     {
       "name": "site-options",
@@ -445,13 +445,13 @@
         "year": 2026
       },
       "errors": null,
-      "html": "<a class=\"footer-link\" href=\"/about\">About</a>\n<form class=\"footer-switch\" method=\"post\" action=\"/culture\">\n    <input type=\"hidden\" name=\"returnUrl\" value=\"/admin/system\">\n    <span class=\"icon\" aria-hidden=\"true\">language</span>\n    <select class=\"footer-select\" name=\"culture\" aria-label=\"Language\">\n            <option value=\"en\" lang=\"en\" selected=\"selected\">English</option>\n            <option value=\"zh-Hans\" lang=\"zh-Hans\">简体中文</option>\n    </select>\n    <button class=\"footer-apply\" type=\"submit\">Apply</button>\n<input name=\"__RequestVerificationToken\" type=\"hidden\" value=\"TOKEN\" /></form>\n<form class=\"footer-switch\" method=\"post\" action=\"/theme\">\n    <input type=\"hidden\" name=\"returnUrl\" value=\"/admin/system\">\n    <span class=\"icon\" aria-hidden=\"true\">contrast</span>\n    <select class=\"footer-select\" name=\"theme\" aria-label=\"Colour scheme\">\n            <option value=\"system\" selected=\"selected\">Auto</option>\n            <option value=\"light\">Light</option>\n            <option value=\"dark\">Dark</option>\n    </select>\n    <button class=\"footer-apply\" type=\"submit\">Apply</button>\n<input name=\"__RequestVerificationToken\" type=\"hidden\" value=\"TOKEN\" /></form>\n<p class=\"footer-note\">© 2026 beeps</p>"
+      "html": ""
     },
     {
       "name": "inbox-count",
       "props": null,
       "errors": null,
-      "html": "<span class=\"count count-primary nav-count\" hidden></span>"
+      "html": ""
     },
     {
       "name": "toasts",
@@ -463,7 +463,7 @@
       "name": "confirm",
       "props": null,
       "errors": null,
-      "html": "<dialog class=\"dialog dialog-sm dialog-plain confirm-dialog\">\n                <form method=\"dialog\">\n                    <div class=\"dialog-body\">\n                        <p class=\"confirm-message\"></p>\n                    </div>\n                    <div class=\"dialog-footer\">\n                        <button class=\"btn\" value=\"cancel\" autofocus>Cancel</button>\n                        <button class=\"btn btn-danger\" value=\"confirm\">Confirm</button>\n                    </div>\n                </form>\n            </dialog>"
+      "html": ""
     }
   ]
 }

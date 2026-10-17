@@ -1,18 +1,16 @@
 @page "/agents/{id:guid}"
 @using Beeps.Features.Accounts
 @using Beeps.Features.Agents
-@using Beeps.Features.Profiles
 @using Beeps.Pages.Islands
 @model Beeps.Pages.Agents.EditModel
 @{
     var agent = Model.Agent;
     ViewData["Title"] = agent.DisplayName ?? L["Agents.Unnamed"];
-    var avatar = new AvatarEditor(agent.Id, agent.AvatarUrl, agent.HasCustomAvatar);
     // Drawn again when the agent changes (its own avatar, connected, a rename in another tab); gone, the page is shown anew.
     var props = new AgentEditProps(
         new LiveProps(Subject: $"actor:{agent.Id:D}", Actors: [agent.Id]),
         AgentRowProps.From(agent),
-        new AvatarEditorProps(avatar.AvatarUrl, avatar.HasCustomAvatar, Url.Page("/Agents/Edit", new { id = agent.Id }) ?? ""),
+        new AvatarEditorProps(agent.AvatarUrl, agent.HasCustomAvatar, Url.Page("/Agents/Edit", new { id = agent.Id }) ?? ""),
         User.Identity?.Name ?? "",
         Model.DisplayName,
         Model.HandleName,
@@ -23,57 +21,5 @@
 @section Head {
     <link rel="stylesheet" href="~/dist/avatar-crop.css" asp-append-version="true">
 }
-@* Members only, so signed in: Client/app/pages/AgentEdit.tsx. *@
-<island name="agent" props="props">
-<section class="feed settings">
-    <header class="column-header">
-        <a class="column-back" asp-page="/Agents/Index" aria-label="@L["AgentEdit.Back"]"><icon name="arrow_back" /></a>
-        <span class="avatar"><img src="@agent.AvatarUrl" alt="" width="32" height="32"></span>
-        <div class="column-heading">
-            <h1 class="column-title">@ViewData["Title"]</h1>
-            @if (agent.Handle is not null)
-            {
-                <p class="column-subtitle"><a href="@SitePaths.Profile(agent.Handle)">@@@agent.Handle</a></p>
-            }
-        </div>
-    </header>
-    <form-errors />
-    @if (!agent.IsConnected)
-    {
-        @* Becomes the form below in place once the agent connects. *@
-        <div class="settings-section"><div class="alert alert-info" role="status"><p class="alert-text">@L["AgentEdit.NotConnected"]</p></div></div>
-    }
-    else
-    {
-        @* Shows what is saved, also when changed elsewhere, unless it is being edited here. *@
-        <partial name="_AvatarEditor" model="avatar" />
-        <form class="settings-section" method="post">
-            <h2>@L["Settings.Profile"]</h2>
-            <div class="field">
-                <label class="label" for="@ProfileFields.DisplayName">@L["Field.DisplayName"]</label>
-                <input class="input" beeps-field="@ProfileFields.DisplayName" value="@Model.DisplayName" maxlength="@Actor.DisplayNameMaxLength" required>
-                <field-error name="@ProfileFields.DisplayName" />
-            </div>
-            <div class="field">
-                <label class="label" for="@AgentFields.HandleName">@L["Field.Handle"]</label>
-                <div class="input-group">
-                    <span class="input-addon" aria-hidden="true">@@@(User.Identity?.Name).</span>
-                    <input class="input input-mono" beeps-field="@AgentFields.HandleName" value="@Model.HandleName" maxlength="@AgentNames.CustomHandleNameMaxLength" pattern="[A-Za-z0-9_]+" required aria-describedby="handle-help">
-                </div>
-                <p class="help" id="handle-help">@L["Field.Handle.Help", AgentNames.CustomHandleNameMaxLength]</p>
-                <field-error name="@AgentFields.HandleName" />
-            </div>
-            <div class="field">
-                <label class="label" for="@ProfileFields.Bio">@L["Field.Bio"]</label>
-                <textarea class="textarea" beeps-field="@ProfileFields.Bio" rows="3" maxlength="@Actor.BioMaxLength">@Model.Bio</textarea>
-                <p class="help">@L["Field.Bio.Help", Actor.BioMaxLength]</p>
-                <field-error name="@ProfileFields.Bio" />
-            </div>
-            <div class="form-actions">
-                <button class="btn btn-primary" type="submit">@L["Settings.Save"]</button>
-                <a class="btn btn-ghost" asp-page="/Agents/Index">@L["AgentEdit.Back"]</a>
-            </div>
-        </form>
-    }
-</section>
-</island>
+@* Members only, so signed in: Client/app/pages/AgentEdit.tsx draws the page from these props. *@
+<island name="agent" props="props" />

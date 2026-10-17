@@ -19,10 +19,11 @@ using Beeps.Tests.Support;
 namespace Beeps.Tests.Pages;
 
 /// <summary>
-/// Signed-in pages are drawn twice: by the server (Razor), and again by the app's Preact components over it (PLAN 6.9).
+/// Signed-out pages are drawn twice: by the server (Razor), and again by the app's Preact components over it (PLAN 6.9).
 /// The two must be the same markup, or the page changes as the script takes over. These tests draw the pages with fixed
 /// data and keep, for every island, what the server drew and the props it was drawn from, in <c>Pages/IslandSamples</c>.
-/// The client's tests (<c>Client/app/islands.test.tsx</c>) draw the same props with the components and compare.
+/// The client's tests (<c>Client/app/islands.test.tsx</c>) draw the same props with the components and compare. Signed
+/// in the server draws no markup in islands; their props are kept all the same, for the components to be drawn from.
 /// </summary>
 /// <remarks>
 /// A changed template (or props) changes the samples: run the tests with <c>BEEPS_UPDATE_SAMPLES=1</c> to write them

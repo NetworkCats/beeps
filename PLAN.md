@@ -336,9 +336,10 @@ tests/Beeps.Tests/
 - 实时更新使用浏览器原生 `EventSource`（SSE）。
 
 **island 架构**
-- 所有页面都由服务器用 Razor 渲染出完整 HTML：未登录时也是如此，正文、个人主页、回复串、搜索结果都在 HTML 里，搜索引擎直接可读（SEO）。脚本只是在这份 HTML 上接管，不替换内容。
-- 页面中由脚本接管的部分是 island：`<island name="…" props="…">原有标记</island>`（`Pages/Islands/IslandTagHelper.cs`）。外面包一层 `<div class="island" data-island="…">`（`display: contents`，不影响布局），前面放 `<script type="application/json">` 形式的 props（只是数据，不执行）。
-- 全站只有一个脚本 `Client/app/main.tsx`（`app.js`）：Preact 组件按名字接管各个 island，在服务端标记上画出**完全相同**的标记，之后的变化（相对时间、菜单、无限滚动、站内跳转、实时更新）都由组件根据数据重绘，没有手写的 DOM 操作。每页一个页面 island（主内容列），布局里还有几个小 island（账号菜单、未读数、页脚设置、toast、确认框）以及 Turnstile 验证框。
+- 页面的外框（导航栏、侧栏、页脚）由服务器用 Razor 渲染；内容是 island：`<island name="…" props="…">标记</island>`（`Pages/Islands/IslandTagHelper.cs`），输出 `<div class="island" data-island="…">`（`display: contents`，不影响布局）和 `<script type="application/json">` 形式的 props（只是数据，不执行），由同名的 Preact 组件根据 props 渲染。
+- **未登录**：island 里的标记也由服务器渲染（时间线、话题、回复串、个人主页的正文都在 HTML 里，搜索引擎直接可读，SEO），组件在这份 HTML 上画出完全相同的标记。不需要 SEO 的页面（搜索结果）用 `client-only="true"`，未登录时也只输出 props。
+- **已登录**：island 只输出 props，内容全部由组件渲染（像 SPA 一样），服务器不再为登录用户渲染这些标记；只有登录用户能看到的页面和部件（通知、设置、发帖、举报、agent、管理后台、账号菜单等）在 Razor 里只有 props，没有模板。
+- 全站只有一个脚本 `Client/app/main.tsx`（`app.js`）：Preact 组件按名字接管各个 island，之后的变化（相对时间、菜单、无限滚动、站内跳转、实时更新）都由组件根据数据重绘，没有手写的 DOM 操作。每页一个页面 island（主内容列），布局里还有几个小 island（账号菜单、未读数、页脚设置、toast、确认框）以及 Turnstile 验证框。
 - 未登录时：不建实时连接；props 和 `app-config` 里没有任何个人数据和防伪令牌，页面仍可被 Output Caching 缓存（缓存按 `X-Beeps-Islands` 请求头区分 HTML 和 props）。已登录时：island 跟随实时事件更新。
 - 组件标记必须与 Razor 模板逐元素一致（类名、属性、文字），这样已登录和未登录看到的界面没有区别；`npm test` 会对照服务端生成的样例检查（见 12）。
 - props 是 `Pages/Islands/*Props.cs` 中的 record，用源生成的 `IslandJsonContext` 序列化成 camelCase。界面文字仍来自资源文件：组件用到的 key 写成字面量，`scripts/build-strings.ts` 收集到 `Client/strings.json`，布局把它们按当前语言放进 `<script id="app-config">`，一起给出的还有防伪令牌和当前用户。
@@ -789,7 +790,7 @@ tests/Beeps.Tests/
 - 不写内联脚本：禁止页面中的 `<script>` 代码块、`onclick` 等内联事件属性和 `javascript:` 链接；所有 JS 来自 `Client/` 编译出的文件。
 - 不写内联样式：禁止 `<style>` 块和 `style=""` 属性。
 - 服务端向脚本传数据只用 `data-*` 属性或 `<script type="application/json">`。
-- 页面里有交互或会实时变化的部分必须是 island（`<island>` + `Client/app` 中同名的 Preact 组件），不写手工的 DOM 操作；组件画出的标记必须与 Razor 模板完全一致，改模板时同时改组件。对照检查：.NET 测试 `IslandSamplesTests` 用固定数据渲染页面，把每个 island 的服务端标记和 props 存在 `tests/Beeps.Tests/Pages/IslandSamples/`（改了模板就用 `BEEPS_UPDATE_SAMPLES=1` 重新生成），`npm test` 用组件渲染同样的 props 并逐元素比较。
+- 页面内容一律是 island（`<island>` + `Client/app` 中同名的 Preact 组件），不写手工的 DOM 操作。Razor 模板只写未登录访客看到的标记（需要 SEO 的部分）；登录后才有的东西只写在组件里，不在 Razor 里重复。未登录的标记必须与组件画出的完全一致，改一边时同时改另一边。对照检查：.NET 测试 `IslandSamplesTests` 用固定数据渲染页面，把每个 island 的服务端标记和 props 存在 `tests/Beeps.Tests/Pages/IslandSamples/`（改了模板或 props 就用 `BEEPS_UPDATE_SAMPLES=1` 重新生成），`npm test` 用组件渲染同样的 props：有服务端标记的逐元素比较，只有 props 的检查能渲染出内容。
 - 组件里的图标名（`<Icon name="…" />`）和资源 key（`t('…')`）一律写成字面量，便于检查和收集。
 - 未登录页面的关键内容必须由服务端渲染在 HTML 里（SEO），island 的 props 里不放个人数据，不生成防伪令牌。
 

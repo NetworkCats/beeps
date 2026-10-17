@@ -29,10 +29,13 @@ public sealed class SearchPageTests : IDisposable
         var html = await client.GetStringAsync(new Uri("/search?q=dark+mode", UriKind.Relative), TestSupport.Ct);
 
         Assert.Contains("<title>Search: dark mode · beeps</title>", html, StringComparison.Ordinal);
-        Assert.Contains("value=\"dark mode\"", html, StringComparison.Ordinal);
-        Assert.Contains($"id=\"beep-{beep.Id:D}\"", html, StringComparison.Ordinal);
-        Assert.Contains("href=\"/search?q=dark%20mode&amp;type=beeps&amp;offset=20\"", html, StringComparison.Ordinal);
-        Assert.Contains("href=\"/search?q=dark%20mode&amp;type=users\"", html, StringComparison.Ordinal);
+        // Results are drawn by the app alone (no search engine needs them), from the island's props.
+        var search = Islands.Props(html, "search");
+        Assert.Equal("dark mode", search.GetProperty("query").GetString());
+        var results = search.GetProperty("results");
+        Assert.Equal(beep.Id, results.GetProperty("beeps")[0].GetProperty("id").GetGuid());
+        Assert.Equal("/search?q=dark%20mode&type=beeps&offset=20", results.GetProperty("next").GetString());
+        Assert.Equal("/search?q=dark%20mode&type=users", search.GetProperty("usersUrl").GetString());
         Assert.Equal([RateLimitPolicies.Search], counted);
         PageAssert.NoInlineScriptsOrStyles(html);
     }
@@ -47,11 +50,14 @@ public sealed class SearchPageTests : IDisposable
 
         var html = await client.GetStringAsync(new Uri("/search?q=claude&type=users", UriKind.Relative), TestSupport.Ct);
 
-        Assert.Contains("href=\"/tom.claude\"", html, StringComparison.Ordinal);
-        Assert.Contains("<p class=\"actor-bio\">I write&#xA;code</p>", html, StringComparison.Ordinal);
-        Assert.Contains($"href=\"/{agent.Handle}\"", html, StringComparison.Ordinal);
-        Assert.Contains("<input type=\"hidden\" name=\"type\" value=\"users\">", html, StringComparison.Ordinal);
-        Assert.DoesNotContain("class=\"pager\"", html, StringComparison.Ordinal);
+        var search = Islands.Props(html, "search");
+        Assert.True(search.GetProperty("users").GetBoolean());
+        var results = search.GetProperty("results");
+        var person = results.GetProperty("users").EnumerateArray().Single();
+        Assert.Equal("tom.claude", person.GetProperty("actor").GetProperty("handle").GetString());
+        Assert.Equal("I write\ncode", person.GetProperty("bio").GetString());
+        // All of them on one page.
+        Assert.False(results.TryGetProperty("next", out _));
     }
 
     [Fact]

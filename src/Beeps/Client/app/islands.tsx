@@ -1,6 +1,7 @@
-// The islands of a page (Pages/Islands/IslandTagHelper.cs): <div class="island" data-island="name"> with the server's
-// markup inside and its props in front of it. Each is taken over by the Preact component registered under its name,
-// which draws the same markup over what is there and keeps it up to date from then on. New props for an island (it
+// The islands of a page (Pages/Islands/IslandTagHelper.cs): <div class="island" data-island="name"> with its props.
+// The Preact component registered under its name draws it from them and keeps it up to date from then on. Signed out
+// the server has drawn the markup inside as well (search engines read it), and the component draws the same over it;
+// signed in the island arrives empty. New props for an island (it
 // caught up, a form it holds was answered) go into its envelope signal, and the component draws itself again.
 import { createContext, render, type ComponentType } from 'preact';
 import { useContext, useEffect } from 'preact/hooks';
@@ -39,9 +40,11 @@ function Host({ component: Component, envelope }: { component: ComponentType<Isl
   return <Component props={props} errors={errors ?? {}} />;
 }
 
+/** The island's props, taken out of the page: what the component draws is all that stays in the island. */
 function read(element: HTMLElement): Envelope | null {
   const script = element.querySelector(':scope > script[data-island-props]');
   if (!script?.textContent) return null;
+  script.remove();
   try {
     return JSON.parse(script.textContent) as Envelope;
   } catch {

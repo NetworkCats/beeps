@@ -2,18 +2,16 @@
 @using Beeps.Features.Accounts
 @using Beeps.Features.Avatars
 @using Beeps.Features.Localization
-@using Beeps.Features.Profiles
 @using Beeps.Pages.Islands
 @model SettingsModel
 @inject AvatarUrls Avatars
 @{
     ViewData["Title"] = L["Settings.Title"];
     var theme = Themes.For(User, ViewContext.HttpContext.Request);
-    var avatar = new AvatarEditor(User.ActorId(), Avatars.For(User.ActorId(), User.AvatarKey()), User.AvatarKey() is not null);
     // Shows the saved name, bio and avatar, also when changed in another tab, unless they are being edited here.
     var props = new SettingsProps(
         new LiveProps(Actors: [User.ActorId()]),
-        new AvatarEditorProps(avatar.AvatarUrl, avatar.HasCustomAvatar, SitePaths.Settings),
+        new AvatarEditorProps(Avatars.For(User.ActorId(), User.AvatarKey()), User.AvatarKey() is not null, SitePaths.Settings),
         Model.Settings.Handle,
         Model.DisplayName,
         Model.Bio,
@@ -28,89 +26,5 @@
 @section Head {
     <link rel="stylesheet" href="~/dist/avatar-crop.css" asp-append-version="true">
 }
-@* Members only, so signed in: Client/app/pages/Settings.tsx. *@
-<island name="settings" props="props">
-<section class="feed settings">
-    <header class="column-header">
-        <h1 class="column-title">@L["Settings.Title"]</h1>
-    </header>
-    <form-errors />
-
-    <partial name="_AvatarEditor" model="avatar" />
-
-    <form class="settings-section" method="post" asp-page-handler="Profile" aria-labelledby="profile-title">
-        <h2 id="profile-title">@L["Settings.Profile"]</h2>
-        <div class="field">
-            <span class="label">@L["Field.Username"]</span>
-            <p class="settings-fixed">@@@Model.Settings.Handle</p>
-        </div>
-        <div class="field">
-            <label class="label" for="@ProfileFields.DisplayName">@L["Field.DisplayName"]</label>
-            <input class="input" beeps-field="@ProfileFields.DisplayName" value="@Model.DisplayName" maxlength="@Actor.DisplayNameMaxLength" required>
-            <field-error name="@ProfileFields.DisplayName" />
-        </div>
-        <div class="field">
-            <label class="label" for="@ProfileFields.Bio">@L["Field.Bio"]</label>
-            <textarea class="textarea" beeps-field="@ProfileFields.Bio" rows="3" maxlength="@Actor.BioMaxLength">@Model.Bio</textarea>
-            <p class="help">@L["Field.Bio.Help", Actor.BioMaxLength]</p>
-            <field-error name="@ProfileFields.Bio" />
-        </div>
-        <div class="form-actions">
-            <button class="btn btn-primary" type="submit">@L["Settings.Save"]</button>
-        </div>
-    </form>
-
-    <form class="settings-section" method="post" asp-page-handler="Language" aria-labelledby="language-title">
-        <h2 id="language-title">@L["Settings.Language"]</h2>
-        <div class="field">
-            <label class="visually-hidden" for="Culture">@L["Settings.Language"]</label>
-            <select class="select settings-select" id="Culture" name="Culture">
-                @foreach (var culture in SupportedCultures.All)
-                {
-                    <option value="@culture" lang="@culture" selected="@(culture == Model.Settings.Locale)">@L[$"Language.{culture}"]</option>
-                }
-            </select>
-        </div>
-        <div class="form-actions">
-            <button class="btn" type="submit">@L["Settings.Save"]</button>
-        </div>
-    </form>
-
-    <form class="settings-section" method="post" asp-page-handler="Theme" aria-labelledby="theme-title">
-        <h2 id="theme-title">@L["Settings.Theme"]</h2>
-        <div class="field">
-            <label class="visually-hidden" for="Theme">@L["Settings.Theme"]</label>
-            <select class="select settings-select" id="Theme" name="Theme">
-                @foreach (var option in Themes.All)
-                {
-                    <option value="@option" selected="@(option == theme)">@L[$"Theme.{option}"]</option>
-                }
-            </select>
-            <p class="help">@L["Settings.Theme.Help"]</p>
-        </div>
-        <div class="form-actions">
-            <button class="btn" type="submit">@L["Settings.Save"]</button>
-        </div>
-    </form>
-
-    <form class="settings-section" method="post" asp-page-handler="Password" aria-labelledby="password-title">
-        <h2 id="password-title">@L["Settings.Password"]</h2>
-        <p class="help">@L["Settings.Password.Help"]</p>
-        <input type="hidden" name="username" value="@Model.Settings.Handle" autocomplete="username">
-        <div class="field">
-            <label class="label" for="@AccountFields.CurrentPassword">@L["Field.CurrentPassword"]</label>
-            <input class="input" beeps-field="@AccountFields.CurrentPassword" type="password" autocomplete="current-password" required>
-            <field-error name="@AccountFields.CurrentPassword" />
-        </div>
-        <div class="field">
-            <label class="label" for="@AccountFields.NewPassword">@L["Field.NewPassword"]</label>
-            <input class="input" beeps-field="@AccountFields.NewPassword" type="password" autocomplete="new-password" minlength="@AccountRules.PasswordMinLength" maxlength="@AccountRules.PasswordMaxLength" required>
-            <p class="help">@L["Field.Password.Help", AccountRules.PasswordMinLength]</p>
-            <field-error name="@AccountFields.NewPassword" />
-        </div>
-        <div class="form-actions">
-            <button class="btn" type="submit">@L["Settings.ChangePassword"]</button>
-        </div>
-    </form>
-</section>
-</island>
+@* Members only, so signed in: Client/app/pages/Settings.tsx draws the page from these props. *@
+<island name="settings" props="props" />
