@@ -1,5 +1,6 @@
 using Beeps.Features.Accounts;
 using Beeps.Features.Beeps;
+using Beeps.Features.RateLimiting;
 using Beeps.Features.Shared;
 using Microsoft.Extensions.Localization;
 
@@ -10,6 +11,7 @@ public sealed partial class ProfileService(
     IProfileStore store,
     BeepViews views,
     IUnitOfWork unitOfWork,
+    RateLimitService rateLimits,
     TimeProvider time,
     IStringLocalizer<SharedResource> localizer,
     ILogger<ProfileService> logger)
@@ -62,6 +64,11 @@ public sealed partial class ProfileService(
             return Error.Forbidden(ProfileErrorCodes.Blocked, localizer["Error.Blocked"]);
         }
 
+        if (await LimitAsync(viewer, cancellationToken) is { } limited)
+        {
+            return limited;
+        }
+
         // In a transaction, so the cached list of whom the viewer follows is invalidated with it (PLAN 6.7).
         var followed = await unitOfWork.InTransactionAsync<bool>(
             null,
@@ -81,6 +88,11 @@ public sealed partial class ProfileService(
         if (!target.IsSuccess)
         {
             return target.Error;
+        }
+
+        if (await LimitAsync(viewer, cancellationToken) is { } limited)
+        {
+            return limited;
         }
 
         return await unitOfWork.InTransactionAsync(
@@ -103,6 +115,11 @@ public sealed partial class ProfileService(
         if (!target.IsSuccess)
         {
             return target.Error;
+        }
+
+        if (await LimitAsync(viewer, cancellationToken) is { } limited)
+        {
+            return limited;
         }
 
         var actor = target.Value;
@@ -137,6 +154,11 @@ public sealed partial class ProfileService(
             return target.Error;
         }
 
+        if (await LimitAsync(viewer, cancellationToken) is { } limited)
+        {
+            return limited;
+        }
+
         await store.RemoveBlockAsync(viewer.ActorId, target.Value.Id, cancellationToken);
         return Result.Success;
     }
@@ -158,6 +180,13 @@ public sealed partial class ProfileService(
         return IsOwn(viewer, profile.Actor)
             ? Error.Validation(ProfileErrorCodes.CannotBlockOwn, localizer["Error.CannotBlockOwn"])
             : profile.Actor;
+    }
+
+    /// <summary>Follows and blocks are writes, counted more strictly than reading (PLAN 12, 6.16).</summary>
+    private async Task<Error?> LimitAsync(Viewer viewer, CancellationToken cancellationToken)
+    {
+        var limited = await rateLimits.CheckAsync(RateLimitPolicies.Follow, $"actor:{viewer.ActorId}", cancellationToken);
+        return limited.IsSuccess ? null : limited.Error;
     }
 
     /// <summary>Oneself, or one of one's agents: never blocked.</summary>

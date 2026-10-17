@@ -2,6 +2,7 @@ using Beeps.Features.Accounts;
 using Beeps.Features.Avatars;
 using Beeps.Features.Live;
 using Beeps.Features.Profiles;
+using Beeps.Features.RateLimiting;
 using Beeps.Features.Search;
 using Beeps.Features.Shared;
 using Microsoft.Extensions.Localization;
@@ -15,6 +16,7 @@ public sealed partial class AgentService(
     IUnitOfWork unitOfWork,
     IOutbox outbox,
     LiveUpdates live,
+    RateLimitService rateLimits,
     AvatarUrls avatars,
     IOptions<AgentOptions> options,
     TimeProvider time,
@@ -40,8 +42,14 @@ public sealed partial class AgentService(
     /// Creates an agent with its first key. The agent has no name until it connects (PLAN 3.3). The count
     /// and the insert run under a per-owner lock, so parallel requests cannot exceed the limit.
     /// </summary>
-    public Task<Result<AgentWithKey>> CreateAsync(Guid ownerId, CancellationToken cancellationToken) =>
-        unitOfWork.InTransactionAsync<AgentWithKey>(
+    public async Task<Result<AgentWithKey>> CreateAsync(Guid ownerId, CancellationToken cancellationToken)
+    {
+        if (await LimitAsync(ownerId, cancellationToken) is { } limited)
+        {
+            return limited;
+        }
+
+        return await unitOfWork.InTransactionAsync<AgentWithKey>(
             AdvisoryLocks.OwnerAgents(ownerId),
             async ct =>
             {
@@ -61,6 +69,7 @@ public sealed partial class AgentService(
                 return new AgentWithKey(ToSummary(agent, record), key);
             },
             cancellationToken);
+    }
 
     /// <summary>Replaces the key; the old one stops working immediately.</summary>
     public async Task<Result<AgentWithKey>> RegenerateKeyAsync(Guid ownerId, Guid agentId, CancellationToken cancellationToken)
@@ -69,6 +78,11 @@ public sealed partial class AgentService(
         if (agent is null)
         {
             return NotFound();
+        }
+
+        if (await LimitAsync(ownerId, cancellationToken) is { } limited)
+        {
+            return limited;
         }
 
         var result = await unitOfWork.InTransactionAsync<AgentWithKey>(
@@ -102,6 +116,11 @@ public sealed partial class AgentService(
             return NotFound();
         }
 
+        if (await LimitAsync(ownerId, cancellationToken) is { } limited)
+        {
+            return limited;
+        }
+
         var result = await unitOfWork.InTransactionAsync(
             null,
             async ct =>
@@ -115,7 +134,12 @@ public sealed partial class AgentService(
             },
             cancellationToken);
         await store.ForgetKeysAsync([agent.Id], cancellationToken);
-        LogDeleted(logger, agent.Id, ownerId);
+        if (result.IsSuccess)
+        {
+            LogDeleted(logger, agent.Id, ownerId);
+            await live.AuthorsRemovedAsync([agent.Id], cancellationToken);
+        }
+
         return result;
     }
 
@@ -154,6 +178,11 @@ public sealed partial class AgentService(
         if (agent is null)
         {
             return NotFound();
+        }
+
+        if (await LimitAsync(ownerId, cancellationToken) is { } limited)
+        {
+            return limited;
         }
 
         if (agent.Handle is not { } current || agent.ModelName is null)
@@ -299,6 +328,13 @@ public sealed partial class AgentService(
             avatars.For(row.OwnerId, row.OwnerAvatarKey));
     }
 
+    /// <summary>Every change to the owner's agents writes, and most also reindex and invalidate caches (PLAN 12, 6.16).</summary>
+    private async Task<Error?> LimitAsync(Guid ownerId, CancellationToken cancellationToken)
+    {
+        var limited = await rateLimits.CheckAsync(RateLimitPolicies.AccountChange, $"account:{ownerId}", cancellationToken);
+        return limited.IsSuccess ? null : limited.Error;
+    }
+
     private static (string Key, AgentKey Record) NewKey(Guid agentId, DateTimeOffset now)
     {
         var key = AgentKeys.Generate();
@@ -325,6 +361,11 @@ public sealed partial class AgentService(
         if (agent is null)
         {
             return NotFound();
+        }
+
+        if (await LimitAsync(ownerId, cancellationToken) is { } limited)
+        {
+            return limited;
         }
 
         change(agent, time.GetUtcNow());

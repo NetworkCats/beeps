@@ -1,5 +1,6 @@
 using Beeps.Features.Accounts;
 using Beeps.Features.Agents;
+using Beeps.Features.RateLimiting;
 using Beeps.Features.Live;
 using Beeps.Features.Profiles;
 using Beeps.Features.Search;
@@ -13,6 +14,11 @@ namespace Beeps.Tests.Features.Agents;
 
 public sealed class AgentServiceTests
 {
+    private readonly IRateLimitStore rateLimitStore = Substitute.For<IRateLimitStore>();
+
+    public AgentServiceTests() =>
+        rateLimitStore.TryAcquireAsync(default!, TestSupport.Ct).ReturnsForAnyArgs(RateLimitDecision.Allowed);
+
     private static readonly Guid OwnerId = Guid.CreateVersion7(TestData.Now);
 
     private readonly IAgentStore store = Substitute.For<IAgentStore>();
@@ -115,6 +121,7 @@ public sealed class AgentServiceTests
         await store.Received(1).RevokeKeysAsync(agent.Id, TestData.Now, Arg.Any<CancellationToken>());
         await store.Received(1).ForgetKeysAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>());
         outbox.Received(1).Enqueue(SearchAccountSyncRequest.MessageType, new SearchAccountSyncRequest(agent.Id, true), Arg.Any<System.Text.Json.Serialization.Metadata.JsonTypeInfo<SearchAccountSyncRequest>>());
+        Assert.Equal([$$"""{"actor_ids":["{{agent.Id:D}}"]}"""], TestData.LiveEvents(liveEvents, LiveEventTypes.AuthorsRemoved));
     }
 
     [Fact]
@@ -367,9 +374,32 @@ public sealed class AgentServiceTests
         unitOfWork,
         outbox,
         TestData.Live(liveEvents),
+        TestData.RateLimits(rateLimitStore),
         TestData.Avatars,
         Options.Create(options),
         TestData.Time(),
         new TestLocalizer(),
         NullLogger<AgentService>.Instance);
+
+    [Fact]
+    public async Task ChangesToAgentsCountAgainstTheOwnersQuota()
+    {
+        var agent = Agent();
+        rateLimitStore.TryAcquireAsync(default!, TestSupport.Ct).ReturnsForAnyArgs(RateLimitDecision.Denied(TimeSpan.FromMinutes(5)));
+        var service = CreateService();
+
+        Error?[] errors =
+        [
+            (await service.CreateAsync(OwnerId, TestSupport.Ct)).Error,
+            (await service.RegenerateKeyAsync(OwnerId, agent.Id, TestSupport.Ct)).Error,
+            (await service.DisableAsync(OwnerId, agent.Id, TestSupport.Ct)).Error,
+            (await service.DeleteAsync(OwnerId, agent.Id, TestSupport.Ct)).Error,
+        ];
+
+        Assert.All(errors, e => Assert.Equal(ErrorKind.RateLimited, e?.Kind));
+        Assert.Equal(0, unitOfWork.Saves);
+        await rateLimitStore.Received(4).TryAcquireAsync(
+            Arg.Is<IReadOnlyList<RateLimitCounter>>(c => TestData.Policies(c).Single() == RateLimitPolicies.AccountChange),
+            Arg.Any<CancellationToken>());
+    }
 }

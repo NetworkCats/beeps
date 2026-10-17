@@ -12,7 +12,7 @@
     var returnUrl = ViewData[LivePage.ReturnUrlKey] as string ?? $"{Context.Request.Path}{Context.Request.QueryString}";
     var likeHandler = beep.Liked ? "Unlike" : "Like";
 }
-<article class="beep@(Model.Focused ? " beep-focused" : "")" id="@SitePaths.BeepAnchor(beep.Id)" data-beep="@beep.Id">
+<article class="beep@(Model.Focused ? " beep-focused" : "")" id="@SitePaths.BeepAnchor(beep.Id)" data-beep="@beep.Id" data-author="@beep.Author.Id">
     <a class="beep-avatar" href="@profile" tabindex="-1" aria-hidden="true">
         <span class="avatar"><img src="@author.AvatarUrl" alt="" width="32" height="32" loading="lazy"></span>
     </a>

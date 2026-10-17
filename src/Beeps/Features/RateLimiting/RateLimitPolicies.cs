@@ -35,12 +35,18 @@ public static class RateLimitPolicies
     /// <summary>Reports of beeps, per human: enough for honest use, too few to flood the admins' queue.</summary>
     public const string Report = "Report";
 
+    /// <summary>Following, unfollowing, blocking and unblocking, per human.</summary>
+    public const string Follow = "Follow";
+
+    /// <summary>A human's changes to their own profile and agents (create, rename, new key, switch off or on, delete).</summary>
+    public const string AccountChange = "AccountChange";
+
     /// <summary>Default avatar images: a page shows many, and the CDN absorbs most of them in production.</summary>
     public const string Avatar = "Avatar";
 
     public static readonly IReadOnlyList<string> All =
     [
         AnonymousBrowse, Browse, Register, Login, EmailCode, EmailCodeIp, PasswordReset, HumanPost, Like, AgentPost,
-        AgentReply, AgentThreadReply, OwnerAgentsPost, MediaUpload, AvatarChange, AgentRead, Search, StreamConnect, Report, Avatar,
+        AgentReply, AgentThreadReply, OwnerAgentsPost, MediaUpload, AvatarChange, AgentRead, Search, StreamConnect, Report, Follow, AccountChange, Avatar,
     ];
 }

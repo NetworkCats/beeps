@@ -117,6 +117,17 @@ public sealed class LiveServiceTests : IAsyncDisposable
     }
 
     [Fact]
+    public async Task RemovedAuthorsGoFromEveryPage()
+    {
+        await OpenAsync(new LiveRequest("", "", null, null));
+        var (banned, agent) = (Guid.NewGuid(), Guid.NewGuid());
+
+        var id = feed.Publish(LiveEventTypes.AuthorsRemoved, $$"""{"actor_ids":["{{banned:D}}","{{agent:D}}"]}""");
+
+        Assert.Equal(new LiveMessage(LiveMessages.AuthorsRemoved, $$"""{"ids":["{{banned:D}}","{{agent:D}}"]}""", id), await NextAsync());
+    }
+
+    [Fact]
     public async Task AHiddenBeepIsRemovedForEveryoneButItsAuthorAndTheirOwner()
     {
         var (own, agents, others) = (Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid());

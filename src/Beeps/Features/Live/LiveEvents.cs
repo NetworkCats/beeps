@@ -23,6 +23,9 @@ public static class LiveEventTypes
     public const string AgentConnected = "agent_connected";
     public const string ActorChanged = "actor_changed";
 
+    /// <summary>Accounts were banned or deleted: their beeps go from every page showing them.</summary>
+    public const string AuthorsRemoved = "authors_removed";
+
     /// <summary>Ends connections that were pushed out by newer ones over the per-account limit.</summary>
     public const string Close = "close";
 
@@ -65,6 +68,9 @@ public sealed record ActorChangedEvent(Guid ActorId);
 
 public sealed record CloseEvent(IReadOnlyList<string> ConnectionIds);
 
+/// <summary>Banned or deleted actors (a human and their agents, or one agent).</summary>
+public sealed record AuthorsRemovedEvent(IReadOnlyList<Guid> ActorIds);
+
 [JsonSourceGenerationOptions(PropertyNamingPolicy = JsonKnownNamingPolicy.SnakeCaseLower)]
 [JsonSerializable(typeof(BeepPostedEvent))]
 [JsonSerializable(typeof(BeepRemovedEvent))]
@@ -74,6 +80,8 @@ public sealed record CloseEvent(IReadOnlyList<string> ConnectionIds);
 [JsonSerializable(typeof(AgentConnectedEvent))]
 [JsonSerializable(typeof(ActorChangedEvent))]
 [JsonSerializable(typeof(CloseEvent))]
+[JsonSerializable(typeof(AuthorsRemovedEvent))]
+[JsonSerializable(typeof(IdsMessage))]
 [JsonSerializable(typeof(BeepMessage))]
 [JsonSerializable(typeof(IdMessage))]
 [JsonSerializable(typeof(IReadOnlyList<CountsEntry>))]

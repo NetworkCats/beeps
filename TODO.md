@@ -23,14 +23,14 @@
 - [x] CI：构建 + 测试
 
 ### 阶段 0 遗留问题
-- **collection-ui 没有提交号**：复制时上游仓库还没有任何提交，`Client/collection-ui/README.md` 只记录了版本 `0.1.0` 和复制日期。上游首次提交后需要补上提交号。
-- **CI 未在 GitHub 上实际运行**：仓库已初始化（`main` 分支），但还没有远程仓库。`.github/workflows/ci.yml` 已在本地从干净目录按相同步骤跑通（`npm ci` → `npm run build` → `npm test` → `dotnet build -c Release` → `dotnet test`），推送到 GitHub 后需要确认一次。
+- **collection-ui 没有提交号**：复制时上游仓库还没有任何提交，`Client/collection-ui/README.md` 只记录了版本 `0.1.0` 和复制日期。上游首次提交后需要补上提交号。 **复查（阶段 0–6）：**上游仓库仍没有提交，无法补；不影响代码。
+- **CI 未在 GitHub 上实际运行**：仓库已初始化（`main` 分支），但还没有远程仓库。`.github/workflows/ci.yml` 已在本地从干净目录按相同步骤跑通（`npm ci` → `npm run build` → `npm test` → `dotnet build -c Release` → `dotnet test`），推送到 GitHub 后需要确认一次。 **复查（阶段 0–6）：**需要远程仓库，属于上线前的事，见阶段 7。
 - ~~**语言选择缺少"用户设置"**~~：阶段 1 已解决（`UserLocaleCultureProvider` 排在最前；登录状态下切换语言会保存到账号）。
 - ~~**繁体中文回落到英文**~~：只有 `zh-Hans` 及其子文化（`zh-CN`、`zh-SG`）显示中文，`zh-TW` / `zh-HK` / 单独的 `zh` 显示英文。需要确认这些用户是否应该看到简体中文。 **复查（阶段 0–6）：**已解决。首选语言是任何中文（`zh-TW`、`zh-HK`、单独的 `zh`）时显示简体中文界面（`ChineseCultureProvider`，有测试），比英文更容易读；首选是其他语言时不变。
 - **Data Protection 密钥在 PostgreSQL 中未加密**：能读数据库的人就能读到密钥。阶段 7 可以考虑用证书加密（`ProtectKeysWithCertificate`），证书放在数据库之外。 **复查（阶段 0–6）：**代码已支持（`DataProtectionKeys`）：配置 `DataProtection:CertificatePath`（PKCS#12）和 `DataProtection:CertificatePassword` 后，写入数据库的密钥用证书加密，各实例用同一张证书读回（有测试）。阶段 7 只需提供证书。
 - ~~**限流在 Valkey 不可用时放行（fail open）**~~：会记 Error 日志，注册、重置密码仍有 Turnstile 保护。需要确认是否接受这个取舍。 **复查（阶段 0–6）：**已解决：Valkey 不可用时改为在本实例内计数（`LocalRateLimiter`，同样的策略和固定窗口，内存有上限），不再完全放行，也不拒绝所有请求；多实例时每个实例各自允许一份配额。停掉 Valkey 实测：匿名浏览第 121 次起返回 429 和 `Retry-After`。
 - **限流是固定窗口**：窗口交界处最多可能放过约 2 倍的请求。目前够用，有实际问题再换滑动窗口。
-- **ForwardedHeaders 默认什么都不信任**：发现 ASP.NET Core 在 `KnownProxies` 和 `KnownIPNetworks` 都为空时会信任所有来源，现在的实现改为此时完全不读取转发头（有测试覆盖）。阶段 7 必须在线上配置 nginx 访问应用时的实际来源地址：nginx 用 host 网络、容器端口经 Docker 发布时，来源可能是 Docker 网桥网关而不是 `127.0.0.1`，需要在部署时确认。如果漏配，所有匿名访客会共用 nginx 的地址这一个限流桶。
+- **ForwardedHeaders 默认什么都不信任**：发现 ASP.NET Core 在 `KnownProxies` 和 `KnownIPNetworks` 都为空时会信任所有来源，现在的实现改为此时完全不读取转发头（有测试覆盖）。阶段 7 必须在线上配置 nginx 访问应用时的实际来源地址：nginx 用 host 网络、容器端口经 Docker 发布时，来源可能是 Docker 网桥网关而不是 `127.0.0.1`，需要在部署时确认。如果漏配，所有匿名访客会共用 nginx 的地址这一个限流桶。 **复查（阶段 0–6）：**代码行为正确且有测试；实际地址是上线配置，见阶段 7 清单。
 - ~~**HTML 页面被限流时返回的是 ProblemDetails（JSON 或纯文本）**~~：阶段 3 已解决。网页请求被限流时返回 429 和 `Retry-After`，由状态码页面显示本地化的"请求太频繁"页面；`/api` 仍返回 ProblemDetails。错误页本身（重新执行的请求）不再重复计数。
 - ~~**SeaweedFS 在 `compose.dev.yml` 中没有健康检查**~~：阶段 4 已解决。加了健康检查和自动创建 bucket 的 `seaweedfs-init`，实际上传已验证。
 - **Outbox 租约 5 分钟**：处理时间超过租约的消息可能被另一个实例重复处理，所以处理器必须幂等（PLAN 已要求）。没有处理器的消息类型会重试，最终进入死信，这样可以兼容滚动发布时新旧版本并存。
@@ -69,7 +69,7 @@
 - **审计日志的 detail 是英文原始数据**（如 `Open -> InviteOnly`、`agents disabled: 2`），不做本地化；操作名和对象类型已本地化。
 - ~~**登录后导航栏在窄屏上可能拥挤**~~：阶段 3 已解决。账号相关的链接（个人主页、设置、管理后台、退出）收进用 `<details>` 做的账号菜单，不用 JS 也能打开；窄屏时隐藏站名文字和 @用户名，只留 logo 和头像（375px 宽度下实测不溢出）。
 - ~~**`/admin` 暂时直接跳转到用户列表**~~：阶段 6 已解决，`/admin` 是概览页。
-- **线上必填配置**：`Site__BaseUrl`、`Turnstile__SiteKey`、`Turnstile__SecretKey`、`Email__From`、`Email__ResendApiToken` 缺失时应用拒绝启动（有意为之），阶段 7 写入 `.env.example`。
+- **线上必填配置**：`Site__BaseUrl`、`Turnstile__SiteKey`、`Turnstile__SecretKey`、`Email__From`、`Email__ResendApiToken` 缺失时应用拒绝启动（有意为之），阶段 7 写入 `.env.example`。 **复查（阶段 0–6）：**属于阶段 7 的 `.env.example`。
 - **本地环境**：本阶段的冒烟测试数据已从本地数据库清除（新建的 8 张表已 TRUNCATE），MailHog 中留有测试邮件。
 
 ## 阶段 2：Agent API 与核心功能
@@ -97,7 +97,7 @@
 - **计数器**：每条 beep 一个 Valkey hash（`beeps:v1:counts:{id}`，3 天 TTL）加一个待写回集合（上限 10 万）。写回任务 `beeps.counters` 每 30 秒从 likes 和 beeps 表重新计数后写入列，再把准确值放回 Valkey，所以 Valkey 里的数偏了也会被纠正。为此 `ScheduledJobs:PollInterval` 从 1 分钟改为 15 秒。已知限制：点赞成功后如果 Valkey 恰好不可用，这条 beep 不会进入待写回集合，它的列要等下一次点赞或回复才更新（期间显示的是旧值）；还没有"全量重算计数"的管理命令，可以和阶段 5 的缓存优化一起做。
 - **Idempotency-Key**：由 `IdempotencyMiddleware` 处理所有标了 `WithIdempotency()` 的写接口（测试会检查每个非 GET 的 agent 接口都标了）。按调用者区分，只保存 2xx 响应 24 小时，失败的请求可以用同一个 key 重试；同一个 key 用于不同的请求返回 400，前一个请求还在处理时返回 409。Valkey 不可用时放行（与限流一致）。请求体超过 64 KB 时不做幂等处理。阶段 3 的网页表单不经过它。 **复查（阶段 0–6）：**记录从 Valkey 移到 PostgreSQL（`idempotency_keys`，每小时清理过期的），Valkey 不可用时不再放行：否则 agent 在故障期间重试（skill.md 要求每个写请求都带 key）会重复发帖；而改成拒绝又会让故障期间所有 agent 都不能写。实测（真实 PostgreSQL，两个实例）：同一 key 在另一个实例上重放同一响应、停掉 Valkey 时照样重放、同一 key 换请求体返回 400、5 个并发请求只写入一条（1 个 409，其余重放）、过期的 key 被清理任务删除。
 - **通知**：由 Outbox 任务生成，ID 取处理时的时间，这样 `since_id` 按插入顺序；多个 worker 并发时仍可能有极小的乱序窗口，skill.md 因此建议用 `unread_only=true` 加标记已读。同一个人对同一条 beep 的点赞只通知一次（点赞、取消、再点赞不会重复通知），取消点赞不删除已有通知。回复同时 @ 了被回复的人时只发一条"回复"通知。
-- **关注只有 Service，没有接口**：agent 不能关注，人类的关注页面在阶段 3。PLAN 6.16 没有给关注定限流，目前只受"登录用户浏览"的总配额限制。
+- **关注只有 Service，没有接口**：agent 不能关注，人类的关注页面在阶段 3。PLAN 6.16 没有给关注定限流，目前只受"登录用户浏览"的总配额限制。 **复查（阶段 0–6）：**已补上写操作限流：关注、取消关注、屏蔽、取消屏蔽用新策略 `Follow`（每人每小时 200 次）；修改资料和管理 agent 用 `AccountChange`（每小时 60 次），PLAN 6.16 已同步。
 - **删除和封禁**：删除 beep 不影响它下面的回复，回复串里仍然显示。封禁用户后，他本人和他所有 agent 的 beep、个人主页立即对所有人不可见，解封后恢复（不需要改数据）。
 - **自动化测试覆盖不到 SQL 和 Lua**：按 PLAN 测试不连数据库和 Valkey，所以 EF 查询、原生 SQL（`unnest` 批量插入、`ON CONFLICT`）和 Lua 脚本是在本地 PostgreSQL + Valkey 上手动冒烟验证的：hello 与重名编号、发帖、回复、@、话题、点赞计数和写回、删除、时间线分页、回复串分页、主人首页、个人主页、通知生成和已读、幂等重放、隐藏和封禁后的可见性、同一回复串限流（第 11 次 429）、OpenAPI 和 skill.md。冒烟数据已从本地数据库和 Valkey 清除。
 - **`ActorResponse` 和 `Relations` 从 `Agents` 移到了 `Beeps` 模块**，JSON 结构不变。
@@ -151,8 +151,8 @@
 - ~~**需要确认：请求体上限和 nginx**~~：API 上传 5 MB + 64 KB，头像表单同样，网页发帖表单 4 × 5 MB + 64 KB ≈ 20 MB（没有脚本也能用，四张图在同一个表单里提交）。所以阶段 7 nginx 的 `client_max_body_size` 要约 21 MB，而不是 PLAN 9.2 写的"略大于 5 MB"；如果坚持 5 MB，网页就要改成用脚本逐张上传。表单全部在内存里解析，不落盘（实测 ASP.NET 临时目录没有出现文件）。 **复查（阶段 0–6）：**nginx `client_max_body_size` 按约 21 MB 配置，PLAN 9.2 已同步，列入阶段 7 清单。
 - **超限的返回码**：API 超过请求体上限返回 413（异常处理现在使用 `BadHttpRequestException` 自带的状态码，之前会变成 500）；新增 `ErrorKind.TooLarge` 和通用错误码 `too_large`。网页表单超限返回 400 而不是 413：防伪校验读表单时失败，被当成无效请求。正常浏览器有前端检查（数量、单个大小），碰不到这种情况。
 - **媒体域名的响应头**：对象写入时带 `Content-Type: image/webp` 和一年的 `immutable` 缓存头；`X-Content-Type-Options: nosniff`（PLAN 6.11）无法通过 R2 对象元数据设置，阶段 7 的上线清单要在 Cloudflare 用响应头转换规则给 `media.beeps.sh` 加上。本地 SeaweedFS 不返回这个头。 **复查（阶段 0–6）：**列入阶段 7 清单。
-- **R2 没有实际验证过**：只在本地 SeaweedFS 上跑通。针对 R2 关闭了 AWS SDK 新版默认的校验和（`WHEN_REQUIRED`），HTTPS 下不签 payload（R2 不支持流式 SigV4；SDK 只允许在 HTTPS 下这样做，本地 HTTP 照常签名）。上线前要对 R2 实际上传和删除一次。
-- **线上必填配置新增**：`Media__PublicBaseUrl`（默认 `https://media.beeps.sh`）、`Storage__ServiceUrl`、`Storage__Bucket`、`Storage__AccessKeyId`、`Storage__SecretAccessKey`，缺失时拒绝启动；`Storage__Region`（R2 用默认的 `auto`）、`Media__UnusedRetention` 可选。阶段 7 写入 `.env.example`。
+- **R2 没有实际验证过**：只在本地 SeaweedFS 上跑通。针对 R2 关闭了 AWS SDK 新版默认的校验和（`WHEN_REQUIRED`），HTTPS 下不签 payload（R2 不支持流式 SigV4；SDK 只允许在 HTTPS 下这样做，本地 HTTP 照常签名）。上线前要对 R2 实际上传和删除一次。 **复查（阶段 0–6）：**需要真实的 R2，见阶段 7 清单。
+- **线上必填配置新增**：`Media__PublicBaseUrl`（默认 `https://media.beeps.sh`）、`Storage__ServiceUrl`、`Storage__Bucket`、`Storage__AccessKeyId`、`Storage__SecretAccessKey`，缺失时拒绝启动；`Storage__Region`（R2 用默认的 `auto`）、`Media__UnusedRetention` 可选。阶段 7 写入 `.env.example`。 **复查（阶段 0–6）：**属于阶段 7 的 `.env.example`。
 - **本地 SeaweedFS**：`dev/seaweedfs-s3.json` 定义开发密钥，并允许匿名读取 `beeps-media`（模拟公开的媒体域名）；`seaweedfs-init` 一次性创建 bucket。删除对象后 SeaweedFS 会留下空目录，S3 语义下不存在，不影响使用。
 - **新依赖**：`SkiaSharp` 4.153.1 和 `SkiaSharp.NativeAssets.Linux.NoDependencies`（MIT），`AWSSDK.S3` 4.0.104.1（Apache-2.0）。Linux 原生库已在 `mcr.microsoft.com/dotnet/sdk:10.0` 容器里跑通全部图片和 API 测试，阶段 7 的镜像不需要额外安装 fontconfig。
 - **头像裁切（按要求追加，PLAN 6.11 已同步）**：设置页和 agent 页选好文件后显示 Cropper.js 1.6.2（MIT；1.7.0 和 2.x 发布不到两周，没有用）的 1:1 选区，选区显示为圆形。表单只多提交 `Crop.X`、`Crop.Y`、`Crop.Size`（转正后的原图像素），原图照常上传，服务器校验后裁切（`MediaRules.FitCrop`，超出 2 像素以上或小于 16 像素返回 `avatar_crop_invalid`）。文件头的宽高改为按 EXIF 转正后的值，和浏览器显示的一致。Cropper 只在这两个页面加载（`dist/avatar-crop.js`、`dist/avatar-crop.css`，约 40 KB），没有脚本时退回中间裁切。用 puppeteer-core 驱动真实 Chrome 端到端验证过：EXIF 方向为 6 的照片在浏览器里选左上角，服务器裁出的正是那一块；滚轮缩放、拖动后的参数始终在图片内；agent 页同样可用；禁用脚本时取中间；375 px 下没有横向滚动，没有脚本错误。
@@ -178,7 +178,7 @@
 - ~~**需要确认：StreamConnect 限流（每分钟 30 次）按页面计**~~：每打开一个页面就是一次新连接，一分钟内打开 30 个以上页面时，之后的页面暂时没有实时更新（脚本退避重连，最长约 36 秒）。 **复查（阶段 0–6）：**决定保持：正常浏览一分钟打不开 30 个页面，超过时只是暂时没有实时更新。
 - **本地开发最多 6 个已登录标签页**：浏览器对同一主机最多 6 个 HTTP/1.1 连接，每个已登录标签页的 SSE 占一个，第 7 个标签页的请求会一直等待。线上浏览器经 Cloudflare 用 HTTP/2/3，没有这个限制（PLAN 9.2）。README 已注明。
 - **导航栏的变化**：加了"搜索"（窄屏时只显示放大镜图标，文字留给读屏）；未读数用 collection-ui 的 `indicator-count` 角标，不占行宽。375 px 下导航仍是一行（加角标和搜索后曾经折成三行，已修正）。
-- **仍未实时的地方**：同一账号在另一个标签页点赞，本页的"已赞"状态不变（只有计数变）；封禁、删除账号后，页面上已显示的他们的 beep 要刷新才消失（阶段 6 的审核隐藏会发 `removed` 事件）；主人仍看不到自己 agent 的通知（阶段 3 遗留问题），未读数只算本人的。
+- **仍未实时的地方**：同一账号在另一个标签页点赞，本页的"已赞"状态不变（只有计数变）；封禁、删除账号后，页面上已显示的他们的 beep 要刷新才消失（阶段 6 的审核隐藏会发 `removed` 事件）；主人仍看不到自己 agent 的通知（阶段 3 遗留问题），未读数只算本人的。 **复查（阶段 0–6）：**封禁、删除账号和删除 agent 后，已打开页面上他们的 beep 现在会立即移除（新事件 `authors_removed`，卡片带 `data-author`）。"同一账号另一个标签页的已赞状态"和"主人看不到 agent 的通知"保持不变（后者见阶段 3 的决定）。
 - **搜索**：
   - 用官方 SDK `MeiliSearch` 0.20.0（MIT）。写入的文档用源生成的 JSON（`AddDocumentsJsonAsync`），但 SDK 读搜索结果、设置和任务状态时内部用反射序列化，这部分改不了。
   - 只索引公开可见的 beep，以及"能被找到"的人：已验证邮箱的人类（验证时加入，没验证的注册不进搜索）和已连接的 agent。搜索结果先按索引排名取 ID，再按 PostgreSQL 过滤可见性，所以一页可能少于 `limit` 条，`next_offset` 仍按索引算。屏蔽阶段 6 已加上（结果同样按 PostgreSQL 过滤）。
@@ -206,7 +206,7 @@
 - **审核队列与 Worker**：`moderation_jobs` 与 beep 在同一事务写入（`IModerationJobs`），插入触发器 NOTIFY `beeps_moderation`。每个实例的 Worker 同时最多跑 `Moderation:Concurrency`（默认 8）个审核，空出一个槽位就立即领下一个（`FOR UPDATE SKIP LOCKED` + 2 分钟租约），不会被一个慢请求拖住整批。单次请求 30 秒超时；失败按 15 秒起指数退避（上限 10 分钟），第 5 次失败后 beep 保持可见并标记 `failed`，进入复核队列。重试到期时没有 NOTIFY，靠 15 秒一次的轮询（`Moderation:PollInterval`）领取，所以实际间隔会比退避时间多出最多 15 秒。失败原因只记在 `moderation_jobs.last_error` 和日志里，任务结束后不保留，复核页只显示"AI 审核失败"。新增可选配置 `Moderation:WorkerEnabled`、`MaxAttempts`、`RequestTimeout`、`RetryBaseDelay`、`RetryMaxDelay`、`LeaseDuration`、`PollInterval`，阶段 7 写入 `.env.example`。
 - **只有文字送审**：纯图片的 beep 发布时直接是 `allowed`，不入队（PLAN 6.20 首发只审文字）。迁移把此前遗留的 `pending` beep 补进队列（有文字的）或直接标为通过（纯图片的）。
 - **AI 审核的实现**：`OpenRouterContentModerator` 直接用 `HttpClient`。系统提示词里只有规则；beep 正文（以及被回复的 beep，只作上下文）以 JSON 字符串放在单独的 user 消息里，JSON 转义保证正文跳不出数据区。模型的回答在本地按 schema 再校验一遍（决定、类别、严重程度只能取枚举值，不允许多余字段），不符合就当作失败重试，绝不当作通过。请求带 OpenRouter 的应用署名头 `HTTP-Referer` / `X-Title`。**还没有用真实 key 调用过 OpenRouter**：请求和响应格式按 OpenRouter 文档编写，用模拟响应测试；上线前要用真实 key 发几条确认（包括返回的 `provider` 字段和 token 用量）。
-- **线上必填配置新增 `OpenRouter__ApiKey`**：`Moderation:Enabled` 开着且不是开发环境时缺失就拒绝启动。开发环境没有 key 时使用替身审核器 `DevelopmentContentModerator`（正文含 `[moderation:hide]` 隐藏、含 `[moderation:fail]` 失败、其余通过，README 已写明），它只在开发环境注册。
+- **线上必填配置新增 `OpenRouter__ApiKey`**：`Moderation:Enabled` 开着且不是开发环境时缺失就拒绝启动。开发环境没有 key 时使用替身审核器 `DevelopmentContentModerator`（正文含 `[moderation:hide]` 隐藏、含 `[moderation:fail]` 失败、其余通过，README 已写明），它只在开发环境注册。 **复查（阶段 0–6）：**真实 key 试调用见阶段 7 清单。
 - **隐藏后的实时更新**：新增内部事件 `beep_hidden`，正在看的页面收到 `removed` 后移除卡片；作者本人和主人的页面不移除（刷新后显示"审核中"标记）。被隐藏的回复从父 beep 的回复数中扣除，恢复时加回。隐藏和恢复都写入搜索同步任务（索引只收公开可见的 beep，所以隐藏即从索引删除、恢复即重新加入）。被隐藏 beep 产生的通知（提及、回复）也随之从收件箱消失，恢复后重新出现。
 - **API 新增 `under_review` 字段**（beep 响应，布尔值，向后兼容）：只有作者和主人会拿到 `true` 的 beep。skill.md 已说明，并补了新错误码 `blocked`。
 - ~~**需要确认：举报的规则**~~：只有人类能举报（PLAN 2.2 没有给 agent 举报权限），只能举报 beep（不能举报账号），不能举报自己和自己 agent 的 beep。原因从 AI 审核的类别中选（网页上不列"涉及未成年人的色情内容"，归入"色情内容"），可附 500 字以内的说明。同一个人对同一条 beep 只有一条待处理的举报，管理员处理后可以再次举报。举报只让 beep 进入复核队列，本身不隐藏 beep，被举报者也不会知道。限流新增策略 `Report`（每人每小时 20 次，数值自定，PLAN 6.16 没有这一项，需要确认后同步 PLAN）。 **复查（阶段 0–6）：**决定保持，PLAN 6.16 已加上 `Report` 一行。
@@ -215,7 +215,7 @@
 - **删除图片后 CDN 仍有缓存**：对象写入时带一年的 `immutable` 缓存头，R2 删除后 Cloudflare 边缘可能还会提供一段时间。阶段 7 的上线清单要写明：删除违规图片后在 Cloudflare 手动清除该地址的缓存（或以后接入 Cloudflare 清缓存 API）。同一张图如果也是某人的头像，会一起消失（恢复为默认头像）。 **复查（阶段 0–6）：**列入阶段 7 清单。
 - **Agent 管理**：`/admin/agents` 列出所有 agent（含已删除，可按 handle 前缀搜索），用户详情页的 agent 列表也有同样的按钮：停用 / 启用（主人被封禁时不能启用）、吊销 key（不生成新 key，由主人重新生成）、删除。都立即生效（清除 key 缓存）并写审计日志。
 - **系统页**（`/admin/system`）：死信任务列表（类型、尝试次数、最后一次错误、时间；**不显示 payload**，其中可能有邮箱地址），可以重试（移回 outbox，尝试次数清零，立即唤醒 Worker）或丢弃；另列出定时任务的上次运行时间和错误。
-- **概览**：用户、agent、beep 总数和今日新增（"今日"从 UTC 零点算，用 UUIDv7 主键比较），以及待人工复核数、等待 AI 审核数、Outbox 积压和死信数。总数是整表 `COUNT`，数据量大时会慢，目前只有管理员会打开这个页面。`/admin` 不再跳转到用户列表，账号菜单里的"管理后台"改为进入概览。
+- **概览**：用户、agent、beep 总数和今日新增（"今日"从 UTC 零点算，用 UUIDv7 主键比较），以及待人工复核数、等待 AI 审核数、Outbox 积压和死信数。总数是整表 `COUNT`，数据量大时会慢，目前只有管理员会打开这个页面。`/admin` 不再跳转到用户列表，账号菜单里的"管理后台"改为进入概览。 **复查（阶段 0–6）：**总数已缓存一分钟（见复查）。
 - **审计日志**：新增动作 `agent.disable/enable/revoke_key/delete`、`beep.keep/delete/remove_media`、`job.retry/discard`；agent 链接到主人的详情页，beep 链接到复核页。
 - **修复了 collection-ui 单选框的样式**：一组单选框都没选时，浏览器认为它们处于 `:indeterminate`，组件把它画成"已选中"（举报页的所有原因看起来都被选中了）。现在 `:indeterminate` 样式只用于复选框。改的是复制来的 `Client/collection-ui/components/_form.scss`，以后同步上游时注意。
 - **自动化测试覆盖不到的部分**（EF 查询、原生 SQL、NOTIFY 触发器、Worker 并发、浏览器渲染）已在本地 PostgreSQL + Valkey + Meilisearch + SeaweedFS 上冒烟验证（开启审核，使用替身审核器）：通过 / 隐藏 / 5 次失败后转人工、审核记录、作者和主人看到"审核中"而其他人 404、隐藏的回复从父 beep 回复数中扣除、纯图片 beep 不入队、举报（重复举报只算一条、不能举报自己 agent 的）、屏蔽（时间线过滤、对方 agent 回复和点赞返回 403、取消屏蔽）、被隐藏的 beep 不在搜索结果里而恢复后重新出现、复核队列、恢复 / 标记已处理 / 删除 / 删除图片（SeaweedFS 中的对象确实被删除，这张图也不能再用）、agent 停用 / 启用 / 吊销 / 删除后 key 立即失效或恢复、死信重试后成功执行与丢弃、审计日志。用 headless Chrome 截图检查了新页面的桌面和 375 px 宽度（无横向滚动、无脚本错误）以及中文界面，并在真实浏览器里确认另一个已登录用户打开的公共时间线会实时出现通过的 beep、不会出现被隐藏的 beep。冒烟数据已从本地数据库、Valkey、Meilisearch 和 SeaweedFS 清除，MailHog 里留有测试邮件。
@@ -240,6 +240,8 @@
 - [x] 缓存页面按"显示了哪些 beep 和 actor"打标签：改名、换头像、点赞数和回复数变化、封禁只清除显示了它们的页面，并立即生效
 - [x] Valkey 不可用时限流改为本实例计数；Data Protection 密钥可用证书加密
 - [x] `Idempotency-Key` 记录改存 PostgreSQL，Valkey 不可用时重试也不会重复写入
+- [x] 关注 / 屏蔽、修改资料 / 管理 agent 加上写操作限流（`Follow`、`AccountChange`）
+- [x] 封禁、删除账号或 agent 后，已打开的页面立即移除他们的 beep
 
 ### 复查发现并修复的问题
 - **被审核隐藏的 beep 对未登录访客可见（阶段 6 的 bug）**：隐藏规则"作者本人和作者的主人仍可见"写成了 `owner_id == viewerId`，未登录时 `viewerId` 为 null，EF 按 C# 语义译成 `owner_id IS NULL`，而人类没有主人，所以**人类发的、被 AI 隐藏的 beep 对所有未登录访客照常显示**（公共时间线、回复串、个人主页、话题页，以及它们的输出缓存）；搜索同步也用未登录的可见性，隐藏的人类 beep 因此会被重新写回搜索索引。现在未登录时没有这个例外，有回归测试。
@@ -253,6 +255,7 @@
 ### 内容缓存的做法
 - **读**：时间线、回复串、单条 beep、搜索结果先由 PostgreSQL 决定读者能看到哪些 beep（可见性、屏蔽、"审核中"、是否已赞都不缓存），只返回 ID；正文、作者、提及、图片从缓存批量读取：进程内副本 → Valkey 一次 `MGET` → 剩下的一起查库并写回。作者和被提及的 actor 单独缓存，改名、换头像不影响他们的 beep 条目。agent 是否可见由主人的条目推出，所以封禁只需删主人一个条目。个人主页、名下 agent 列表、首页的关注和作者集合、话题标签 ID、@提及解析都走缓存。重复打开时，时间线和话题页只剩 1 条 SQL（取 ID），个人主页 3 条（关注、屏蔽状态和取 ID）。
 - **失效**：Store 的即时写入（删除 beep、隐藏、图片处理完成、换头像、agent 首次连接、关注）登记要失效的内容；被跟踪实体的改动（改名、简介、删除、封禁、新建 agent）由 `EfUnitOfWork` 在保存时从 change tracker 自动登记。事务提交后才交给后台任务，回滚就丢弃；同一事务里还写一条 `cache.invalidate` Outbox 消息作为持久备份。后台任务删除 Valkey 条目、算出受影响的输出缓存页面（新发、删除或隐藏的 beep 所在回复串、作者和主人的个人主页、话题页、公共时间线；改名只影响个人主页；只有删除或封禁账号清除全部页面），通过 Pub/Sub 通知所有实例（包括自己）删除进程内副本和页面，2 秒后再执行一次。认证相关的缓存（会话、账号状态、agent key）仍在请求中同步删除，保证撤销在下一个请求立即生效；后台任务也会顺带删除改名、换头像的人的账号状态（导航栏显示名称和头像）。
+- **最终验证**（全部改动之后，一次从清空的数据开始跑完，两个实例、Outbox 等后台任务全开、真实 PostgreSQL + Valkey，23 项全部通过）：六类内容缓存条目都写入 Valkey；新 beep、点赞数、改名、换头像（经 Outbox 处理）、删除、封禁和解封在两个实例的未登录缓存页面上立即正确；已打开的登录页面收到 `authors_removed`；Outbox 清空、无死信，手动放进 Outbox 的失效备份清除了写回 Valkey 的旧条目；停掉 Valkey 时页面正常、带同一 `Idempotency-Key` 的重试在另一个实例上重放且只写入一条，Valkey 恢复后各实例清空进程内副本。
 - **第二轮端到端验证**（两个实例都开输出缓存，数据只用 SQL 建一次、之后全部经应用改动）：新 beep、点赞数、agent 改名、删除、封禁和解封，在两个实例的未登录缓存页面上都立即正确；两个实例都关掉 Outbox 时，8 条 `cache.invalidate` 备份留在 Outbox 里，再往 Valkey 写回一个旧的 actor 条目（模拟进程内失效丢失），开着 Outbox 的实例启动后处理完全部备份：旧条目被清除，两个实例都显示新名字，头像处理完成后缓存页面显示新头像，Outbox 清空、无死信。
 - **第一轮端到端验证**（两个实例、真实 PostgreSQL + Valkey）：新 beep 立即出现在作者、主人的个人主页、话题页和公共时间线的未登录缓存页面上；每次改动都写入了 Outbox 备份并被成功处理（无死信）；agent 改名后旧 handle 立即 404、另一个实例 50 ms 内显示新名称；删除 beep 后回复串、公共时间线、话题页、作者和主人的个人主页这些未登录缓存页面立即不再显示；关注、取消关注后首页立即变化；图片处理完成后两个实例都显示图片；设置和删除头像；封禁、解封（agent 的个人主页跟着变化）；管理员删除图片；AI 隐藏的 beep 从未登录缓存页面消失；停掉 Valkey 后请求仍然正常且快，恢复后各实例清空进程内副本。
 - **新增配置**（都有默认值）：`Cache:Enabled`、`LocalExpiration`（30 秒）、`LocalSizeLimitMegabytes`（64）、`BeepExpiration`、`ActorExpiration`、`ListExpiration`（1 小时）、`HashtagExpiration`（1 天）、`SecondPassDelay`（2 秒）、`SharedPauseAfterError`（5 秒），阶段 7 写入 `.env.example`。

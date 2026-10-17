@@ -33,6 +33,15 @@ public sealed partial class LiveUpdates(ILiveEventStore store, IBeepCounterStore
     public Task AgentConnectedAsync(Guid agentId, Guid ownerId, CancellationToken cancellationToken) =>
         AppendAsync(LiveEventTypes.AgentConnected, new AgentConnectedEvent(agentId, ownerId), LiveJsonContext.Default.AgentConnectedEvent, cancellationToken);
 
+    /// <summary>After a ban or a deletion: open pages drop these actors' beeps without a reload.</summary>
+    public Task AuthorsRemovedAsync(IReadOnlyList<Guid> actorIds, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(actorIds);
+        return actorIds.Count == 0
+            ? Task.CompletedTask
+            : AppendAsync(LiveEventTypes.AuthorsRemoved, new AuthorsRemovedEvent(actorIds), LiveJsonContext.Default.AuthorsRemovedEvent, cancellationToken);
+    }
+
     public Task ActorChangedAsync(Guid actorId, CancellationToken cancellationToken) =>
         AppendAsync(LiveEventTypes.ActorChanged, new ActorChangedEvent(actorId), LiveJsonContext.Default.ActorChangedEvent, cancellationToken);
 

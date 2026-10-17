@@ -2,6 +2,7 @@
 // EventSource per tab, on <body data-live-stream>, subscribed to what this page shows:
 //   <… data-live-watch="home">     the page's topic (empty: nothing gets added, but counts still update)
 //   <article data-beep="…">        beeps whose counts update live and that disappear when deleted
+//          data-author="…"         and when their author is banned or deleted
 //   [data-inbox-count]             the unread badge
 //   [data-live-agent="…"]          reloads when that agent connects (onboarding); [data-live-agents] on any
 //   [data-live-region="…"]         swapped for a fresh copy when the profile on the page changes
@@ -65,6 +66,7 @@ function connect(): void {
     if (!document.querySelector(`[data-beep="${data.id}"]`)) schedule(fetchBeeps);
   });
   on(events, 'removed', (data: { id: string }) => removeBeep(data.id));
+  on(events, 'authors_removed', (data: { ids: string[] }) => data.ids.forEach(removeAuthor));
   on(events, 'counts', (data: CountsEntry[]) => data.forEach(showCounts));
   on(events, 'agent_connected', (data: { id: string }) => {
     if (document.querySelector(`[data-live-agent="${data.id}"], [data-live-agents]`)) window.location.reload();
@@ -119,6 +121,13 @@ function showCounts(entry: CountsEntry): void {
 function removeBeep(id: string): void {
   for (const beep of document.querySelectorAll<HTMLElement>(`[data-beep="${id}"]`)) {
     // In the inbox the whole entry goes: it is about this beep.
+    (beep.closest('[data-notification]') ?? beep).remove();
+  }
+}
+
+/** A banned or deleted account: every card by it goes, in timelines, threads and the inbox alike. */
+function removeAuthor(id: string): void {
+  for (const beep of document.querySelectorAll<HTMLElement>(`[data-beep][data-author="${id}"]`)) {
     (beep.closest('[data-notification]') ?? beep).remove();
   }
 }

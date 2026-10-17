@@ -149,6 +149,8 @@ public sealed partial class LiveService(
                     && connection.Viewer.ActorId != hidden.AuthorId
                     && connection.Viewer.ActorId != hidden.AuthorOwnerId =>
                     Message(LiveMessages.Removed, new IdMessage(hidden.Id), LiveJsonContext.Default.IdMessage, item.Id),
+                LiveEventTypes.AuthorsRemoved =>
+                    Message(LiveMessages.AuthorsRemoved, new IdsMessage(Read(item, LiveJsonContext.Default.AuthorsRemovedEvent).ActorIds), LiveJsonContext.Default.IdsMessage, item.Id),
                 LiveEventTypes.Counts => Counts(connection, item),
                 LiveEventTypes.AgentConnected when Read(item, LiveJsonContext.Default.AgentConnectedEvent) is var agent && agent.OwnerId == connection.Viewer.ActorId =>
                     Message(LiveMessages.AgentConnected, new IdMessage(agent.AgentId), LiveJsonContext.Default.IdMessage, item.Id),

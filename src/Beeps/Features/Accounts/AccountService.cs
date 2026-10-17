@@ -469,6 +469,13 @@ public sealed partial class AccountService(
             return AccountNotFound();
         }
 
+        // A write that also reindexes and invalidates caches (PLAN 12, 6.16).
+        var limited = await rateLimits.CheckAsync(RateLimitPolicies.AccountChange, $"account:{userId}", cancellationToken);
+        if (!limited.IsSuccess)
+        {
+            return limited;
+        }
+
         user.Actor.DisplayName = name;
         user.Actor.Bio = cleanBio;
         outbox.SyncAccountToSearch(user.Id);

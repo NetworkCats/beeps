@@ -16,6 +16,9 @@ public static class LiveMessages
     /// <summary>A beep on the page was deleted, or hidden by moderation: <see cref="IdMessage"/>.</summary>
     public const string Removed = "removed";
 
+    /// <summary>Everything on the page by these authors goes (they were banned or deleted): <see cref="IdsMessage"/>.</summary>
+    public const string AuthorsRemoved = "authors_removed";
+
     /// <summary>New like and reply counts of beeps on the page: a list of <see cref="CountsEntry"/>.</summary>
     public const string Counts = "counts";
 
@@ -41,6 +44,8 @@ public static class LiveMessages
 public sealed record BeepMessage(Guid Id, Guid RootId, Guid? ReplyToId);
 
 public sealed record IdMessage(Guid Id);
+
+public sealed record IdsMessage(IReadOnlyList<Guid> Ids);
 
 public sealed record InboxMessage(int UnreadCount);
 

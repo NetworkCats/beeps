@@ -2,6 +2,7 @@ using Beeps.Features.Accounts;
 using Beeps.Features.Avatars;
 using Beeps.Features.Beeps;
 using Beeps.Features.Profiles;
+using Beeps.Features.RateLimiting;
 using Beeps.Features.Shared;
 using Beeps.Tests.Support;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -16,9 +17,11 @@ public sealed class ProfileServiceTests
 
     private readonly IProfileStore store = Substitute.For<IProfileStore>();
     private readonly ImmediateUnitOfWork unitOfWork = new();
+    private readonly IRateLimitStore rateLimitStore = Substitute.For<IRateLimitStore>();
 
     public ProfileServiceTests()
     {
+        rateLimitStore.TryAcquireAsync(default!, TestSupport.Ct).ReturnsForAnyArgs(RateLimitDecision.Allowed);
         store.FindByHandleAsync("tom", Arg.Any<CancellationToken>()).Returns(new ProfileRow(Tom, "hi", null, TestData.Now, null));
         store.FindByHandleAsync("tom.claude", Arg.Any<CancellationToken>()).Returns(new ProfileRow(TomsAgent, null, "Claude Opus 4.5", TestData.Now, Tom));
         store.FindByHandleAsync("alice", Arg.Any<CancellationToken>()).Returns(new ProfileRow(Alice, null, null, TestData.Now, null));
@@ -202,6 +205,27 @@ public sealed class ProfileServiceTests
     {
         var views = new BeepViews(
             Substitute.For<IBeepStore>(), Substitute.For<IBeepCounterStore>(), TestData.Avatars, TestData.Media, NullLogger<BeepViews>.Instance);
-        return new ProfileService(store, views, unitOfWork, TestData.Time(), new TestLocalizer(), NullLogger<ProfileService>.Instance);
+        return new ProfileService(store, views, unitOfWork, TestData.RateLimits(rateLimitStore), TestData.Time(), new TestLocalizer(), NullLogger<ProfileService>.Instance);
+    }
+
+    [Fact]
+    public async Task FollowsAndBlocksCountAgainstTheirOwnQuota()
+    {
+        rateLimitStore.TryAcquireAsync(default!, TestSupport.Ct).ReturnsForAnyArgs(RateLimitDecision.Denied(TimeSpan.FromMinutes(1)));
+        var service = Create();
+        var alice = Viewer.Human(Alice.Id);
+
+        Result[] results =
+        [
+            await service.FollowAsync(alice, "tom", TestSupport.Ct),
+            await service.UnfollowAsync(alice, "tom", TestSupport.Ct),
+            await service.BlockAsync(alice, "tom", TestSupport.Ct),
+            await service.UnblockAsync(alice, "tom", TestSupport.Ct),
+        ];
+
+        Assert.All(results, r => Assert.Equal(ErrorKind.RateLimited, r.Error?.Kind));
+        await store.DidNotReceiveWithAnyArgs().AddFollowAsync(default, default, default, TestSupport.Ct);
+        await store.DidNotReceiveWithAnyArgs().AddBlockAsync(default, default, default, TestSupport.Ct);
+        await store.DidNotReceiveWithAnyArgs().RemoveBlockAsync(default, default, TestSupport.Ct);
     }
 }

@@ -13,6 +13,8 @@ namespace Beeps.Tests.Features.Admin;
 
 public sealed class AdminServiceTests
 {
+    private readonly ILiveEventStore liveEvents = Substitute.For<ILiveEventStore>();
+
     private static readonly Guid AdminId = Guid.CreateVersion7(TestData.Now.AddDays(-1));
 
     private readonly IAdminStore store = Substitute.For<IAdminStore>();
@@ -112,6 +114,8 @@ public sealed class AdminServiceTests
         Assert.Equal((AuditActions.BanUser, AdminId, user.Id), (entry.Action, entry.AdminId, entry.TargetId));
         await agents.Received(1).ForgetKeysAsync(agentIds, Arg.Any<CancellationToken>());
         Assert.Equal(1, unitOfWork.Saves);
+        // Open pages drop the beeps of the user and their agents.
+        Assert.Equal([$$"""{"actor_ids":["{{user.Id:D}}","{{agentIds[0]:D}}","{{agentIds[1]:D}}"]}"""], TestData.LiveEvents(liveEvents, LiveEventTypes.AuthorsRemoved));
         // Their profiles and beeps leave search in the same transaction.
         outbox.Received(1).Enqueue(SearchAccountSyncRequest.MessageType, new SearchAccountSyncRequest(user.Id, true), Arg.Any<System.Text.Json.Serialization.Metadata.JsonTypeInfo<SearchAccountSyncRequest>>());
     }
@@ -450,8 +454,8 @@ public sealed class AdminServiceTests
         var avatars = TestData.Avatars;
         var localizer = new TestLocalizer();
         var agentService = new AgentService(
-            agents, unitOfWork, outbox, TestData.Live(Substitute.For<ILiveEventStore>()), avatars, Options.Create(new AgentOptions()), TestData.Time(), localizer, NullLogger<AgentService>.Instance);
+            agents, unitOfWork, outbox, TestData.Live(Substitute.For<ILiveEventStore>()), TestData.AllowingRateLimits(), avatars, Options.Create(new AgentOptions()), TestData.Time(), localizer, NullLogger<AgentService>.Instance);
         var access = new AdminAccess(store, TestData.Time(), localizer);
-        return new AdminService(store, accounts, sessions, agents, agentService, access, unitOfWork, outbox, avatars, TestData.Time(), localizer, NullLogger<AdminService>.Instance);
+        return new AdminService(store, accounts, sessions, agents, agentService, access, unitOfWork, outbox, TestData.Live(liveEvents), avatars, TestData.Time(), localizer, NullLogger<AdminService>.Instance);
     }
 }

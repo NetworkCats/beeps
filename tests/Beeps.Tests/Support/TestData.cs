@@ -53,6 +53,14 @@ internal static class TestData
         return new RateLimitService(store, new LocalRateLimiter(TimeProvider.System), limits, new TestLocalizer(), NullLogger<RateLimitService>.Instance);
     }
 
+    /// <summary>A real rate-limit service that allows everything, for Services whose limits a test does not look at.</summary>
+    public static RateLimitService AllowingRateLimits()
+    {
+        var store = Substitute.For<IRateLimitStore>();
+        store.TryAcquireAsync(default!, CancellationToken.None).ReturnsForAnyArgs(RateLimitDecision.Allowed);
+        return RateLimits(store);
+    }
+
     /// <summary>The policies a rate-limit check counted, from the counter keys (<c>{policy}:{window}:{partition}</c>).</summary>
     public static string[] Policies(IReadOnlyList<RateLimitCounter> counters) =>
         [.. counters.Select(c => c.Key[..c.Key.IndexOf(':', StringComparison.Ordinal)])];

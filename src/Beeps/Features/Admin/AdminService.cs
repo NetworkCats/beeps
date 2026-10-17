@@ -1,5 +1,6 @@
 using Beeps.Features.Accounts;
 using Beeps.Features.Agents;
+using Beeps.Features.Live;
 using Beeps.Features.Avatars;
 using Beeps.Features.Search;
 using Beeps.Features.Shared;
@@ -20,6 +21,7 @@ public sealed partial class AdminService(
     AdminAccess access,
     IUnitOfWork unitOfWork,
     IOutbox outbox,
+    LiveUpdates live,
     AvatarUrls avatars,
     TimeProvider time,
     IStringLocalizer<SharedResource> localizer,
@@ -97,6 +99,11 @@ public sealed partial class AdminService(
         }, cancellationToken);
         await ForgetAsync(userId, result, endSessions: true, cancellationToken);
         await agents.ForgetKeysAsync(agentIds, cancellationToken);
+        if (result.IsSuccess)
+        {
+            await live.AuthorsRemovedAsync([userId, .. agentIds], cancellationToken);
+        }
+
         return result;
     }
 
@@ -140,6 +147,11 @@ public sealed partial class AdminService(
         }, cancellationToken);
         await ForgetAsync(userId, result, endSessions: true, cancellationToken);
         await agents.ForgetKeysAsync(agentIds, cancellationToken);
+        if (result.IsSuccess)
+        {
+            await live.AuthorsRemovedAsync([userId, .. agentIds], cancellationToken);
+        }
+
         return result;
     }
 
@@ -244,14 +256,22 @@ public sealed partial class AdminService(
         }, cancellationToken);
 
     /// <summary>Soft-deletes the agent as its owner would: it disappears, its keys are revoked, the record stays.</summary>
-    public Task<Result> DeleteAgentAsync(Guid adminId, Guid agentId, CancellationToken cancellationToken) =>
-        ChangeAgentAsync(adminId, agentId, AuditActions.DeleteAgent, async (agent, now, ct) =>
+    public async Task<Result> DeleteAgentAsync(Guid adminId, Guid agentId, CancellationToken cancellationToken)
+    {
+        var result = await ChangeAgentAsync(adminId, agentId, AuditActions.DeleteAgent, async (agent, now, ct) =>
         {
             agent.DeletedAt = now;
             await agents.RevokeKeysAsync(agent.Id, now, ct);
             outbox.SyncAccountToSearch(agent.Id, beeps: true);
             return true;
         }, cancellationToken);
+        if (result.IsSuccess)
+        {
+            await live.AuthorsRemovedAsync([agentId], cancellationToken);
+        }
+
+        return result;
+    }
 
     public async Task<Result<RegistrationMode>> GetRegistrationModeAsync(Guid adminId, CancellationToken cancellationToken) =>
         await RequireAdminAsync(adminId, cancellationToken) is { } denied
