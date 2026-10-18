@@ -391,6 +391,14 @@ PLAN 6.10 要求登录用户看到的所有数据都实时刷新。逐页检查�
 - [x] 删除手写 DOM 操作的旧脚本（整个 `Client/ts`）、`data-live-*` 属性和 HTML 片段接口
 - [x] 组件与 Razor 模板逐元素一致：`IslandSamplesTests` 生成样例，`npm test` 对照
 
+## Valkey 使用复查（2026-10-18）
+逐项检查了 Valkey 的用法（连接配置、HybridCache、内容缓存与失效、限流、计数器、实时事件流、SSE 连接计数），并在本地 Valkey 9.1 上验证了下面的结论。
+- [x] **修复：认证缓存可能被写回撤销前的旧数据**。会话、账号状态、agent key 的缓存只在改动后删除一次，而与改动同时进行的请求可能在删除之后把它刚从数据库读到的旧行写回 Valkey（内容缓存靠 2 秒后的第二次删除防这种情况，认证缓存没有）。结果是已登出的会话、已吊销的 key、已撤销的管理员权限最多还能用 10 分钟（key 1 分钟）。现在都经 `CacheInvalidator.ForgetSharedAsync`：立即删除，2 秒后再删一次。
+- [x] **修复：Valkey 不可用时登出、封禁、改密码等返回 500**。HybridCache 读写 L2 出错会回落，但 `RemoveAsync` 会抛 `RedisConnectionException`（实测）。数据库的改动已经提交，请求却失败，缓存也没删；会话每小时一次的 touch 和 agent key 的 touch 也走这里，所以 Valkey 停掉时每个会话每小时有一个请求 500。现在删除失败只记日志，由后台任务重试到 Valkey 恢复（期间读缓存也会失败、改查数据库，不会读到旧值；恢复后重试间隔最长 30 秒，这段时间内旧条目还可能被读到）；也不再用请求的取消令牌，客户端断开不会让删除被跳过。
+- [x] **实时事件改为 Pub/Sub 唤醒**：写入 Stream 的 Lua 脚本里同时 `PUBLISH` 一条提示，各实例收到后立即读 Stream；`Live:PollInterval` 从 250 ms 改为 1 秒，只在提示丢失（重连）时兜底。实测两个连接、轮询调成 30 秒时，20 条事件全部送达，延迟中位数 2.4 ms（原来要等下一次 250 ms 的轮询），空闲时每个实例每秒的 Valkey 请求从 4 次降到 1 次。
+- 检查后保持不变：内容缓存的批量 `MGET` 和成批 `SET EX`；限流、计数器、连接计数的多步操作都在一个 Lua 脚本里（StackExchange.Redis 自动 `SCRIPT LOAD` 后用 `EVALSHA`）；`BacklogPolicy.FailFast` 加各处回落；StackExchange.Redis 3.x 默认 RESP3（实测），Pub/Sub 与普通命令共用连接，所以 `ConnectionRestored` 后清空进程内副本的做法是对的；`Idempotency-Key`、定时任务、Data Protection 密钥放在 PostgreSQL 的取舍。
+- [ ] **需要确认：线上 Valkey 的内存上限**。所有 key 都有 TTL，但被乱填的 session / agent key 也会缓存"不存在"（10 分钟 / 1 分钟），`compose.prod.yml` 里建议设 `maxmemory` 和 `maxmemory-policy volatile-lru`：满了淘汰最久没用的，而不是让所有写入报错（报错时各处会回落，但缓存、计数和实时更新都会停）。
+
 ## 阶段 7：可上线状态
 - [ ] Dockerfile（多阶段构建）
 - [ ] `compose.prod.yml`（应用、PostgreSQL、Valkey、Meilisearch、nginx host 网络，数据卷、健康检查）

@@ -1,10 +1,11 @@
 using Beeps.Features.Accounts;
+using Beeps.Infrastructure.Caching;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Hybrid;
 
 namespace Beeps.Infrastructure.Data.Stores;
 
-public sealed class EfSessionStore(BeepsDbContext db, HybridCache cache, TimeProvider time) : ISessionStore
+public sealed class EfSessionStore(BeepsDbContext db, HybridCache cache, CacheInvalidator invalidator, TimeProvider time) : ISessionStore
 {
     public void Add(UserSession session) => db.Set<UserSession>().Add(session);
 
@@ -25,7 +26,7 @@ public sealed class EfSessionStore(BeepsDbContext db, HybridCache cache, TimePro
         await db.Set<UserSession>()
             .Where(s => s.Id == session.Id)
             .ExecuteUpdateAsync(s => s.SetProperty(x => x.LastSeenAt, now).SetProperty(x => x.ExpiresAt, expiresAt), cancellationToken);
-        await cache.RemoveAsync(SharedCache.SessionKey(session.TokenHash), cancellationToken);
+        await invalidator.ForgetSharedAsync([SharedCache.SessionKey(session.TokenHash)]);
     }
 
     public Task<bool> IsActiveAsync(Guid sessionId, DateTimeOffset now, CancellationToken cancellationToken) =>
@@ -36,7 +37,7 @@ public sealed class EfSessionStore(BeepsDbContext db, HybridCache cache, TimePro
         await db.Set<UserSession>()
             .Where(s => s.TokenHash == tokenHash && s.RevokedAt == null)
             .ExecuteUpdateAsync(s => s.SetProperty(x => x.RevokedAt, now), cancellationToken);
-        await cache.RemoveAsync(SharedCache.SessionKey(tokenHash), cancellationToken);
+        await invalidator.ForgetSharedAsync([SharedCache.SessionKey(tokenHash)]);
     }
 
     public Task RevokeAllAsync(Guid userId, DateTimeOffset now, CancellationToken cancellationToken) =>
@@ -57,7 +58,7 @@ public sealed class EfSessionStore(BeepsDbContext db, HybridCache cache, TimePro
             .Where(s => s.UserId == userId && s.ExpiresAt > now)
             .Select(s => s.TokenHash)
             .ToListAsync(cancellationToken);
-        await cache.RemoveAsync(hashes.Select(SharedCache.SessionKey), cancellationToken);
+        await invalidator.ForgetSharedAsync([.. hashes.Select(SharedCache.SessionKey)]);
     }
 
     public Task<int> DeleteEndedAsync(DateTimeOffset cutoff, int batchSize, CancellationToken cancellationToken) =>

@@ -7,7 +7,7 @@ using Microsoft.Extensions.Caching.Hybrid;
 
 namespace Beeps.Infrastructure.Data.Stores;
 
-public sealed class EfAccountStore(BeepsDbContext db, HybridCache cache, PendingCacheChanges cacheChanges) : IAccountStore
+public sealed class EfAccountStore(BeepsDbContext db, HybridCache cache, CacheInvalidator invalidator, PendingCacheChanges cacheChanges) : IAccountStore
 {
     public Task<bool> AnyUsersAsync(CancellationToken cancellationToken) =>
         db.Set<User>().AnyAsync(cancellationToken);
@@ -53,8 +53,8 @@ public sealed class EfAccountStore(BeepsDbContext db, HybridCache cache, Pending
             SharedCache.Account,
             cancellationToken: cancellationToken);
 
-    public async Task ForgetAccountAsync(Guid userId, CancellationToken cancellationToken) =>
-        await cache.RemoveAsync(SharedCache.AccountKey(userId), cancellationToken);
+    public Task ForgetAccountAsync(Guid userId, CancellationToken cancellationToken) =>
+        invalidator.ForgetSharedAsync([SharedCache.AccountKey(userId)]);
 
     public async Task<RegistrationMode> GetRegistrationModeAsync(CancellationToken cancellationToken)
     {

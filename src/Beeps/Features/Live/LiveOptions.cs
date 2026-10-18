@@ -22,8 +22,11 @@ public sealed class LiveOptions
     /// <summary>While an admin page is open, how often the figures that change with no event are looked at.</summary>
     public TimeSpan AdminFiguresInterval { get; set; } = TimeSpan.FromSeconds(3);
 
-    /// <summary>How often each instance reads new events from the stream when there were none.</summary>
-    public TimeSpan PollInterval { get; set; } = TimeSpan.FromMilliseconds(250);
+    /// <summary>
+    /// How often each instance reads the stream when no instance said it added an event. Every event is announced on
+    /// Pub/Sub and read at once; this only bounds the delay when such a word is lost (Valkey reconnecting).
+    /// </summary>
+    public TimeSpan PollInterval { get; set; } = TimeSpan.FromSeconds(1);
 
     /// <summary>The stream keeps about this many recent events for replay.</summary>
     [Range(100, 1_000_000)]

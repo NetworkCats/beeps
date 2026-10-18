@@ -8,7 +8,8 @@ namespace Beeps.Infrastructure.Live;
 
 /// <summary>
 /// One Valkey stream for all live events (PLAN 6.7: Stream, so a reconnecting browser can replay), capped in
-/// length; a set of beeps whose counts changed; and a sorted set per account of its open connections.
+/// length, with a Pub/Sub message per event so readers need not poll it; a set of beeps whose counts changed; and a
+/// sorted set per account of its open connections.
 /// </summary>
 public sealed class RedisLiveEventStore(IConnectionMultiplexer redis, IOptions<LiveOptions> options) : ILiveEventStore
 {
@@ -23,11 +24,14 @@ public sealed class RedisLiveEventStore(IConnectionMultiplexer redis, IOptions<L
 
     private static readonly RedisKey StreamKey = $"{RedisSetup.KeyPrefix}events";
     private static readonly RedisKey ChangedCountsKey = $"{RedisSetup.KeyPrefix}events:counts";
+    private static readonly RedisChannel AppendedChannel = RedisChannel.Literal($"{RedisSetup.KeyPrefix}events:appended");
 
-    // KEYS: stream. ARGV: max length, ttl ms, type, data. MAXLEN ~ lets Valkey trim whole nodes, which is cheap.
+    // KEYS: stream. ARGV: max length, ttl ms, type, data, channel. MAXLEN ~ lets Valkey trim whole nodes, which is cheap.
+    // Published after the entry is added, so whoever hears it finds the entry.
     private const string AppendScript = """
         redis.call('XADD', KEYS[1], 'MAXLEN', '~', ARGV[1], '*', 't', ARGV[3], 'd', ARGV[4])
         redis.call('PEXPIRE', KEYS[1], ARGV[2])
+        redis.call('PUBLISH', ARGV[5], '')
         return 0
         """;
 
@@ -54,7 +58,16 @@ public sealed class RedisLiveEventStore(IConnectionMultiplexer redis, IOptions<L
         """;
 
     public Task AppendAsync(string type, string data, CancellationToken cancellationToken) =>
-        redis.GetDatabase().ScriptEvaluateAsync(AppendScript, [StreamKey], [options.Value.StreamMaxLength, Milliseconds(KeyLifetime), type, data]);
+        redis.GetDatabase().ScriptEvaluateAsync(
+            AppendScript,
+            [StreamKey],
+            [options.Value.StreamMaxLength, Milliseconds(KeyLifetime), type, data, AppendedChannel.ToString()]);
+
+    public Task SubscribeAppendedAsync(Action appended, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(appended);
+        return redis.GetSubscriber().SubscribeAsync(AppendedChannel, (_, _) => appended());
+    }
 
     public async Task<IReadOnlyList<LiveEvent>> ReadAfterAsync(LiveEventId after, int max, CancellationToken cancellationToken)
     {

@@ -8,8 +8,8 @@ namespace Beeps.Infrastructure.Live;
 /// <summary>
 /// Reads the shared stream once for the whole instance and hands each event to every connection on it
 /// (PLAN 6.10: events cross instances through Valkey). StackExchange.Redis cannot block on XREAD, so the hub
-/// polls; reading an empty stream end is cheap. It reads even with no connection open, so a new connection
-/// can rely on it being caught up.
+/// reads whenever Pub/Sub says an event was added, and polls in case such a word was lost; reading an empty stream
+/// end is cheap. It reads even with no connection open, so a new connection can rely on it being caught up.
 /// </summary>
 public sealed partial class LiveEventHub(
     ILiveEventStore store,
@@ -25,6 +25,11 @@ public sealed partial class LiveEventHub(
     public const int BatchSize = 500;
 
     private static readonly TimeSpan ErrorDelay = TimeSpan.FromSeconds(2);
+
+    /// <summary>Holds one word that events were added since the last read; more words before that read change nothing.</summary>
+    private readonly Channel<bool> appended = Channel.CreateBounded<bool>(new BoundedChannelOptions(1) { FullMode = BoundedChannelFullMode.DropWrite });
+
+    private int subscribeFailures;
 
     private readonly Lock gate = new();
     private readonly List<Subscription> subscriptions = [];
@@ -68,10 +73,13 @@ public sealed partial class LiveEventHub(
         using var stopping = lifetime.ApplicationStopping.Register(EndAll);
         using var ending = stoppingToken.Register(EndAll);
         LiveEventId? position = null;
+        var subscribed = false;
         while (!stoppingToken.IsCancellationRequested)
         {
             try
             {
+                // Before the first read, so nothing added after it goes unheard. Polling covers the time without it.
+                subscribed = subscribed || await TrySubscribeAsync(stoppingToken);
                 position ??= await store.LastIdAsync(stoppingToken) ?? LiveEventId.Zero;
                 ready.TrySetResult();
                 var events = await store.ReadAfterAsync(position.Value, BatchSize, stoppingToken);
@@ -85,7 +93,7 @@ public sealed partial class LiveEventHub(
                     }
                 }
 
-                await Task.Delay(options.Value.PollInterval, time, stoppingToken);
+                await WaitForEventsAsync(stoppingToken);
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
             {
@@ -104,6 +112,36 @@ public sealed partial class LiveEventHub(
                 }
             }
         }
+    }
+
+    private async Task<bool> TrySubscribeAsync(CancellationToken stoppingToken)
+    {
+        try
+        {
+            await store.SubscribeAppendedAsync(() => appended.Writer.TryWrite(true), stoppingToken);
+            return true;
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            // Tried again before every read; said once.
+            if (subscribeFailures++ == 0)
+            {
+                LogSubscribeFailed(logger, exception, options.Value.PollInterval);
+            }
+
+            return false;
+        }
+    }
+
+    /// <summary>Until an instance says it added events, or for the poll interval, in case that word was lost.</summary>
+    private async Task WaitForEventsAsync(CancellationToken stoppingToken)
+    {
+        using var waiting = CancellationTokenSource.CreateLinkedTokenSource(stoppingToken);
+        await Task.WhenAny(appended.Reader.WaitToReadAsync(waiting.Token).AsTask(), Task.Delay(options.Value.PollInterval, time, waiting.Token));
+        await waiting.CancelAsync();
+        stoppingToken.ThrowIfCancellationRequested();
+        // Taken before the read it causes: a word that comes during that read wakes the next wait.
+        appended.Reader.TryRead(out _);
     }
 
     private void Dispatch(IReadOnlyList<LiveEvent> events)
@@ -216,6 +254,9 @@ public sealed partial class LiveEventHub(
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Live events are not read on this instance")]
     private static partial void LogDisabled(ILogger logger);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Subscribing to new live events failed; reading them every {Interval} until it works")]
+    private static partial void LogSubscribeFailed(ILogger logger, Exception exception, TimeSpan interval);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Reading live events failed; retrying")]
     private static partial void LogReadFailed(ILogger logger, Exception exception);

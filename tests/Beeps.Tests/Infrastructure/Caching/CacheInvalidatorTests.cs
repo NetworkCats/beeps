@@ -169,6 +169,39 @@ public sealed class CacheInvalidatorTests : IAsyncDisposable
     }
 
     [Fact]
+    public async Task ASignInEntryIsDroppedAtOnceAndAgainForReadsThatRacedTheRevocation()
+    {
+        await invalidator.StartAsync(stop.Token);
+
+        await invalidator.ForgetSharedAsync(["session:abc"]);
+
+        await hybrid.Received(1).RemoveAsync(Arg.Is<IEnumerable<string>>(keys => keys.Single() == "session:abc"), Arg.Any<CancellationToken>());
+        await WaitUntilAsync(() => RemovalsOf("session:abc") == 2);
+        // Nothing for the other instances: no instance holds a copy of these.
+        Assert.Empty(shared.Published);
+    }
+
+    [Fact]
+    public async Task ASignInEntryThatValkeyCouldNotDropIsDroppedOnceItIsBack()
+    {
+        var failures = 1;
+        hybrid.When(h => h.RemoveAsync(Arg.Any<IEnumerable<string>>(), Arg.Any<CancellationToken>()).AsTask())
+            .Do(_ =>
+            {
+                if (failures-- > 0)
+                {
+                    throw new InvalidOperationException("Valkey is down");
+                }
+            });
+        await invalidator.StartAsync(stop.Token);
+
+        // The revocation is committed: the caller is not failed for the cache.
+        await invalidator.ForgetSharedAsync(["agentkey:abc"]);
+
+        await WaitUntilAsync(() => RemovalsOf("agentkey:abc") >= 3);
+    }
+
+    [Fact]
     public async Task AConnectedAgentEvictsItsOwnersProfileWhereItNowAppears()
     {
         await invalidator.StartAsync(stop.Token);
@@ -262,6 +295,9 @@ public sealed class CacheInvalidatorTests : IAsyncDisposable
         await listener.StopAsync(CancellationToken.None);
         listener.Dispose();
     }
+
+    private int RemovalsOf(string key) =>
+        hybrid.ReceivedCalls().Count(c => c.GetMethodInfo().Name == nameof(HybridCache.RemoveAsync) && c.GetArguments()[0] is IEnumerable<string> keys && keys.Contains(key));
 
     private static CachedActor Human(Guid id) => new(id, ActorKind.Human, "tom", "Tom", null, null, null, null, TestData.Now, Deleted: false, Banned: false);
 

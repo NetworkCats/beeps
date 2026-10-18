@@ -58,6 +58,36 @@ public sealed partial class CacheInvalidator(
     }
 
     /// <summary>
+    /// Drops entries that decide who a request is (<see cref="SharedCache"/>) after the change behind them committed:
+    /// at once, so the change applies to the very next request, and again <see cref="CacheOptions.SecondPassDelay"/>
+    /// later, as a request that read the old row just before the change may have written it back in between. Never
+    /// fails the caller, whose change is committed already: if Valkey is away, the removal is retried here until it is
+    /// back, and until then every read of these entries goes to the database anyway.
+    /// </summary>
+    public async Task ForgetSharedAsync(IReadOnlyCollection<string> keys)
+    {
+        ArgumentNullException.ThrowIfNull(keys);
+        if (keys.Count == 0)
+        {
+            return;
+        }
+
+        var pass = new Pass([], new Resolved([], [], [.. keys]));
+        try
+        {
+            // Not the request's token: a client that goes away must not leave a revoked session cached.
+            await hybrid.RemoveAsync(keys, CancellationToken.None);
+        }
+        catch (Exception exception)
+        {
+            LogForgetFailed(logger, exception, keys.Count);
+            queue.Writer.TryWrite(pass);
+        }
+
+        QueueLater(pass, CancellationToken.None);
+    }
+
+    /// <summary>
     /// Runs one batch to the end, now: the outbox's durable copy of a commit (<see cref="CacheInvalidationHandler"/>).
     /// Throws when Valkey is away, so the outbox retries it.
     /// </summary>
@@ -176,7 +206,7 @@ public sealed partial class CacheInvalidator(
     {
         HashSet<string> keys = new(StringComparer.Ordinal);
         HashSet<string> tags = new(StringComparer.Ordinal);
-        HashSet<Guid> accounts = [];
+        HashSet<string> hybridKeys = new(StringComparer.Ordinal);
         List<CacheChange> unresolved = [];
         foreach (var pass in batch)
         {
@@ -184,7 +214,7 @@ public sealed partial class CacheInvalidator(
             {
                 keys.UnionWith(done.Keys);
                 tags.UnionWith(done.PageTags);
-                accounts.UnionWith(done.Accounts);
+                hybridKeys.UnionWith(done.HybridKeys);
             }
             else
             {
@@ -198,7 +228,7 @@ public sealed partial class CacheInvalidator(
             if (change.Kind is CacheChangeKind.Actor or CacheChangeKind.AgentConnected or CacheChangeKind.ActorVisibility or CacheChangeKind.ActorRestored)
             {
                 // A human's navigation bar shows their name and avatar from the cached account state.
-                accounts.Add(change.Id);
+                hybridKeys.Add(SharedCache.AccountKey(change.Id));
             }
         }
 
@@ -216,7 +246,7 @@ public sealed partial class CacheInvalidator(
             tags.UnionWith(await ConnectedAgentPageTagsAsync(reads, unresolved, cancellationToken));
         }
 
-        return new Resolved([.. keys], [.. tags], [.. accounts]);
+        return new Resolved([.. keys], [.. tags], [.. hybridKeys]);
     }
 
     /// <summary>Where a new beep belongs on a cached page: its thread, its author's (and owner's) profile, its hashtags, the public timeline.</summary>
@@ -279,9 +309,15 @@ public sealed partial class CacheInvalidator(
         var message = new CacheInvalidationMessage(resolved.Keys, resolved.PageTags);
         // Here first: this instance is right even while Valkey is away.
         await ApplyLocallyAsync(cache, pages, message, cancellationToken);
-        if (resolved.Accounts.Count > 0)
+        if (resolved.HybridKeys.Count > 0)
         {
-            await hybrid.RemoveAsync(resolved.Accounts.Select(SharedCache.AccountKey), cancellationToken);
+            await hybrid.RemoveAsync(resolved.HybridKeys, cancellationToken);
+        }
+
+        if (resolved.Keys.Count == 0 && resolved.PageTags.Count == 0)
+        {
+            // Nothing any instance holds a copy of (ForgetSharedAsync).
+            return;
         }
 
         await shared.DeleteAsync(resolved.Keys);
@@ -296,13 +332,17 @@ public sealed partial class CacheInvalidator(
         }
 
         var changes = batch.Where(p => p.Resolved is null).SelectMany(p => p.Changes).ToList();
+        QueueLater(new Pass(changes, resolved), stoppingToken);
+    }
+
+    private void QueueLater(Pass pass, CancellationToken stoppingToken) =>
         _ = Task.Run(
             async () =>
             {
                 try
                 {
                     await Task.Delay(options.Value.SecondPassDelay, time, stoppingToken);
-                    queue.Writer.TryWrite(new Pass(changes, resolved));
+                    queue.Writer.TryWrite(pass);
                 }
                 catch (OperationCanceledException)
                 {
@@ -310,15 +350,18 @@ public sealed partial class CacheInvalidator(
                 }
             },
             CancellationToken.None);
-    }
 
     /// <param name="Resolved">Set on a second pass: the entries and pages its first pass found.</param>
     private sealed record Pass(IReadOnlyList<CacheChange> Changes, Resolved? Resolved);
 
-    private sealed record Resolved(IReadOnlyList<string> Keys, IReadOnlyList<string> PageTags, IReadOnlyList<Guid> Accounts);
+    /// <param name="HybridKeys">Entries of <see cref="SharedCache"/>, which live in Valkey only.</param>
+    private sealed record Resolved(IReadOnlyList<string> Keys, IReadOnlyList<string> PageTags, IReadOnlyList<string> HybridKeys);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Invalidating {Count} cache changes failed; retrying in {Delay}")]
     private static partial void LogFailed(ILogger logger, Exception exception, int count, TimeSpan delay);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Dropping {Count} cached sign-in entries failed; retrying in the background")]
+    private static partial void LogForgetFailed(ILogger logger, Exception exception, int count);
 
     [LoggerMessage(Level = LogLevel.Error, Message = "{Count} cache invalidations were dropped while Valkey was away; those entries stay until they expire")]
     private static partial void LogDropped(ILogger logger, int count);

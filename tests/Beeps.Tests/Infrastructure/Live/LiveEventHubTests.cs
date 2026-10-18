@@ -33,6 +33,29 @@ public sealed class LiveEventHubTests : IAsyncDisposable
     }
 
     [Fact]
+    public async Task AnEventIsReadAsSoonAsItIsAnnouncedNotAtTheNextPoll()
+    {
+        options.PollInterval = TimeSpan.FromHours(1);
+        var hub = await StartAsync();
+        using var subscription = hub.Subscribe(null);
+
+        store.Add("announced");
+
+        Assert.Equal(["announced"], await TakeAsync(subscription, 1));
+    }
+
+    [Fact]
+    public async Task AnUnannouncedEventIsStillReadAtTheNextPoll()
+    {
+        var hub = await StartAsync();
+        using var subscription = hub.Subscribe(null);
+
+        store.Add("unannounced", announce: false);
+
+        Assert.Equal(["unannounced"], await TakeAsync(subscription, 1));
+    }
+
+    [Fact]
     public async Task AReconnectingSubscriberGetsWhatItMissedOnceThenLiveOnes()
     {
         var seen = store.Add("seen");
@@ -238,17 +261,26 @@ public sealed class LiveEventHubTests : IAsyncDisposable
         private readonly List<LiveEvent> events = [];
         private long sequence;
         private LiveEventId? trimmed;
+        private Action? appended;
 
         public int Reads { get; private set; }
 
-        public string Add(string label)
+        /// <param name="announce">Whether the hub hears of it, as over Pub/Sub; it may miss the word.</param>
+        public string Add(string label, bool announce = true)
         {
+            string id;
             lock (gate)
             {
-                var id = new LiveEventId(TestData.Now.ToUnixTimeMilliseconds(), ++sequence).ToString();
+                id = new LiveEventId(TestData.Now.ToUnixTimeMilliseconds(), ++sequence).ToString();
                 events.Add(new LiveEvent(id, label, "{}"));
-                return id;
             }
+
+            if (announce)
+            {
+                appended?.Invoke();
+            }
+
+            return id;
         }
 
         public void TrimFirst()
@@ -283,6 +315,12 @@ public sealed class LiveEventHubTests : IAsyncDisposable
             {
                 return Task.FromResult<LiveEventId?>(events.Count == 0 ? null : LiveEventId.Parse(events[^1].Id));
             }
+        }
+
+        public Task SubscribeAppendedAsync(Action appended, CancellationToken cancellationToken)
+        {
+            this.appended = appended;
+            return Task.CompletedTask;
         }
 
         public Task AppendAsync(string type, string data, CancellationToken cancellationToken) => throw new NotSupportedException();

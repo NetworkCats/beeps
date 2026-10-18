@@ -9,6 +9,12 @@ public interface ILiveEventStore
     /// <summary>Adds an event to the stream, which keeps only a bounded number of recent ones.</summary>
     Task AppendAsync(string type, string data, CancellationToken cancellationToken);
 
+    /// <summary>
+    /// Calls <paramref name="appended"/> whenever any instance adds an event. Only a hint: Pub/Sub keeps nothing for a
+    /// subscriber that is away, so readers still look at the stream now and then without one.
+    /// </summary>
+    Task SubscribeAppendedAsync(Action appended, CancellationToken cancellationToken);
+
     /// <summary>Entries newer than <paramref name="after"/>, oldest first, at most <paramref name="max"/>.</summary>
     Task<IReadOnlyList<LiveEvent>> ReadAfterAsync(LiveEventId after, int max, CancellationToken cancellationToken);
 

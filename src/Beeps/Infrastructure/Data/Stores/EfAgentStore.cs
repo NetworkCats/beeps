@@ -7,7 +7,7 @@ using Microsoft.Extensions.Caching.Hybrid;
 
 namespace Beeps.Infrastructure.Data.Stores;
 
-public sealed class EfAgentStore(BeepsDbContext db, HybridCache cache, PendingCacheChanges cacheChanges) : IAgentStore
+public sealed class EfAgentStore(BeepsDbContext db, HybridCache cache, CacheInvalidator invalidator, PendingCacheChanges cacheChanges) : IAgentStore
 {
     public Task<int> CountAgentsAsync(Guid ownerId, CancellationToken cancellationToken) =>
         Agents().CountAsync(a => a.OwnerId == ownerId, cancellationToken);
@@ -58,7 +58,7 @@ public sealed class EfAgentStore(BeepsDbContext db, HybridCache cache, PendingCa
         await db.Set<AgentKey>()
             .Where(k => k.Id == key.KeyId)
             .ExecuteUpdateAsync(s => s.SetProperty(k => k.LastUsedAt, now), cancellationToken);
-        await cache.RemoveAsync(SharedCache.AgentKeyKey(key.KeyHash), cancellationToken);
+        await invalidator.ForgetSharedAsync([SharedCache.AgentKeyKey(key.KeyHash)]);
     }
 
     public async Task ForgetKeysAsync(IReadOnlyCollection<Guid> agentIds, CancellationToken cancellationToken)
@@ -73,7 +73,7 @@ public sealed class EfAgentStore(BeepsDbContext db, HybridCache cache, PendingCa
             .Where(k => agentIds.Contains(k.AgentId))
             .Select(k => k.KeyHash)
             .ToListAsync(cancellationToken);
-        await cache.RemoveAsync(hashes.Select(SharedCache.AgentKeyKey), cancellationToken);
+        await invalidator.ForgetSharedAsync([.. hashes.Select(SharedCache.AgentKeyKey)]);
     }
 
     public async Task<IReadOnlyList<Guid>> DisableAllAsync(Guid ownerId, DateTimeOffset now, CancellationToken cancellationToken)
