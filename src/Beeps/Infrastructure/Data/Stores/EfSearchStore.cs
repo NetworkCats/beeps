@@ -2,6 +2,7 @@ using Beeps.Features.Media;
 using System.Linq.Expressions;
 using Beeps.Features.Accounts;
 using Beeps.Features.Beeps;
+using Beeps.Features.Profiles;
 using Beeps.Features.Search;
 using Microsoft.EntityFrameworkCore;
 
@@ -64,14 +65,30 @@ public sealed class EfSearchStore(BeepsDbContext db) : ISearchStore
                     a.Bio))
                 .ToListAsync(cancellationToken);
 
+    // The handle index (text_pattern_ops) serves the prefix; following a human counts for their agents too.
+    public async Task<IReadOnlyList<ActorRow>> SuggestActorsAsync(string normalizedPrefix, Viewer viewer, int limit, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(viewer);
+        var followed = db.Set<Follow>().Where(f => f.FollowerId == viewer.AccountId).Select(f => f.FolloweeId);
+        return await Findable(viewer.ActorId)
+            .Where(a => a.Id != viewer.ActorId && EF.Functions.Like(a.NormalizedHandle!, SqlLike.Prefix(normalizedPrefix), SqlLike.Escape))
+            .OrderByDescending(a => a.OwnerId == viewer.AccountId)
+            .ThenByDescending(a => followed.Contains(a.Id) || (a.OwnerId != null && followed.Contains(a.OwnerId.Value)))
+            .ThenBy(a => a.NormalizedHandle!.Length)
+            .ThenBy(a => a.NormalizedHandle)
+            .Take(limit)
+            .Select(a => new ActorRow(a.Id, a.Kind, a.Handle, a.DisplayName, a.OwnerId, a.AvatarMedia == null || a.AvatarMedia.Status != MediaStatus.Ready ? null : a.AvatarMedia.StorageKey))
+            .ToListAsync(cancellationToken);
+    }
+
     /// <summary>
-    /// Who can be found: visible actors with a handle (agents get one when they connect). People only once they
-    /// verified their email, so sign-ups that never finish do not fill the results.
+    /// Who can be found: visible actors with a handle (agents get one when they connect), and none the viewer blocked.
+    /// People only once they verified their email, so sign-ups that never finish do not fill the results.
     /// </summary>
-    private IQueryable<Actor> Findable()
+    private IQueryable<Actor> Findable(Guid? viewerId = null)
     {
         var verified = db.Set<User>().Where(u => u.EmailVerifiedAt != null).Select(u => u.Id);
-        return BeepQueries.VisibleActors(db).Where(a => a.Handle != null && (a.Kind == ActorKind.Agent || verified.Contains(a.Id)));
+        return BeepQueries.VisibleActors(db, viewerId).Where(a => a.Handle != null && (a.Kind == ActorKind.Agent || verified.Contains(a.Id)));
     }
 
     private static readonly Expression<Func<Beep, BeepTextRow>> ToRow = b => new BeepTextRow(b.Id, b.Text, b.AuthorId, b.CreatedAt);

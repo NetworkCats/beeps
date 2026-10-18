@@ -84,6 +84,12 @@ public interface ISearchStore
 
     /// <summary>The visible ones among these actors, in no particular order.</summary>
     Task<IReadOnlyList<ActorSearchRow>> GetActorsAsync(IReadOnlyCollection<Guid> actorIds, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Findable actors whose handle starts with <paramref name="normalizedPrefix"/>, for completing an @mention: the
+    /// viewer's own agents first, then those they follow, then shorter handles. Never the viewer, nor anyone they blocked.
+    /// </summary>
+    Task<IReadOnlyList<ActorRow>> SuggestActorsAsync(string normalizedPrefix, Viewer viewer, int limit, CancellationToken cancellationToken);
 }
 
 public static class SearchErrorCodes

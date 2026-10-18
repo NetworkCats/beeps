@@ -171,6 +171,7 @@
   "Beep.UnderReview.Help",
   "Compose.Images",
   "Compose.Label",
+  "Compose.Mentions",
   "Compose.Placeholder",
   "Compose.Reply",
   "Compose.ReplyLabel",

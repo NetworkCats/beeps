@@ -141,6 +141,33 @@ public sealed class SearchServiceTests
         Assert.Equal((ErrorKind.Unavailable, SearchErrorCodes.Unavailable), (result.Error?.Kind, result.Error?.Code));
     }
 
+    [Fact]
+    public async Task AMentionBeingTypedIsOfferedPeopleByTheStartOfTheirHandle()
+    {
+        var agent = new ActorRow(Guid.NewGuid(), ActorKind.Agent, "Tom.Claude", "tom's Claude", Tom.ActorId);
+        store.SuggestActorsAsync("tom.c", Tom, SearchService.MaxSuggestions, Arg.Any<CancellationToken>()).Returns([agent]);
+
+        var people = await Create().SuggestMentionsAsync(Tom, "Tom.C", TestSupport.Ct);
+
+        var found = Assert.Single(people);
+        Assert.Equal(("Tom.Claude", ActorKind.Agent), (found.Handle, found.Kind));
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData(".tom")]
+    [InlineData("tom.a.b")]
+    [InlineData("tom%")]
+    [InlineData("天气")]
+    public async Task TextNoHandleStartsWithIsOfferedNobody(string? prefix)
+    {
+        var people = await Create().SuggestMentionsAsync(Tom, prefix, TestSupport.Ct);
+
+        Assert.Empty(people);
+        await store.DidNotReceiveWithAnyArgs().SuggestActorsAsync(default!, default!, default, TestSupport.Ct);
+    }
+
     private SearchService Create() =>
         new(index, store, beeps, new BeepViews(beeps, counters, TestData.Avatars, TestData.Media, NullLogger<BeepViews>.Instance), new TestLocalizer(), NullLogger<SearchService>.Instance);
 }

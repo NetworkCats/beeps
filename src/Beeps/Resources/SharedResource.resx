@@ -1035,6 +1035,9 @@
   <data name="Compose.Images" xml:space="preserve">
     <value>Add images (at most {0})</value>
   </data>
+  <data name="Compose.Mentions" xml:space="preserve">
+    <value>People to mention</value>
+  </data>
   <data name="Beep.Image" xml:space="preserve">
     <value>Image {0} of {1}</value>
   </data>

@@ -1,3 +1,5 @@
+using System.Text.RegularExpressions;
+using Beeps.Features.Accounts;
 using Beeps.Features.Beeps;
 using Beeps.Features.Shared;
 using Microsoft.Extensions.Localization;
@@ -25,6 +27,9 @@ public sealed partial class SearchService(
     public const int DefaultLimit = 20;
 
     public const int MaxLimit = 50;
+
+    /// <summary>People offered for an @mention being typed: a few, so the list stays small.</summary>
+    public const int MaxSuggestions = 3;
 
     /// <summary>
     /// What the search box does with <c>#tag</c> (PLAN 6.19): the hashtag's page, not a text search. Returns the
@@ -101,6 +106,22 @@ public sealed partial class SearchService(
             NextOffset(from, count, hits.Value));
     }
 
+    /// <summary>
+    /// Whom an @mention being typed may mean, by the start of their handle (<paramref name="prefix"/>, without the
+    /// <c>@</c>). Asked of PostgreSQL, not the index: it answers as each letter is typed, and a prefix needs no ranking.
+    /// Nobody for text that no handle starts with.
+    /// </summary>
+    public async Task<IReadOnlyList<ActorView>> SuggestMentionsAsync(Viewer viewer, string? prefix, CancellationToken cancellationToken)
+    {
+        if (prefix is not { Length: > 0 and <= Actor.HandleMaxLength } || !HandlePrefixPattern().IsMatch(prefix))
+        {
+            return [];
+        }
+
+        var rows = await store.SuggestActorsAsync(AccountRules.NormalizeHandle(prefix), viewer, MaxSuggestions, cancellationToken);
+        return [.. rows.Select(row => views.Actor(row, viewer))];
+    }
+
     private Result<(string Text, int Offset, int Limit)> Check(string? query, int? offset, int? limit, bool allowEmpty)
     {
         var text = (query ?? "").Trim();
@@ -137,6 +158,10 @@ public sealed partial class SearchService(
             return Error.Unavailable(SearchErrorCodes.Unavailable, localizer["Error.SearchUnavailable"]);
         }
     }
+
+    /// <summary>A username, or an agent's <c>owner.name</c> with its name begun or not yet (as <see cref="BeepText"/> reads mentions).</summary>
+    [GeneratedRegex(@"^[A-Za-z0-9_]+(\.[A-Za-z0-9_]*)?$")]
+    private static partial Regex HandlePrefixPattern();
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Search failed")]
     private static partial void LogSearchFailed(ILogger logger, Exception exception);

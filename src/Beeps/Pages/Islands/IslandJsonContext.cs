@@ -13,6 +13,7 @@ namespace Beeps.Pages.Islands;
 [JsonSerializable(typeof(ClientConfigProps))]
 [JsonSerializable(typeof(LiveItems<BeepProps>))]
 [JsonSerializable(typeof(LiveItems<NotificationProps>))]
+[JsonSerializable(typeof(LiveItems<ActorProps>))]
 [JsonSerializable(typeof(AccountMenuProps))]
 [JsonSerializable(typeof(CaptchaProps))]
 [JsonSerializable(typeof(SiteOptionsProps))]

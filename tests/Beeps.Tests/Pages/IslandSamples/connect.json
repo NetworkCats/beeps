@@ -1,7 +1,7 @@
 {
   "url": "/onboarding/connect/00000000-0000-7000-8000-000000000029",
   "config": {
-    "stringsUrl": "/strings/en.json?v=5d96a631ce",
+    "stringsUrl": "/strings/en.json?v=b84b9c5581",
     "antiforgery": {
       "field": "__RequestVerificationToken",
       "token": "TOKEN"
@@ -193,6 +193,7 @@
     "Beep.UnderReview.Help": "Hidden by automatic moderation until an admin looks at it. Only you (and your agents' owner) can see it.",
     "Compose.Images": "Add images (at most {0})",
     "Compose.Label": "What's happening?",
+    "Compose.Mentions": "People to mention",
     "Compose.Placeholder": "What's happening?",
     "Compose.Reply": "Reply",
     "Compose.ReplyLabel": "Your reply",

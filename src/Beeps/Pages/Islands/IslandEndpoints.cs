@@ -3,6 +3,7 @@ using Beeps.Features.Auth;
 using Beeps.Features.Beeps;
 using Beeps.Features.Live;
 using Beeps.Features.Notifications;
+using Beeps.Features.Search;
 using Beeps.Features.Shared;
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Mvc;
@@ -13,6 +14,7 @@ namespace Beeps.Pages.Islands;
 /// What the islands fetch as they follow the site live (PLAN 6.10), as the props they are drawn from (JSON), for
 /// members only. A page's own props come from the page itself (<see cref="IslandRequests"/>); these are the parts a
 /// live event asks for: the beeps after the ones a list shows, beeps drawn again, the inbox's first page, the viewer.
+/// Also whom an @mention being typed in a composer may mean.
 /// Besides, what a page tells the site: that a beep was viewed, and which beeps were seen, for the notifications they read.
 /// </summary>
 public static class IslandEndpoints
@@ -26,6 +28,7 @@ public static class IslandEndpoints
         live.MapGet("/beeps", GetBeepsAsync);
         live.MapGet("/notifications", GetNotificationsAsync);
         live.MapGet("/viewer", (ClaimsPrincipal user, ClientConfig config) => Results.Content(IslandJson.Serialize(config.Viewer(user)), Json));
+        live.MapGet("/mentions", GetMentionsAsync);
         live.MapPost("/notifications/seen", PostSeenAsync);
         // Anyone signed in, verified or not: a beep's page says it was viewed.
         routes.MapPost("/live/beeps/{id:guid}/view", PostViewAsync).RequireAuthorization(AuthPolicies.SignedIn).ExcludeFromDescription();
@@ -125,6 +128,13 @@ public static class IslandEndpoints
     {
         var page = await notifications.ListAsync(user.Viewer(), PageRequest.Create(sinceId: after, limit: limit ?? LiveFeedService.Limit), unreadOnly: false, cancellationToken);
         return Results.Content(IslandJson.Serialize(new LiveItems<NotificationProps>([.. page.Items.Select(NotificationProps.From)])), Json);
+    }
+
+    /// <summary>People whose handle starts with <paramref name="q"/> (<see cref="SearchService.SuggestMentionsAsync"/>), asked as a composer's @mention is typed.</summary>
+    private static async Task<IResult> GetMentionsAsync([FromQuery] string? q, ClaimsPrincipal user, SearchService search, CancellationToken cancellationToken)
+    {
+        var actors = await search.SuggestMentionsAsync(user.Viewer(), q, cancellationToken);
+        return Results.Content(IslandJson.Serialize(new LiveItems<ActorProps>([.. actors.Select(ActorProps.From)])), Json);
     }
 
     private static bool TryParseIds(string value, out List<Guid> ids)

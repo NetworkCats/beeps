@@ -1,42 +1,188 @@
 // The posting form, for members. It counts what is left in the characters people see (one Chinese character or emoji
 // is one), posts with Ctrl/⌘+Enter, shows the picked images small and flags too many or too large ones at once. It posts in the background: the page it was written on catches up with the new beep,
-// and a refused post shows why next to the form, with the text kept.
-import type { TargetedEvent, TargetedKeyboardEvent, TargetedSubmitEvent } from 'preact';
-import { useEffect, useState } from 'preact/hooks';
+// and a refused post shows why next to the form, with the text kept. Mentions show in colour as they are typed (drawn
+// on a copy of the text behind the textarea, whose own text is transparent), and one being typed is offered the people
+// it may mean, under its line, as on Twitter.
+import type { ComponentChildren, TargetedEvent, TargetedKeyboardEvent, TargetedSubmitEvent } from 'preact';
+import { useEffect, useRef, useState } from 'preact/hooks';
 import { config, viewer } from '../config.ts';
 import { sendForm } from '../forms.ts';
+import { getJson } from '../http.ts';
 import { t } from '../i18n.ts';
-import type { ComposerProps, Errors } from '../props.ts';
+import { completeMention, mentionAt, mentionRanges, type MentionAt } from '../mention.ts';
+import type { ActorProps, ComposerProps, Errors } from '../props.ts';
 import { checkImages, countCharacters } from '../text.ts';
 import { Antiforgery, FieldError, field } from './Forms.tsx';
 import { Icon } from './Icon.tsx';
 
 const IMAGES_FIELD = 'Images';
 const TEXT_FIELD = 'text';
+const LIVE_MENTIONS = '/live/mentions';
+/** Asked once typing pauses this long, not at every letter. */
+const MENTION_DELAY_MS = 150;
 
 interface Preview {
   src: string;
   name: string;
 }
 
+/** The people offered for the mention being typed. */
+interface Suggestions {
+  people: ActorProps[];
+  active: number;
+}
+
+/** How far down the textarea's box the line with `index` ends, measured on a copy of its text drawn out of sight. */
+function lineBottom(textarea: HTMLTextAreaElement, index: number): number {
+  const style = getComputedStyle(textarea);
+  const copy = document.createElement('div');
+  const copied = ['fontFamily', 'fontSize', 'fontStyle', 'fontWeight', 'letterSpacing', 'lineHeight', 'wordSpacing', 'tabSize', 'paddingTop', 'paddingRight', 'paddingLeft'] as const;
+  for (const name of copied) copy.style[name] = style[name];
+  Object.assign(copy.style, {
+    position: 'absolute',
+    visibility: 'hidden',
+    boxSizing: 'border-box',
+    width: `${textarea.clientWidth}px`,
+    whiteSpace: 'pre-wrap',
+    overflowWrap: 'break-word',
+  });
+  copy.textContent = textarea.value.slice(0, index);
+  const marker = copy.appendChild(document.createElement('span'));
+  marker.textContent = '\u200b';
+  document.body.appendChild(copy);
+  const bottom = marker.offsetTop + marker.offsetHeight;
+  copy.remove();
+  return textarea.offsetTop + Math.min(textarea.clientTop + bottom - textarea.scrollTop, textarea.offsetHeight);
+}
+
+/** The text as the layer behind the textarea draws it, mentions in colour; a last space keeps a final empty line. */
+function highlighted(text: string): ComponentChildren[] {
+  const parts: ComponentChildren[] = [];
+  let from = 0;
+  for (const { start, end } of mentionRanges(text)) {
+    parts.push(text.slice(from, start), <span class="mention">{text.slice(start, end)}</span>);
+    from = end;
+  }
+  parts.push(`${text.slice(from)} `);
+  return parts;
+}
+
 export function Composer({ composer, errors }: { composer: ComposerProps; errors: Errors }) {
   const reply = !!composer.replyTo;
   const { beepLength, imagesPerBeep, mediaBytes } = config().limits;
-  const [left, setLeft] = useState(() => beepLength - countCharacters(composer.text ?? ''));
+  const [text, setText] = useState(composer.text ?? '');
+  const left = beepLength - countCharacters(text);
   const [previews, setPreviews] = useState<Preview[]>([]);
   // The errors of the last post from here, when the page it posted to answered with them.
   const [ownErrors, setOwnErrors] = useState<Errors | null>(null);
   const shown = ownErrors ?? errors;
+  const [suggestions, setSuggestions] = useState<Suggestions | null>(null);
+  const [listTop, setListTop] = useState(0);
+  const textarea = useRef<HTMLTextAreaElement>(null);
+  const highlight = useRef<HTMLDivElement>(null);
+  const lookup = useRef<{ timer?: ReturnType<typeof setTimeout>; query?: string; answers: Map<string, ActorProps[]> }>({ answers: new Map() });
+  const listId = reply ? 'reply-mentions' : 'compose-mentions';
 
   // The page's own errors (the compose page drawn again) take over from those of an earlier post.
   useEffect(() => setOwnErrors(null), [errors]);
   useEffect(() => () => previews.forEach((preview) => URL.revokeObjectURL(preview.src)), [previews]);
+  useEffect(() => () => clearTimeout(lookup.current.timer), []);
+  // The browser may have put back what was typed before (going back to the page).
+  useEffect(() => setText(textarea.current?.value ?? ''), []);
+
+  const closeSuggestions = (): void => {
+    clearTimeout(lookup.current.timer);
+    lookup.current.query = undefined;
+    setSuggestions(null);
+  };
+
+  const offer = (mention: MentionAt, people: ActorProps[]): void => {
+    if (people.length === 0 || !textarea.current) {
+      setSuggestions(null);
+      return;
+    }
+    setListTop(lineBottom(textarea.current, mention.start));
+    setSuggestions({ people, active: 0 });
+  };
+
+  // What is being typed at the caret: a mention is offered its people (each prefix asked once), anything else none.
+  const findMention = (element: HTMLTextAreaElement): void => {
+    const mention = element.selectionStart === element.selectionEnd ? mentionAt(element.value, element.selectionStart) : null;
+    if (!mention) {
+      closeSuggestions();
+      return;
+    }
+    const known = lookup.current.answers.get(mention.query.toLowerCase());
+    clearTimeout(lookup.current.timer);
+    lookup.current.query = mention.query;
+    if (known) {
+      offer(mention, known);
+      return;
+    }
+    // Until they answer, those already offered who still fit stay.
+    const typedSoFar = mention.query.toLowerCase();
+    setSuggestions((shown) => {
+      const people = shown?.people.filter((person) => person.handle?.toLowerCase().startsWith(typedSoFar)) ?? [];
+      return people.length > 0 ? { people, active: 0 } : null;
+    });
+    lookup.current.timer = setTimeout(() => {
+      const query = mention.query;
+      getJson<{ items: ActorProps[] }>(`${LIVE_MENTIONS}?${new URLSearchParams({ q: query })}`).then(
+        ({ items }) => {
+          lookup.current.answers.set(query.toLowerCase(), items);
+          if (lookup.current.query === query) offer(mention, items);
+        },
+        () => {
+          if (lookup.current.query === query) setSuggestions(null);
+        },
+      );
+    }, MENTION_DELAY_MS);
+  };
+
+  const pick = (person: ActorProps): void => {
+    const element = textarea.current;
+    // The mention as it is now: more of it may have been typed since these people were offered.
+    const mention = element && mentionAt(element.value, element.selectionStart);
+    if (!element || !mention || !person.handle) return;
+    const completed = completeMention(element.value, mention, person.handle);
+    element.value = completed.text;
+    element.setSelectionRange(completed.caret, completed.caret);
+    element.focus();
+    setText(completed.text);
+    closeSuggestions();
+  };
 
   const typed = (event: TargetedEvent<HTMLTextAreaElement>): void => {
-    setLeft(beepLength - countCharacters(event.currentTarget.value));
+    setText(event.currentTarget.value);
+    findMention(event.currentTarget);
+  };
+
+  // Moving the caret by key may move it into a mention or out of one.
+  const keyUp = (event: TargetedKeyboardEvent<HTMLTextAreaElement>): void => {
+    if (['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) findMention(event.currentTarget);
+  };
+
+  // While people are offered, the arrows go through them, Enter or Tab takes one, Escape puts them away.
+  const suggestionKey = (event: TargetedKeyboardEvent<HTMLTextAreaElement>): boolean => {
+    if (!suggestions || event.isComposing || event.ctrlKey || event.metaKey || event.altKey) return false;
+    const count = suggestions.people.length;
+    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+      const step = event.key === 'ArrowDown' ? 1 : count - 1;
+      setSuggestions({ ...suggestions, active: (suggestions.active + step) % count });
+    } else if ((event.key === 'Enter' || event.key === 'Tab') && !event.shiftKey) {
+      const person = suggestions.people[suggestions.active];
+      if (person) pick(person);
+    } else if (event.key === 'Escape') {
+      closeSuggestions();
+    } else {
+      return false;
+    }
+    event.preventDefault();
+    return true;
   };
 
   const keyDown = (event: TargetedKeyboardEvent<HTMLTextAreaElement>): void => {
+    if (suggestionKey(event)) return;
     if (event.key !== 'Enter' || !(event.ctrlKey || event.metaKey)) return;
     event.preventDefault();
     event.currentTarget.form?.requestSubmit();
@@ -63,9 +209,10 @@ export function Composer({ composer, errors }: { composer: ComposerProps; errors
       onErrors: (answer) => setOwnErrors(answer),
       onDone: () => {
         element.reset();
-        setLeft(beepLength);
+        setText('');
         setPreviews([]);
         setOwnErrors(null);
+        closeSuggestions();
       },
     });
   };
@@ -78,19 +225,57 @@ export function Composer({ composer, errors }: { composer: ComposerProps; errors
         <img src={viewer.value.avatar ?? undefined} alt="" width={40} height={40} />
       </span>
       <div class="composer-main">
-        <div class="field">
+        <div class="field composer-field">
           <label class="label visually-hidden" for={TEXT_FIELD}>
             {t(reply ? 'Compose.ReplyLabel' : 'Compose.Label')}
           </label>
-          <textarea
-            class="textarea composer-text"
-            {...field(shown, TEXT_FIELD)}
-            rows={reply ? 1 : 2}
-            placeholder={t(reply ? 'Compose.ReplyPlaceholder' : 'Compose.Placeholder')}
-            defaultValue={composer.text ?? ''}
-            onInput={typed}
-            onKeyDown={keyDown}
-          />
+          <div class="composer-input">
+            <div class="composer-text composer-highlight" ref={highlight} aria-hidden="true">
+              {highlighted(text)}
+            </div>
+            <textarea
+              class="textarea composer-text"
+              {...field(shown, TEXT_FIELD)}
+              ref={textarea}
+              rows={reply ? 1 : 2}
+              placeholder={t(reply ? 'Compose.ReplyPlaceholder' : 'Compose.Placeholder')}
+              defaultValue={composer.text ?? ''}
+              aria-autocomplete="list"
+              aria-controls={suggestions ? listId : undefined}
+              aria-activedescendant={suggestions ? `${listId}-${suggestions.active}` : undefined}
+              onInput={typed}
+              onKeyDown={keyDown}
+              onKeyUp={keyUp}
+              onClick={(event) => findMention(event.currentTarget)}
+              onBlur={closeSuggestions}
+              onScroll={(event) => {
+                if (highlight.current) highlight.current.scrollTop = event.currentTarget.scrollTop;
+              }}
+            />
+          </div>
+          {suggestions && (
+            <ul class="dropdown-menu menu-panel mention-list" id={listId} role="listbox" aria-label={t('Compose.Mentions')} style={{ top: `${listTop}px` }}>
+              {suggestions.people.map((person, index) => (
+                <li
+                  key={person.id}
+                  id={`${listId}-${index}`}
+                  class="mention-option"
+                  role="option"
+                  aria-selected={index === suggestions.active ? 'true' : 'false'}
+                  // Taken on the press, before the textarea would lose its focus (and the list with it).
+                  onMouseDown={(event) => {
+                    event.preventDefault();
+                    pick(person);
+                  }}
+                  onMouseMove={() => index !== suggestions.active && setSuggestions({ ...suggestions, active: index })}
+                >
+                  <span class="mention-name">{person.displayName ?? person.handle}</span>
+                  {person.agent && <span class="badge">{t('Beep.Agent')}</span>}
+                  <span class="mention-handle">@{person.handle}</span>
+                </li>
+              ))}
+            </ul>
+          )}
           <FieldError errors={shown} name={TEXT_FIELD} />
         </div>
         <div class="composer-previews" hidden={previews.length === 0}>

@@ -1035,6 +1035,9 @@
   <data name="Compose.Images" xml:space="preserve">
     <value>添加图片（最多 {0} 张）</value>
   </data>
+  <data name="Compose.Mentions" xml:space="preserve">
+    <value>可以提及的人</value>
+  </data>
   <data name="Beep.Image" xml:space="preserve">
     <value>第 {0} 张图片，共 {1} 张</value>
   </data>

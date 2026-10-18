@@ -138,6 +138,86 @@
   }
 }
 
+// The text is drawn twice in one grid cell: by the textarea, in transparent ink with only its caret showing, and by a
+// copy behind it that colours the mentions. Both share the .composer-text box, so their lines wrap the same.
+.composer-input {
+  display: grid;
+
+  > * {
+    grid-area: 1 / 1;
+  }
+}
+
+.composer-highlight {
+  overflow: hidden;
+  color: var(--cui-text);
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  pointer-events: none;
+
+  > .mention {
+    color: var(--cui-primary-text);
+  }
+}
+
+.composer-input > .textarea {
+  --_fg: transparent;
+  caret-color: var(--cui-text);
+
+  &::selection {
+    background: color-mix(in oklch, var(--cui-primary) 25%, transparent);
+  }
+}
+
+// The people an @mention may mean, under the line it is typed on; `top` is set from that line.
+.composer-field {
+  position: relative;
+}
+
+.mention-list {
+  inset-inline: 0 auto;
+  width: max-content;
+  min-width: 0;
+  max-width: min(15rem, 100%);
+  padding-block: var(--cui-space-1);
+  margin: 0;
+  border-radius: var(--cui-radius-lg);
+  list-style: none;
+}
+
+.mention-option {
+  display: flex;
+  align-items: baseline;
+  gap: var(--cui-space-1);
+  padding: var(--cui-space-1-5) var(--cui-space-2-5);
+  font-size: 0.8125rem;
+  white-space: nowrap;
+  cursor: pointer;
+
+  > .badge {
+    flex-shrink: 0;
+    align-self: center;
+  }
+
+  &[aria-selected="true"] {
+    background: var(--cui-surface-hover);
+  }
+}
+
+.mention-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: var(--cui-weight-bold);
+}
+
+.mention-handle {
+  flex-shrink: 1;
+  min-width: 3rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--cui-text-2);
+}
+
 .reply-box .composer-text {
   min-height: 2.5rem;
   font-size: var(--cui-text-lg);

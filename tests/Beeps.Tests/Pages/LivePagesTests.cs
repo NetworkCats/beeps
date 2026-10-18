@@ -6,6 +6,7 @@ using Beeps.Features.Beeps;
 using Beeps.Features.Live;
 using Beeps.Features.Notifications;
 using Beeps.Features.Profiles;
+using Beeps.Features.Search;
 using Beeps.Features.Shared;
 using Beeps.Tests.Support;
 
@@ -354,6 +355,25 @@ public sealed partial class LivePagesTests : IDisposable
         var viewer = await Islands.JsonAsync(response);
         Assert.Equal(user.Id, viewer.GetProperty("id").GetGuid());
         Assert.EndsWith(".svg", viewer.GetProperty("avatar").GetString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task AMentionBeingTypedIsAnsweredWithPeople()
+    {
+        var user = WebAuth.ArrangeUser(factory);
+        var alice = TestBeeps.Human("alice");
+        factory.SearchStore.SuggestActorsAsync("al", Arg.Is<Viewer>(v => v.ActorId == user.Id), SearchService.MaxSuggestions, Arg.Any<CancellationToken>())
+            .Returns([alice]);
+        using var anonymous = WebAuth.NewClient(factory);
+        using var client = await WebAuth.SignInAsync(factory, user);
+
+        using var response = await client.GetAsync(new Uri("/live/mentions?q=Al", UriKind.Relative), TestSupport.Ct);
+        using var signedOut = await anonymous.GetAsync(new Uri("/live/mentions?q=al", UriKind.Relative), TestSupport.Ct);
+
+        var person = (await Islands.JsonAsync(response)).GetProperty("items").EnumerateArray().Single();
+        Assert.Equal(alice.Id, person.GetProperty("id").GetGuid());
+        Assert.Equal("alice", person.GetProperty("handle").GetString());
+        Assert.Equal(HttpStatusCode.Unauthorized, signedOut.StatusCode);
     }
 
     [Fact]
