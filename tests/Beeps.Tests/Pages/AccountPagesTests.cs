@@ -18,6 +18,8 @@ public sealed class AccountPagesTests : IDisposable
         Assert.Contains("class=\"cf-turnstile captcha\" data-sitekey=\"test-site-key\"", html, StringComparison.Ordinal);
         // The app loads Turnstile's script for the widget.
         Assert.Equal("test-site-key", Islands.Props(html, "captcha").GetProperty("siteKey").GetString());
+        // Not sent until the widget has passed, which the island says.
+        Assert.Contains("type=\"submit\" disabled>", html, StringComparison.Ordinal);
         PageAssert.NoInlineScriptsOrStyles(html);
     }
 

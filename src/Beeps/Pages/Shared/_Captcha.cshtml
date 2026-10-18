@@ -4,7 +4,8 @@
 @using Microsoft.Extensions.Options
 @inject IOptions<CaptchaOptions> Captcha
 @* Turnstile's widget, drawn by Turnstile's own script, which Client/app/shell/Captcha.tsx loads; it adds the
-   cf-turnstile-response field to the surrounding form. *@
+   cf-turnstile-response field to the surrounding form. The form's submit button is drawn disabled; the component
+   enables it once the widget has passed. *@
 @{
     var language = CultureInfo.CurrentUICulture.Name == "zh-Hans" ? "zh-cn" : "en";
 }
