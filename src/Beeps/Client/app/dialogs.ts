@@ -1,5 +1,6 @@
-// The confirmation asked before a destructive action, in the layout's dialog (shell/ConfirmDialog.tsx). Without that
-// dialog (or without <dialog> support) the browser's own confirm() asks instead.
+// The confirmation asked before a destructive action, in the layout's dialog (shell/ConfirmDialog.tsx), which comes with
+// the app so it is drawn before anything can be pressed. Only without that dialog (signed out, where there is nothing to
+// destroy, or without <dialog> support) does the browser's own confirm() ask instead.
 import { signal } from '@preact/signals';
 
 export interface PendingConfirm {

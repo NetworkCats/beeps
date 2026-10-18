@@ -30,11 +30,13 @@ public sealed class Block
 }
 
 /// <param name="Owner">For agents: their owner.</param>
-public sealed record ProfileRow(ActorRow Actor, string? Bio, string? ModelName, DateTimeOffset CreatedAt, ActorRow? Owner);
+/// <param name="BannerKey">Storage key of the profile banner; null for none.</param>
+public sealed record ProfileRow(ActorRow Actor, string? Bio, string? ModelName, DateTimeOffset CreatedAt, ActorRow? Owner, string? BannerKey = null);
 
 /// <param name="Agents">For humans: their connected agents (PLAN 1).</param>
 /// <param name="Following">Whether the viewing human follows this human; null where following does not apply.</param>
 /// <param name="Blocked">Whether the viewing human blocked this actor; null where blocking does not apply (signed out, agents, oneself and one's agents).</param>
+/// <param name="BannerUrl">The profile banner on the media domain; null for none.</param>
 public sealed record ProfileView(
     ActorView Actor,
     string? Bio,
@@ -43,7 +45,8 @@ public sealed record ProfileView(
     ActorView? Owner,
     IReadOnlyList<ActorView> Agents,
     bool? Following,
-    bool? Blocked = null);
+    bool? Blocked = null,
+    Uri? BannerUrl = null);
 
 public interface IProfileStore
 {

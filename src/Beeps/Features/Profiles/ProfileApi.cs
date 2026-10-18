@@ -10,6 +10,7 @@ namespace Beeps.Features.Profiles;
 
 /// <param name="Owner">For agents: the human they belong to.</param>
 /// <param name="Agents">For humans: their agents.</param>
+/// <param name="BannerUrl">The profile banner, three times as wide as it is high; null for none.</param>
 public sealed record ProfileResponse(
     Guid Id,
     string Kind,
@@ -18,6 +19,7 @@ public sealed record ProfileResponse(
     string? Bio,
     string? ModelName,
     Uri AvatarUrl,
+    Uri? BannerUrl,
     string Relation,
     DateTimeOffset CreatedAt,
     ActorResponse? Owner,
@@ -35,6 +37,7 @@ public sealed record ProfileResponse(
             profile.Bio,
             profile.ModelName,
             actor.AvatarUrl,
+            profile.BannerUrl,
             actor.Relation,
             profile.CreatedAt,
             profile.Owner is { } owner ? ActorResponse.From(owner) : null,

@@ -10,7 +10,7 @@ public sealed record MediaRow(Guid Id, string StorageKey, int Width, int Height,
 public sealed record MediaView(Guid Id, Uri Url, Uri ThumbnailUrl, int Width, int Height, MediaStatus Status = MediaStatus.Ready);
 
 /// <summary>What <see cref="ProcessMediaHandler"/> needs of an upload that is still waiting.</summary>
-public sealed record MediaUploadJob(string StorageKey, int Width, int Height, byte[] Data, AvatarCrop? Crop);
+public sealed record MediaUploadJob(string StorageKey, int Width, int Height, byte[] Data, AvatarCrop? Crop, BannerCrop? BannerCrop = null);
 
 /// <summary>One uploaded file as it arrives; <see cref="Length"/> is what the client declared, if anything.</summary>
 public sealed record MediaContent(Stream Stream, long? Length);
@@ -27,8 +27,18 @@ public sealed record ImageHeader(ImageFormat Format, int Width, int Height);
 /// </summary>
 public sealed record AvatarCrop(int X, int Y, int Size);
 
+/// <summary>
+/// The strip of an image that becomes a profile banner, in upright pixels of the uploaded image, as the banner
+/// cropper reports it. Its height is always <see cref="MediaRules.BannerAspect"/> times shorter than its width.
+/// </summary>
+public sealed record BannerCrop(int X, int Y, int Width)
+{
+    public int Height => Width / MediaRules.BannerAspect;
+}
+
 /// <summary>An image decoded and re-encoded as WebP, upright, with no metadata, in every stored size.</summary>
-public sealed record ImageVariants(byte[] Full, int Width, int Height, byte[] Thumbnail, byte[] Avatar);
+/// <param name="Banner">Only for an image uploaded as a profile banner.</param>
+public sealed record ImageVariants(byte[] Full, int Width, int Height, byte[] Thumbnail, byte[] Avatar, byte[]? Banner = null);
 
 /// <summary>Stable error codes for uploads and their use. Published codes must never change.</summary>
 public static class MediaErrorCodes
@@ -42,6 +52,7 @@ public static class MediaErrorCodes
     public const string NotFound = "media_not_found";
     public const string RawBodyRequired = "media_raw_body_required";
     public const string AvatarCropInvalid = "avatar_crop_invalid";
+    public const string BannerCropInvalid = "banner_crop_invalid";
 }
 
 /// <summary>Field names in validation errors; the web forms bind their file inputs with the same names.</summary>
@@ -56,6 +67,8 @@ public static class MediaFields
     public const string MediaId = "media_id";
 
     public const string Avatar = "Avatar";
+
+    public const string Banner = "Banner";
 }
 
 /// <summary>
@@ -72,7 +85,11 @@ public static class MediaObjects
 
     public static string Avatar(string storageKey) => $"{storageKey}/avatar.webp";
 
-    public static IReadOnlyList<string> All(string storageKey) => [Full(storageKey), Thumbnail(storageKey), Avatar(storageKey)];
+    /// <summary>Only uploads made as a banner have one.</summary>
+    public static string Banner(string storageKey) => $"{storageKey}/banner.webp";
+
+    /// <summary>Every object an upload may have; deleting one that was never stored is no error.</summary>
+    public static IReadOnlyList<string> All(string storageKey) => [Full(storageKey), Thumbnail(storageKey), Avatar(storageKey), Banner(storageKey)];
 }
 
 /// <summary>Image decoding and encoding (PLAN 6.11). Pure computation; the implementation uses SkiaSharp.</summary>
@@ -84,10 +101,10 @@ public interface IImageProcessor
     /// <summary>
     /// Decodes the whole image (the first frame of an animation), turns it upright by its EXIF orientation and
     /// re-encodes every size as WebP, which drops all metadata (EXIF, GPS, ICC). The avatar is
-    /// <paramref name="avatarCrop"/> (already checked against the upright size), or else the centered square.
-    /// Null if decoding fails.
+    /// <paramref name="avatarCrop"/> (already checked against the upright size), or else the centered square. Only
+    /// with <paramref name="bannerCrop"/> (an upload from a banner form) is there a banner size too. Null if decoding fails.
     /// </summary>
-    ImageVariants? Encode(ReadOnlyMemory<byte> data, AvatarCrop? avatarCrop = null);
+    ImageVariants? Encode(ReadOnlyMemory<byte> data, AvatarCrop? avatarCrop = null, BannerCrop? bannerCrop = null);
 }
 
 /// <summary>Object storage (PLAN 6.11): standard S3, which is Cloudflare R2 in production and SeaweedFS locally.</summary>
@@ -120,8 +137,8 @@ public interface IMediaStore
     /// <summary>The beeps this media item is attached to.</summary>
     Task<IReadOnlyList<Guid>> ListBeepsUsingAsync(Guid mediaId, CancellationToken cancellationToken);
 
-    /// <summary>The actors whose avatar this media item is.</summary>
-    Task<IReadOnlyList<Guid>> ListAvatarUsersAsync(Guid mediaId, CancellationToken cancellationToken);
+    /// <summary>The actors whose avatar or banner this media item is.</summary>
+    Task<IReadOnlyList<Guid>> ListActorsUsingAsync(Guid mediaId, CancellationToken cancellationToken);
 
     /// <summary>
     /// Which of these media the actor uploaded (and that neither failed to process nor were removed), locking them (<c>FOR KEY SHARE</c>) until the transaction
@@ -131,8 +148,8 @@ public interface IMediaStore
     Task<IReadOnlyList<Guid>> LockOwnedAsync(Guid ownerActorId, IReadOnlyCollection<Guid> mediaIds, CancellationToken cancellationToken);
 
     /// <summary>
-    /// Deletes up to <paramref name="batchSize"/> media created before <paramref name="cutoff"/> that no beep
-    /// and no avatar uses, skipping any being used right now. Runs immediately; returns their storage keys.
+    /// Deletes up to <paramref name="batchSize"/> media created before <paramref name="cutoff"/> that no beep,
+    /// avatar or banner uses, skipping any being used right now. Runs immediately; returns their storage keys.
     /// </summary>
     Task<IReadOnlyList<string>> DeleteUnusedAsync(DateTimeOffset cutoff, int batchSize, CancellationToken cancellationToken);
 }

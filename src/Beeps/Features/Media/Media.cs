@@ -60,6 +60,18 @@ public sealed class MediaUpload
     public int? CropSize { get; init; }
 
     public AvatarCrop? Crop => CropSize is { } size ? new AvatarCrop(CropX ?? 0, CropY ?? 0, size) : null;
+
+    /// <summary>
+    /// For an upload from a banner form: the strip, already fitted to the upright image (the centered one when none
+    /// was picked). All null for every other upload, which then gets no banner size.
+    /// </summary>
+    public int? BannerCropX { get; init; }
+
+    public int? BannerCropY { get; init; }
+
+    public int? BannerCropWidth { get; init; }
+
+    public BannerCrop? BannerCrop => BannerCropWidth is { } width ? new BannerCrop(BannerCropX ?? 0, BannerCropY ?? 0, width) : null;
 }
 
 /// <summary>An image attached to a beep, in the order the author gave.</summary>

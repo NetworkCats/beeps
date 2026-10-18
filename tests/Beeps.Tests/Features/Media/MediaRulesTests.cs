@@ -70,4 +70,38 @@ public sealed class MediaRulesTests
     [InlineData(199, 99, 3)]
     public void ACropOutsideTheImageOrTooSmallIsRejected(int x, int y, int size) =>
         Assert.Null(MediaRules.FitCrop(new AvatarCrop(x, y, size), 200, 100));
+
+    [Theory]
+    [InlineData(0, 0, 300, 0, 0, 300)]
+    [InlineData(30, 10, 210, 30, 10, 210)]
+    [InlineData(-1, -1, 300, 0, 0, 297)]
+    [InlineData(0, 0, 48, 0, 0, 48)]
+    public void ABannerCropIsPulledInsideTheImageAndKeepsItsShape(int x, int y, int width, int expectedX, int expectedY, int expectedWidth)
+    {
+        var fitted = MediaRules.FitBannerCrop(new BannerCrop(x, y, width), 300, 100);
+
+        Assert.Equal(new BannerCrop(expectedX, expectedY, expectedWidth), fitted);
+        Assert.Equal(expectedWidth / MediaRules.BannerAspect, fitted!.Height);
+    }
+
+    [Fact]
+    public void ABannerCropBelowTheTopOfATallerImageFits() =>
+        Assert.Equal(new BannerCrop(0, 150, 1800), MediaRules.FitBannerCrop(new BannerCrop(0, 150, 1800), 1800, 900));
+
+    [Theory]
+    [InlineData(-3, 0, 150)]
+    [InlineData(0, 0, 303)]
+    [InlineData(0, 50, 300)]
+    [InlineData(0, 0, 47)]
+    [InlineData(0, 0, 0)]
+    [InlineData(int.MaxValue, 0, int.MaxValue)]
+    public void ABannerCropOutsideTheImageOrTooSmallIsRejected(int x, int y, int width) =>
+        Assert.Null(MediaRules.FitBannerCrop(new BannerCrop(x, y, width), 300, 100));
+
+    [Theory]
+    [InlineData(300, 100, 0, 0, 300)]
+    [InlineData(600, 100, 150, 0, 300)]
+    [InlineData(300, 300, 0, 100, 300)]
+    public void WithoutACropABannerIsTheWidestStripInTheMiddle(int width, int height, int expectedX, int expectedY, int expectedWidth) =>
+        Assert.Equal(new BannerCrop(expectedX, expectedY, expectedWidth), MediaRules.CenteredBanner(width, height));
 }

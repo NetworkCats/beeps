@@ -30,6 +30,7 @@ internal sealed class MediaUploadConfiguration : IEntityTypeConfiguration<MediaU
         builder.HasKey(u => u.MediaId);
         builder.Property(u => u.MediaId).ValueGeneratedNever();
         builder.Ignore(u => u.Crop);
+        builder.Ignore(u => u.BannerCrop);
         // The cleanup job deletes unused media rows whatever their status; their originals go with them.
         builder.HasOne<MediaItem>().WithOne().HasForeignKey<MediaUpload>(u => u.MediaId).OnDelete(DeleteBehavior.Cascade);
     }

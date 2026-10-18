@@ -28,13 +28,24 @@ public sealed partial class MediaService(
     /// avatar right away, and shows once processed.
     /// </summary>
     public Task<Result<MediaView>> UploadAsync(Viewer uploader, MediaContent content, CancellationToken cancellationToken) =>
-        UploadAsync(uploader, content, null, cancellationToken);
+        UploadAsync(uploader, content, null, false, null, cancellationToken);
 
     /// <summary>
     /// Accepts one image whose avatar size is <paramref name="avatarCrop"/> (the web avatar forms) instead of
     /// the centered square. A crop outside the image is an error.
     /// </summary>
-    public async Task<Result<MediaView>> UploadAsync(Viewer uploader, MediaContent content, AvatarCrop? avatarCrop, CancellationToken cancellationToken)
+    public Task<Result<MediaView>> UploadAsync(Viewer uploader, MediaContent content, AvatarCrop? avatarCrop, CancellationToken cancellationToken) =>
+        UploadAsync(uploader, content, avatarCrop, false, null, cancellationToken);
+
+    /// <summary>
+    /// Accepts one image from a banner form: only these get a banner size, which is <paramref name="bannerCrop"/>, or
+    /// the centered strip without one. A crop outside the image is an error.
+    /// </summary>
+    public Task<Result<MediaView>> UploadBannerAsync(Viewer uploader, MediaContent content, BannerCrop? bannerCrop, CancellationToken cancellationToken) =>
+        UploadAsync(uploader, content, null, true, bannerCrop, cancellationToken);
+
+    private async Task<Result<MediaView>> UploadAsync(
+        Viewer uploader, MediaContent content, AvatarCrop? avatarCrop, bool asBanner, BannerCrop? bannerCrop, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(uploader);
         ArgumentNullException.ThrowIfNull(content);
@@ -62,7 +73,19 @@ public sealed partial class MediaService(
             return Invalid(MediaErrorCodes.AvatarCropInvalid, localizer["Error.AvatarCropInvalid"]);
         }
 
-        return await QueueAsync(uploader, data, header.Value, crop, cancellationToken);
+        BannerCrop? banner = null;
+        if (asBanner)
+        {
+            banner = bannerCrop is null
+                ? MediaRules.CenteredBanner(header.Value.Width, header.Value.Height)
+                : MediaRules.FitBannerCrop(bannerCrop, header.Value.Width, header.Value.Height);
+            if (banner is null)
+            {
+                return Invalid(MediaErrorCodes.BannerCropInvalid, localizer["Error.BannerCropInvalid"]);
+            }
+        }
+
+        return await QueueAsync(uploader, data, header.Value, crop, banner, cancellationToken);
     }
 
     /// <summary>
@@ -160,7 +183,8 @@ public sealed partial class MediaService(
     /// The media row (with the size the stored image will have), the original file and the message that
     /// processes it, all in one transaction: nothing is left half-done, and the storage is not touched here.
     /// </summary>
-    private async Task<Result<MediaView>> QueueAsync(Viewer uploader, byte[] data, ImageHeader header, AvatarCrop? crop, CancellationToken cancellationToken)
+    private async Task<Result<MediaView>> QueueAsync(
+        Viewer uploader, byte[] data, ImageHeader header, AvatarCrop? crop, BannerCrop? banner, CancellationToken cancellationToken)
     {
         var now = time.GetUtcNow();
         var (width, height) = MediaRules.FitWithin(header.Width, header.Height, MediaRules.FullMaxSide);
@@ -175,7 +199,17 @@ public sealed partial class MediaService(
             CreatedAt = now,
         };
         store.AddMedia(media);
-        store.AddUpload(new MediaUpload { MediaId = media.Id, Data = data, CropX = crop?.X, CropY = crop?.Y, CropSize = crop?.Size });
+        store.AddUpload(new MediaUpload
+        {
+            MediaId = media.Id,
+            Data = data,
+            CropX = crop?.X,
+            CropY = crop?.Y,
+            CropSize = crop?.Size,
+            BannerCropX = banner?.X,
+            BannerCropY = banner?.Y,
+            BannerCropWidth = banner?.Width,
+        });
         outbox.Enqueue(ProcessMediaRequest.MessageType, new ProcessMediaRequest(media.Id), MediaJsonContext.Default.ProcessMediaRequest);
         await unitOfWork.SaveChangesAsync(cancellationToken);
 

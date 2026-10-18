@@ -147,6 +147,54 @@ public sealed class MediaPagesTests : IDisposable
     }
 
     [Fact]
+    public async Task APersonUploadsABannerOnTheSettingsPageCutWhereTheyPicked()
+    {
+        var user = WebAuth.ArrangeUser(factory);
+        factory.Avatars.FindActorAsync(user.Id, Arg.Any<CancellationToken>()).Returns(new AvatarTarget(user.Id, ActorKind.Human, null));
+        factory.Avatars.FindBannerKeyAsync(user.Id, Arg.Any<CancellationToken>()).Returns("wide");
+        Guid? uploaded = null;
+        MediaUpload? upload = null;
+        factory.Media.When(m => m.AddMedia(Arg.Any<MediaItem>())).Do(ci => uploaded = ci.Arg<MediaItem>().Id);
+        factory.Media.When(m => m.AddUpload(Arg.Any<MediaUpload>())).Do(ci => upload = ci.Arg<MediaUpload>());
+        using var client = await WebAuth.SignInAsync(factory, user);
+
+        var page = await client.GetStringAsync(new Uri("/settings", UriKind.Relative), TestSupport.Ct);
+        // A strip of the bottom-right quadrant of a 400 × 200 image.
+        using var response = await PostMultipartAsync(
+            client, "/settings", "/settings?handler=Banner", [("BannerCrop.X", "210"), ("BannerCrop.Y", "120"), ("BannerCrop.Width", "150")], [TestImages.Quadrants(400, 200)], "Banner");
+        using var removed = await WebAuth.PostFormAsync(client, "/settings", "/settings?handler=RemoveBanner");
+
+        Assert.Equal("https://media.beeps.test/wide/banner.webp", Islands.Props(page, "settings").GetProperty("banner").GetProperty("bannerUrl").GetString());
+        Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
+        Assert.Equal(new BannerCrop(210, 120, 150), upload!.BannerCrop);
+        Assert.Null(upload.Crop);
+        // What the processing job will make of it.
+        var banner = new SkiaImageProcessor().Encode(upload.Data, upload.Crop, upload.BannerCrop)!.Banner!;
+        Assert.Equal((150, 50), TestImages.SizeOf(banner));
+        Assert.True(TestImages.Near(TestImages.ColorAt(banner, 0.5f, 0.5f), TestImages.BottomRight));
+        await factory.Avatars.Received(1).SetBannerAsync(user.Id, uploaded, Arg.Any<CancellationToken>());
+        Assert.Equal(HttpStatusCode.Redirect, removed.StatusCode);
+        await factory.Avatars.Received(1).SetBannerAsync(user.Id, null, Arg.Any<CancellationToken>());
+        await factory.Avatars.DidNotReceiveWithAnyArgs().SetAvatarAsync(default, default, TestSupport.Ct);
+    }
+
+    [Fact]
+    public async Task ABannerCropOutsideTheImageIsReported()
+    {
+        var user = WebAuth.ArrangeUser(factory);
+        factory.Avatars.FindActorAsync(user.Id, Arg.Any<CancellationToken>()).Returns(new AvatarTarget(user.Id, ActorKind.Human, null));
+        using var client = await WebAuth.SignInAsync(factory, user);
+
+        using var response = await PostMultipartAsync(
+            client, "/settings", "/settings?handler=Banner", [("BannerCrop.X", "0"), ("BannerCrop.Y", "0"), ("BannerCrop.Width", "600")], [TestImages.Quadrants(400, 200)], "Banner");
+        var html = await response.Content.ReadAsStringAsync(TestSupport.Ct);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Contains("The selected strip is outside the image or too small.", html, StringComparison.Ordinal);
+        await factory.Avatars.DidNotReceiveWithAnyArgs().SetBannerAsync(default, default, TestSupport.Ct);
+    }
+
+    [Fact]
     public async Task ACropOutsideTheImageIsReported()
     {
         var user = WebAuth.ArrangeUser(factory);
@@ -163,7 +211,7 @@ public sealed class MediaPagesTests : IDisposable
     }
 
     [Theory]
-    [InlineData("/settings")]
+    [InlineData("/settings/profile")]
     [InlineData("/agents/{0}")]
     public async Task TheAvatarFormsLoadTheCroppersStyles(string path)
     {
@@ -177,9 +225,9 @@ public sealed class MediaPagesTests : IDisposable
         var html = await client.GetStringAsync(new Uri(url, UriKind.Relative), TestSupport.Ct);
 
         // The cropper itself comes with the app, once a file is picked.
-        Assert.Matches("<link rel=\"stylesheet\" href=\"/dist/avatar-crop\\.[a-z0-9]+\\.css\"", html);
+        Assert.Matches("<link rel=\"stylesheet\" href=\"/dist/image-crop\\.[a-z0-9]+\\.css\"", html);
         // The avatar form (with the crop the cropper picks), posting back to the page.
-        Assert.Equal(url, Islands.Props(html, path == "/settings" ? "settings" : "agent").GetProperty("avatar").GetProperty("action").GetString());
+        Assert.Equal(url, Islands.Props(html, path == "/settings/profile" ? "settings" : "agent").GetProperty("avatar").GetProperty("action").GetString());
         PageAssert.NoInlineScriptsOrStyles(html);
     }
 
@@ -191,8 +239,8 @@ public sealed class MediaPagesTests : IDisposable
 
         var html = await client.GetStringAsync(new Uri("/", UriKind.Relative), TestSupport.Ct);
 
-        Assert.DoesNotMatch("<link rel=\"stylesheet\" href=\"/dist/avatar-crop", html);
-        Assert.Matches("<link rel=\"prefetch\" href=\"/dist/avatar-crop\\.[a-z0-9]+\\.css\"", html);
+        Assert.DoesNotMatch("<link rel=\"stylesheet\" href=\"/dist/image-crop", html);
+        Assert.Matches("<link rel=\"prefetch\" href=\"/dist/image-crop\\.[a-z0-9]+\\.css\"", html);
     }
 
     [Fact]
@@ -266,6 +314,29 @@ public sealed class MediaPagesTests : IDisposable
         Assert.Equal(HttpStatusCode.Redirect, removed.StatusCode);
         await factory.Avatars.Received(1).SetAvatarAsync(agentId, Arg.Is<Guid?>(id => id != null), Arg.Any<CancellationToken>());
         await factory.Avatars.Received(1).SetAvatarAsync(agentId, null, Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task AnOwnerChangesAndRemovesTheirAgentsBanner()
+    {
+        var user = WebAuth.ArrangeUser(factory);
+        var agentId = Guid.NewGuid();
+        factory.Agents.ListAgentsAsync(user.Id, Arg.Any<CancellationToken>()).Returns(
+            [new AgentRow(agentId, "tom.claude", "tom's Claude", "Claude", TestData.Now, null, "beeps_abc", TestData.Now, TestData.Now)]);
+        factory.Avatars.FindActorAsync(agentId, Arg.Any<CancellationToken>()).Returns(new AvatarTarget(agentId, ActorKind.Agent, user.Id));
+        factory.Avatars.FindBannerKeyAsync(agentId, Arg.Any<CancellationToken>()).Returns("wide");
+        using var client = await WebAuth.SignInAsync(factory, user);
+
+        var page = await client.GetStringAsync(new Uri($"/agents/{agentId}", UriKind.Relative), TestSupport.Ct);
+        using var set = await PostMultipartAsync(client, $"/agents/{agentId}", $"/agents/{agentId}?handler=Banner", [], [TestImages.Png(300, 100)], "Banner");
+        using var removed = await WebAuth.PostFormAsync(client, $"/agents/{agentId}", $"/agents/{agentId}?handler=RemoveBanner");
+
+        Assert.Equal("https://media.beeps.test/wide/banner.webp", Islands.Props(page, "agent").GetProperty("banner").GetProperty("bannerUrl").GetString());
+        Assert.Equal(HttpStatusCode.Redirect, set.StatusCode);
+        Assert.Equal($"/agents/{agentId}", set.Headers.Location?.OriginalString);
+        Assert.Equal(HttpStatusCode.Redirect, removed.StatusCode);
+        await factory.Avatars.Received(1).SetBannerAsync(agentId, Arg.Is<Guid?>(id => id != null), Arg.Any<CancellationToken>());
+        await factory.Avatars.Received(1).SetBannerAsync(agentId, null, Arg.Any<CancellationToken>());
     }
 
     [Fact]

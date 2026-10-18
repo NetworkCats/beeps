@@ -28,6 +28,66 @@ public sealed class SettingsPagesTests : IDisposable
         PageAssert.NoInlineScriptsOrStyles(html);
     }
 
+    [Theory]
+    [InlineData("/settings", null)]
+    [InlineData("/settings/profile", "profile")]
+    [InlineData("/settings/account", "account")]
+    [InlineData("/settings/password", "password")]
+    [InlineData("/settings/display", "display")]
+    public async Task EachSectionHasAPageOfItsOwn(string url, string? section)
+    {
+        var user = WebAuth.ArrangeUser(factory);
+        using var client = await WebAuth.SignInAsync(factory, user);
+
+        var html = await client.GetStringAsync(new Uri(url, UriKind.Relative), TestSupport.Ct);
+
+        var settings = Islands.Props(html, "settings");
+        Assert.Equal(section, settings.TryGetProperty("section", out var shown) ? shown.GetString() : null);
+        Assert.Equal("tom@example.com", settings.GetProperty("email").GetString());
+    }
+
+    [Fact]
+    public async Task ThereAreNoOtherSections()
+    {
+        var user = WebAuth.ArrangeUser(factory);
+        using var client = await WebAuth.SignInAsync(factory, user);
+
+        using var response = await client.GetAsync(new Uri("/settings/privacy", UriKind.Relative), TestSupport.Ct);
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Theory]
+    [InlineData("Profile", "/settings/profile")]
+    [InlineData("Theme", "/settings/display")]
+    [InlineData("Language", "/settings/display")]
+    public async Task AFormComesBackToItsSection(string handler, string section)
+    {
+        var user = WebAuth.ArrangeUser(factory);
+        using var client = await WebAuth.SignInAsync(factory, user);
+
+        // Sent from the list, which has no forms: still back on the section it belongs to.
+        using var response = await WebAuth.PostFormAsync(client, "/settings", $"/settings?handler={handler}",
+            ("DisplayName", "Tom"), ("Bio", ""), ("Theme", "dark"), ("Culture", "en"));
+
+        Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
+        Assert.Equal(section, response.Headers.Location?.OriginalString);
+    }
+
+    [Fact]
+    public async Task ARefusedFormIsShownOnItsSection()
+    {
+        var user = WebAuth.ArrangeUser(factory);
+        using var client = await WebAuth.SignInAsync(factory, user);
+
+        using var response = await WebAuth.PostFormAsync(client, "/settings/password", "/settings/password?handler=Password",
+            ("CurrentPassword", "not it"), ("NewPassword", "a brand new password"));
+        var html = await response.Content.ReadAsStringAsync(TestSupport.Ct);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal("password", Islands.Props(html, "settings").GetProperty("section").GetString());
+    }
+
     [Fact]
     public async Task SavingTheProfileUpdatesItAndSaysSo()
     {

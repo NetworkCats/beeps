@@ -8,7 +8,7 @@ using Microsoft.Extensions.Localization;
 
 namespace Beeps.Features.Avatars;
 
-/// <summary>An actor whose avatar can change.</summary>
+/// <summary>An actor whose avatar or banner can change.</summary>
 public sealed record AvatarTarget(Guid Id, ActorKind Kind, Guid? OwnerId);
 
 public interface IAvatarStore
@@ -18,6 +18,12 @@ public interface IAvatarStore
 
     /// <summary>Sets or (with null) removes the custom avatar. Runs immediately.</summary>
     Task SetAvatarAsync(Guid actorId, Guid? mediaId, CancellationToken cancellationToken);
+
+    /// <summary>Sets or (with null) removes the profile banner. Runs immediately.</summary>
+    Task SetBannerAsync(Guid actorId, Guid? mediaId, CancellationToken cancellationToken);
+
+    /// <summary>The storage key of the actor's banner once it is ready; null for none.</summary>
+    Task<string?> FindBannerKeyAsync(Guid actorId, CancellationToken cancellationToken);
 }
 
 /// <summary>

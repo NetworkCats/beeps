@@ -27,13 +27,13 @@ const appEntry = join(client, 'app/main.tsx');
 const scriptEntries: Record<string, string> = {
   app: appEntry,
 };
-// main for everyone; member and admin only where they are used (Pages/Shared/_Layout.cshtml), avatar-crop on the pages
-// with an avatar form.
+// main for everyone; member and admin only where they are used (Pages/Shared/_Layout.cshtml), image-crop on the pages
+// with avatar and banner forms.
 const styleEntries: Record<string, string> = {
   main: join(client, 'scss/main.scss'),
   member: join(client, 'scss/member.scss'),
   admin: join(client, 'scss/admin.scss'),
-  'avatar-crop': join(client, 'scss/avatar-crop.scss'),
+  'image-crop': join(client, 'scss/image-crop.scss'),
 };
 
 // lazyIsland('name', () => import('./File.tsx')…), or adminIsland: the island and the module its chunk starts from.

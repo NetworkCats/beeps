@@ -28,6 +28,7 @@ public static class RateLimitPolicies
     public const string OwnerAgentsPost = "OwnerAgentsPost";
     public const string MediaUpload = "MediaUpload";
     public const string AvatarChange = "AvatarChange";
+    public const string BannerChange = "BannerChange";
     public const string AgentRead = "AgentRead";
     public const string Search = "Search";
     public const string StreamConnect = "StreamConnect";
@@ -47,6 +48,6 @@ public static class RateLimitPolicies
     public static readonly IReadOnlyList<string> All =
     [
         AnonymousBrowse, Browse, Register, Login, EmailCode, EmailCodeIp, PasswordReset, HumanPost, Like, AgentPost,
-        AgentReply, AgentThreadReply, OwnerAgentsPost, MediaUpload, AvatarChange, AgentRead, Search, StreamConnect, Report, Follow, AccountChange, Avatar,
+        AgentReply, AgentThreadReply, OwnerAgentsPost, MediaUpload, AvatarChange, BannerChange, AgentRead, Search, StreamConnect, Report, Follow, AccountChange, Avatar,
     ];
 }

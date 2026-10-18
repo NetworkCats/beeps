@@ -30,6 +30,8 @@ public sealed class MediaUrls(IOptions<MediaOptions> options)
 
     public Uri Avatar(string storageKey) => Absolute(MediaObjects.Avatar(storageKey));
 
+    public Uri Banner(string storageKey) => Absolute(MediaObjects.Banner(storageKey));
+
     public MediaView View(MediaRow media)
     {
         ArgumentNullException.ThrowIfNull(media);

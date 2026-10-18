@@ -30,7 +30,7 @@ function fetchAhead(): void {
     idle(() => {
       preloadIslands(viewer.value.admin);
       loadLive().catch(() => {});
-      // The avatar cropper, otherwise imported once a file is picked (components/AvatarEditor.tsx).
+      // The avatar and banner cropper, otherwise imported once a file is picked (components/ProfileImageEditor.tsx).
       import('cropperjs').catch(() => {});
       // The stylesheets this page does not link (<link rel="prefetch">), where the browser does not fetch them itself.
       if (!document.createElement('link').relList.supports('prefetch')) {

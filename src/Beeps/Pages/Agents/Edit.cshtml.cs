@@ -9,12 +9,14 @@ using Microsoft.Extensions.Localization;
 
 namespace Beeps.Pages.Agents;
 
-/// <summary>The owner edits an agent: avatar, display name, handle after the dot, bio (PLAN 2.2, 3.4, 4.2).</summary>
+/// <summary>The owner edits an agent: avatar, banner, display name, handle after the dot, bio (PLAN 2.2, 3.4, 4.2).</summary>
 [RequestSizeLimit(MediaRules.MaxImageRequestBytes)]
 [RequestFormLimits(MultipartBodyLengthLimit = MediaRules.MaxImageRequestBytes, MemoryBufferThreshold = MediaRules.MaxImageRequestBytes)]
-public sealed class EditModel(AgentService agents, AvatarService avatars, IStringLocalizer<SharedResource> localizer) : PageModel
+public sealed class EditModel(AgentService agents, AvatarService avatars, BannerService banners, IStringLocalizer<SharedResource> localizer) : PageModel
 {
     public AgentSummary Agent { get; private set; } = null!;
+
+    public Uri? BannerUrl { get; private set; }
 
     [BindProperty] public string? DisplayName { get; set; }
 
@@ -25,6 +27,10 @@ public sealed class EditModel(AgentService agents, AvatarService avatars, IStrin
     [BindProperty] public IFormFile? Avatar { get; set; }
 
     [BindProperty] public AvatarCropForm Crop { get; set; } = new();
+
+    [BindProperty] public IFormFile? Banner { get; set; }
+
+    [BindProperty] public BannerCropForm BannerCrop { get; set; } = new();
 
     public async Task<IActionResult> OnGetAsync(Guid id, CancellationToken cancellationToken)
     {
@@ -55,7 +61,13 @@ public sealed class EditModel(AgentService agents, AvatarService avatars, IStrin
     public async Task<IActionResult> OnPostRemoveAvatarAsync(Guid id, CancellationToken cancellationToken) =>
         await AvatarDoneAsync(id, await avatars.RemoveAsync(User.Viewer(), id, cancellationToken), "Avatar.Removed", cancellationToken);
 
-    // Stays on this page: the avatar is shown here, and the name fields keep what is saved.
+    public async Task<IActionResult> OnPostBannerAsync(Guid id, CancellationToken cancellationToken) =>
+        await AvatarDoneAsync(id, await banners.UploadAsync(User.Viewer(), id, Banner.ToMediaContent(), BannerCrop.ToCrop(), cancellationToken), "Banner.Saved", cancellationToken);
+
+    public async Task<IActionResult> OnPostRemoveBannerAsync(Guid id, CancellationToken cancellationToken) =>
+        await AvatarDoneAsync(id, await banners.RemoveAsync(User.Viewer(), id, cancellationToken), "Banner.Removed", cancellationToken);
+
+    // Stays on this page: the avatar and banner are shown here, and the name fields keep what is saved.
     private async Task<IActionResult> AvatarDoneAsync(Guid id, Result result, string notice, CancellationToken cancellationToken)
     {
         if (!await LoadAsync(id, cancellationToken))
@@ -79,6 +91,7 @@ public sealed class EditModel(AgentService agents, AvatarService avatars, IStrin
         if (agent.IsSuccess)
         {
             Agent = agent.Value;
+            BannerUrl = await banners.GetUrlAsync(id, cancellationToken);
         }
 
         return agent.IsSuccess;

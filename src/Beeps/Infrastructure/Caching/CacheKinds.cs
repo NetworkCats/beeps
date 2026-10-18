@@ -24,7 +24,7 @@ public static class CacheKinds
         new("beep", Id, ContentCacheJsonContext.Default.CachedBeep, o => o.BeepExpiration);
 
     public static readonly CacheKind<Guid, CachedActor> Actor =
-        new("actor", Id, ContentCacheJsonContext.Default.CachedActor, o => o.ActorExpiration);
+        new("actor2", Id, ContentCacheJsonContext.Default.CachedActor, o => o.ActorExpiration);
 
     /// <summary>Normalized handle → actor id. Handles are never freed, so only an agent's rename changes one.</summary>
     public static readonly CacheKind<string, Guid> Handle =

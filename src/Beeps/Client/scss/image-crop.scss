@@ -1,0 +1,68 @@
+// The avatar and banner croppers (app/components/ProfileImageEditor.tsx), loaded only by the pages with those forms.
+// Cropper.js's own styles first, then beeps' look on top: an avatar's selection is round, as avatars are shown as circles.
+@use "cropperjs/dist/cropper";
+
+// Twitter's "Edit media": a header with the way out, the title and the button that applies, then the image.
+.crop-dialog {
+  --cui-dialog-width: min(37.5rem, calc(100vw - 2rem));
+
+  // A plain dim page behind it, as behind the confirmation (no glass, see _theme.scss).
+  &::backdrop {
+    backdrop-filter: none;
+  }
+}
+
+.crop-dialog-header {
+  display: flex;
+  align-items: center;
+  gap: var(--cui-space-4);
+  min-height: 3.25rem;
+  padding: var(--cui-space-1) var(--cui-space-4);
+}
+
+.crop-dialog-title {
+  flex: 1 1 auto;
+  margin: 0;
+  font-size: var(--cui-text-xl);
+  font-weight: 800;
+}
+
+.crop-dialog-help {
+  margin: 0;
+  padding: var(--cui-space-3) var(--cui-space-4) var(--cui-space-4);
+}
+
+// Cropper sizes itself to this box; the image inside must not overflow it before Cropper takes over.
+.image-crop-stage {
+  width: 100%;
+  height: min(60dvh, 26rem);
+  overflow: hidden;
+  background: var(--cui-surface-2);
+
+  > img {
+    display: block;
+    max-width: 100%;
+  }
+
+  &.round {
+    .cropper-view-box,
+    .cropper-face {
+      border-radius: 50%;
+    }
+  }
+
+  .cropper-view-box {
+    outline: 2px solid var(--cui-primary);
+    outline-color: var(--cui-primary);
+  }
+
+  .cropper-line,
+  .cropper-point {
+    background-color: var(--cui-primary);
+  }
+
+  .cropper-modal {
+    background-color: rgb(0 0 0 / 55%);
+    opacity: 1;
+  }
+}

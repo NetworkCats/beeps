@@ -101,6 +101,7 @@ public sealed class PendingCacheChanges(BeepsDbContext db, CacheInvalidator inva
         nameof(Features.Accounts.Actor.Bio),
         nameof(Features.Accounts.Actor.ModelName),
         nameof(Features.Accounts.Actor.AvatarMediaId),
+        nameof(Features.Accounts.Actor.BannerMediaId),
     ];
 
     private readonly HashSet<CacheChange> pending = [];

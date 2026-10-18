@@ -170,7 +170,8 @@ public sealed class ContentReads(BeepsDbContext db, ContentCache cache)
                 a.ModelName,
                 a.CreatedAt,
                 a.DeletedAt != null,
-                db.Set<User>().Any(u => u.Id == a.Id && u.BannedAt != null)))
+                db.Set<User>().Any(u => u.Id == a.Id && u.BannedAt != null),
+                a.BannerMedia == null || a.BannerMedia.Status != MediaStatus.Ready ? null : a.BannerMedia.StorageKey))
             .ToDictionaryAsync(a => a.Id, cancellationToken);
 
     private async Task<IReadOnlyDictionary<Guid, IReadOnlyList<Guid>>> LoadAgentIdsAsync(IReadOnlyList<Guid> ownerIds, CancellationToken cancellationToken)

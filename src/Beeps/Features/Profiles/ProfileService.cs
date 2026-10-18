@@ -1,6 +1,7 @@
 using Beeps.Features.Accounts;
 using Beeps.Features.Beeps;
 using Beeps.Features.Live;
+using Beeps.Features.Media;
 using Beeps.Features.RateLimiting;
 using Beeps.Features.Shared;
 using Microsoft.Extensions.Localization;
@@ -11,6 +12,7 @@ namespace Beeps.Features.Profiles;
 public sealed partial class ProfileService(
     IProfileStore store,
     BeepViews views,
+    MediaUrls media,
     IUnitOfWork unitOfWork,
     RateLimitService rateLimits,
     LiveUpdates live,
@@ -45,7 +47,8 @@ public sealed partial class ProfileService(
             profile.Owner is { } owner ? views.Actor(owner, viewer) : null,
             agents,
             following,
-            blocked);
+            blocked,
+            profile.BannerKey is { } banner ? media.Banner(banner) : null);
     }
 
     /// <summary>The visible actor with this handle, for features that list its beeps.</summary>

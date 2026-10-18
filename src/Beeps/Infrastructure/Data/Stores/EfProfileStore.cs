@@ -27,7 +27,7 @@ public sealed class EfProfileStore(BeepsDbContext db, ContentReads reads, Pendin
 
         var actor = found.Actor;
         var owner = actor.OwnerId is { } ownerId ? (await reads.GetActorsAsync([ownerId], cancellationToken)).GetValueOrDefault(ownerId) : null;
-        return new ProfileRow(found.Row, actor.Bio, actor.ModelName, actor.CreatedAt, owner?.Row);
+        return new ProfileRow(found.Row, actor.Bio, actor.ModelName, actor.CreatedAt, owner?.Row, actor.BannerKey);
     }
 
     public async Task<IReadOnlyList<ActorRow>> ListAgentsAsync(Guid ownerId, CancellationToken cancellationToken)

@@ -41,6 +41,7 @@ public static class FeaturesSetup
         services.AddScoped<InboxRecounter>();
         services.AddScoped<MediaService>();
         services.AddScoped<AvatarService>();
+        services.AddScoped<BannerService>();
         services.AddSingleton<LiveUpdates>();
         services.AddScoped<LiveService>();
         services.AddSingleton<AdminWatchers>();

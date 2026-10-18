@@ -865,13 +865,10 @@
     <value>设置</value>
   </data>
   <data name="Settings.Profile" xml:space="preserve">
-    <value>资料</value>
+    <value>个人资料</value>
   </data>
   <data name="Settings.Language" xml:space="preserve">
     <value>语言</value>
-  </data>
-  <data name="Settings.Password" xml:space="preserve">
-    <value>密码</value>
   </data>
   <data name="Settings.Password.Help" xml:space="preserve">
     <value>修改密码后，其他设备上的登录会全部退出。</value>
@@ -888,14 +885,41 @@
   <data name="Settings.PasswordChanged" xml:space="preserve">
     <value>密码已修改，其他设备上的登录已全部退出。</value>
   </data>
+  <data name="Settings.Profile.Help" xml:space="preserve">
+    <value>修改头像、横幅、显示名称和简介</value>
+  </data>
+  <data name="Settings.Account" xml:space="preserve">
+    <value>你的账号</value>
+  </data>
+  <data name="Settings.Account.Help" xml:space="preserve">
+    <value>查看用户名和邮箱，或修改密码</value>
+  </data>
+  <data name="Settings.AccountInfo" xml:space="preserve">
+    <value>账号信息</value>
+  </data>
+  <data name="Settings.Display" xml:space="preserve">
+    <value>显示与语言</value>
+  </data>
+  <data name="Settings.Display.Help" xml:space="preserve">
+    <value>选择配色和界面语言</value>
+  </data>
+  <data name="Settings.ChangePassword.Help" xml:space="preserve">
+    <value>随时修改你的密码</value>
+  </data>
+  <data name="Settings.Language.Field" xml:space="preserve">
+    <value>界面语言</value>
+  </data>
+  <data name="Image.Edit" xml:space="preserve">
+    <value>编辑媒体</value>
+  </data>
+  <data name="Image.Apply" xml:space="preserve">
+    <value>应用</value>
+  </data>
   <data name="Field.DisplayName" xml:space="preserve">
     <value>显示名称</value>
   </data>
   <data name="Field.Bio" xml:space="preserve">
     <value>简介</value>
-  </data>
-  <data name="Field.Bio.Help" xml:space="preserve">
-    <value>选填，最多 {0} 个字符。</value>
   </data>
   <data name="Field.CurrentPassword" xml:space="preserve">
     <value>当前密码</value>
@@ -975,17 +999,8 @@
   <data name="Beep.Image" xml:space="preserve">
     <value>第 {0} 张图片，共 {1} 张</value>
   </data>
-  <data name="Avatar.Title" xml:space="preserve">
-    <value>头像</value>
-  </data>
   <data name="Avatar.Choose" xml:space="preserve">
-    <value>新头像</value>
-  </data>
-  <data name="Avatar.Help" xml:space="preserve">
-    <value>JPEG、PNG、WebP 或 GIF，最大 {0} MB。选好文件后可以选择用作头像的正方形区域。</value>
-  </data>
-  <data name="Avatar.Upload" xml:space="preserve">
-    <value>上传头像</value>
+    <value>更换头像</value>
   </data>
   <data name="Avatar.Remove" xml:space="preserve">
     <value>改用默认头像</value>
@@ -1006,6 +1021,30 @@
     <value>要裁切的图片</value>
   </data>
   <data name="Error.AvatarCropInvalid" xml:space="preserve">
+    <value>选择的区域超出了图片范围或太小，请重新选择图片。</value>
+  </data>
+  <data name="Banner.Choose" xml:space="preserve">
+    <value>更换横幅</value>
+  </data>
+  <data name="Banner.Remove" xml:space="preserve">
+    <value>删除横幅</value>
+  </data>
+  <data name="Banner.Remove.Confirm" xml:space="preserve">
+    <value>删除这个横幅吗？</value>
+  </data>
+  <data name="Banner.Saved" xml:space="preserve">
+    <value>横幅已更新。</value>
+  </data>
+  <data name="Banner.Removed" xml:space="preserve">
+    <value>横幅已删除。</value>
+  </data>
+  <data name="Banner.Crop.Help" xml:space="preserve">
+    <value>拖动图片调整位置，滚动或双指缩放，拖动四角改变作为横幅的区域。</value>
+  </data>
+  <data name="Banner.Crop.Image" xml:space="preserve">
+    <value>要裁切的图片</value>
+  </data>
+  <data name="Error.BannerCropInvalid" xml:space="preserve">
     <value>选择的区域超出了图片范围或太小，请重新选择图片。</value>
   </data>
   <data name="Nav.Search" xml:space="preserve">

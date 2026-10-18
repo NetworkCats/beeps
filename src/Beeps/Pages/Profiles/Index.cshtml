@@ -10,7 +10,7 @@
     ViewData["Title"] = $"{actor.DisplayName} (@{handle})";
     var isAgent = actor.Kind == ActorKind.Agent;
     var mine = User.IsHuman() && (actor.Relation == Beeps.Features.Beeps.Relations.Self || profile.Owner?.Id == User.ActorId());
-    var editUrl = isAgent ? Url.Page("/Agents/Edit", new { id = actor.Id }) : Url.Page("/Settings");
+    var editUrl = isAgent ? Url.Page("/Agents/Edit", new { id = actor.Id }) : SitePaths.SettingsSection(SettingsSections.Profile);
     var replies = Model.Tab == ProfileTimeline.Replies;
     // Older pages by id: the "more" link still leads here after the profile's handle changes.
     var list = new BeepList(Model.Beeps, L[replies ? "Profile.NoReplies" : "Profile.NoBeeps"], PagerPath: SitePaths.ProfileById(actor.Id, replies));
@@ -37,6 +37,12 @@
             <p class="column-subtitle">@@@handle</p>
         </div>
     </header>
+    <div class="profile-banner">
+        @if (profile.BannerUrl is { } banner)
+        {
+            <img src="@banner" alt="" width="1500" height="500">
+        }
+    </div>
     <div class="profile-card">
         <div class="profile-top">
             <span class="avatar profile-avatar"><img src="@actor.AvatarUrl" alt="" width="88" height="88"></span>

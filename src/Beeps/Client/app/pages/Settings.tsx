@@ -1,15 +1,23 @@
-// The account's own settings (Settings.cshtml): avatar, profile, language, colour scheme and password. Each form is sent
-// in the background and answered in place; the saved name, bio and avatar follow changes made in another tab, unless
-// they are being edited here. A new language shows the page anew in it.
-import { AvatarEditor, type AvatarEditorProps } from '../components/AvatarEditor.tsx';
-import { Antiforgery, FieldError, FormErrors, field } from '../components/Forms.tsx';
+// The account's own settings (Settings.cshtml), split as Twitter splits them: /settings lists the sections, and each
+// has a page of its own, with a way back to the list. Profile is Twitter's "Edit profile" (the banner and avatar, the
+// name and bio, saved from the header); account shows the username and email and leads to the password's page; display
+// holds the colour scheme, applied as soon as one is picked, and the language. Each form is sent in the background and
+// answered in place; the saved name, bio, avatar and banner follow changes made in another tab, unless they are being
+// edited here. A new language shows the page anew in it.
+import type { ComponentChildren } from 'preact';
+import { FloatField } from '../components/FloatField.tsx';
+import { Antiforgery, FormErrors, field } from '../components/Forms.tsx';
+import { Icon } from '../components/Icon.tsx';
+import { ProfileImages, type AvatarEditorProps, type BannerEditorProps } from '../components/ProfileImageEditor.tsx';
 import { sending } from '../forms.ts';
 import { t } from '../i18n.ts';
 import type { IslandProps } from '../islands.tsx';
 import { useLive } from '../page.ts';
 import { paths } from '../paths.ts';
-import type { LiveProps } from '../props.ts';
+import type { Errors, LiveProps } from '../props.ts';
 import { theme } from '../state.ts';
+
+type Section = 'profile' | 'account' | 'password' | 'display';
 
 interface Option {
   value: string;
@@ -23,9 +31,13 @@ export interface ProfileLimits {
 }
 
 interface SettingsProps {
+  /** None for the list of sections. */
+  section?: Section;
   live: LiveProps;
   avatar: AvatarEditorProps;
+  banner: BannerEditorProps;
   handle: string;
+  email: string;
   displayName?: string;
   bio?: string;
   culture: string;
@@ -37,118 +49,142 @@ interface SettingsProps {
   passwordMaxLength: number;
 }
 
+interface SectionProps {
+  props: SettingsProps;
+  errors: Errors;
+}
+
+/** Each section's title, and where its back arrow leads: the list, or the section it is a step below. */
+const TITLES: Record<Section, { title: string; back: string }> = {
+  profile: { title: 'Settings.Profile', back: paths.settings },
+  account: { title: 'Settings.Account', back: paths.settings },
+  password: { title: 'Settings.ChangePassword', back: paths.settingsSection('account') },
+  display: { title: 'Settings.Display', back: paths.settings },
+};
+
+/** Where a section's forms post: its own page, so a refused one comes back to it. */
+function action(section: Section, handler: string): string {
+  return `${paths.settingsSection(section)}?handler=${handler}`;
+}
+
+/** A row that leads to a page: its icon, title and what it holds, and a chevron. */
+function LinkRow({ href, icon, title, help }: { href: string; icon: ComponentChildren; title: string; help: string }) {
+  return (
+    <a class="settings-link" href={href}>
+      {icon}
+      <span class="settings-link-text">
+        <span class="settings-link-title">{title}</span>
+        <span class="settings-link-help">{help}</span>
+      </span>
+      <Icon name="chevron_right" class="settings-link-chevron" />
+    </a>
+  );
+}
+
 export function SettingsPage({ props, errors }: IslandProps<SettingsProps>) {
   useLive(props.live);
-  const action = (handler: string): string => `${paths.settings}?handler=${handler}`;
+  const section = props.section && TITLES[props.section] ? props.section : undefined;
+  if (!section) {
+    return (
+      <section class="feed settings">
+        <header class="column-header">
+          <h1 class="column-title">{t('Settings.Title')}</h1>
+        </header>
+        <FormErrors errors={errors} />
+        <nav class="settings-nav" aria-label={t('Settings.Title')}>
+          <LinkRow href={paths.settingsSection('profile')} icon={<Icon name="person" />} title={t('Settings.Profile')} help={t('Settings.Profile.Help')} />
+          <LinkRow href={paths.settingsSection('account')} icon={<Icon name="lock" />} title={t('Settings.Account')} help={t('Settings.Account.Help')} />
+          <LinkRow href={paths.settingsSection('display')} icon={<Icon name="palette" />} title={t('Settings.Display')} help={t('Settings.Display.Help')} />
+        </nav>
+      </section>
+    );
+  }
+  const { title, back } = TITLES[section];
   return (
     <section class="feed settings">
       <header class="column-header">
-        <h1 class="column-title">{t('Settings.Title')}</h1>
+        <a class="column-back" href={back} aria-label={t('Nav.Back')}>
+          <Icon name="arrow_back" />
+        </a>
+        <h1 class="column-title">{t(title)}</h1>
+        {/* Saved from the header, as Twitter's "Edit profile" is. */}
+        {section === 'profile' && (
+          <button class="btn btn-sm btn-primary column-header-end" type="submit" form="profile-form">
+            {t('Settings.Save')}
+          </button>
+        )}
       </header>
       <FormErrors errors={errors} />
+      {section === 'profile' && <ProfileSection props={props} errors={errors} />}
+      {section === 'account' && <AccountSection props={props} />}
+      {section === 'password' && <PasswordSection props={props} errors={errors} />}
+      {section === 'display' && <DisplaySection props={props} errors={errors} />}
+    </section>
+  );
+}
 
-      <AvatarEditor editor={props.avatar} />
-
-      <form class="settings-section" method="post" action={action('Profile')} aria-labelledby="profile-title" onSubmit={sending()}>
-        <h2 id="profile-title">{t('Settings.Profile')}</h2>
-        <div class="field">
-          <span class="label">{t('Field.Username')}</span>
-          <p class="settings-fixed">@{props.handle}</p>
-        </div>
-        <div class="field">
-          <label class="label" for="DisplayName">
-            {t('Field.DisplayName')}
-          </label>
-          <input class="input" {...field(errors, 'DisplayName')} defaultValue={props.displayName} maxLength={props.limits.displayNameMaxLength} required />
-          <FieldError errors={errors} name="DisplayName" />
-        </div>
-        <div class="field">
-          <label class="label" for="Bio">
-            {t('Field.Bio')}
-          </label>
-          <textarea class="textarea" {...field(errors, 'Bio')} rows={3} maxLength={props.limits.bioMaxLength} defaultValue={props.bio ?? ''} />
-          <p class="help">{t('Field.Bio.Help', props.limits.bioMaxLength)}</p>
-          <FieldError errors={errors} name="Bio" />
-        </div>
-        <div class="form-actions">
-          <button class="btn btn-primary" type="submit">
-            {t('Settings.Save')}
-          </button>
-        </div>
+function ProfileSection({ props, errors }: SectionProps) {
+  return (
+    <>
+      <ProfileImages avatar={props.avatar} banner={props.banner} />
+      <form class="settings-form" id="profile-form" method="post" action={action('profile', 'Profile')} onSubmit={sending()}>
+        <FloatField errors={errors} name="DisplayName" label={t('Field.DisplayName')} max={props.limits.displayNameMaxLength} initial={props.displayName}>
+          <input class="float-field-input" {...field(errors, 'DisplayName')} defaultValue={props.displayName} maxLength={props.limits.displayNameMaxLength} required />
+        </FloatField>
+        <FloatField errors={errors} name="Bio" label={t('Field.Bio')} max={props.limits.bioMaxLength} initial={props.bio}>
+          <textarea class="float-field-input" {...field(errors, 'Bio')} rows={3} maxLength={props.limits.bioMaxLength} defaultValue={props.bio ?? ''} />
+        </FloatField>
         <Antiforgery />
       </form>
+    </>
+  );
+}
 
-      {/* Sent as a page, which then comes back in the new language. */}
-      <form class="settings-section" method="post" action={action('Language')} aria-labelledby="language-title">
-        <h2 id="language-title">{t('Settings.Language')}</h2>
-        <div class="field">
-          <label class="visually-hidden" for="Culture">
-            {t('Settings.Language')}
-          </label>
-          <select class="select settings-select" id="Culture" name="Culture">
-            {props.cultures.map((option) => (
-              <option key={option.value} value={option.value} lang={option.lang} selected={option.value === props.culture}>
-                {option.label}
-              </option>
-            ))}
-          </select>
+/** Twitter's "Account information": what the account is, which cannot be changed here, then the way to the password. */
+function AccountSection({ props }: { props: SettingsProps }) {
+  return (
+    <>
+      <p class="settings-intro">{t('Settings.Account.Help')}</p>
+      <div class="settings-facts">
+        <div class="settings-link">
+          <Icon name="alternate_email" />
+          <span class="settings-link-text">
+            <span class="settings-link-title">{t('Field.Username')}</span>
+            <span class="settings-link-help">@{props.handle}</span>
+          </span>
         </div>
-        <div class="form-actions">
-          <button class="btn" type="submit">
-            {t('Settings.Save')}
-          </button>
+        <div class="settings-link">
+          <Icon name="mail" />
+          <span class="settings-link-text">
+            <span class="settings-link-title">{t('Field.Email')}</span>
+            <span class="settings-link-help">{props.email}</span>
+          </span>
         </div>
-        <Antiforgery />
-      </form>
+      </div>
+      <nav class="settings-nav" aria-label={t('Settings.Account')}>
+        <LinkRow href={paths.settingsSection('password')} icon={<Icon name="key" />} title={t('Settings.ChangePassword')} help={t('Settings.ChangePassword.Help')} />
+      </nav>
+    </>
+  );
+}
 
-      <form
-        class="settings-section"
-        method="post"
-        action={action('Theme')}
-        aria-labelledby="theme-title"
-        onSubmit={sending((form) => {
-          theme.value = String(new FormData(form).get('Theme') ?? 'system');
-        })}
-      >
-        <h2 id="theme-title">{t('Settings.Theme')}</h2>
-        <div class="field">
-          <label class="visually-hidden" for="Theme">
-            {t('Settings.Theme')}
-          </label>
-          <select class="select settings-select" id="Theme" name="Theme">
-            {props.themes.map((option) => (
-              <option key={option.value} value={option.value} selected={option.value === theme.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-          <p class="help">{t('Settings.Theme.Help')}</p>
-        </div>
-        <div class="form-actions">
-          <button class="btn" type="submit">
-            {t('Settings.Save')}
-          </button>
-        </div>
-        <Antiforgery />
-      </form>
-
-      <form class="settings-section" method="post" action={action('Password')} aria-labelledby="password-title" onSubmit={sending((form) => form.reset())}>
-        <h2 id="password-title">{t('Settings.Password')}</h2>
-        <p class="help">{t('Settings.Password.Help')}</p>
+function PasswordSection({ props, errors }: SectionProps) {
+  return (
+    <>
+      <p class="settings-intro">{t('Settings.Password.Help')}</p>
+      <form class="settings-form" method="post" action={action('password', 'Password')} onSubmit={sending((form) => form.reset())}>
         <input type="hidden" name="username" value={props.handle} autocomplete="username" />
-        <div class="field">
-          <label class="label" for="CurrentPassword">
-            {t('Field.CurrentPassword')}
-          </label>
-          <input class="input" {...field(errors, 'CurrentPassword')} type="password" autocomplete="current-password" required />
-          <FieldError errors={errors} name="CurrentPassword" />
+        <div class="settings-field-group">
+          <FloatField errors={errors} name="CurrentPassword" label={t('Field.CurrentPassword')}>
+            <input class="float-field-input" {...field(errors, 'CurrentPassword')} type="password" autocomplete="current-password" required />
+          </FloatField>
+          <a class="settings-aside-link" href={paths.forgotPassword}>
+            {t('Login.Forgot')}
+          </a>
         </div>
-        <div class="field">
-          <label class="label" for="NewPassword">
-            {t('Field.NewPassword')}
-          </label>
+        <FloatField errors={errors} name="NewPassword" label={t('Field.NewPassword')} help={t('Field.Password.Help', props.passwordMinLength)}>
           <input
-            class="input"
+            class="float-field-input"
             {...field(errors, 'NewPassword')}
             type="password"
             autocomplete="new-password"
@@ -156,16 +192,70 @@ export function SettingsPage({ props, errors }: IslandProps<SettingsProps>) {
             maxLength={props.passwordMaxLength}
             required
           />
-          <p class="help">{t('Field.Password.Help', props.passwordMinLength)}</p>
-          <FieldError errors={errors} name="NewPassword" />
-        </div>
+        </FloatField>
         <div class="form-actions">
-          <button class="btn" type="submit">
-            {t('Settings.ChangePassword')}
+          <button class="btn btn-primary" type="submit">
+            {t('Settings.Save')}
           </button>
         </div>
         <Antiforgery />
       </form>
-    </section>
+    </>
+  );
+}
+
+/** Twitter's "Display": the schemes as cards drawn in their own colours, applied as soon as one is picked. */
+function DisplaySection({ props, errors }: SectionProps) {
+  return (
+    <>
+      <p class="settings-intro">{t('Settings.Display.Help')}</p>
+      <form
+        class="settings-form"
+        method="post"
+        action={action('display', 'Theme')}
+        onSubmit={sending((form) => {
+          theme.value = String(new FormData(form).get('Theme') ?? 'system');
+        })}
+      >
+        <fieldset class="settings-group">
+          <legend class="settings-heading">{t('Settings.Theme')}</legend>
+          <div class="theme-options">
+            {props.themes.map((option) => (
+              <label key={option.value} class={`theme-option theme-option-${option.value}`}>
+                <input type="radio" name="Theme" value={option.value} checked={option.value === theme.value} onChange={(event) => event.currentTarget.form?.requestSubmit()} />
+                <span>{option.label}</span>
+              </label>
+            ))}
+          </div>
+          <p class="help">{t('Settings.Theme.Help')}</p>
+        </fieldset>
+        <Antiforgery />
+      </form>
+
+      {/* Sent as a page, which then comes back in the new language. */}
+      <form class="settings-form" method="post" action={action('display', 'Language')}>
+        <fieldset class="settings-group">
+          <legend class="settings-heading">{t('Settings.Language')}</legend>
+          <FloatField errors={errors} name="Culture" label={t('Settings.Language.Field')}>
+            <span class="float-field-select">
+              <select class="float-field-input" id="Culture" name="Culture">
+                {props.cultures.map((option) => (
+                  <option key={option.value} value={option.value} lang={option.lang} selected={option.value === props.culture}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+              <Icon name="expand_more" />
+            </span>
+          </FloatField>
+        </fieldset>
+        <div class="form-actions">
+          <button class="btn btn-primary" type="submit">
+            {t('Settings.Save')}
+          </button>
+        </div>
+        <Antiforgery />
+      </form>
+    </>
   );
 }

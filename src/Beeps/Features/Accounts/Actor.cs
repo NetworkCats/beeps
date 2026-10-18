@@ -46,6 +46,12 @@ public sealed class Actor
     /// <summary>For queries only; never loaded lazily.</summary>
     public MediaItem? AvatarMedia { get; init; }
 
+    /// <summary>A profile banner; null shows a plain strip.</summary>
+    public Guid? BannerMediaId { get; set; }
+
+    /// <summary>For queries only; never loaded lazily.</summary>
+    public MediaItem? BannerMedia { get; init; }
+
     public DateTimeOffset CreatedAt { get; init; }
 
     /// <summary>For agents: switched off by the owner or by a ban. Its key stops working.</summary>

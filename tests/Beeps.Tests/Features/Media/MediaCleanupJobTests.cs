@@ -9,7 +9,7 @@ namespace Beeps.Tests.Features.Media;
 
 public sealed class MediaCleanupJobTests
 {
-    private static readonly string[] AllSizesOfAAndB = ["a/full.webp", "a/thumb.webp", "a/avatar.webp", "b/full.webp", "b/thumb.webp", "b/avatar.webp"];
+    private static readonly string[] AllSizesOfAAndB = ["a/full.webp", "a/thumb.webp", "a/avatar.webp", "a/banner.webp", "b/full.webp", "b/thumb.webp", "b/avatar.webp", "b/banner.webp"];
 
     private readonly IMediaStore store = Substitute.For<IMediaStore>();
     private readonly IOutbox outbox = Substitute.For<IOutbox>();

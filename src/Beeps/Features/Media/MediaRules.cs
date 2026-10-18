@@ -48,6 +48,12 @@ public static class MediaRules
     /// <summary>Avatars are cropped to a centered square of this size; shown at 64 px at most, so sharp at 4×.</summary>
     public const int AvatarSide = 256;
 
+    /// <summary>Banners are three times as wide as they are high, as on Twitter.</summary>
+    public const int BannerAspect = 3;
+
+    /// <summary>The widest a stored banner is: the profile column is 600 px wide, so it is sharp at 2.5×.</summary>
+    public const int BannerWidth = 1500;
+
     /// <summary>Enough bytes for <see cref="Sniff"/>.</summary>
     public const int SniffLength = 12;
 
@@ -100,6 +106,35 @@ public static class MediaRules
         var bottom = Math.Min(crop.Y + crop.Size, height);
         var size = Math.Min(right - x, bottom - y);
         return size < MinSide ? null : new AvatarCrop(x, y, size);
+    }
+
+    /// <summary>
+    /// The banner strip pulled inside the image, with its height made a third of its width again; null if it lies
+    /// further outside than <see cref="CropTolerance"/> or is smaller than <see cref="MinSide"/>.
+    /// </summary>
+    public static BannerCrop? FitBannerCrop(BannerCrop crop, int width, int height)
+    {
+        ArgumentNullException.ThrowIfNull(crop);
+        if (crop.X < -CropTolerance || crop.Y < -CropTolerance || crop.Width <= 0
+            || (long)crop.X + crop.Width > width + CropTolerance || (long)crop.Y + crop.Height > height + CropTolerance)
+        {
+            return null;
+        }
+
+        // As for the avatar, each edge is pulled inside on its own; the strip then keeps its shape within what is left.
+        var x = Math.Max(0, crop.X);
+        var y = Math.Max(0, crop.Y);
+        var right = Math.Min(crop.X + crop.Width, width);
+        var bottom = Math.Min(crop.Y + crop.Height, height);
+        var stripWidth = Math.Min(right - x, (bottom - y) * BannerAspect);
+        return stripWidth / BannerAspect < MinSide ? null : new BannerCrop(x, y, stripWidth);
+    }
+
+    /// <summary>The widest strip of banner shape in the middle of the image: the banner when none was picked (no script).</summary>
+    public static BannerCrop CenteredBanner(int width, int height)
+    {
+        var stripWidth = Math.Min(width, height * BannerAspect);
+        return new BannerCrop((width - stripWidth) / 2, (height - (stripWidth / BannerAspect)) / 2, stripWidth);
     }
 
     /// <summary>The size that fits within <paramref name="maxSide"/> on its longer side, keeping the aspect ratio; never enlarged.</summary>

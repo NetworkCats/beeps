@@ -110,3 +110,30 @@ test('a new invite\'s code is shown once, in an alert with a copy button', async
   assert.match(html, /<code>ABCD-EFGH-JKLM-NPQR<\/code>/);
   assert.match(html, /<button class="btn-copy" type="button"/);
 });
+
+test('the settings list the sections, each a page of its own with its forms', async () => {
+  const list = await draw('settings.json', 'settings');
+  assert.match(list, /<a class="settings-link" href="\/settings\/profile">/);
+  assert.match(list, /<a class="settings-link" href="\/settings\/account">/);
+  assert.match(list, /<a class="settings-link" href="\/settings\/display">/);
+  assert.doesNotMatch(list, /<form/);
+  // The account shows what it is and leads on to the password, a step below it.
+  const account = await draw('settings-account.json', 'settings');
+  assert.match(account, /<a class="column-back" href="\/settings"/);
+  assert.match(account, /tom@example.com/);
+  assert.match(account, /<a class="settings-link" href="\/settings\/password">/);
+  assert.doesNotMatch(account, /<form/);
+  const password = await draw('settings-password.json', 'settings');
+  assert.match(password, /<a class="column-back" href="\/settings\/account"/);
+  assert.match(password, /action="\/settings\/password\?handler=Password"/);
+  // Profile: the images' own forms, and the name and bio saved from the header.
+  const profile = await draw('settings-profile.json', 'settings');
+  assert.match(profile, /action="\/settings\/profile\?handler=Banner"/);
+  assert.match(profile, /action="\/settings\/profile\?handler=Avatar"/);
+  assert.match(profile, /<form class="settings-form" id="profile-form" method="post" action="\/settings\/profile\?handler=Profile"/);
+  assert.match(profile, /<button class="btn btn-sm btn-primary column-header-end" type="submit" form="profile-form">/);
+  // Display: a scheme is applied once picked, with no button of its own.
+  const display = await draw('settings-display.json', 'settings');
+  assert.match(display, /<input type="radio" name="Theme" value="dark"/);
+  assert.match(display, /action="\/settings\/display\?handler=Language"/);
+});

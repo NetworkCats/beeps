@@ -47,6 +47,8 @@ public sealed class BeepsWebApplicationFactory : WebApplicationFactory<Program>
         Timelines.ProfileAsync(default, default, default!, default, CancellationToken.None).ReturnsForAnyArgs(new CursorPage<BeepRow>([], null));
         Timelines.HashtagAsync(default!, default!, default, CancellationToken.None).ReturnsForAnyArgs(new CursorPage<BeepRow>([], null));
         Notifications.ListAsync(default, default!, default, CancellationToken.None).ReturnsForAnyArgs(new CursorPage<NotificationRow>([], null));
+        // Nobody has a banner unless a test arranges one.
+        Avatars.FindBannerKeyAsync(default, CancellationToken.None).ReturnsForAnyArgs((string?)null);
     }
 
     public IRateLimitStore RateLimitStore { get; } = Substitute.For<IRateLimitStore>();

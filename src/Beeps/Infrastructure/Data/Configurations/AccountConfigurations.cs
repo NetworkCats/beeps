@@ -27,8 +27,10 @@ internal sealed class ActorConfiguration : IEntityTypeConfiguration<Actor>
         builder.HasIndex(a => a.OwnerId);
         builder.HasOne<Actor>().WithMany().HasForeignKey(a => a.OwnerId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne(a => a.AvatarMedia).WithMany().HasForeignKey(a => a.AvatarMediaId).OnDelete(DeleteBehavior.Restrict);
-        // The cleanup job: is this upload anyone's avatar?
+        builder.HasOne(a => a.BannerMedia).WithMany().HasForeignKey(a => a.BannerMediaId).OnDelete(DeleteBehavior.Restrict);
+        // The cleanup job: is this upload anyone's avatar or banner?
         builder.HasIndex(a => a.AvatarMediaId);
+        builder.HasIndex(a => a.BannerMediaId);
     }
 }
 

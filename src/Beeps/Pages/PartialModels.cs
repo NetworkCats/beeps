@@ -29,3 +29,18 @@ public sealed class AvatarCropForm
 
     public AvatarCrop? ToCrop() => X is { } x && Y is { } y && Size is { } size ? new AvatarCrop(x, y, size) : null;
 }
+
+/// <summary>
+/// The strip picked in the banner cropper, posted as the hidden fields <c>BannerCrop.X</c>, <c>BannerCrop.Y</c> and
+/// <c>BannerCrop.Width</c>; its height follows from the width. Without script they stay empty and the centered strip is used.
+/// </summary>
+public sealed class BannerCropForm
+{
+    public int? X { get; set; }
+
+    public int? Y { get; set; }
+
+    public int? Width { get; set; }
+
+    public BannerCrop? ToCrop() => X is { } x && Y is { } y && Width is { } width ? new BannerCrop(x, y, width) : null;
+}

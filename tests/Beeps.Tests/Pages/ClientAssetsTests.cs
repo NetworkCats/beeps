@@ -26,7 +26,7 @@ public sealed partial class ClientAssetsTests : IDisposable
         var html = await client.GetStringAsync(new Uri("/", UriKind.Relative), TestSupport.Ct);
 
         Assert.Equal(["main"], Stylesheets(html));
-        Assert.Equal(["member", "avatar-crop"], Prefetched(html));
+        Assert.Equal(["member", "image-crop"], Prefetched(html));
     }
 
     [Fact]
@@ -38,7 +38,7 @@ public sealed partial class ClientAssetsTests : IDisposable
         var html = await client.GetStringAsync(new Uri("/public", UriKind.Relative), TestSupport.Ct);
 
         Assert.Equal(["main", "member"], Stylesheets(html));
-        Assert.Equal(["avatar-crop"], Prefetched(html));
+        Assert.Equal(["image-crop"], Prefetched(html));
     }
 
     [Fact]
@@ -52,9 +52,9 @@ public sealed partial class ClientAssetsTests : IDisposable
         var otherPage = await client.GetStringAsync(new Uri("/public", UriKind.Relative), TestSupport.Ct);
 
         Assert.Equal(["main", "member", "admin"], Stylesheets(adminPage));
-        Assert.Equal(["avatar-crop"], Prefetched(adminPage));
+        Assert.Equal(["image-crop"], Prefetched(adminPage));
         Assert.Equal(["main", "member"], Stylesheets(otherPage));
-        Assert.Equal(["admin", "avatar-crop"], Prefetched(otherPage));
+        Assert.Equal(["admin", "image-crop"], Prefetched(otherPage));
     }
 
     [Fact]

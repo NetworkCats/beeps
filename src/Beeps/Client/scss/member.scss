@@ -337,7 +337,306 @@
   }
 }
 
-// ---- Forms in the column: settings, agents, reports ---------------------------------------------------
+// ---- Settings, as Twitter's ------------------------------------------------------------------------
+
+// A row per page: its icon, title and what it holds, and a chevron for the page it opens. No lines between them.
+.settings-nav {
+  display: flex;
+  flex-direction: column;
+  padding-block: var(--cui-space-2);
+}
+
+.settings-link {
+  display: flex;
+  align-items: center;
+  gap: var(--cui-space-4);
+  padding: var(--cui-space-3) var(--beeps-pad);
+  color: var(--cui-text);
+  text-decoration: none;
+  transition: background-color var(--cui-transition);
+
+  > .icon {
+    --cui-icon-size: 1.375rem;
+    flex-shrink: 0;
+    color: var(--cui-text-2);
+  }
+
+  &:is(a):hover {
+    background: var(--cui-surface-hover);
+  }
+
+  &:focus-visible {
+    @include focus-ring($inset: true);
+  }
+}
+
+.settings-link-text {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: var(--cui-space-0-5);
+  min-width: 0;
+}
+
+.settings-link-title {
+  font-size: var(--beeps-text-size);
+  line-height: 1.25rem;
+}
+
+.settings-link-help {
+  color: var(--cui-text-2);
+  font-size: var(--cui-text-sm);
+  line-height: 1.125rem;
+  overflow-wrap: anywhere;
+}
+
+.settings-link > .settings-link-chevron {
+  --cui-icon-size: 1.25rem;
+}
+
+// What the account is, as rows like the links but leading nowhere.
+.settings-facts {
+  padding-block-start: var(--cui-space-2);
+}
+
+// What a section's page is for, grey under its header.
+.settings-intro {
+  margin: 0;
+  padding: var(--cui-space-3) var(--beeps-pad) var(--cui-space-1);
+  color: var(--cui-text-2);
+  font-size: var(--cui-text-sm);
+  line-height: 1.125rem;
+}
+
+.settings-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cui-space-5);
+  margin: 0;
+  padding: var(--cui-space-4) var(--beeps-pad) var(--cui-space-5);
+
+  // Saved at the bottom right, as on Twitter.
+  > .form-actions {
+    justify-content: flex-end;
+    padding: 0;
+  }
+}
+
+fieldset.settings-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cui-space-3);
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.settings-heading {
+  margin-block-end: var(--cui-space-3);
+  padding: 0;
+  font-size: var(--cui-text-lg);
+  font-weight: 800;
+}
+
+.settings-field-group {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--cui-space-2);
+
+  > .float-field {
+    align-self: stretch;
+  }
+}
+
+.settings-aside-link {
+  color: var(--cui-primary-text);
+  font-size: var(--cui-text-sm);
+  text-decoration: none;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+// Saved from the header: the button sits at its end.
+.column-header-end {
+  flex-shrink: 0;
+  margin-inline-start: auto;
+}
+
+// The colour schemes, each drawn in its own colours. The page's own two (Pages/Shared/_Layout.cshtml's theme-color).
+.theme-options {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--cui-space-3);
+
+  @include mq(sm) {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.theme-option {
+  display: flex;
+  align-items: center;
+  gap: var(--cui-space-3);
+  min-height: 4rem;
+  padding: 0 var(--cui-space-4);
+  font-size: var(--beeps-text-size);
+  font-weight: var(--cui-weight-bold);
+  color: var(--cui-text);
+  background: var(--cui-bg);
+  border: var(--cui-border-width) solid var(--cui-border);
+  border-radius: var(--cui-radius);
+  cursor: pointer;
+
+  > input {
+    flex-shrink: 0;
+    width: 1.25rem;
+    height: 1.25rem;
+    margin: 0;
+    accent-color: var(--cui-primary);
+  }
+
+  &:has(:checked) {
+    border-color: var(--cui-primary);
+    box-shadow: 0 0 0 1px var(--cui-primary);
+  }
+
+  &:has(:focus-visible) {
+    @include focus-ring;
+  }
+}
+
+// Their radios drawn for their own colours too, whatever the page's.
+.theme-option-light {
+  color: oklch(14.5% 0 0);
+  color-scheme: light;
+  background: #fff;
+}
+
+.theme-option-dark {
+  color: oklch(97% 0 0);
+  color-scheme: dark;
+  background: #0a0a0a;
+}
+
+// ---- Fields with the label inside the box, as Twitter's ------------------------------------------------
+
+.float-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cui-space-1-5);
+  min-width: 0;
+}
+
+.float-field-box {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cui-space-0-5);
+  padding: var(--cui-space-2) var(--cui-space-3);
+  border: var(--cui-border-width) solid var(--cui-control-border);
+  border-radius: var(--cui-radius-sm);
+  cursor: text;
+  transition: border-color var(--cui-transition), box-shadow var(--cui-transition);
+
+  &:focus-within {
+    border-color: var(--cui-primary);
+    box-shadow: 0 0 0 1px var(--cui-primary);
+  }
+
+  .float-field-invalid > & {
+    border-color: var(--cui-danger);
+
+    &:focus-within {
+      box-shadow: 0 0 0 1px var(--cui-danger);
+    }
+  }
+}
+
+.float-field-top {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--cui-space-2);
+  color: var(--cui-text-2);
+  font-size: var(--cui-text-sm);
+  line-height: 1.125rem;
+
+  .float-field-box:focus-within > & > .float-field-label {
+    color: var(--cui-primary-text);
+  }
+
+  .float-field-invalid > .float-field-box > & > .float-field-label {
+    color: var(--cui-danger-text);
+  }
+}
+
+// How much of its length is used, while it is being typed in.
+.float-field-count {
+  font-variant-numeric: tabular-nums;
+  visibility: hidden;
+
+  .float-field-box:focus-within & {
+    visibility: visible;
+  }
+}
+
+.float-field-input {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  color: var(--cui-text);
+  font: inherit;
+  font-size: var(--cui-text-base);
+  line-height: 1.5rem;
+  background: transparent;
+  border: 0;
+  outline: none;
+
+  &:is(textarea) {
+    min-height: 4.5rem;
+    resize: none;
+  }
+
+  &:is(select) {
+    padding-inline-end: var(--cui-space-6);
+    cursor: pointer;
+    appearance: none;
+  }
+}
+
+// A select's own arrow, drawn as the other icons are.
+.float-field-select {
+  position: relative;
+  display: block;
+
+  > .icon {
+    --cui-icon-size: 1.25rem;
+    position: absolute;
+    inset-block-start: 50%;
+    inset-inline-end: 0;
+    color: var(--cui-text-2);
+    pointer-events: none;
+    translate: 0 -50%;
+  }
+}
+
+// A fixed start before the input, such as an agent's owner in its handle.
+.float-field-row {
+  display: flex;
+  align-items: baseline;
+
+  > .float-field-prefix {
+    flex-shrink: 0;
+    color: var(--cui-text-2);
+    font-size: var(--cui-text-base);
+  }
+}
+
+// ---- Forms in the column: agents, reports -------------------------------------------------------------
 
 // Sections of a form page are told apart by their headings and the space between them, not by lines.
 .settings-section {
@@ -362,15 +661,6 @@
   }
 }
 
-.settings-select {
-  max-width: 20rem;
-}
-
-.settings-fixed {
-  margin: 0;
-  color: var(--cui-text-2);
-}
-
 fieldset.check-group {
   margin: 0;
   padding: 0;
@@ -382,40 +672,85 @@ fieldset.check-group {
   }
 }
 
-.avatar-editor {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  gap: var(--cui-space-5);
+// ---- A profile's banner and avatar being edited (components/ProfileImageEditor.tsx) ------------------
+
+// The banner across the column and the avatar over its lower edge, as on the profile, each dimmed a little under
+// round buttons to pick a new image or remove it.
+.image-editor-banner {
+  position: relative;
+  aspect-ratio: 3 / 1;
+  overflow: hidden;
+  background: var(--cui-surface-3);
+
+  > img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
 }
 
-.avatar-editor-forms {
+.image-editor-avatar {
+  --cui-avatar-size: 7rem;
+  position: relative;
+  width: var(--cui-avatar-size);
+  margin-block-start: calc(-0.5 * var(--cui-avatar-size));
+  margin-inline-start: var(--beeps-pad);
+
+  > .avatar {
+    box-shadow: 0 0 0 0.25rem var(--cui-bg);
+  }
+
+  > .image-actions {
+    gap: var(--cui-space-1);
+    border-radius: var(--cui-radius-full);
+  }
+}
+
+.image-actions {
+  position: absolute;
+  inset: 0;
   display: flex;
-  flex: 1 1 16rem;
-  flex-direction: column;
-  gap: var(--cui-space-3);
-  min-width: 0;
+  align-items: center;
+  justify-content: center;
+  gap: var(--cui-space-4);
+  background: rgb(0 0 0 / 25%);
+}
 
-  // Only groups the remove button for the live script, which draws it again; no box of its own.
-  > .avatar-remove {
-    display: contents;
+// Only holds the button, the file input and the dialog: no box of its own.
+.image-upload {
+  display: contents;
+}
+
+.image-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  padding: 0;
+  color: #fff;
+  background: rgb(15 15 15 / 75%);
+  border: 0;
+  border-radius: var(--cui-radius-full);
+  cursor: pointer;
+  transition: background-color var(--cui-transition);
+
+  > .icon {
+    --cui-icon-size: 1.375rem;
   }
 
-  > form,
-  > .avatar-remove > form {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: var(--cui-space-3);
-    margin: 0;
+  &:hover {
+    background: rgb(40 40 40 / 75%);
   }
 
-  .field {
-    align-self: stretch;
+  &:focus-visible {
+    @include focus-ring;
   }
 
-  .file {
-    max-width: 100%;
+  .image-editor-avatar & {
+    width: 2.5rem;
+    height: 2.5rem;
   }
 }
 
@@ -517,6 +852,9 @@ fieldset.check-group {
 // ---- The confirmation dialog -------------------------------------------------------------------------
 
 .confirm-dialog {
+  // A little above the middle, where the eye expects it: centred exactly, it looks as if it sat low.
+  inset-block: 0 15dvh;
+
   // A plain dim page behind it: no blur (no glass, see _theme.scss).
   &::backdrop {
     backdrop-filter: none;

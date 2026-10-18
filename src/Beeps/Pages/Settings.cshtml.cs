@@ -11,12 +11,21 @@ using Microsoft.Extensions.Localization;
 
 namespace Beeps.Pages;
 
-/// <summary>The account's own settings: avatar, profile, language, colour scheme and password (PLAN 2.2, 3.4, 6.12).</summary>
+/// <summary>
+/// The account's own settings: avatar, banner, profile, language, colour scheme and password (PLAN 2.2, 3.4, 6.12). As on
+/// Twitter, <c>/settings</c> lists the sections and each has a page of its own (<see cref="SettingsSections"/>); a form
+/// comes back to the section it belongs to, whichever address it was sent to.
+/// </summary>
 [RequestSizeLimit(MediaRules.MaxImageRequestBytes)]
 [RequestFormLimits(MultipartBodyLengthLimit = MediaRules.MaxImageRequestBytes, MemoryBufferThreshold = MediaRules.MaxImageRequestBytes)]
-public sealed class SettingsModel(AccountService accounts, AvatarService avatars, IStringLocalizer<SharedResource> localizer) : PageModel
+public sealed class SettingsModel(AccountService accounts, AvatarService avatars, BannerService banners, IStringLocalizer<SharedResource> localizer) : PageModel
 {
     public AccountSettings Settings { get; private set; } = null!;
+
+    public Uri? BannerUrl { get; private set; }
+
+    /// <summary>The section shown; none for the list of them.</summary>
+    public string? Section { get; private set; }
 
     [BindProperty] public string? DisplayName { get; set; }
 
@@ -34,8 +43,13 @@ public sealed class SettingsModel(AccountService accounts, AvatarService avatars
 
     [BindProperty] public AvatarCropForm Crop { get; set; } = new();
 
-    public async Task<IActionResult> OnGetAsync(CancellationToken cancellationToken)
+    [BindProperty] public IFormFile? Banner { get; set; }
+
+    [BindProperty] public BannerCropForm BannerCrop { get; set; } = new();
+
+    public async Task<IActionResult> OnGetAsync(string? section, CancellationToken cancellationToken)
     {
+        Section = section;
         if (!await LoadAsync(cancellationToken))
         {
             return NotFound();
@@ -46,13 +60,19 @@ public sealed class SettingsModel(AccountService accounts, AvatarService avatars
     }
 
     public async Task<IActionResult> OnPostAvatarAsync(CancellationToken cancellationToken) =>
-        await DoneAsync(await avatars.UploadAsync(User.Viewer(), User.ActorId(), Avatar.ToMediaContent(), Crop.ToCrop(), cancellationToken), "Avatar.Saved", cancellationToken);
+        await DoneAsync(await avatars.UploadAsync(User.Viewer(), User.ActorId(), Avatar.ToMediaContent(), Crop.ToCrop(), cancellationToken), SettingsSections.Profile, "Avatar.Saved", cancellationToken);
 
     public async Task<IActionResult> OnPostRemoveAvatarAsync(CancellationToken cancellationToken) =>
-        await DoneAsync(await avatars.RemoveAsync(User.Viewer(), User.ActorId(), cancellationToken), "Avatar.Removed", cancellationToken);
+        await DoneAsync(await avatars.RemoveAsync(User.Viewer(), User.ActorId(), cancellationToken), SettingsSections.Profile, "Avatar.Removed", cancellationToken);
+
+    public async Task<IActionResult> OnPostBannerAsync(CancellationToken cancellationToken) =>
+        await DoneAsync(await banners.UploadAsync(User.Viewer(), User.ActorId(), Banner.ToMediaContent(), BannerCrop.ToCrop(), cancellationToken), SettingsSections.Profile, "Banner.Saved", cancellationToken);
+
+    public async Task<IActionResult> OnPostRemoveBannerAsync(CancellationToken cancellationToken) =>
+        await DoneAsync(await banners.RemoveAsync(User.Viewer(), User.ActorId(), cancellationToken), SettingsSections.Profile, "Banner.Removed", cancellationToken);
 
     public async Task<IActionResult> OnPostProfileAsync(CancellationToken cancellationToken) =>
-        await DoneAsync(await accounts.UpdateProfileAsync(User.ActorId(), DisplayName, Bio, cancellationToken), "Settings.ProfileSaved", cancellationToken);
+        await DoneAsync(await accounts.UpdateProfileAsync(User.ActorId(), DisplayName, Bio, cancellationToken), SettingsSections.Profile, "Settings.ProfileSaved", cancellationToken);
 
     // The page then simply shows up in the new language; no notice needed.
     public async Task<IActionResult> OnPostLanguageAsync(CancellationToken cancellationToken)
@@ -63,7 +83,7 @@ public sealed class SettingsModel(AccountService accounts, AvatarService avatars
             CultureCookie.Append(Response, SupportedCultures.Find(Culture)!);
         }
 
-        return await DoneAsync(result, notice: null, cancellationToken);
+        return await DoneAsync(result, SettingsSections.Display, notice: null, cancellationToken);
     }
 
     // The page then simply shows up in the new scheme, as do the account's other tabs.
@@ -75,19 +95,21 @@ public sealed class SettingsModel(AccountService accounts, AvatarService avatars
             ThemeCookie.Set(Response, Theme);
         }
 
-        return await DoneAsync(result, notice: null, cancellationToken);
+        return await DoneAsync(result, SettingsSections.Display, notice: null, cancellationToken);
     }
 
     public async Task<IActionResult> OnPostPasswordAsync(CancellationToken cancellationToken) =>
         await DoneAsync(
             await accounts.ChangePasswordAsync(User.ActorId(), User.SessionId(), CurrentPassword, NewPassword, cancellationToken),
+            SettingsSections.Password,
             "Settings.PasswordChanged",
             cancellationToken);
 
-    private async Task<IActionResult> DoneAsync(Result result, string? notice, CancellationToken cancellationToken)
+    private async Task<IActionResult> DoneAsync(Result result, string section, string? notice, CancellationToken cancellationToken)
     {
         if (!result.IsSuccess)
         {
+            Section = section;
             await LoadAsync(cancellationToken);
             return this.ShowError(result.Error);
         }
@@ -97,7 +119,7 @@ public sealed class SettingsModel(AccountService accounts, AvatarService avatars
             TempData[Notices.Success] = localizer[notice].Value;
         }
 
-        return RedirectToPage();
+        return RedirectToPage(new { section });
     }
 
     private async Task<bool> LoadAsync(CancellationToken cancellationToken)
@@ -106,6 +128,7 @@ public sealed class SettingsModel(AccountService accounts, AvatarService avatars
         if (settings.IsSuccess)
         {
             Settings = settings.Value;
+            BannerUrl = await banners.GetUrlAsync(User.ActorId(), cancellationToken);
         }
 
         return settings.IsSuccess;

@@ -95,7 +95,7 @@ public sealed class ProfilePagesTests : IDisposable
 
         var ownCard = Islands.Props(own, "profile").GetProperty("profile");
         Assert.True(ownCard.GetProperty("mine").GetBoolean());
-        Assert.Equal("/settings", ownCard.GetProperty("editUrl").GetString());
+        Assert.Equal("/settings/profile", ownCard.GetProperty("editUrl").GetString());
         var agentsCard = Islands.Props(agents, "profile").GetProperty("profile");
         Assert.True(agentsCard.GetProperty("mine").GetBoolean());
         Assert.Equal($"/agents/{agent.Id:D}", agentsCard.GetProperty("editUrl").GetString());

@@ -16,6 +16,8 @@ public sealed class SkiaImageProcessor : IImageProcessor
 
     private const float AvatarQuality = 85;
 
+    private const float BannerQuality = 85;
+
     // Downscaling by large factors needs mipmaps, or fine detail turns into noise.
     private static readonly SKSamplingOptions Sampling = new(SKFilterMode.Linear, SKMipmapMode.Linear);
 
@@ -32,7 +34,7 @@ public sealed class SkiaImageProcessor : IImageProcessor
         return new ImageHeader(format, width, height);
     }
 
-    public ImageVariants? Encode(ReadOnlyMemory<byte> data, AvatarCrop? avatarCrop = null)
+    public ImageVariants? Encode(ReadOnlyMemory<byte> data, AvatarCrop? avatarCrop = null, BannerCrop? bannerCrop = null)
     {
         using var skData = SKData.CreateCopy(data.Span);
         using var codec = SKCodec.Create(skData);
@@ -62,7 +64,17 @@ public sealed class SkiaImageProcessor : IImageProcessor
         var full = Render(image, origin, whole, fullWidth, fullHeight, FullQuality);
         var thumbnail = Render(image, origin, whole, thumbWidth, thumbHeight, ThumbnailQuality);
         var avatar = Render(image, origin, square, avatarSide, avatarSide, AvatarQuality);
-        return full is null || thumbnail is null || avatar is null ? null : new ImageVariants(full, fullWidth, fullHeight, thumbnail, avatar);
+        var banner = bannerCrop is { } strip ? RenderBanner(image, origin, strip) : null;
+        return full is null || thumbnail is null || avatar is null || (bannerCrop is not null && banner is null)
+            ? null
+            : new ImageVariants(full, fullWidth, fullHeight, thumbnail, avatar, banner);
+    }
+
+    private static byte[]? RenderBanner(SKImage image, SKEncodedOrigin origin, BannerCrop strip)
+    {
+        var width = Math.Min(strip.Width, MediaRules.BannerWidth);
+        return Render(
+            image, origin, SKRect.Create(strip.X, strip.Y, strip.Width, strip.Height), width, Math.Max(1, width / MediaRules.BannerAspect), BannerQuality);
     }
 
     /// <summary>The first frame, fully decoded; null unless every pixel decoded (a truncated file is rejected).</summary>

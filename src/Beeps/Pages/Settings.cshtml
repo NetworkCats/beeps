@@ -1,4 +1,4 @@
-@page "/settings"
+@page "/settings/{section:regex(^(profile|account|password|display)$)?}"
 @using Beeps.Features.Accounts
 @using Beeps.Features.Avatars
 @using Beeps.Features.Localization
@@ -8,11 +8,16 @@
 @{
     ViewData["Title"] = L["Settings.Title"];
     var theme = Themes.For(User, ViewContext.HttpContext.Request);
-    // Shows the saved name, bio and avatar, also when changed in another tab, unless they are being edited here.
+    // Shows the saved name, bio, avatar and banner, also when changed in another tab, unless they are being edited here.
+    // The forms post to the section they are on, so a refused one comes back to it.
+    var profile = SitePaths.SettingsSection(SettingsSections.Profile);
     var props = new SettingsProps(
+        Model.Section,
         new LiveProps(Actors: [User.ActorId()]),
-        new AvatarEditorProps(Avatars.For(User.ActorId(), User.AvatarKey()), User.AvatarKey() is not null, SitePaths.Settings),
+        new AvatarEditorProps(Avatars.For(User.ActorId(), User.AvatarKey()), User.AvatarKey() is not null, profile),
+        new BannerEditorProps(Model.BannerUrl, profile),
         Model.Settings.Handle,
+        Model.Settings.Email,
         Model.DisplayName,
         Model.Bio,
         Model.Settings.Locale,
@@ -24,7 +29,7 @@
         AccountRules.PasswordMaxLength);
 }
 @section Head {
-    <link rel="stylesheet" href="~/dist/avatar-crop.css" asp-append-version="true">
+    <link rel="stylesheet" href="~/dist/image-crop.css" asp-append-version="true">
 }
 @* Members only, so signed in: Client/app/pages/Settings.tsx draws the page from these props. *@
-<island name="settings" skeleton="form" props="props" />
+<island name="settings" skeleton="@(Model.Section is null ? "list" : "form")" props="props" />

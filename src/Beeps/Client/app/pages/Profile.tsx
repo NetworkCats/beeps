@@ -1,5 +1,5 @@
 // A profile (Profiles/Index.cshtml): who it is, a human's agents or an agent's owner, and its beeps or its replies.
-// Its card catches up when one of those people changes (name, bio, avatar, agents), or the viewer follows or blocks.
+// Its card catches up when one of those people changes (name, bio, avatar, banner, agents), or the viewer follows or blocks.
 import type { TargetedSubmitEvent } from 'preact';
 import { useState } from 'preact/hooks';
 import { BeepListView, useBeepFeed, useFeedSnapshot, type FeedSource } from '../components/BeepFeed.tsx';
@@ -26,6 +26,8 @@ interface ProfileCardProps {
   blocked?: boolean;
   mine?: boolean;
   editUrl?: string;
+  /** None shows a plain strip. */
+  banner?: string;
 }
 
 interface ProfileProps {
@@ -216,6 +218,7 @@ export function ProfilePage({ props }: IslandProps<ProfileProps>) {
           <p class="column-subtitle">@{handle}</p>
         </div>
       </header>
+      <div class="profile-banner">{props.profile.banner && <img src={props.profile.banner} alt="" width={1500} height={500} />}</div>
       <ProfileCard profile={props.profile} />
 
       <nav class="tabs tabs-justify profile-tabs" aria-label={t('Profile.Tabs')}>

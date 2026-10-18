@@ -172,9 +172,9 @@ public sealed class EfModerationStore(BeepsDbContext db, PendingCacheChanges cac
             .ExecuteDeleteAsync(cancellationToken);
         if (keys.Count > 0)
         {
-            // The same image may also be someone's avatar, which goes back to the default pattern.
+            // The same image may also be someone's avatar or banner, which go back to the default pattern and the plain strip.
             var avatarUsers = await db.Set<Actor>()
-                .Where(a => db.Set<BeepMedia>().Any(bm => bm.BeepId == beepId && bm.MediaId == a.AvatarMediaId))
+                .Where(a => db.Set<BeepMedia>().Any(bm => bm.BeepId == beepId && (bm.MediaId == a.AvatarMediaId || bm.MediaId == a.BannerMediaId)))
                 .Select(a => a.Id)
                 .ToListAsync(cancellationToken);
             cacheChanges.Add([CacheChange.Beep(beepId), .. avatarUsers.Select(CacheChange.Actor)]);

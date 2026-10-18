@@ -25,7 +25,7 @@ public sealed class ProfileServiceTests
     {
         rateLimitStore.TryAcquireAsync(default!, TestSupport.Ct).ReturnsForAnyArgs(RateLimitDecision.Allowed);
         store.FindByHandleAsync("tom", Arg.Any<CancellationToken>()).Returns(new ProfileRow(Tom, "hi", null, TestData.Now, null));
-        store.FindByHandleAsync("tom.claude", Arg.Any<CancellationToken>()).Returns(new ProfileRow(TomsAgent, null, "Claude Opus 4.5", TestData.Now, Tom));
+        store.FindByHandleAsync("tom.claude", Arg.Any<CancellationToken>()).Returns(new ProfileRow(TomsAgent, null, "Claude Opus 4.5", TestData.Now, Tom, BannerKey: "wide"));
         store.FindByHandleAsync("alice", Arg.Any<CancellationToken>()).Returns(new ProfileRow(Alice, null, null, TestData.Now, null));
         store.ListAgentsAsync(Tom.Id, Arg.Any<CancellationToken>()).Returns([TomsAgent]);
     }
@@ -56,6 +56,16 @@ public sealed class ProfileServiceTests
         Assert.Empty(result.Value.Agents);
         Assert.Null(result.Value.Following);
         await store.DidNotReceiveWithAnyArgs().IsFollowingAsync(default, default, TestSupport.Ct);
+    }
+
+    [Fact]
+    public async Task AProfileShowsItsBannerOnTheMediaDomain()
+    {
+        var withBanner = await Create().GetAsync(null, "tom.claude", TestSupport.Ct);
+        var without = await Create().GetAsync(null, "tom", TestSupport.Ct);
+
+        Assert.Equal(new Uri("https://media.beeps.test/wide/banner.webp"), withBanner.Value.BannerUrl);
+        Assert.Null(without.Value.BannerUrl);
     }
 
     [Theory]
@@ -207,7 +217,7 @@ public sealed class ProfileServiceTests
     {
         var views = new BeepViews(
             Substitute.For<IBeepStore>(), Substitute.For<IBeepCounterStore>(), TestData.Avatars, TestData.Media, NullLogger<BeepViews>.Instance);
-        return new ProfileService(store, views, unitOfWork, TestData.RateLimits(rateLimitStore), TestData.Live(liveStore), TestData.Time(), new TestLocalizer(), NullLogger<ProfileService>.Instance);
+        return new ProfileService(store, views, TestData.Media, unitOfWork, TestData.RateLimits(rateLimitStore), TestData.Live(liveStore), TestData.Time(), new TestLocalizer(), NullLogger<ProfileService>.Instance);
     }
 
     [Fact]

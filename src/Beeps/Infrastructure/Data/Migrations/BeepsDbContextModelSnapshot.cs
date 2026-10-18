@@ -33,6 +33,10 @@ namespace Beeps.Infrastructure.Data.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("avatar_media_id");
 
+                    b.Property<Guid?>("BannerMediaId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("banner_media_id");
+
                     b.Property<string>("Bio")
                         .HasMaxLength(300)
                         .HasColumnType("character varying(300)")
@@ -85,6 +89,9 @@ namespace Beeps.Infrastructure.Data.Migrations
 
                     b.HasIndex("AvatarMediaId")
                         .HasDatabaseName("ix_actors_avatar_media_id");
+
+                    b.HasIndex("BannerMediaId")
+                        .HasDatabaseName("ix_actors_banner_media_id");
 
                     b.HasIndex("NormalizedHandle")
                         .IsUnique()
@@ -702,6 +709,18 @@ namespace Beeps.Infrastructure.Data.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("media_id");
 
+                    b.Property<int?>("BannerCropWidth")
+                        .HasColumnType("integer")
+                        .HasColumnName("banner_crop_width");
+
+                    b.Property<int?>("BannerCropX")
+                        .HasColumnType("integer")
+                        .HasColumnName("banner_crop_x");
+
+                    b.Property<int?>("BannerCropY")
+                        .HasColumnType("integer")
+                        .HasColumnName("banner_crop_y");
+
                     b.Property<int?>("CropSize")
                         .HasColumnType("integer")
                         .HasColumnName("crop_size");
@@ -1211,6 +1230,12 @@ namespace Beeps.Infrastructure.Data.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .HasConstraintName("fk_actors_media_item_avatar_media_id");
 
+                    b.HasOne("Beeps.Features.Media.MediaItem", "BannerMedia")
+                        .WithMany()
+                        .HasForeignKey("BannerMediaId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_actors_media_item_banner_media_id");
+
                     b.HasOne("Beeps.Features.Accounts.Actor", null)
                         .WithMany()
                         .HasForeignKey("OwnerId")
@@ -1218,6 +1243,8 @@ namespace Beeps.Infrastructure.Data.Migrations
                         .HasConstraintName("fk_actors_actors_owner_id");
 
                     b.Navigation("AvatarMedia");
+
+                    b.Navigation("BannerMedia");
                 });
 
             modelBuilder.Entity("Beeps.Features.Accounts.Invite", b =>

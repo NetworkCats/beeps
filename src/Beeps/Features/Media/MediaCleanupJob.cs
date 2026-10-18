@@ -17,7 +17,7 @@ internal sealed partial class MediaJsonContext : JsonSerializerContext;
 
 /// <summary>
 /// Deletes uploads that nothing uses once <see cref="MediaOptions.UnusedRetention"/> has passed: images
-/// uploaded but never posted, avatars that were replaced. Rows go first, in the same transaction as the
+/// uploaded but never posted, avatars and banners that were replaced. Rows go first, in the same transaction as the
 /// message that deletes their objects, so storage never keeps objects of rows that are gone for long.
 /// </summary>
 public sealed partial class MediaCleanupJob(

@@ -19,10 +19,13 @@ public sealed class ProcessMediaHandlerTests
 
         await parts.ProcessQueuedAsync();
 
-        foreach (var name in MediaObjects.All(media.StorageKey))
+        foreach (var name in new[] { MediaObjects.Full(media.StorageKey), MediaObjects.Thumbnail(media.StorageKey), MediaObjects.Avatar(media.StorageKey) })
         {
             await parts.Storage.Received(1).PutAsync(name, Arg.Is<ReadOnlyMemory<byte>>(m => IsWebP(m)), "image/webp", Arg.Any<CancellationToken>());
         }
+
+        // Only uploads from a banner form are stored in a banner size.
+        await parts.Storage.DidNotReceive().PutAsync(MediaObjects.Banner(media.StorageKey), Arg.Any<ReadOnlyMemory<byte>>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
 
         await parts.Store.Received(1).FinishProcessingAsync(media.Id, MediaStatus.Ready, 2048, 683, Arg.Any<CancellationToken>());
     }
@@ -85,7 +88,7 @@ public sealed class ProcessMediaHandlerTests
     {
         var media = await UploadAsync(TestImages.Png());
         var actorId = Guid.NewGuid();
-        parts.Store.ListAvatarUsersAsync(media.Id, Arg.Any<CancellationToken>()).Returns([actorId]);
+        parts.Store.ListActorsUsingAsync(media.Id, Arg.Any<CancellationToken>()).Returns([actorId]);
 
         await parts.ProcessQueuedAsync();
 

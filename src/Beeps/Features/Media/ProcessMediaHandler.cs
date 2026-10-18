@@ -39,7 +39,7 @@ public sealed partial class ProcessMediaHandler(
             return;
         }
 
-        var variants = images.Encode(upload.Data, upload.Crop);
+        var variants = images.Encode(upload.Data, upload.Crop, upload.BannerCrop);
         if (variants is null)
         {
             await FinishAsync(mediaId, MediaStatus.Failed, upload.Width, upload.Height, cancellationToken);
@@ -50,10 +50,18 @@ public sealed partial class ProcessMediaHandler(
         }
 
         // Overwriting the same names is harmless, so a retry after a partial failure simply writes them all again.
-        await Task.WhenAll(
+        List<Task> puts =
+        [
             storage.PutAsync(MediaObjects.Full(upload.StorageKey), variants.Full, MediaObjects.ContentType, cancellationToken),
             storage.PutAsync(MediaObjects.Thumbnail(upload.StorageKey), variants.Thumbnail, MediaObjects.ContentType, cancellationToken),
-            storage.PutAsync(MediaObjects.Avatar(upload.StorageKey), variants.Avatar, MediaObjects.ContentType, cancellationToken));
+            storage.PutAsync(MediaObjects.Avatar(upload.StorageKey), variants.Avatar, MediaObjects.ContentType, cancellationToken),
+        ];
+        if (variants.Banner is { } banner)
+        {
+            puts.Add(storage.PutAsync(MediaObjects.Banner(upload.StorageKey), banner, MediaObjects.ContentType, cancellationToken));
+        }
+
+        await Task.WhenAll(puts);
         if (!await FinishAsync(mediaId, MediaStatus.Ready, variants.Width, variants.Height, cancellationToken))
         {
             // The row went while the objects were written; nothing will ever point at them.
@@ -66,8 +74,8 @@ public sealed partial class ProcessMediaHandler(
         // A beep posted while it was processing showed without it until now (PLAN 6.10: pages show it as it arrives).
         await live.BeepsChangedAsync(await store.ListBeepsUsingAsync(mediaId, cancellationToken), cancellationToken);
 
-        // An avatar set while it was processing showed the default pattern until now.
-        foreach (var actorId in await store.ListAvatarUsersAsync(mediaId, cancellationToken))
+        // An avatar or banner set while it was processing showed the default pattern or no banner until now.
+        foreach (var actorId in await store.ListActorsUsingAsync(mediaId, cancellationToken))
         {
             await accounts.ForgetAccountAsync(actorId, cancellationToken);
             await live.ActorChangedAsync(actorId, cancellationToken);

@@ -33,6 +33,7 @@ public sealed record ThreadProps(
 /// <summary>Who a profile is, as Profiles/Index.cshtml shows it above its beeps.</summary>
 /// <param name="Mine">The viewer's own profile or one of their agents': an edit link instead of follow or block.</param>
 /// <param name="EditUrl">Where that edit link goes.</param>
+/// <param name="Banner">The banner above the card; none shows a plain strip.</param>
 public sealed record ProfileCardProps(
     ActorProps Actor,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Bio,
@@ -43,7 +44,8 @@ public sealed record ProfileCardProps(
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] bool? Following,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] bool? Blocked,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] bool Mine,
-    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? EditUrl)
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? EditUrl,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] Uri? Banner)
 {
     public static ProfileCardProps From(ProfileView profile, bool mine, string? editUrl)
     {
@@ -58,7 +60,8 @@ public sealed record ProfileCardProps(
             profile.Following,
             profile.Blocked,
             mine,
-            editUrl);
+            editUrl,
+            profile.BannerUrl);
     }
 }
 

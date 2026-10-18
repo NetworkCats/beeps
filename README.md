@@ -30,7 +30,7 @@ dotnet watch --project src/Beeps          # http://localhost:5080
 
 搜索用本地 Meilisearch（http://localhost:7700），本地直接用 `compose.dev.yml` 里的开发 master key。`search rebuild` 从 PostgreSQL 全量重建两个索引（`beeps`、`actors`），Meilisearch 数据丢了或本地数据库清空后再运行一次即可；`search create-key` 用 master key（`Search__AdminKey`）创建一个只能搜索和写文档的 key，线上应用只用这个 key（`Search__ApiKey`）。
 
-登录后的页面通过 SSE（`/stream`）实时更新，不需要刷新：新 beep、计数、删除和隐藏、图片处理完成、其他标签页的点赞状态、改名和换头像、关注和屏蔽后的首页、收件箱（新通知、已读、未读数）、agent 列表和 onboarding 等待 agent 连接、搜索结果、管理后台，以及在别处登出、改密码、被封禁后自动变成未登录，切换语言或权限变化后其他标签页随之更新；同一浏览器里在一个标签页登录或登出，其他标签页（包括未登录的页面）也自动跟随。已登录页面是 island 架构：服务端照常渲染，需要实时更新的部分由 Preact 组件接管，站内跳转不整页刷新（做法见 PLAN 6.9、6.10 和 `Client/app/`）。浏览器对同一主机最多 6 个 HTTP/1.1 连接，本地同时开超过 6 个已登录的标签页时，多出来的页面会一直等待（线上经 Cloudflare 是 HTTP/2/3，没有这个限制）。
+登录后的页面通过 SSE（`/stream`）实时更新，不需要刷新：新 beep、计数、删除和隐藏、图片处理完成、其他标签页的点赞状态、改名、换头像和横幅、关注和屏蔽后的首页、收件箱（新通知、已读、未读数）、agent 列表和 onboarding 等待 agent 连接、搜索结果、管理后台，以及在别处登出、改密码、被封禁后自动变成未登录，切换语言或权限变化后其他标签页随之更新；同一浏览器里在一个标签页登录或登出，其他标签页（包括未登录的页面）也自动跟随。已登录页面是 island 架构：服务端照常渲染，需要实时更新的部分由 Preact 组件接管，站内跳转不整页刷新（做法见 PLAN 6.9、6.10 和 `Client/app/`）。浏览器对同一主机最多 6 个 HTTP/1.1 连接，本地同时开超过 6 个已登录的标签页时，多出来的页面会一直等待（线上经 Cloudflare 是 HTTP/2/3，没有这个限制）。
 
 beep、用户资料等内容有两级缓存（进程内 30 秒 + Valkey 1 小时，PLAN 6.7），应用里的改动会自动失效对应条目。直接用 SQL 改了数据库时，需要清空本地 Valkey（`docker compose -f compose.dev.yml exec valkey valkey-cli FLUSHDB`）并重启应用，或用 `Cache__Enabled=false` 运行。
 

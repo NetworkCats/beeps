@@ -22,7 +22,8 @@ public sealed class EfMediaStore(BeepsDbContext db, PendingCacheChanges cacheCha
                 x.m.Width,
                 x.m.Height,
                 x.u.Data,
-                x.u.CropSize == null ? null : new AvatarCrop(x.u.CropX ?? 0, x.u.CropY ?? 0, x.u.CropSize.Value)))
+                x.u.CropSize == null ? null : new AvatarCrop(x.u.CropX ?? 0, x.u.CropY ?? 0, x.u.CropSize.Value),
+                x.u.BannerCropWidth == null ? null : new BannerCrop(x.u.BannerCropX ?? 0, x.u.BannerCropY ?? 0, x.u.BannerCropWidth.Value)))
             .FirstOrDefaultAsync(cancellationToken);
 
     public async Task<bool> FinishProcessingAsync(Guid mediaId, MediaStatus status, int width, int height, CancellationToken cancellationToken)
@@ -33,9 +34,9 @@ public sealed class EfMediaStore(BeepsDbContext db, PendingCacheChanges cacheCha
         await db.Set<MediaUpload>().Where(u => u.MediaId == mediaId).ExecuteDeleteAsync(cancellationToken);
         if (updated > 0 && status == MediaStatus.Ready)
         {
-            // Beeps and avatars only show ready images, so whatever already uses this one shows it from now on.
+            // Beeps, avatars and banners only show ready images, so whatever already uses this one shows it from now on.
             var beeps = await db.Set<BeepMedia>().Where(bm => bm.MediaId == mediaId).Select(bm => bm.BeepId).ToListAsync(cancellationToken);
-            var actors = await db.Set<Actor>().Where(a => a.AvatarMediaId == mediaId).Select(a => a.Id).ToListAsync(cancellationToken);
+            var actors = await ListActorsUsingAsync(mediaId, cancellationToken);
             cacheChanges.Add([.. beeps.Select(CacheChange.Beep), .. actors.Select(CacheChange.Actor)]);
         }
 
@@ -45,8 +46,8 @@ public sealed class EfMediaStore(BeepsDbContext db, PendingCacheChanges cacheCha
     public async Task<IReadOnlyList<Guid>> ListBeepsUsingAsync(Guid mediaId, CancellationToken cancellationToken) =>
         await db.Set<BeepMedia>().Where(m => m.MediaId == mediaId).Select(m => m.BeepId).ToListAsync(cancellationToken);
 
-    public async Task<IReadOnlyList<Guid>> ListAvatarUsersAsync(Guid mediaId, CancellationToken cancellationToken) =>
-        await db.Set<Actor>().Where(a => a.AvatarMediaId == mediaId).Select(a => a.Id).ToListAsync(cancellationToken);
+    public async Task<IReadOnlyList<Guid>> ListActorsUsingAsync(Guid mediaId, CancellationToken cancellationToken) =>
+        await db.Set<Actor>().Where(a => a.AvatarMediaId == mediaId || a.BannerMediaId == mediaId).Select(a => a.Id).ToListAsync(cancellationToken);
 
     public async Task<IReadOnlyList<Guid>> LockOwnedAsync(Guid ownerActorId, IReadOnlyCollection<Guid> mediaIds, CancellationToken cancellationToken)
     {
@@ -60,7 +61,7 @@ public sealed class EfMediaStore(BeepsDbContext db, PendingCacheChanges cacheCha
     }
 
     public async Task<IReadOnlyList<string>> DeleteUnusedAsync(DateTimeOffset cutoff, int batchSize, CancellationToken cancellationToken) =>
-        // SKIP LOCKED passes over media a beep or an avatar is taking right now (see LockOwnedAsync).
+        // SKIP LOCKED passes over media a beep, an avatar or a banner is taking right now (see LockOwnedAsync).
         await db.Database
             .SqlQuery<string>(
                 $"""
@@ -69,6 +70,7 @@ public sealed class EfMediaStore(BeepsDbContext db, PendingCacheChanges cacheCha
                     WHERE m.created_at < {cutoff}
                       AND NOT EXISTS (SELECT 1 FROM beep_media bm WHERE bm.media_id = m.id)
                       AND NOT EXISTS (SELECT 1 FROM actors a WHERE a.avatar_media_id = m.id)
+                      AND NOT EXISTS (SELECT 1 FROM actors a WHERE a.banner_media_id = m.id)
                     ORDER BY m.created_at
                     LIMIT {batchSize}
                     FOR UPDATE SKIP LOCKED)
@@ -90,4 +92,19 @@ public sealed class EfMediaStore(BeepsDbContext db, PendingCacheChanges cacheCha
             .ExecuteUpdateAsync(s => s.SetProperty(a => a.AvatarMediaId, mediaId), cancellationToken);
         cacheChanges.Add(CacheChange.Actor(actorId));
     }
+
+    public async Task SetBannerAsync(Guid actorId, Guid? mediaId, CancellationToken cancellationToken)
+    {
+        await db.Set<Actor>()
+            .Where(a => a.Id == actorId)
+            .ExecuteUpdateAsync(s => s.SetProperty(a => a.BannerMediaId, mediaId), cancellationToken);
+        cacheChanges.Add(CacheChange.Actor(actorId));
+    }
+
+    public Task<string?> FindBannerKeyAsync(Guid actorId, CancellationToken cancellationToken) =>
+        db.Set<Actor>()
+            .AsNoTracking()
+            .Where(a => a.Id == actorId && a.BannerMedia != null && a.BannerMedia.Status == MediaStatus.Ready)
+            .Select(a => a.BannerMedia!.StorageKey)
+            .FirstOrDefaultAsync(cancellationToken);
 }
