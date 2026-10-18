@@ -13,6 +13,7 @@ import { visit } from '../router.ts';
 import { useSeen } from '../seen.ts';
 import { showToast } from '../toasts.ts';
 import { copyText } from '../clipboard.ts';
+import { showInLightbox, type LightboxImage } from '../lightbox.ts';
 import { Antiforgery, count } from './Forms.tsx';
 import { Icon } from './Icon.tsx';
 import { Menu } from './Menu.tsx';
@@ -61,6 +62,13 @@ export function BeepCard({ id, focused, inThread, replyingTo, inInbox }: CardPla
   const permalink = paths.beep(beep.id);
   const returnUrl = here();
   const member = viewer.value.member;
+  const images: LightboxImage[] = beep.media.map((image, i) => ({
+    src: image.url,
+    alt: t('Beep.Image', i + 1, beep.media.length),
+    width: image.width,
+    height: image.height,
+    thumbnail: image.thumbnail,
+  }));
 
   // The whole card opens the beep, as on other social sites; its time is the real link, for keyboards and readers.
   const open = (event: TargetedMouseEvent<HTMLElement>): void => {
@@ -180,10 +188,10 @@ export function BeepCard({ id, focused, inThread, replyingTo, inInbox }: CardPla
         {beep.media.length > 0 && (
           <div class={`beep-media beep-media-${beep.media.length}`}>
             {beep.media.map((image, i) => (
-              <a class="beep-image" href={image.url} target="_blank" rel="noopener" key={image.url}>
+              <a class="beep-image" href={image.url} target="_blank" rel="noopener" key={image.url} onClick={showInLightbox(images, i)}>
                 <img
                   src={image.thumbnail}
-                  alt={t('Beep.Image', i + 1, beep.media.length)}
+                  alt={images[i]?.alt}
                   width={image.width}
                   height={image.height}
                   loading="lazy"

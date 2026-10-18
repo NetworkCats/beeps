@@ -5,6 +5,7 @@ import { Antiforgery } from '../../components/Forms.tsx';
 import { Time } from '../../components/Time.tsx';
 import { sending } from '../../forms.ts';
 import { t } from '../../i18n.ts';
+import { showInLightbox } from '../../lightbox.ts';
 import type { IslandProps } from '../../islands.tsx';
 import { useLive } from '../../page.ts';
 import { paths } from '../../paths.ts';
@@ -93,7 +94,12 @@ function label(map: Record<string, string>, value: string): string {
 function Media({ media }: { media: ReviewMedia }) {
   if (media.status === 'Ready' && media.url && media.thumbnail) {
     return (
-      <a href={media.url} target="_blank" rel="noopener">
+      <a
+        href={media.url}
+        target="_blank"
+        rel="noopener"
+        onClick={showInLightbox([{ src: media.url, alt: t('Admin.Beep.Image'), width: media.width, height: media.height, thumbnail: media.thumbnail }])}
+      >
         <img src={media.thumbnail} alt={t('Admin.Beep.Image')} width={media.width} height={media.height} loading="lazy" />
       </a>
     );

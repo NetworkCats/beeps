@@ -40,12 +40,12 @@
     <div class="profile-banner">
         @if (profile.BannerUrl is { } banner)
         {
-            <img src="@banner" alt="" width="1500" height="500">
+            <a href="@banner" target="_blank" rel="noopener"><img src="@banner" alt="@L["Profile.Banner"]" width="1500" height="500"></a>
         }
     </div>
     <div class="profile-card">
         <div class="profile-top">
-            <span class="avatar profile-avatar"><img src="@actor.AvatarUrl" alt="" width="88" height="88"></span>
+            <a class="avatar profile-avatar" href="@actor.AvatarUrl" target="_blank" rel="noopener"><img src="@actor.AvatarUrl" alt="@L["Profile.Avatar"]" width="88" height="88"></a>
             <div class="profile-actions">
                 @if (!isAgent)
                 {

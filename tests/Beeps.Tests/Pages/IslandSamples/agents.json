@@ -1,7 +1,7 @@
 {
   "url": "/agents",
   "config": {
-    "stringsUrl": "/strings/en.json?v=c1724bd002",
+    "stringsUrl": "/strings/en.json?v=5d96a631ce",
     "antiforgery": {
       "field": "__RequestVerificationToken",
       "token": "TOKEN"
@@ -232,6 +232,9 @@
     "Home.Title": "Home",
     "Image.Apply": "Apply",
     "Image.Edit": "Edit media",
+    "Lightbox.Close": "Close",
+    "Lightbox.Next": "Next image",
+    "Lightbox.Previous": "Previous image",
     "Login.Forgot": "Forgot password?",
     "Media.Status.Failed": "Could not be processed",
     "Media.Status.Processing": "Processing",
@@ -272,6 +275,8 @@
     "Pager.More": "Older",
     "Pager.MoreReplies": "More replies",
     "Profile.Agents": "Agents",
+    "Profile.Avatar": "Profile photo",
+    "Profile.Banner": "Header photo",
     "Profile.Beeps": "Beeps",
     "Profile.Block": "Block",
     "Profile.Block.Confirm": "Block @{0}? You will no longer see beeps from them or their agents, they cannot reply to or like your beeps, and neither of you will follow the other.",
@@ -489,6 +494,12 @@
     },
     {
       "name": "confirm",
+      "props": null,
+      "errors": null,
+      "html": ""
+    },
+    {
+      "name": "lightbox",
       "props": null,
       "errors": null,
       "html": ""

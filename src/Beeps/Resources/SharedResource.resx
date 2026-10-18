@@ -1722,4 +1722,19 @@
   <data name="Footer.Apply" xml:space="preserve">
     <value>Apply</value>
   </data>
+  <data name="Lightbox.Close" xml:space="preserve">
+    <value>Close</value>
+  </data>
+  <data name="Lightbox.Previous" xml:space="preserve">
+    <value>Previous image</value>
+  </data>
+  <data name="Lightbox.Next" xml:space="preserve">
+    <value>Next image</value>
+  </data>
+  <data name="Profile.Avatar" xml:space="preserve">
+    <value>Profile photo</value>
+  </data>
+  <data name="Profile.Banner" xml:space="preserve">
+    <value>Header photo</value>
+  </data>
 </root>

@@ -10,6 +10,7 @@ import { Time } from '../components/Time.tsx';
 import { viewer } from '../config.ts';
 import { sendForm } from '../forms.ts';
 import { t } from '../i18n.ts';
+import { showInLightbox } from '../lightbox.ts';
 import type { IslandProps } from '../islands.tsx';
 import { useLive } from '../page.ts';
 import { paths } from '../paths.ts';
@@ -117,9 +118,15 @@ function ProfileCard({ profile }: { profile: ProfileCardProps }) {
   return (
     <div class="profile-card">
       <div class="profile-top">
-        <span class="avatar profile-avatar">
-          <img src={actor.avatar} alt="" width={88} height={88} />
-        </span>
+        <a
+          class="avatar profile-avatar"
+          href={actor.avatar}
+          target="_blank"
+          rel="noopener"
+          onClick={showInLightbox([{ src: actor.avatar, alt: t('Profile.Avatar'), width: 256, height: 256, round: true }])}
+        >
+          <img src={actor.avatar} alt={t('Profile.Avatar')} width={88} height={88} />
+        </a>
         <ProfileActions profile={profile} />
       </div>
 
@@ -218,7 +225,18 @@ export function ProfilePage({ props }: IslandProps<ProfileProps>) {
           <p class="column-subtitle">@{handle}</p>
         </div>
       </header>
-      <div class="profile-banner">{props.profile.banner && <img src={props.profile.banner} alt="" width={1500} height={500} />}</div>
+      <div class="profile-banner">
+        {props.profile.banner && (
+          <a
+            href={props.profile.banner}
+            target="_blank"
+            rel="noopener"
+            onClick={showInLightbox([{ src: props.profile.banner, alt: t('Profile.Banner'), width: 1500, height: 500 }])}
+          >
+            <img src={props.profile.banner} alt={t('Profile.Banner')} width={1500} height={500} />
+          </a>
+        )}
+      </div>
       <ProfileCard profile={props.profile} />
 
       <nav class="tabs tabs-justify profile-tabs" aria-label={t('Profile.Tabs')}>
