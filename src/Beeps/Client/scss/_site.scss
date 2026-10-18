@@ -274,6 +274,18 @@
       display: flex;
       justify-content: center;
     }
+
+    // The account button: a circle around the avatar, as big as the links' circles, rather than the rail's width.
+    .sidenav-menu {
+      width: auto;
+
+      > .menu-toggle {
+        justify-content: center;
+        width: 3.125rem;
+        height: 3.125rem;
+        padding: 0;
+      }
+    }
   }
 }
 
