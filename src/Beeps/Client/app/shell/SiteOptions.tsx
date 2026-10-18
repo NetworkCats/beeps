@@ -1,4 +1,5 @@
-// The site's own links and settings (Pages/Shared/_SiteOptions.cshtml), in the footer and in the top bar's "more" menu.
+// The site's own links and settings (Pages/Shared/_SiteOptions.cshtml), in the footer and in the top bar's or the
+// navigation rail's "more" menu.
 // A language takes effect as soon as it is picked (the page is shown anew in it). A colour scheme switches the page in
 // place and is saved in the background: in the cookie, and signed in to the account, whose other tabs then switch too.
 // Signed out the forms are GETs, so cached public pages carry no antiforgery token.
@@ -19,6 +20,7 @@ interface OptionProps {
 
 interface SiteOptionsProps {
   menu?: boolean;
+  rail?: boolean;
   signedIn?: boolean;
   returnUrl: string;
   culture: string;
@@ -96,11 +98,18 @@ export function SiteOptions({ props }: IslandProps<SiteOptionsProps>) {
   if (!props.menu) return <Options props={props} />;
   return (
     <Menu
-      class="menu topbar-more"
+      class={props.rail ? 'menu sidenav-more' : 'menu topbar-more'}
       summary={
-        <summary class="topbar-more-toggle" aria-label={t('Nav.More')}>
-          <Icon name="more_horiz" />
-        </summary>
+        props.rail ? (
+          <summary class="sidenav-item" aria-label={t('Nav.More')}>
+            <Icon name="more_horiz" />
+            <span class="sidenav-label">{t('Nav.More')}</span>
+          </summary>
+        ) : (
+          <summary class="topbar-more-toggle" aria-label={t('Nav.More')}>
+            <Icon name="more_horiz" />
+          </summary>
+        )
       }
     >
       <div class="dropdown-menu menu-panel site-menu">

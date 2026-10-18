@@ -394,6 +394,46 @@
       "html": ""
     },
     {
+      "name": "site-options",
+      "props": {
+        "menu": true,
+        "rail": true,
+        "signedIn": true,
+        "returnUrl": "/beeps/00000000-0000-7000-8000-00000000000b",
+        "culture": "en",
+        "cultures": [
+          {
+            "value": "en",
+            "label": "English",
+            "lang": "en"
+          },
+          {
+            "value": "zh-Hans",
+            "label": "简体中文",
+            "lang": "zh-Hans"
+          }
+        ],
+        "theme": "system",
+        "themes": [
+          {
+            "value": "system",
+            "label": "Auto"
+          },
+          {
+            "value": "light",
+            "label": "Light"
+          },
+          {
+            "value": "dark",
+            "label": "Dark"
+          }
+        ],
+        "year": 2026
+      },
+      "errors": null,
+      "html": ""
+    },
+    {
       "name": "account-menu",
       "props": {
         "rail": true

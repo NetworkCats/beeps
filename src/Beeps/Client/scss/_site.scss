@@ -2,7 +2,8 @@
 //
 // The app shell of a social feed: a navigation rail on the left, one content column with hairlines on
 // both sides, and a side column (search, about, footer) on wide screens. Narrow screens get a top bar
-// and a tab bar at the bottom instead of the rail. Everything sits on the one page colour; hairlines
+// and a tab bar at the bottom instead of the rail. Without the side column its footer is in a "more"
+// menu (the top bar's, the rail's), never under the column: an endless feed would keep it out of reach. Everything sits on the one page colour; hairlines
 // only separate items of a list and the column from its header, never parts of one thing.
 //
 // Rhythm: 15px text on a ~20px line, 16px column padding, 12px between an avatar and its text, 40px
@@ -43,8 +44,8 @@
 .shell {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  grid-template-areas: "top" "main" "aside";
-  grid-template-rows: auto 1fr auto;
+  grid-template-areas: "top" "main";
+  grid-template-rows: auto 1fr;
   min-height: 100dvh;
 
   // Room for the tab bar, so the end of the page is never under it.
@@ -54,8 +55,8 @@
 
   @include mq(sm) {
     grid-template-columns: 4.5rem minmax(0, var(--beeps-column-width));
-    grid-template-areas: "nav main" "nav aside";
-    grid-template-rows: 1fr auto;
+    grid-template-areas: "nav main";
+    grid-template-rows: auto;
     justify-content: center;
 
     &:has(> .tabbar) {
@@ -66,7 +67,6 @@
   @include mq(lg) {
     grid-template-columns: 4.5rem minmax(0, var(--beeps-column-width)) var(--beeps-aside-width);
     grid-template-areas: "nav main aside";
-    grid-template-rows: auto;
   }
 
   @include mq(xl) {
@@ -81,8 +81,7 @@
   }
 
   @include mq(lg) {
-    grid-template-areas: "nav main" "nav aside";
-    grid-template-rows: 1fr auto;
+    grid-template-areas: "nav main";
   }
 
   @include mq(xl) {
@@ -123,6 +122,7 @@
   }
 
   > .shell-nav-links,
+  .sidenav-more,
   > .sidenav-footer {
     padding-inline: var(--cui-space-2);
 
@@ -199,6 +199,26 @@
     width: 100%;
     padding-block-start: var(--cui-space-6);
   }
+
+  // The side column's footer, where there is none: screens in between, and the wide pages (admin).
+  .sidenav-more {
+    display: none;
+
+    @include mq(max-lg) {
+      display: block;
+    }
+
+    // A pill around its icon and label, as the links are.
+    > .sidenav-item {
+      @include mq(xl) {
+        width: fit-content;
+      }
+    }
+  }
+}
+
+.shell-wide .shell-nav .sidenav-more {
+  display: block;
 }
 
 // The unread count on the corner of the bell.
@@ -360,8 +380,9 @@
   font-size: var(--beeps-text-size);
 }
 
-// The rail's account menu opens upwards; the top bar's opens down from the left.
-.sidenav-menu > .menu-panel {
+// The rail's menus open upwards; the top bar's opens down from the left.
+.sidenav-menu > .menu-panel,
+.sidenav-more > .menu-panel {
   inset-block: auto calc(100% + var(--cui-space-2));
   inset-inline: 0 auto;
 }
@@ -448,56 +469,28 @@
 
 // ---- Side column -------------------------------------------------------------------------------
 
+// Wide screens only, and not on the wide pages (admin); otherwise its footer is in a "more" menu.
 .shell-aside {
   grid-area: aside;
-  // Narrow screens have no side column: its footer is in the top bar's menu.
   display: none;
   flex-direction: column;
   gap: var(--cui-space-4);
   min-width: 0;
-  padding: var(--cui-space-6) var(--beeps-pad);
-
-  // Below lg the side column is only the footer, under the content column.
-  > :not(.site-footer) {
-    display: none;
-  }
-
-  @include mq(sm) {
-    display: flex;
-    border-inline: var(--cui-border-width) solid var(--cui-border);
-  }
 
   @include mq(lg) {
     position: sticky;
     inset-block-start: 0;
     align-self: start;
+    display: flex;
     max-height: 100dvh;
     padding: 0 0 var(--cui-space-6) var(--cui-space-7);
     overflow-y: auto;
     scrollbar-width: none;
-    border: 0;
-
-    > .aside-search {
-      display: grid;
-    }
-
-    > .aside-card {
-      display: flex;
-    }
   }
 }
 
 .shell-wide > .shell-aside {
-  @include mq(lg) {
-    position: static;
-    padding: var(--cui-space-6) var(--beeps-pad);
-    border-inline: var(--cui-border-width) solid var(--cui-border);
-
-    > .aside-search,
-    > .aside-card {
-      display: none;
-    }
-  }
+  display: none;
 }
 
 // The side column's search sits where the column headers sit, and stays there.
@@ -532,6 +525,7 @@
 }
 
 .aside-card {
+  display: flex;
   flex-direction: column;
   gap: var(--cui-space-3);
   padding: var(--cui-space-3) var(--cui-space-4) var(--cui-space-4);

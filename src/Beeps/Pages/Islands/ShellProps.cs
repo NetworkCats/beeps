@@ -9,11 +9,26 @@ public sealed record AccountMenuProps([property: JsonIgnore(Condition = JsonIgno
 
 public sealed record OptionProps(string Value, string Label, [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Lang = null);
 
+/// <summary>Where <c>_SiteOptions.cshtml</c> is drawn: wherever the screen has no side column, a "more" menu holds its footer.</summary>
+public enum SiteOptionsPlace
+{
+    /// <summary>The side column's footer (wide screens).</summary>
+    Footer,
+
+    /// <summary>The top bar's "more" menu (narrow screens).</summary>
+    TopBar,
+
+    /// <summary>The navigation rail's "more" menu (screens in between, and wide pages with no side column).</summary>
+    Rail,
+}
+
 /// <summary>The language and colour scheme switches of <c>_SiteOptions.cshtml</c>.</summary>
-/// <param name="Menu">In the top bar's "more" menu, rather than the footer.</param>
+/// <param name="Menu">In a "more" menu, rather than the footer.</param>
+/// <param name="Rail">The menu is the navigation rail's, rather than the top bar's.</param>
 /// <param name="SignedIn">The choice is posted and saved to the account; signed out it is a GET, with no antiforgery token.</param>
 public sealed record SiteOptionsProps(
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] bool Menu,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] bool Rail,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] bool SignedIn,
     string ReturnUrl,
     string Culture,

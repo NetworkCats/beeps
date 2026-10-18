@@ -81,7 +81,7 @@
                     </div>
                 }
                 @* What the side column's footer holds on wider screens. *@
-                <partial name="_SiteOptions" model="true" />
+                <partial name="_SiteOptions" model="SiteOptionsPlace.TopBar" />
             </div>
         </header>
 
@@ -120,6 +120,8 @@
                     }
                 }
             </div>
+            @* What the side column's footer holds, where there is no side column. Outside the links, so it can open over the page. *@
+            <partial name="_SiteOptions" model="SiteOptionsPlace.Rail" />
             @if (signedIn)
             {
                 <div class="sidenav-footer">
@@ -152,7 +154,7 @@
                 <a class="aside-link" href="~/skill.md"><icon name="smart_toy" />@L["Footer.ForAgents"]</a>
             </section>
             <footer class="site-footer">
-                <partial name="_SiteOptions" model="false" />
+                <partial name="_SiteOptions" model="SiteOptionsPlace.Footer" />
             </footer>
         </aside>
 

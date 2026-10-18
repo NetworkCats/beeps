@@ -122,10 +122,11 @@ function draw(record: Mounted, component: Component): void {
  */
 export function mountIslands(root: ParentNode, saved?: ReadonlyMap<string, Envelope>): Promise<void> {
   const waiting: Array<Promise<void>> = [];
+  const key = keyer();
   for (const element of root.querySelectorAll<HTMLElement>('[data-island]')) {
     const name = element.dataset.island ?? '';
     if (!components.has(name) && !lazy.has(name)) continue;
-    const envelope = saved?.get(name) ?? read(element);
+    const envelope = saved?.get(key(name)) ?? read(element);
     if (!envelope) continue;
     const record: Mounted = { name, element, envelope: signal(envelope) };
     mounted.push(record);
@@ -159,13 +160,28 @@ export function applyIslands(page: IslandsPage): void {
   }
 }
 
+/**
+ * What an island's props are saved under: its name, and after the first its place among those of that name (the
+ * layout draws some twice, the top bar's and the side column's, each from props of its own).
+ */
+function keyer(): (name: string) => string {
+  const seen = new Map<string, number>();
+  return (name) => {
+    const count = seen.get(name) ?? 0;
+    seen.set(name, count + 1);
+    return count === 0 ? name : `${name}#${count}`;
+  };
+}
+
 /** Each island's props as it is drawn now, for drawing the page again as it was left. */
 export function snapshotIslands(): Map<string, Envelope> {
   const saved = new Map<string, Envelope>();
-  for (const record of mounted) {
-    if (saved.has(record.name)) continue;
+  const key = keyer();
+  // In the order of the page, as mountIslands goes through it.
+  const ordered = [...mounted].sort((a, b) => (a.element.compareDocumentPosition(b.element) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1));
+  for (const record of ordered) {
     const props = record.snapshot ? record.snapshot() : record.envelope.value.props;
-    saved.set(record.name, { props, errors: record.envelope.value.errors });
+    saved.set(key(record.name), { props, errors: record.envelope.value.errors });
   }
   return saved;
 }

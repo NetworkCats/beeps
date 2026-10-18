@@ -378,7 +378,46 @@
         "year": 2026
       },
       "errors": null,
-      "html": "<details class=\"menu topbar-more\">\n        <summary class=\"topbar-more-toggle\" aria-label=\"More\"><span class=\"icon\" aria-hidden=\"true\">more_horiz</span></summary>\n        <div class=\"dropdown-menu menu-panel site-menu\">\n            <a class=\"footer-link\" href=\"/about\">About</a>\n<form class=\"footer-switch\" method=\"get\" action=\"/culture\">\n    <input type=\"hidden\" name=\"returnUrl\" value=\"/beeps/00000000-0000-7000-8000-00000000000b\">\n    <span class=\"icon\" aria-hidden=\"true\">language</span>\n    <select class=\"footer-select\" name=\"culture\" aria-label=\"Language\">\n            <option value=\"en\" lang=\"en\" selected=\"selected\">English</option>\n            <option value=\"zh-Hans\" lang=\"zh-Hans\">简体中文</option>\n    </select>\n    <button class=\"footer-apply\" type=\"submit\">Apply</button>\n</form>\n<form class=\"footer-switch\" method=\"get\" action=\"/theme\">\n    <input type=\"hidden\" name=\"returnUrl\" value=\"/beeps/00000000-0000-7000-8000-00000000000b\">\n    <span class=\"icon\" aria-hidden=\"true\">contrast</span>\n    <select class=\"footer-select\" name=\"theme\" aria-label=\"Colour scheme\">\n            <option value=\"system\" selected=\"selected\">Auto</option>\n            <option value=\"light\">Light</option>\n            <option value=\"dark\">Dark</option>\n    </select>\n    <button class=\"footer-apply\" type=\"submit\">Apply</button>\n</form>\n<p class=\"footer-note\">© 2026 beeps</p>\n\n        </div>\n    </details>"
+      "html": "<details class=\"menu topbar-more\">\n            <summary class=\"topbar-more-toggle\" aria-label=\"More\"><span class=\"icon\" aria-hidden=\"true\">more_horiz</span></summary>\n        <div class=\"dropdown-menu menu-panel site-menu\">\n            <a class=\"footer-link\" href=\"/about\">About</a>\n<form class=\"footer-switch\" method=\"get\" action=\"/culture\">\n    <input type=\"hidden\" name=\"returnUrl\" value=\"/beeps/00000000-0000-7000-8000-00000000000b\">\n    <span class=\"icon\" aria-hidden=\"true\">language</span>\n    <select class=\"footer-select\" name=\"culture\" aria-label=\"Language\">\n            <option value=\"en\" lang=\"en\" selected=\"selected\">English</option>\n            <option value=\"zh-Hans\" lang=\"zh-Hans\">简体中文</option>\n    </select>\n    <button class=\"footer-apply\" type=\"submit\">Apply</button>\n</form>\n<form class=\"footer-switch\" method=\"get\" action=\"/theme\">\n    <input type=\"hidden\" name=\"returnUrl\" value=\"/beeps/00000000-0000-7000-8000-00000000000b\">\n    <span class=\"icon\" aria-hidden=\"true\">contrast</span>\n    <select class=\"footer-select\" name=\"theme\" aria-label=\"Colour scheme\">\n            <option value=\"system\" selected=\"selected\">Auto</option>\n            <option value=\"light\">Light</option>\n            <option value=\"dark\">Dark</option>\n    </select>\n    <button class=\"footer-apply\" type=\"submit\">Apply</button>\n</form>\n<p class=\"footer-note\">© 2026 beeps</p>\n\n        </div>\n    </details>"
+    },
+    {
+      "name": "site-options",
+      "props": {
+        "menu": true,
+        "rail": true,
+        "returnUrl": "/beeps/00000000-0000-7000-8000-00000000000b",
+        "culture": "en",
+        "cultures": [
+          {
+            "value": "en",
+            "label": "English",
+            "lang": "en"
+          },
+          {
+            "value": "zh-Hans",
+            "label": "简体中文",
+            "lang": "zh-Hans"
+          }
+        ],
+        "theme": "system",
+        "themes": [
+          {
+            "value": "system",
+            "label": "Auto"
+          },
+          {
+            "value": "light",
+            "label": "Light"
+          },
+          {
+            "value": "dark",
+            "label": "Dark"
+          }
+        ],
+        "year": 2026
+      },
+      "errors": null,
+      "html": "<details class=\"menu sidenav-more\">\n            <summary class=\"sidenav-item\" aria-label=\"More\"><span class=\"icon\" aria-hidden=\"true\">more_horiz</span><span class=\"sidenav-label\">More</span></summary>\n        <div class=\"dropdown-menu menu-panel site-menu\">\n            <a class=\"footer-link\" href=\"/about\">About</a>\n<form class=\"footer-switch\" method=\"get\" action=\"/culture\">\n    <input type=\"hidden\" name=\"returnUrl\" value=\"/beeps/00000000-0000-7000-8000-00000000000b\">\n    <span class=\"icon\" aria-hidden=\"true\">language</span>\n    <select class=\"footer-select\" name=\"culture\" aria-label=\"Language\">\n            <option value=\"en\" lang=\"en\" selected=\"selected\">English</option>\n            <option value=\"zh-Hans\" lang=\"zh-Hans\">简体中文</option>\n    </select>\n    <button class=\"footer-apply\" type=\"submit\">Apply</button>\n</form>\n<form class=\"footer-switch\" method=\"get\" action=\"/theme\">\n    <input type=\"hidden\" name=\"returnUrl\" value=\"/beeps/00000000-0000-7000-8000-00000000000b\">\n    <span class=\"icon\" aria-hidden=\"true\">contrast</span>\n    <select class=\"footer-select\" name=\"theme\" aria-label=\"Colour scheme\">\n            <option value=\"system\" selected=\"selected\">Auto</option>\n            <option value=\"light\">Light</option>\n            <option value=\"dark\">Dark</option>\n    </select>\n    <button class=\"footer-apply\" type=\"submit\">Apply</button>\n</form>\n<p class=\"footer-note\">© 2026 beeps</p>\n\n        </div>\n    </details>"
     },
     {
       "name": "thread",

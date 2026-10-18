@@ -2,13 +2,14 @@
 @using Beeps.Features.Localization
 @using Beeps.Features.Site
 @using Beeps.Pages.Islands
-@model bool
+@model SiteOptionsPlace
 @inject TimeProvider Time
-@* The site's own links and settings: the footer under the side column (model false), and the top bar's "more" menu
-   on narrow screens (model true), which have no side column. Client/app/shell/SiteOptions.tsx draws the same markup;
+@* The site's own links and settings: the side column's footer, or where the screen has no side column, a "more" menu
+   in the top bar (narrow screens) or the navigation rail. Client/app/shell/SiteOptions.tsx draws the same markup;
    there a choice takes effect as soon as it is made, and the buttons are for pages without script. *@
 @{
-    var inMenu = Model;
+    var inMenu = Model != SiteOptionsPlace.Footer;
+    var rail = Model == SiteOptionsPlace.Rail;
     var currentCulture = CultureInfo.CurrentUICulture.Name;
     var returnUrl = $"{Context.Request.PathBase}{Context.Request.Path}{Context.Request.QueryString}";
     var signedIn = User.IsHuman();
@@ -16,6 +17,7 @@
     var year = Time.GetUtcNow().Year;
     var props = new SiteOptionsProps(
         inMenu,
+        rail,
         signedIn,
         returnUrl,
         currentCulture,
@@ -27,8 +29,15 @@
 <island name="site-options" props="props">
 @if (inMenu)
 {
-    <details class="menu topbar-more">
-        <summary class="topbar-more-toggle" aria-label="@L["Nav.More"]"><icon name="more_horiz" /></summary>
+    <details class="menu @(rail ? "sidenav-more" : "topbar-more")">
+        @if (rail)
+        {
+            <summary class="sidenav-item" aria-label="@L["Nav.More"]"><icon name="more_horiz" /><span class="sidenav-label">@L["Nav.More"]</span></summary>
+        }
+        else
+        {
+            <summary class="topbar-more-toggle" aria-label="@L["Nav.More"]"><icon name="more_horiz" /></summary>
+        }
         <div class="dropdown-menu menu-panel site-menu">
             <partial name="_SiteOptionsList" />
         </div>
