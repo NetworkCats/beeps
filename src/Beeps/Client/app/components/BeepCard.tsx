@@ -1,13 +1,14 @@
 // One beep, drawn exactly as Pages/Shared/_Beep.cshtml draws it, from the beep's signal (beeps.ts): a new count, a
 // like from another tab or a redrawn beep shows at once, and a beep that went disappears.
 import type { TargetedMouseEvent, TargetedSubmitEvent } from 'preact';
-import { useState } from 'preact/hooks';
+import { useCallback, useState } from 'preact/hooks';
 import { beepSignal, removeBeep, setLiked, useShown } from '../beeps.ts';
 import { viewer } from '../config.ts';
 import { confirmAction } from '../dialogs.ts';
 import { formData } from '../http.ts';
 import { t } from '../i18n.ts';
 import { pageLive } from '../page.ts';
+import { useEnter } from '../motion.ts';
 import { here, paths } from '../paths.ts';
 import { visit } from '../router.ts';
 import { useSeen } from '../seen.ts';
@@ -28,6 +29,10 @@ export interface CardPlacement {
   replyingTo?: string | null;
   /** In an inbox entry, where seeing it leaves the notification unread (seen.ts). */
   inInbox?: boolean;
+  /** It came into its list while the list was on screen: it plays its arrival (motion.ts) as it is first drawn. */
+  entering?: boolean;
+  /** Its arrival is over. */
+  onEntered?: () => void;
 }
 
 // The beeps whose like is on its way (a beep may be shown in more than one card).
@@ -51,9 +56,17 @@ async function act(id: string, handler: string): Promise<boolean> {
   }
 }
 
-export function BeepCard({ id, focused, inThread, replyingTo, inInbox }: CardPlacement & { id: string }) {
+export function BeepCard({ id, focused, inThread, replyingTo, inInbox, entering, onEntered }: CardPlacement & { id: string }) {
   useShown(id);
   const seen = useSeen(id, !inInbox);
+  const enter = useEnter(entering, onEntered);
+  const card = useCallback(
+    (element: HTMLElement | null) => {
+      seen(element);
+      enter(element);
+    },
+    [seen, enter],
+  );
   const [menuOpen, setMenuOpen] = useState(false);
   const beep = beepSignal(id).value;
   if (!beep) return null;
@@ -120,7 +133,7 @@ export function BeepCard({ id, focused, inThread, replyingTo, inInbox }: CardPla
   };
 
   return (
-    <article ref={seen} class={focused ? 'beep beep-focused' : 'beep'} id={paths.beepAnchor(beep.id)} onClick={open}>
+    <article ref={card} class={focused ? 'beep beep-focused' : 'beep'} id={paths.beepAnchor(beep.id)} onClick={open}>
       <a class="beep-avatar" href={profile} tabIndex={-1} aria-hidden="true">
         <span class="avatar">
           <img src={author.avatar} alt="" width={40} height={40} loading="lazy" />

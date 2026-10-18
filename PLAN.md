@@ -374,6 +374,7 @@ tests/Beeps.Tests/
 - **加载态**：
   - 骨架屏：与页面形状相近（`Pages/Shared/_Skeleton.cshtml`：`feed|profile|list|form|table`），带供读屏使用的“加载中…”，在 0.15 秒后才淡入，很快就画好时不会闪一下。登录时显示在 app 外壳的内容列里，直到页面数据到达（形状由 `PageShell.Skeleton` 按页面决定）；未登录时只在浏览器里画的搜索页（`<island client-only="true" skeleton="list">`）在组件加载前显示。站内跳转先加载好组件再换内容，不显示骨架屏。Turnstile 验证框加载前显示同样大小的占位块。
   - 加载动画：站内跳转时页面顶部有加载条；表单提交时，提交按钮显示转圈动画并不再响应点击（`busy.ts`，collection-ui 的 `.btn-loading`）；列表加载下一页时显示转圈。点赞立即切换，失败时再恢复并提示。
+  - 新 beep 出现：列表打开着时实时到来的 beep（时间线顶部的新 beep、回复串末尾的新回复、取消屏蔽后回来的）先撑开自己的位置，把下面的内容平滑推开，再从稍上方淡入落到位（`Client/app/motion.ts`，时长和缓动取 collection-ui 的 `--cui-duration-slower`、`--cui-duration-slow`、`--cui-ease-out`）。首次打开、后退恢复和翻页加载的 beep 不播放；系统设置了减少动态效果时直接出现，标签页在后台时也不播放。
 
 **脚本与样式只用独立文件**
 - 所有 JS 都写在 `Client/` 的 TypeScript 中，编译成独立文件引用；页面中不写内联 `<script>` 代码，不用 `onclick` 等内联事件属性，不用 `javascript:` 链接。

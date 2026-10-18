@@ -81,7 +81,17 @@ export function ThreadPage({ props, errors }: IslandProps<ThreadProps>) {
       <div class="beep-list">
         {feed.visible.map((id) => {
           const replyTo = beepSignal(id).value?.replyToId;
-          const card = <BeepCard key={id} id={id} focused={id === focusId} inThread replyingTo={replyTo ? authors.get(replyTo) : null} />;
+          const card = (
+            <BeepCard
+              key={id}
+              id={id}
+              focused={id === focusId}
+              inThread
+              replyingTo={replyTo ? authors.get(replyTo) : null}
+              entering={feed.entering(id)}
+              onEntered={() => feed.entered(id)}
+            />
+          );
           return id === focusId ? [card, <ReplyBox key="reply" focus={focusId} reply={props.reply} errors={errors} />] : card;
         })}
       </div>

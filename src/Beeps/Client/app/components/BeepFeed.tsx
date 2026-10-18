@@ -43,10 +43,16 @@ export interface Feed {
   loadMore: () => Promise<boolean>;
   /** The list as it is now, as props to draw it again from. */
   snapshot: () => FeedSource;
+  /** Whether the beep came in while the list was on screen, and has yet to play its arrival (motion.ts). */
+  entering: (id: string) => boolean;
+  /** It has played it. */
+  entered: (id: string) => void;
 }
 
 interface FeedState {
   ids: Signal<string[]>;
+  /** Beeps that came in after the list was first drawn, other than its next pages: new ones, and ones that came back. */
+  entering: Set<string>;
   next: Signal<string | undefined>;
   watch: Signal<string | undefined>;
   source: FeedSource;
@@ -59,10 +65,18 @@ function visibleOf(ids: readonly string[]): string[] {
   return ids.filter((id) => beepSignal(id).value);
 }
 
+/** The list's new ids; those it did not have before come in. */
+function arrive(state: FeedState, ids: string[]): void {
+  const had = new Set(state.ids.value);
+  for (const id of ids) if (!had.has(id)) state.entering.add(id);
+  state.ids.value = ids;
+}
+
 function create(options: FeedOptions): FeedState {
   putBeeps(options.items);
   const state: FeedState = {
     ids: signal(options.items.map((beep) => beep.id)),
+    entering: new Set(),
     next: signal(options.next),
     watch: signal(options.watch),
     source: options,
@@ -77,7 +91,7 @@ function create(options: FeedOptions): FeedState {
         let after = shown.at(-1) ?? NO_ID;
         for (let round = 0; round < MAX_FETCH_ROUNDS; round++) {
           const fresh = await fetchNew(watch, after);
-          state.ids.value = insertOrdered(state.ids.value, fresh.map((beep) => beep.id), true);
+          arrive(state, insertOrdered(state.ids.value, fresh.map((beep) => beep.id), true));
           if (fresh.length < FETCH_LIMIT) break;
           after = fresh.at(-1)?.id ?? after;
         }
@@ -89,7 +103,7 @@ function create(options: FeedOptions): FeedState {
       let before: string | undefined;
       for (let round = 0; round < MAX_FETCH_ROUNDS; round++) {
         const fresh = await fetchNew(watch, after, before);
-        state.ids.value = insertOrdered(state.ids.value, fresh.map((beep) => beep.id), false);
+        arrive(state, insertOrdered(state.ids.value, fresh.map((beep) => beep.id), false));
         const oldest = fresh.at(-1)?.id;
         if (fresh.length < FETCH_LIMIT || !oldest) break;
         before = oldest;
@@ -111,7 +125,7 @@ function create(options: FeedOptions): FeedState {
       const inRange = (id: string): boolean =>
         compareIds(id, after) > 0 && (!edge || (thread ? compareIds(id, edge) <= 0 : compareIds(id, edge) >= 0));
       const kept = state.ids.value.filter((id) => !inRange(id) || freshIds.has(id));
-      state.ids.value = insertOrdered(kept, fresh.map((beep) => beep.id), thread);
+      arrive(state, insertOrdered(kept, fresh.map((beep) => beep.id), thread));
     },
   };
   return state;
@@ -127,7 +141,7 @@ export function useBeepFeed(options: FeedOptions): Feed {
     putBeeps(options.items);
     const merged = mergeFresh({ ids: state.ids.value, next: state.next.value }, { ids: options.items.map((beep) => beep.id), next: options.next });
     state.source = options;
-    state.ids.value = merged.ids;
+    arrive(state, merged.ids);
     state.next.value = merged.next;
     if (options.watch) state.watch.value = options.watch;
   }
@@ -170,7 +184,12 @@ export function useBeepFeed(options: FeedOptions): Feed {
     next: state.next.value,
   });
 
-  return { visible, next: state.next.value, watch: state.watch.value, loadMore, snapshot };
+  const entering = (id: string): boolean => state.entering.has(id);
+  const entered = (id: string): void => {
+    state.entering.delete(id);
+  };
+
+  return { visible, next: state.next.value, watch: state.watch.value, loadMore, snapshot, entering, entered };
 }
 
 export interface BeepListViewProps {
@@ -192,7 +211,7 @@ export function BeepListView({ feed, emptyTitle, emptyText, placement }: BeepLis
       {visible.length > 0 && (
         <div class="beep-list">
           {visible.map((id) => (
-            <BeepCard key={id} id={id} {...placement?.(id)} />
+            <BeepCard key={id} id={id} {...placement?.(id)} entering={feed.entering(id)} onEntered={() => feed.entered(id)} />
           ))}
         </div>
       )}
