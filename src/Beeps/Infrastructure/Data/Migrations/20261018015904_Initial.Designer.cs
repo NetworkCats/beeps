@@ -13,8 +13,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Beeps.Infrastructure.Data.Migrations
 {
     [DbContext(typeof(BeepsDbContext))]
-    [Migration("20261016135850_AddModeration")]
-    partial class AddModeration
+    [Migration("20261018015904_Initial")]
+    partial class Initial
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -244,6 +244,11 @@ namespace Beeps.Infrastructure.Data.Migrations
                         .HasColumnType("text")
                         .HasColumnName("password_hash");
 
+                    b.Property<string>("Theme")
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("theme");
+
                     b.HasKey("Id")
                         .HasName("pk_users");
 
@@ -256,6 +261,14 @@ namespace Beeps.Infrastructure.Data.Migrations
                         .HasDatabaseName("ux_users_normalized_email");
 
                     NpgsqlIndexBuilderExtensions.HasOperators(b.HasIndex("NormalizedEmail"), new[] { "text_pattern_ops" });
+
+                    b.HasIndex(new[] { "Id" }, "ix_users_banned")
+                        .HasDatabaseName("ix_users_banned")
+                        .HasFilter("banned_at IS NOT NULL");
+
+                    b.HasIndex(new[] { "CreatedAt" }, "ix_users_unverified")
+                        .HasDatabaseName("ix_users_unverified")
+                        .HasFilter("email_verified_at IS NULL");
 
                     b.ToTable("users", (string)null);
                 });
@@ -459,6 +472,10 @@ namespace Beeps.Infrastructure.Data.Migrations
                         .HasColumnType("character varying(8000)")
                         .HasColumnName("text");
 
+                    b.Property<long>("ViewCount")
+                        .HasColumnType("bigint")
+                        .HasColumnName("view_count");
+
                     b.HasKey("Id")
                         .HasName("pk_beeps");
 
@@ -473,6 +490,8 @@ namespace Beeps.Infrastructure.Data.Migrations
                     b.HasIndex("AuthorId", "Id")
                         .IsDescending(false, true)
                         .HasDatabaseName("ix_beeps_author_id_id");
+
+                    NpgsqlIndexBuilderExtensions.IncludeProperties(b.HasIndex("AuthorId", "Id"), new[] { "ReplyToId", "ModerationStatus", "DeletedAt" });
 
                     b.HasIndex("RootId", "Id")
                         .HasDatabaseName("ix_beeps_root_id_id");
@@ -574,6 +593,37 @@ namespace Beeps.Infrastructure.Data.Migrations
                         .HasDatabaseName("ix_mentions_actor_id");
 
                     b.ToTable("mentions", (string)null);
+                });
+
+            modelBuilder.Entity("Beeps.Features.Beeps.ViewedBeep", b =>
+                {
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.Property<Guid>("BeepId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("beep_id");
+
+                    b.Property<DateTimeOffset>("FirstViewedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("first_viewed_at");
+
+                    b.Property<DateTimeOffset>("LastViewedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_viewed_at");
+
+                    b.Property<int>("ViewCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("view_count");
+
+                    b.HasKey("UserId", "BeepId")
+                        .HasName("pk_viewed_beeps");
+
+                    b.HasIndex("BeepId")
+                        .HasDatabaseName("ix_viewed_beeps_beep_id");
+
+                    b.ToTable("viewed_beeps", (string)null);
                 });
 
             modelBuilder.Entity("Beeps.Features.Media.BeepMedia", b =>
@@ -883,6 +933,10 @@ namespace Beeps.Infrastructure.Data.Migrations
                     b.HasIndex("FromActorId")
                         .HasDatabaseName("ix_notifications_from_actor_id");
 
+                    b.HasIndex(new[] { "RecipientId", "BeepId", "Type", "Id" }, "ix_notifications_beep")
+                        .IsDescending(false, false, false, true)
+                        .HasDatabaseName("ix_notifications_beep");
+
                     b.HasIndex(new[] { "RecipientId", "Id" }, "ix_notifications_inbox")
                         .IsDescending(false, true)
                         .HasDatabaseName("ix_notifications_inbox");
@@ -972,6 +1026,50 @@ namespace Beeps.Infrastructure.Data.Migrations
                         .HasName("pk_site_settings");
 
                     b.ToTable("site_settings", (string)null);
+                });
+
+            modelBuilder.Entity("Beeps.Infrastructure.Data.IdempotencyEntry", b =>
+                {
+                    b.Property<string>("Key")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("key");
+
+                    b.Property<string>("Body")
+                        .HasColumnType("text")
+                        .HasColumnName("body");
+
+                    b.Property<string>("ContentType")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("content_type");
+
+                    b.Property<DateTimeOffset>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expires_at");
+
+                    b.Property<string>("Fingerprint")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("fingerprint");
+
+                    b.Property<string>("Location")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("location");
+
+                    b.Property<int?>("StatusCode")
+                        .HasColumnType("integer")
+                        .HasColumnName("status_code");
+
+                    b.HasKey("Key")
+                        .HasName("pk_idempotency_keys");
+
+                    b.HasIndex("ExpiresAt")
+                        .HasDatabaseName("ix_idempotency_keys_expires_at");
+
+                    b.ToTable("idempotency_keys", (string)null);
                 });
 
             modelBuilder.Entity("Beeps.Infrastructure.Jobs.ScheduledJobState", b =>
@@ -1257,6 +1355,23 @@ namespace Beeps.Infrastructure.Data.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_mentions_beeps_beep_id");
+                });
+
+            modelBuilder.Entity("Beeps.Features.Beeps.ViewedBeep", b =>
+                {
+                    b.HasOne("Beeps.Features.Beeps.Beep", null)
+                        .WithMany()
+                        .HasForeignKey("BeepId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_viewed_beeps_beeps_beep_id");
+
+                    b.HasOne("Beeps.Features.Accounts.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_viewed_beeps_users_user_id");
                 });
 
             modelBuilder.Entity("Beeps.Features.Media.BeepMedia", b =>
