@@ -11,12 +11,14 @@ using Beeps.Features.Profiles;
 using Beeps.Features.RateLimiting;
 using Beeps.Features.Search;
 using Beeps.Features.Shared.Http;
+using Beeps.Features.Site;
 using Beeps.Features.Skill;
 using Beeps.Features.Timelines;
 using Beeps.Infrastructure;
 using Beeps.Infrastructure.Search;
 using Beeps.Pages.Admin;
 using Beeps.Pages.Islands;
+using Microsoft.AspNetCore.Mvc;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -27,6 +29,9 @@ builder.Services.AddRazorPages(options => options.Conventions
         page.Filters.Add(new AdminChangedFilter());
         page.Filters.Add(new AppShellAttribute());
     }));
+// Named after beeps, not the framework (CookieNames).
+builder.Services.AddAntiforgery(options => options.Cookie.Name = CookieNames.Antiforgery);
+builder.Services.Configure<CookieTempDataProviderOptions>(options => options.Cookie.Name = CookieNames.Notice);
 builder.Services.AddScoped<ClientConfig>();
 builder.Services.AddSingleton<ClientStrings>();
 builder.Services.AddSingleton<ClientChunks>();

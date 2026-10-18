@@ -150,7 +150,7 @@ public sealed class SettingsPagesTests : IDisposable
         var html = await client.GetStringAsync(new Uri("/settings", UriKind.Relative), TestSupport.Ct);
 
         Assert.Equal("zh-Hans", user.Locale);
-        Assert.Contains(response.Headers.GetValues("Set-Cookie"), c => c.StartsWith(".AspNetCore.Culture=c%3Dzh-Hans", StringComparison.Ordinal));
+        Assert.Contains(response.Headers.GetValues("Set-Cookie"), c => c.StartsWith("beeps.lang=c%3Dzh-Hans", StringComparison.Ordinal));
         Assert.Contains("<html lang=\"zh-Hans\">", html, StringComparison.Ordinal);
     }
 

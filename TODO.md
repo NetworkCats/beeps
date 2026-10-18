@@ -413,6 +413,8 @@ PLAN 6.10 要求登录用户看到的所有数据都实时刷新。逐页检查�
 
 - [x] **新 beep 的出现动画（按要求追加，PLAN 6.9 已同步）**：实时到来的 beep 不再一下子插进列表把下面的内容顶下去，而是先撑开位置（高度、内边距和分隔线从 0 展开），再淡入并从上方 0.5rem 落到位；动画结束后不留任何内联样式。由 `BeepFeed` 记下"列表画出之后才来的"beep（实时拉取、resync、页面数据刷新时新出现的，不含翻页），`BeepCard` 在首次画出时用 Web Animations API 播放，时间线和回复串都适用。减少动态效果的设置下 collection-ui 的时长 token 为 0，于是直接出现。用 Chrome DevTools 协议在真实时间下逐帧截图确认了展开、淡入和结束状态。
 
+- [x] **Cookie 改名（按要求追加，PLAN 6.14 已同步）**：防伪令牌、语言、重定向提示原来用框架默认的 `.AspNetCore.Antiforgery.<哈希>`、`.AspNetCore.Culture`、`.AspNetCore.Mvc.CookieTempDataProvider`，一看就知道是 ASP.NET。现在全部以 `beeps.` 开头，名称集中在 `CookieNames`；测试 `CookieNamesTests` 检查站点发出的 Cookie 没有别的名字。改名后浏览器里旧的语言 Cookie 不再被读取（未登录访客的语言选择要重新选一次），旧的防伪 Cookie 失效，改名前打开的页面提交一次表单会被拒绝，刷新即可；尚未上线，没有做迁移。响应头里的 `Server: Kestrel` 和表单字段 `__RequestVerificationToken` 也能看出技术栈，这次没有改。
+
 ## 阶段 7：可上线状态
 - [ ] Dockerfile（多阶段构建）
 - [ ] `compose.prod.yml`（应用、PostgreSQL、Valkey、Meilisearch、nginx host 网络，数据卷、健康检查）

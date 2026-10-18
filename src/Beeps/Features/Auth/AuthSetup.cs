@@ -1,4 +1,5 @@
 using Beeps.Features.Accounts;
+using Beeps.Features.Site;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Mvc.ApplicationModels;
 
@@ -16,7 +17,7 @@ public static class AuthSetup
                 options.ForwardDefaultSelector = context => IsApi(context.Request) ? AuthSchemes.AgentKey : AuthSchemes.Cookie)
             .AddCookie(AuthSchemes.Cookie, options =>
             {
-                options.Cookie.Name = "beeps.session";
+                options.Cookie.Name = CookieNames.Session;
                 options.Cookie.HttpOnly = true;
                 options.Cookie.SameSite = SameSiteMode.Lax;
                 options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;

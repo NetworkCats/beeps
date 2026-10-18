@@ -1,6 +1,7 @@
 using System.Text.Encodings.Web;
 using System.Text.Unicode;
 using Beeps.Features.Auth;
+using Beeps.Features.Site;
 using Microsoft.AspNetCore.Localization;
 using Microsoft.Extensions.WebEncoders;
 
@@ -23,7 +24,7 @@ public static class LocalizationSetup
             options.RequestCultureProviders =
             [
                 new UserLocaleCultureProvider(),
-                new CookieRequestCultureProvider(),
+                new CookieRequestCultureProvider { CookieName = CookieNames.Language },
                 new ChineseCultureProvider(),
                 new AcceptLanguageHeaderRequestCultureProvider(),
             ];

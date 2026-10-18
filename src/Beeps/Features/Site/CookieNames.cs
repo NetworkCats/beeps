@@ -1,0 +1,23 @@
+namespace Beeps.Features.Site;
+
+/// <summary>
+/// Every cookie the site sets, in one place. The framework's own (antiforgery, language, the notice after a redirect)
+/// are renamed from its ".AspNetCore.…" defaults too, so no cookie tells what the site runs on.
+/// </summary>
+public static class CookieNames
+{
+    /// <summary>The sign-in session's token (PLAN 6.14).</summary>
+    public const string Session = "beeps.session";
+
+    /// <summary>The colour scheme picked (<see cref="ThemeCookie"/>).</summary>
+    public const string Theme = "beeps.theme";
+
+    /// <summary>The language picked while signed out (PLAN 6.12).</summary>
+    public const string Language = "beeps.lang";
+
+    /// <summary>The antiforgery token's cookie half.</summary>
+    public const string Antiforgery = "beeps.csrf";
+
+    /// <summary>The one-line notice a redirect leaves for the page it leads to (TempData).</summary>
+    public const string Notice = "beeps.notice";
+}

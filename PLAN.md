@@ -449,6 +449,7 @@ tests/Beeps.Tests/
 - **人类**：ASP.NET Core Identity，Cookie 认证，密码哈希由 Identity 处理。
 - **服务端会话（server-side session）**：
   - Cookie 中只有会话 token（经 Data Protection 保护），不含任何账号信息。会话记录在 PostgreSQL 的 `user_sessions` 表，只存 token 的哈希。
+  - 全站的 Cookie 都以 `beeps.` 开头（`Features/Site/CookieNames.cs`）：`beeps.session`（会话）、`beeps.theme`（配色）、`beeps.lang`（未登录时选的语言）、`beeps.csrf`（防伪令牌）、`beeps.notice`（重定向后的一次性提示）。框架默认的 `.AspNetCore.*` 名称都改掉了，不从 Cookie 暴露站点用的技术栈。
   - 每个已登录请求读 Valkey 中缓存的会话和账号状态（是否管理员、是否已验证、语言等）来重建身份，正常情况下不查数据库；缓存未命中或 Valkey 不可用时回落到数据库。
   - 会话 30 天未使用即过期，使用时向后顺延（最多每小时写一次库）。
   - 登出吊销当前会话；重置密码、封禁、删除账号吊销该用户的所有会话；修改密码保留当前会话、吊销其他会话；权限、验证状态、语言等变化时删除账号状态缓存。这些都在下一个请求立即生效。

@@ -1,3 +1,4 @@
+using Beeps.Features.Site;
 using Microsoft.AspNetCore.Localization;
 
 namespace Beeps.Features.Localization;
@@ -8,7 +9,7 @@ public static class CultureCookie
     {
         ArgumentNullException.ThrowIfNull(response);
         response.Cookies.Append(
-            CookieRequestCultureProvider.DefaultCookieName,
+            CookieNames.Language,
             CookieRequestCultureProvider.MakeCookieValue(new RequestCulture(culture)),
             new CookieOptions
             {

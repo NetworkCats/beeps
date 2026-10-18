@@ -23,7 +23,7 @@ public sealed class HomePageTests(BeepsWebApplicationFactory factory) : IClassFi
     {
         using var client = factory.CreateClient();
         client.DefaultRequestHeaders.AcceptLanguage.ParseAdd("en-US");
-        client.DefaultRequestHeaders.Add("Cookie", ".AspNetCore.Culture=c=zh-Hans|uic=zh-Hans");
+        client.DefaultRequestHeaders.Add("Cookie", "beeps.lang=c=zh-Hans|uic=zh-Hans");
 
         var html = await client.GetStringAsync(new Uri("/", UriKind.Relative), TestSupport.Ct);
 

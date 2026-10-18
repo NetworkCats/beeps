@@ -15,7 +15,7 @@ public sealed class CulturePageTests(BeepsWebApplicationFactory factory) : IClas
 
         Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
         Assert.Equal("/some/page?x=1", response.Headers.Location?.OriginalString);
-        var cookie = Assert.Single(response.Headers.GetValues("Set-Cookie"), c => c.StartsWith(".AspNetCore.Culture=", StringComparison.Ordinal));
+        var cookie = Assert.Single(response.Headers.GetValues("Set-Cookie"), c => c.StartsWith("beeps.lang=", StringComparison.Ordinal));
         Assert.Contains("c%3Dzh-Hans%7Cuic%3Dzh-Hans", cookie, StringComparison.Ordinal);
         Assert.Contains("httponly", cookie, StringComparison.OrdinalIgnoreCase);
     }
@@ -58,7 +58,7 @@ public sealed class CulturePageTests(BeepsWebApplicationFactory factory) : IClas
 
         Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
         Assert.False(response.Headers.TryGetValues("Set-Cookie", out var cookies)
-            && cookies.Any(c => c.StartsWith(".AspNetCore.Culture=", StringComparison.Ordinal)));
+            && cookies.Any(c => c.StartsWith("beeps.lang=", StringComparison.Ordinal)));
     }
 
     [Fact]
@@ -95,7 +95,7 @@ public sealed class CulturePageTests(BeepsWebApplicationFactory factory) : IClas
         Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
         Assert.Equal("en", user.Locale);
         Assert.False(response.Headers.TryGetValues("Set-Cookie", out var cookies)
-            && cookies.Any(c => c.StartsWith(".AspNetCore.Culture=", StringComparison.Ordinal)));
+            && cookies.Any(c => c.StartsWith("beeps.lang=", StringComparison.Ordinal)));
     }
 
     private HttpClient NewClient() =>
