@@ -930,6 +930,10 @@ namespace Beeps.Infrastructure.Data.Migrations
                     b.HasIndex("FromActorId")
                         .HasDatabaseName("ix_notifications_from_actor_id");
 
+                    b.HasIndex(new[] { "RecipientId", "BeepId", "Type", "Id" }, "ix_notifications_beep")
+                        .IsDescending(false, false, false, true)
+                        .HasDatabaseName("ix_notifications_beep");
+
                     b.HasIndex(new[] { "RecipientId", "Id" }, "ix_notifications_inbox")
                         .IsDescending(false, true)
                         .HasDatabaseName("ix_notifications_inbox");

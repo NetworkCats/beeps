@@ -13,7 +13,7 @@ namespace Beeps.Pages.Islands;
 /// What the islands fetch as they follow the site live (PLAN 6.10), as the props they are drawn from (JSON), for
 /// members only. A page's own props come from the page itself (<see cref="IslandRequests"/>); these are the parts a
 /// live event asks for: the beeps after the ones a list shows, beeps drawn again, the inbox's first page, the viewer.
-/// Besides, what a page tells the site: that a beep was viewed.
+/// Besides, what a page tells the site: that a beep was viewed, and which beeps were seen, for the notifications they read.
 /// </summary>
 public static class IslandEndpoints
 {
@@ -26,21 +26,54 @@ public static class IslandEndpoints
         live.MapGet("/beeps", GetBeepsAsync);
         live.MapGet("/notifications", GetNotificationsAsync);
         live.MapGet("/viewer", (ClaimsPrincipal user, ClientConfig config) => Results.Content(IslandJson.Serialize(config.Viewer(user)), Json));
+        live.MapPost("/notifications/seen", PostSeenAsync);
         // Anyone signed in, verified or not: a beep's page says it was viewed.
         routes.MapPost("/live/beeps/{id:guid}/view", PostViewAsync).RequireAuthorization(AuthPolicies.SignedIn).ExcludeFromDescription();
         return routes;
     }
 
-    /// <summary>The beep's page was shown (<see cref="BeepService.RecordViewAsync"/>); a form with the antiforgery token, answered with a status code only.</summary>
-    private static async Task<IResult> PostViewAsync(Guid id, HttpContext context, IAntiforgery antiforgery, BeepService beeps, CancellationToken cancellationToken)
+    /// <summary>
+    /// The beep's page was shown (<see cref="BeepService.RecordViewAsync"/>), which reads the notifications about it
+    /// (<see cref="NotificationService.MarkSeenAsync"/>); a form with the antiforgery token, answered with a status code only.
+    /// </summary>
+    private static async Task<IResult> PostViewAsync(
+        Guid id, HttpContext context, IAntiforgery antiforgery, BeepService beeps, NotificationService notifications, CancellationToken cancellationToken)
     {
         if (!await antiforgery.IsRequestValidAsync(context))
         {
             return Results.BadRequest();
         }
 
-        var result = await beeps.RecordViewAsync(context.User.Viewer(), id, cancellationToken);
-        return result.IsSuccess ? Results.NoContent() : Results.NotFound();
+        var viewer = context.User.Viewer();
+        var result = await beeps.RecordViewAsync(viewer, id, cancellationToken);
+        if (!result.IsSuccess)
+        {
+            return Results.NotFound();
+        }
+
+        await notifications.MarkSeenAsync(viewer, [], id, cancellationToken);
+        return Results.NoContent();
+    }
+
+    /// <summary>
+    /// Beeps a page had on screen (<c>ids</c>, comma-separated, at most <see cref="NotificationService.MaxSeenBeeps"/>):
+    /// the mentions and replies they are are read. A form with the antiforgery token, answered with a status code only.
+    /// </summary>
+    private static async Task<IResult> PostSeenAsync(HttpContext context, IAntiforgery antiforgery, NotificationService notifications, CancellationToken cancellationToken)
+    {
+        if (!await antiforgery.IsRequestValidAsync(context))
+        {
+            return Results.BadRequest();
+        }
+
+        var form = await context.Request.ReadFormAsync(cancellationToken);
+        if (!TryParseIds(form["ids"].ToString(), out var ids) || ids.Count > NotificationService.MaxSeenBeeps)
+        {
+            return Results.BadRequest();
+        }
+
+        await notifications.MarkSeenAsync(context.User.Viewer(), ids, null, cancellationToken);
+        return Results.NoContent();
     }
 
     /// <summary>

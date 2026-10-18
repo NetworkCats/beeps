@@ -849,6 +849,12 @@
   <data name="Notifications.Like" xml:space="preserve">
     <value>赞了你的 beep</value>
   </data>
+  <data name="Notifications.OneOther" xml:space="preserve">
+    <value>和另外 1 人</value>
+  </data>
+  <data name="Notifications.Others" xml:space="preserve">
+    <value>和另外 {0} 人</value>
+  </data>
   <data name="Notifications.Empty.Title" xml:space="preserve">
     <value>还没有通知</value>
   </data>

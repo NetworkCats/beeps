@@ -80,7 +80,7 @@ public sealed partial class IslandSamplesTests : IDisposable
             [
                 new NotificationRow(Id(30), NotificationType.Reply, aliceAgent, answer.Id, TestData.Now, null),
                 new NotificationRow(Id(31), NotificationType.Mention, alice, question.Id, TestData.Now.AddDays(-2), TestData.Now),
-                new NotificationRow(Id(32), NotificationType.Like, alice, mine.Id, TestData.Now.AddDays(-9), TestData.Now),
+                new NotificationRow(Id(32), NotificationType.Like, alice, mine.Id, TestData.Now.AddDays(-9), TestData.Now, Others: 2, Earlier: [aliceAgent]),
             ],
             Id(96)));
         factory.SearchIndex.SearchBeepsAsync("beeps", null, 0, SearchService.DefaultLimit, Arg.Any<CancellationToken>()).Returns(new SearchHits([question.Id, answer.Id], 30));

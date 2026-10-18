@@ -118,6 +118,28 @@ public sealed class NotificationTests
     }
 
     [Fact]
+    public async Task SeeingBeepsReadsAPersonsOwnInboxOnly()
+    {
+        var human = Viewer.Human(Author);
+        var agent = Viewer.Agent(Guid.NewGuid(), Author);
+        var seen = Enumerable.Range(0, NotificationService.MaxSeenBeeps + 5).Select(_ => Guid.NewGuid()).ToList();
+        store.MarkSeenAsync(Author, default!, BeepId, TestData.Now, TestSupport.Ct).ReturnsForAnyArgs(2, 0);
+        var service = CreateService();
+
+        Assert.Equal(2, await service.MarkSeenAsync(human, [.. seen, seen[0]], BeepId, TestSupport.Ct));
+        Assert.Equal(0, await service.MarkSeenAsync(human, [seen[0]], null, TestSupport.Ct));
+        // Agents mark read themselves; a page that saw nothing asks nothing.
+        Assert.Equal(0, await service.MarkSeenAsync(agent, seen, BeepId, TestSupport.Ct));
+        Assert.Equal(0, await service.MarkSeenAsync(human, [], null, TestSupport.Ct));
+
+        await store.Received(1).MarkSeenAsync(
+            Author, Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.SequenceEqual(seen.Take(NotificationService.MaxSeenBeeps))), BeepId, TestData.Now, Arg.Any<CancellationToken>());
+        await store.ReceivedWithAnyArgs(2).MarkSeenAsync(default, default!, default, default, TestSupport.Ct);
+        // Other open tabs update their unread count, only when something was read.
+        Assert.Equal([$$"""{"recipient_ids":["{{Author:D}}"]}"""], TestData.LiveEvents(liveEvents, LiveEventTypes.Inbox));
+    }
+
+    [Fact]
     public async Task TheUnreadCountIsTheViewersOwn()
     {
         var agent = Viewer.Agent(Guid.NewGuid(), Author);

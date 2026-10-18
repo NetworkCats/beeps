@@ -236,6 +236,8 @@
   "Notifications.MarkRead",
   "Notifications.Mention",
   "Notifications.New",
+  "Notifications.OneOther",
+  "Notifications.Others",
   "Notifications.Reply",
   "Notifications.Title",
   "Pager.Label",

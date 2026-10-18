@@ -192,7 +192,7 @@ public sealed partial class LivePagesTests : IDisposable
     }
 
     [Fact]
-    public async Task ABeepsPageSaysItWasViewedWhenAnyoneIsSignedIn()
+    public async Task ABeepsPageSaysItWasViewedWhenAnyoneIsSignedInWhichReadsWhatIsAboutIt()
     {
         // Not verified yet is still signed in.
         var newbie = WebAuth.ArrangeUser(factory, "newbie", verified: false);
@@ -211,6 +211,28 @@ public sealed partial class LivePagesTests : IDisposable
         Assert.Equal(HttpStatusCode.BadRequest, forged.StatusCode);
         Assert.Equal(HttpStatusCode.Unauthorized, signedOut.StatusCode);
         await factory.Beeps.Received(1).RecordViewAsync(newbie.Id, beep.Id, Arg.Any<DateTimeOffset>(), Arg.Any<DateTimeOffset>(), Arg.Any<CancellationToken>());
+        await factory.Notifications.Received(1).MarkSeenAsync(newbie.Id, Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Count == 0), beep.Id, Arg.Any<DateTimeOffset>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task APageSaysWhichBeepsItHadOnScreen()
+    {
+        var member = WebAuth.ArrangeUser(factory, "tom");
+        using var client = await WebAuth.SignInAsync(factory, member);
+        var token = TestSupport.AntiforgeryToken(await client.GetStringAsync(new Uri("/public", UriKind.Relative), TestSupport.Ct));
+        var (one, two) = (Guid.CreateVersion7(), Guid.CreateVersion7());
+        var url = new Uri("/live/notifications/seen", UriKind.Relative);
+        FormUrlEncodedContent Form(string ids) => new([KeyValuePair.Create("__RequestVerificationToken", token), KeyValuePair.Create("ids", ids)]);
+
+        using var seen = await client.PostAsync(url, Form($"{one:D},{two:D}"), TestSupport.Ct);
+        using var garbled = await client.PostAsync(url, Form("nope"), TestSupport.Ct);
+        using var tooMany = await client.PostAsync(url, Form(string.Join(',', Enumerable.Range(0, NotificationService.MaxSeenBeeps + 1).Select(_ => Guid.NewGuid()))), TestSupport.Ct);
+        using var forged = await client.PostAsync(url, new FormUrlEncodedContent([KeyValuePair.Create("ids", $"{one:D}")]), TestSupport.Ct);
+
+        Assert.Equal(HttpStatusCode.NoContent, seen.StatusCode);
+        Assert.Equal([HttpStatusCode.BadRequest, HttpStatusCode.BadRequest, HttpStatusCode.BadRequest], new[] { garbled.StatusCode, tooMany.StatusCode, forged.StatusCode });
+        await factory.Notifications.Received(1).MarkSeenAsync(member.Id, Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.SequenceEqual(new[] { one, two })), null, Arg.Any<DateTimeOffset>(), Arg.Any<CancellationToken>());
+        await factory.Notifications.ReceivedWithAnyArgs(1).MarkSeenAsync(default, default!, default, default, TestSupport.Ct);
     }
 
     [Fact]

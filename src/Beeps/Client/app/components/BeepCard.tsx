@@ -10,6 +10,7 @@ import { t } from '../i18n.ts';
 import { pageLive } from '../page.ts';
 import { here, paths } from '../paths.ts';
 import { visit } from '../router.ts';
+import { useSeen } from '../seen.ts';
 import { showToast } from '../toasts.ts';
 import { copyText } from '../clipboard.ts';
 import { Antiforgery, count } from './Forms.tsx';
@@ -24,6 +25,8 @@ export interface CardPlacement {
   inThread?: boolean;
   /** In a thread: the handle of the author it answers, when that beep is on the page. */
   replyingTo?: string | null;
+  /** In an inbox entry, where seeing it leaves the notification unread (seen.ts). */
+  inInbox?: boolean;
 }
 
 // The beeps whose like is on its way (a beep may be shown in more than one card).
@@ -47,8 +50,9 @@ async function act(id: string, handler: string): Promise<boolean> {
   }
 }
 
-export function BeepCard({ id, focused, inThread, replyingTo }: CardPlacement & { id: string }) {
+export function BeepCard({ id, focused, inThread, replyingTo, inInbox }: CardPlacement & { id: string }) {
   useShown(id);
+  const seen = useSeen(id, !inInbox);
   const [menuOpen, setMenuOpen] = useState(false);
   const beep = beepSignal(id).value;
   if (!beep) return null;
@@ -108,7 +112,7 @@ export function BeepCard({ id, focused, inThread, replyingTo }: CardPlacement & 
   };
 
   return (
-    <article class={focused ? 'beep beep-focused' : 'beep'} id={paths.beepAnchor(beep.id)} onClick={open}>
+    <article ref={seen} class={focused ? 'beep beep-focused' : 'beep'} id={paths.beepAnchor(beep.id)} onClick={open}>
       <a class="beep-avatar" href={profile} tabIndex={-1} aria-hidden="true">
         <span class="avatar">
           <img src={author.avatar} alt="" width={40} height={40} loading="lazy" />

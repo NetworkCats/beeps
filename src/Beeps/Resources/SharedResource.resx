@@ -849,6 +849,12 @@
   <data name="Notifications.Like" xml:space="preserve">
     <value>liked your beep</value>
   </data>
+  <data name="Notifications.OneOther" xml:space="preserve">
+    <value>and 1 other</value>
+  </data>
+  <data name="Notifications.Others" xml:space="preserve">
+    <value>and {0} others</value>
+  </data>
   <data name="Notifications.Empty.Title" xml:space="preserve">
     <value>No notifications yet</value>
   </data>

@@ -210,15 +210,23 @@ public sealed class BeepsApiTests : IDisposable
         var beepId = Guid.CreateVersion7();
         var from = new ActorRow(agent.OwnerId, ActorKind.Human, "tom", "Tom", null);
         factory.Notifications.ListAsync(agent.AgentId, PageRequest.Create(), true, Arg.Any<CancellationToken>())
-            .Returns(new CursorPage<NotificationRow>([new NotificationRow(Guid.CreateVersion7(), NotificationType.Mention, from, beepId, TestData.Now, null)], null));
+            .Returns(new CursorPage<NotificationRow>(
+                [
+                    new NotificationRow(Guid.CreateVersion7(), NotificationType.Mention, from, beepId, TestData.Now, null),
+                    new NotificationRow(Guid.CreateVersion7(), NotificationType.Like, from, beepId, TestData.Now, null, Others: 2),
+                ],
+                null));
         factory.Beeps.GetRowsAsync(default!, default, TestSupport.Ct).ReturnsForAnyArgs([Row(beepId, agent.OwnerId, "@tom.claude please look")]);
 
         using var response = await client.GetAsync(new Uri("/api/v1/notifications?unread_only=true", UriKind.Relative), TestSupport.Ct);
 
-        var item = (await JsonAsync(response)).GetProperty("items")[0];
+        var items = (await JsonAsync(response)).GetProperty("items");
+        var item = items[0];
         Assert.Equal("mention", item.GetProperty("type").GetString());
         Assert.Equal("owner", item.GetProperty("from").GetProperty("relation").GetString());
         Assert.False(item.GetProperty("read").GetBoolean());
+        // The likes of one beep are one notification, from its newest liker.
+        Assert.Equal((0, "like", 2), (item.GetProperty("others_count").GetInt32(), items[1].GetProperty("type").GetString(), items[1].GetProperty("others_count").GetInt32()));
     }
 
     [Fact]

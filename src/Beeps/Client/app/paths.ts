@@ -17,6 +17,8 @@ export const paths = {
     `/beeps/${id}/actions?returnUrl=${encodeURIComponent(returnUrl)}&handler=${handler}`,
   /** Where a beep's page says it was viewed (Pages/Islands/IslandEndpoints.cs). */
   beepView: (id: string): string => `/live/beeps/${id}/view`,
+  /** Where a page says which beeps it had on screen, for the notifications they read (Pages/Islands/IslandEndpoints.cs). */
+  notificationsSeen: '/live/notifications/seen',
 };
 
 /** This page's address as a form's `returnUrl` names it: path and query. */

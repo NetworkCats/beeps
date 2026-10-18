@@ -133,6 +133,10 @@ internal sealed class NotificationConfiguration : IEntityTypeConfiguration<Notif
             .IsDescending(false, true)
             .HasFilter("read_at IS NULL")
             .HasDatabaseName("ix_notifications_unread");
+        // The notifications about a beep: those an inbox entry stands for (likes of it), and those read once it is seen.
+        builder.HasIndex(n => new { n.RecipientId, n.BeepId, n.Type, n.Id }, "ix_notifications_beep")
+            .IsDescending(false, false, false, true)
+            .HasDatabaseName("ix_notifications_beep");
         builder.HasIndex(n => n.FromActorId);
         builder.HasIndex(n => n.BeepId);
     }

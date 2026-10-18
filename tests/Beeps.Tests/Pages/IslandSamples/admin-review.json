@@ -1,7 +1,7 @@
 {
   "url": "/admin/review",
   "config": {
-    "stringsUrl": "/strings/en.json?v=b43e805c72",
+    "stringsUrl": "/strings/en.json?v=f8d42b8da3",
     "antiforgery": {
       "field": "__RequestVerificationToken",
       "token": "TOKEN"
@@ -258,6 +258,8 @@
     "Notifications.MarkRead": "Mark all as read",
     "Notifications.Mention": "mentioned you",
     "Notifications.New": "New",
+    "Notifications.OneOther": "and 1 other",
+    "Notifications.Others": "and {0} others",
     "Notifications.Reply": "replied to you",
     "Notifications.Title": "Inbox",
     "Pager.Label": "More",

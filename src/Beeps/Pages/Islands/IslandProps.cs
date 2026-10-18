@@ -104,12 +104,16 @@ public sealed record BeepListProps(
 
 /// <summary>One inbox entry.</summary>
 /// <param name="Type"><c>mention</c>, <c>reply</c> or <c>like</c>.</param>
+/// <param name="Others">How many more liked the beep before <paramref name="Sender"/>.</param>
+/// <param name="Earlier">The newest of those, newest first.</param>
 public sealed record NotificationProps(
     Guid Id,
     string Type,
     [property: JsonPropertyName("from")] ActorProps Sender,
     DateTimeOffset CreatedAt,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] bool Read,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] int Others,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] IReadOnlyList<ActorProps>? Earlier,
     BeepProps Beep)
 {
     public static NotificationProps From(NotificationView notification)
@@ -121,6 +125,8 @@ public sealed record NotificationProps(
             ActorProps.From(notification.From),
             notification.CreatedAt,
             notification.Read,
+            notification.Others,
+            notification.Earlier is { Count: > 0 } earlier ? [.. earlier.Select(ActorProps.From)] : null,
             BeepProps.From(notification.Beep));
     }
 }

@@ -1,15 +1,16 @@
-// The inbox (Notifications.cshtml): mentions, replies and likes, newest first. Its first page follows the inbox live:
-// new entries come in at the top, entries read in another tab or gone with their beep catch up. An older page is
-// drawn again when the inbox changes.
-import type { TargetedSubmitEvent } from 'preact';
+// The inbox (Notifications.cshtml): mentions, replies and likes, newest first, drawn as Twitter draws them: a reply or a
+// mention is its beep, and the likes of one beep are one entry from its newest liker, which a new like brings back to
+// the top under a new id. Seeing a beep here leaves its notification
+// unread, unlike elsewhere (seen.ts). Its first page follows the inbox live: new entries come in at the top, entries
+// read in another tab or gone with their beep catch up. An older page is drawn again when the inbox changes.
+import type { TargetedMouseEvent, TargetedSubmitEvent } from 'preact';
 import { useRef } from 'preact/hooks';
 import { signal, type Signal } from '@preact/signals';
-import { beepSignal, putBeeps } from '../beeps.ts';
+import { beepSignal, putBeeps, useShown } from '../beeps.ts';
 import { BeepCard } from '../components/BeepCard.tsx';
 import { Antiforgery } from '../components/Forms.tsx';
 import { Icon } from '../components/Icon.tsx';
 import { Pager } from '../components/Pager.tsx';
-import { Time } from '../components/Time.tsx';
 import { sendForm } from '../forms.ts';
 import { getIslands, getJson } from '../http.ts';
 import { t } from '../i18n.ts';
@@ -17,7 +18,8 @@ import { useSnapshot, type IslandProps } from '../islands.tsx';
 import { compareIds } from '../live-url.ts';
 import { refreshPage, useLive, useLiveEvent } from '../page.ts';
 import { paths } from '../paths.ts';
-import type { LiveProps, NotificationProps, PageProps } from '../props.ts';
+import type { ActorProps, LiveProps, NotificationProps, PageProps } from '../props.ts';
+import { visit } from '../router.ts';
 import { schedule } from '../schedule.ts';
 
 interface NotificationsProps {
@@ -26,10 +28,14 @@ interface NotificationsProps {
 }
 
 const LIVE_NOTIFICATIONS = '/live/notifications';
-const SUMMARIES = { like: 'Notifications.Like', reply: 'Notifications.Reply', mention: 'Notifications.Mention' } as const;
 // The inbox page's first page (PageRequest.DefaultLimit) and the most the server lists at once (MaxLimit).
 const INBOX_PAGE = 20;
 const INBOX_MAX = 100;
+
+/** What an entry is about: one per inbox, so the same likes shown again under a newer id replace the older. */
+function about(entry: NotificationProps): string {
+  return `${entry.type}:${entry.beep.id}`;
+}
 
 interface InboxState {
   items: Signal<NotificationProps[]>;
@@ -38,33 +44,76 @@ interface InboxState {
   resync: () => Promise<void>;
 }
 
-function Entry({ entry }: { entry: NotificationProps }) {
+function nameOf(actor: ActorProps): string {
+  return actor.displayName ?? actor.handle ?? '';
+}
+
+/** Shown only while unread, at the entry's edge. */
+function UnreadDot({ entry }: { entry: NotificationProps }) {
+  if (entry.read) return null;
+  return (
+    <span class="notification-dot" title={t('Notifications.New')}>
+      <span class="visually-hidden">{t('Notifications.New')}</span>
+    </span>
+  );
+}
+
+/**
+ * Likes, as Twitter shows them: the icon in the avatar column, the faces of the newest who liked, who they are, and
+ * the liked beep's text greyed. The whole entry opens the beep.
+ */
+function LikeEntry({ entry }: { entry: NotificationProps }) {
+  useShown(entry.beep.id);
+  const beep = beepSignal(entry.beep.id).value ?? entry.beep;
   const from = entry.from;
+  const others = entry.others ?? 0;
+  const permalink = paths.beep(entry.beep.id);
+  const open = (event: TargetedMouseEvent<HTMLElement>): void => {
+    if (event.defaultPrevented || event.button !== 0 || !(event.target instanceof Element)) return;
+    if (event.target.closest('a, button') || window.getSelection()?.toString()) return;
+    if (event.metaKey || event.ctrlKey) window.open(permalink, '_blank', 'noopener');
+    else void visit(permalink).catch(() => {});
+  };
   return (
     <li class={entry.read ? 'notification' : 'notification notification-unread'}>
-      <p class="notification-summary">
-        <span class={`notification-icon notification-icon-${entry.type}`}>
-          {entry.type === 'like' ? <Icon name="favorite" /> : entry.type === 'reply' ? <Icon name="chat_bubble" /> : <Icon name="alternate_email" />}
+      <UnreadDot entry={entry} />
+      <article class="notification-group" onClick={open}>
+        <span class="notification-icon notification-icon-like" aria-hidden="true">
+          <Icon name="favorite" />
         </span>
-        <span class="notification-text">
-          <a class="notification-actor" href={paths.profile(from.handle ?? '')}>
-            <span class="avatar avatar-sm">
-              <img src={from.avatar} alt="" width={24} height={24} loading="lazy" />
-            </span>
-            <span class="notification-name">{from.displayName ?? from.handle}</span>
-          </a>{' '}
-          {t(SUMMARIES[entry.type])}{' '}
-          <span class="notification-time">
-            <Time value={entry.createdAt} />
-          </span>
-        </span>
-        {!entry.read && (
-          <span class="notification-dot" title={t('Notifications.New')}>
-            <span class="visually-hidden">{t('Notifications.New')}</span>
-          </span>
-        )}
+        <div class="notification-main">
+          <div class="notification-avatars">
+            {[from, ...(entry.earlier ?? [])].map((actor) => (
+              <a class="avatar" href={paths.profile(actor.handle ?? '')} title={nameOf(actor)} key={actor.id}>
+                <img src={actor.avatar} alt="" width={32} height={32} loading="lazy" />
+              </a>
+            ))}
+          </div>
+          <p class="notification-text">
+            <a class="notification-name" href={paths.profile(from.handle ?? '')}>
+              {nameOf(from)}
+            </a>{' '}
+            {others > 0 && <>{others === 1 ? t('Notifications.OneOther') : t('Notifications.Others', others)} </>}
+            <a class="notification-link" href={permalink}>
+              {t('Notifications.Like')}
+            </a>
+          </p>
+          {beep.html.length > 0 && <div class="notification-quote" dangerouslySetInnerHTML={{ __html: beep.html }} />}
+        </div>
+      </article>
+    </li>
+  );
+}
+
+/** A reply or a mention: the beep itself, as Twitter shows it. */
+function BeepEntry({ entry }: { entry: NotificationProps }) {
+  return (
+    <li class={entry.read ? 'notification' : 'notification notification-unread'}>
+      <UnreadDot entry={entry} />
+      <p class="visually-hidden">
+        {nameOf(entry.from)} {t(entry.type === 'reply' ? 'Notifications.Reply' : 'Notifications.Mention')}
       </p>
-      <BeepCard id={entry.beep.id} />
+      <BeepCard id={entry.beep.id} inInbox />
     </li>
   );
 }
@@ -86,7 +135,9 @@ function create(page: PageProps<NotificationProps>, live: boolean): InboxState {
       putBeeps(fresh.map((entry) => entry.beep));
       const whole = fresh.length < limit;
       const oldest = fresh.at(-1)?.id ?? '';
-      state.items.value = [...fresh, ...(whole ? [] : shown.filter((entry) => compareIds(entry.id, oldest) < 0))];
+      const current = new Set(fresh.map(about));
+      const below = whole ? [] : shown.filter((entry) => compareIds(entry.id, oldest) < 0 && !current.has(about(entry)));
+      state.items.value = [...fresh, ...below];
       if (whole) state.next.value = undefined;
     },
   };
@@ -131,8 +182,8 @@ export function NotificationsPage({ props }: IslandProps<NotificationsProps>) {
     const page = (answer.page?.islands.notifications?.props as NotificationsProps | undefined)?.page;
     if (!page) return false;
     putBeeps(page.items.map((entry) => entry.beep));
-    const shown = new Set(state.items.value.map((entry) => entry.id));
-    state.items.value = [...state.items.value, ...page.items.filter((entry) => !shown.has(entry.id))];
+    const shown = new Set(state.items.value.map(about));
+    state.items.value = [...state.items.value, ...page.items.filter((entry) => !shown.has(about(entry)))];
     state.next.value = page.next;
     return true;
   };
@@ -162,9 +213,7 @@ export function NotificationsPage({ props }: IslandProps<NotificationsProps>) {
       </div>
       {items.length > 0 && (
         <ol class="notification-list">
-          {items.map((entry) => (
-            <Entry key={entry.id} entry={entry} />
-          ))}
+          {items.map((entry) => (entry.type === 'like' ? <LikeEntry key={entry.id} entry={entry} /> : <BeepEntry key={entry.id} entry={entry} />))}
         </ol>
       )}
       {items.length > 0 && state.next.value && (

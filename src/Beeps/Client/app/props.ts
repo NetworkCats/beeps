@@ -54,6 +54,10 @@ export interface NotificationProps {
   from: ActorProps;
   createdAt: string;
   read?: boolean;
+  /** How many more liked the beep before `from`. */
+  others?: number;
+  /** The newest of those others, newest first. */
+  earlier?: ActorProps[];
   beep: BeepProps;
 }
 
