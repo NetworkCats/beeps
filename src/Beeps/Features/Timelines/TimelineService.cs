@@ -39,6 +39,16 @@ public sealed class TimelineService(ITimelineStore store, ProfileService profile
         return await views.BuildPageAsync(rows, viewer, cancellationToken);
     }
 
+    /// <summary>
+    /// The beeps an actor liked, most recently liked first: for a profile the caller found through
+    /// <see cref="ProfileService"/>, whose likes the viewer may see (<see cref="ProfileView.LikesShown"/>).
+    /// </summary>
+    public async Task<CursorPage<BeepView>> GetLikesAsync(Viewer? viewer, Guid actorId, PageRequest page, CancellationToken cancellationToken)
+    {
+        var rows = await store.LikesAsync(actorId, page, viewer?.ActorId, cancellationToken);
+        return await views.BuildPageAsync(rows, viewer, cancellationToken);
+    }
+
     /// <summary>Accepts the tag with or without <c>#</c>, in any case or width; an unused tag is an empty page.</summary>
     public async Task<Result<CursorPage<BeepView>>> GetHashtagAsync(Viewer? viewer, string? tag, PageRequest page, CancellationToken cancellationToken)
     {

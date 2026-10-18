@@ -553,7 +553,37 @@ public sealed partial class AccountService(
         var waiting = pending is not null && pending.ExpiresAt > time.GetUtcNow() && pending.Attempts < MaxCodeAttempts
             ? new CodeSent(user.PendingEmail!, pending.CreatedAt + ResendInterval)
             : null;
-        return new AccountSettings(user.Actor.Handle!, user.Actor.DisplayName!, user.Actor.Bio, user.Email, waiting, user.Locale);
+        return new AccountSettings(
+            user.Actor.Handle!,
+            user.Actor.DisplayName!,
+            user.Actor.Bio,
+            user.Email,
+            waiting,
+            user.Locale,
+            new ProfilePrivacy(user.HideLikes, user.HideFollows, user.HideFollowCounts));
+    }
+
+    /// <summary>What the human's profile shows others of their likes and follows (PLAN 5.1).</summary>
+    public async Task<Result> SetPrivacyAsync(Guid userId, ProfilePrivacy privacy, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(privacy);
+        var user = await store.FindUserAsync(userId, cancellationToken);
+        if (user is null)
+        {
+            return AccountNotFound();
+        }
+
+        var limited = await rateLimits.CheckAsync(RateLimitPolicies.AccountChange, $"account:{userId}", cancellationToken);
+        if (!limited.IsSuccess)
+        {
+            return limited;
+        }
+
+        (user.HideLikes, user.HideFollows, user.HideFollowCounts) = (privacy.HideLikes, privacy.HideFollows, privacy.HideFollowCounts);
+        await unitOfWork.SaveChangesAsync(cancellationToken);
+        // Open profiles of theirs, here and elsewhere, show more or less of them.
+        await live.ActorChangedAsync(user.Id, cancellationToken);
+        return Result.Success;
     }
 
     /// <summary>The human's own display name and bio (PLAN 2.2); the username never changes.</summary>

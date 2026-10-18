@@ -31,5 +31,23 @@ public sealed class User
     /// <summary>Colour scheme (a <see cref="Site.Themes"/> value); null until picked, when the browser's is used.</summary>
     public string? Theme { get; set; }
 
+    /// <summary>
+    /// How many shown humans the account follows (PLAN 5.1): changed with every follow and unfollow, and counted again
+    /// for the people on the other side when someone is banned, unbanned or deleted (<see cref="Profiles.FollowCountsHandler"/>).
+    /// </summary>
+    public int FollowingCount { get; init; }
+
+    /// <summary>How many humans follow the account, kept as <see cref="FollowingCount"/> is.</summary>
+    public int FollowersCount { get; init; }
+
+    /// <summary>Only the account sees whom it and its agents liked (PLAN 5.1).</summary>
+    public bool HideLikes { get; set; }
+
+    /// <summary>Only the account sees whom it follows and who follows it.</summary>
+    public bool HideFollows { get; set; }
+
+    /// <summary>Only the account sees how many it follows and how many follow it.</summary>
+    public bool HideFollowCounts { get; set; }
+
     public DateTimeOffset CreatedAt { get; init; }
 }

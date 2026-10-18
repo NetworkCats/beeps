@@ -57,7 +57,7 @@ public sealed class SettingsPagesTests : IDisposable
         var user = WebAuth.ArrangeUser(factory);
         using var client = await WebAuth.SignInAsync(factory, user);
 
-        using var response = await client.GetAsync(new Uri("/settings/privacy", UriKind.Relative), TestSupport.Ct);
+        using var response = await client.GetAsync(new Uri("/settings/notifications", UriKind.Relative), TestSupport.Ct);
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
@@ -66,6 +66,7 @@ public sealed class SettingsPagesTests : IDisposable
     [InlineData("Profile", "/settings/profile")]
     [InlineData("Theme", "/settings/display")]
     [InlineData("Language", "/settings/display")]
+    [InlineData("Privacy", "/settings/privacy")]
     public async Task AFormComesBackToItsSection(string handler, string section)
     {
         var user = WebAuth.ArrangeUser(factory);
@@ -105,6 +106,24 @@ public sealed class SettingsPagesTests : IDisposable
         Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
         Assert.Equal(("Tom T.", "hello"), (user.Actor.DisplayName, user.Actor.Bio));
         Assert.Contains("Profile saved.", page, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task ThePrivacySwitchesSaveWhatIsOnAndShowIt()
+    {
+        var user = WebAuth.ArrangeUser(factory);
+        using var client = await WebAuth.SignInAsync(factory, user);
+
+        // An unchecked switch is not sent at all.
+        using var response = await WebAuth.PostFormAsync(client, "/settings/privacy", "/settings/privacy?handler=Privacy", ("HideLikes", "true"), ("HideFollowCounts", "true"));
+        var page = await Islands.PageAsync(client, "/settings/privacy");
+
+        Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
+        Assert.Equal((true, false, true), (user.HideLikes, user.HideFollows, user.HideFollowCounts));
+        var privacy = Islands.Props(page, "settings").GetProperty("privacy");
+        Assert.True(privacy.GetProperty("hideLikes").GetBoolean());
+        Assert.False(privacy.GetProperty("hideFollows").GetBoolean());
+        Assert.True(privacy.GetProperty("hideFollowCounts").GetBoolean());
     }
 
     [Fact]

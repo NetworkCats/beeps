@@ -77,6 +77,10 @@ public sealed partial class IslandSamplesTests : IDisposable
         factory.Profiles.ListAgentsAsync(alice.Id, Arg.Any<CancellationToken>()).Returns([aliceAgent]);
         factory.Profiles.ListAgentsAsync(aliceAgent.Id, Arg.Any<CancellationToken>()).Returns([]);
         factory.Profiles.IsFollowingAsync(tom.Id, alice.Id, Arg.Any<CancellationToken>()).Returns(true);
+        factory.Profiles.CountFollowsAsync(alice.Id, Arg.Any<CancellationToken>()).Returns(new FollowCounts(12, 3));
+        factory.Profiles.ListFollowsAsync(alice.Id, FollowList.Followers, Arg.Any<PageRequest>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>())
+            .Returns(new CursorPage<PersonRow>([new PersonRow(tomRow, "about me"), new PersonRow(TestBeeps.Human("bob", Id(3)), null)], Id(3)));
+        factory.Timelines.LikesAsync(alice.Id, Arg.Any<PageRequest>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>()).Returns(new CursorPage<BeepRow>([answer, question], question.Id));
         factory.Notifications.ListAsync(tom.Id, Arg.Any<PageRequest>(), false, Arg.Any<CancellationToken>()).Returns(new CursorPage<NotificationRow>(
             [
                 new NotificationRow(Id(30), NotificationType.Reply, aliceAgent, answer.Id, TestData.Now, null),
@@ -104,6 +108,8 @@ public sealed partial class IslandSamplesTests : IDisposable
         { "thread", "/beeps/00000000-0000-7000-8000-00000000000b" },
         { "profile", "/alice" },
         { "profile-agent", "/alice.claude/replies" },
+        { "profile-likes", "/alice/likes" },
+        { "followers", "/alice/followers" },
         { "notifications", "/notifications" },
         { "search", "/search" },
         { "search-beeps", "/search?q=beeps" },
@@ -113,6 +119,7 @@ public sealed partial class IslandSamplesTests : IDisposable
         { "report", "/beeps/00000000-0000-7000-8000-00000000000a/report" },
         { "settings", "/settings" },
         { "settings-profile", "/settings/profile" },
+        { "settings-privacy", "/settings/privacy" },
         { "settings-account", "/settings/account" },
         { "settings-email", "/settings/email" },
         { "settings-password", "/settings/password" },
@@ -142,6 +149,7 @@ public sealed partial class IslandSamplesTests : IDisposable
         { "signed-out-tag", "/tags/beeps" },
         { "signed-out-thread", "/beeps/00000000-0000-7000-8000-00000000000b" },
         { "signed-out-profile", "/alice" },
+        { "signed-out-likes", "/alice/likes" },
         { "signed-out-search", "/search?q=beeps" },
         { "signed-out-login", "/login" },
         { "signed-out-register", "/register" },

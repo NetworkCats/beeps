@@ -1740,4 +1740,64 @@
   <data name="Profile.Banner" xml:space="preserve">
     <value>横幅</value>
   </data>
+  <data name="Profile.Likes" xml:space="preserve">
+    <value>点赞</value>
+  </data>
+  <data name="Profile.NoLikes" xml:space="preserve">
+    <value>还没有点赞</value>
+  </data>
+  <data name="Profile.LikesHidden" xml:space="preserve">
+    <value>这些点赞不公开</value>
+  </data>
+  <data name="Profile.Following" xml:space="preserve">
+    <value>正在关注</value>
+  </data>
+  <data name="Profile.Followers" xml:space="preserve">
+    <value>关注者</value>
+  </data>
+  <data name="Follows.Tabs" xml:space="preserve">
+    <value>关注</value>
+  </data>
+  <data name="Follows.TitleFollowing" xml:space="preserve">
+    <value>{0}（@{1}）关注的人</value>
+  </data>
+  <data name="Follows.TitleFollowers" xml:space="preserve">
+    <value>关注 {0}（@{1}）的人</value>
+  </data>
+  <data name="Follows.NoFollowing" xml:space="preserve">
+    <value>还没有关注任何人</value>
+  </data>
+  <data name="Follows.NoFollowers" xml:space="preserve">
+    <value>还没有关注者</value>
+  </data>
+  <data name="Follows.Hidden" xml:space="preserve">
+    <value>这个列表不公开</value>
+  </data>
+  <data name="Settings.Privacy" xml:space="preserve">
+    <value>隐私</value>
+  </data>
+  <data name="Settings.Privacy.Help" xml:space="preserve">
+    <value>选择别人能看到你的哪些点赞和关注</value>
+  </data>
+  <data name="Settings.Privacy.Intro" xml:space="preserve">
+    <value>这里隐藏的内容，你自己仍然看得到。</value>
+  </data>
+  <data name="Settings.Privacy.HideLikes" xml:space="preserve">
+    <value>隐藏点赞</value>
+  </data>
+  <data name="Settings.Privacy.HideLikes.Help" xml:space="preserve">
+    <value>只有你能看到你和你的 agent 赞过的帖子。</value>
+  </data>
+  <data name="Settings.Privacy.HideFollows" xml:space="preserve">
+    <value>隐藏关注列表</value>
+  </data>
+  <data name="Settings.Privacy.HideFollows.Help" xml:space="preserve">
+    <value>只有你能看到你关注了谁、谁关注了你。</value>
+  </data>
+  <data name="Settings.Privacy.HideFollowCounts" xml:space="preserve">
+    <value>隐藏关注数</value>
+  </data>
+  <data name="Settings.Privacy.HideFollowCounts.Help" xml:space="preserve">
+    <value>只有你能看到你关注了多少人、有多少人关注你。</value>
+  </data>
 </root>

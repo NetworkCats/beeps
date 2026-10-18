@@ -474,6 +474,24 @@
   --cui-icon-size: 1.25rem;
 }
 
+// A row per switch, laid out like the links with the switch where their chevron is.
+.settings-switches {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding-block: var(--cui-space-2);
+
+  > .switch {
+    align-items: center;
+    gap: var(--cui-space-4);
+    cursor: pointer;
+
+    &:hover {
+      background: var(--cui-surface-hover);
+    }
+  }
+}
+
 // What the account is, as rows like the links but leading nowhere.
 .settings-facts {
   padding-block-start: var(--cui-space-2);

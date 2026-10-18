@@ -30,10 +30,15 @@ public sealed record ThreadProps(
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] Guid? After,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] ComposerProps? Reply);
 
+/// <summary>How many a human follows and how many follow them.</summary>
+public sealed record FollowCountsProps(int Following, int Followers);
+
 /// <summary>Who a profile is, as Profiles/Index.cshtml shows it above its beeps.</summary>
 /// <param name="Mine">The viewer's own profile or one of their agents': an edit link instead of follow or block.</param>
 /// <param name="EditUrl">Where that edit link goes.</param>
 /// <param name="Banner">The banner above the card; none shows a plain strip.</param>
+/// <param name="Counts">For humans: how many they follow and how many follow them, unless they keep that private.</param>
+/// <param name="Lists">For humans: whether the lists of whom they follow and who follows them can be opened.</param>
 public sealed record ProfileCardProps(
     ActorProps Actor,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Bio,
@@ -45,9 +50,11 @@ public sealed record ProfileCardProps(
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] bool? Blocked,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] bool Mine,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? EditUrl,
-    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] Uri? Banner)
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] Uri? Banner,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] FollowCountsProps? Counts,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] bool Lists)
 {
-    public static ProfileCardProps From(ProfileView profile, bool mine, string? editUrl)
+    public static ProfileCardProps From(ProfileView profile, string? editUrl)
     {
         ArgumentNullException.ThrowIfNull(profile);
         return new ProfileCardProps(
@@ -59,18 +66,33 @@ public sealed record ProfileCardProps(
             [.. profile.Agents.Select(ActorProps.From)],
             profile.Following,
             profile.Blocked,
-            mine,
+            profile.Mine,
             editUrl,
-            profile.BannerUrl);
+            profile.BannerUrl,
+            profile.Counts is { } counts ? new FollowCountsProps(counts.Following, counts.Followers) : null,
+            profile.FollowsShown);
     }
 }
 
-/// <summary>Profiles/Index.cshtml: who it is, and its beeps or its replies.</summary>
+/// <summary>Profiles/Index.cshtml: who it is, and its beeps, its replies or its likes.</summary>
+/// <param name="Tab"><c>replies</c> or <c>likes</c>; none for the beeps.</param>
+/// <param name="Likes">Whether the likes tab is there: the viewer may see them.</param>
 public sealed record ProfileProps(
     LiveProps Live,
     ProfileCardProps Profile,
-    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] bool Replies,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Tab,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] bool Likes,
     BeepListProps List);
+
+/// <summary>Profiles/Follows.cshtml: whom a human follows, or who follows them.</summary>
+/// <param name="Followers">Who follows them, rather than whom they follow.</param>
+/// <param name="Hidden">They keep the lists to themselves: none is shown.</param>
+public sealed record FollowsProps(
+    LiveProps Live,
+    ActorProps Actor,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] bool Followers,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] bool Hidden,
+    PageProps<UserResultProps> Page);
 
 /// <summary>Notifications.cshtml: the inbox, newest first.</summary>
 public sealed record NotificationsProps(LiveProps Live, PageProps<NotificationProps> Page);
@@ -92,7 +114,7 @@ public sealed record ReportProps(
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Note,
     int NoteMaxLength);
 
-/// <summary>A person found by a search, with their bio.</summary>
+/// <summary>A person in a list of people (search results, follows), with their bio.</summary>
 public sealed record UserResultProps(ActorProps Actor, [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Bio);
 
 /// <summary>One page of results: beeps or people, depending on what was searched.</summary>

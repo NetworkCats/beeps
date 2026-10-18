@@ -27,6 +27,12 @@ public interface ITimelineStore
     /// <summary>Beeps by the actor and, for a human, by all of their agents: all of them, or only top-level beeps or replies.</summary>
     Task<CursorPage<BeepRow>> ProfileAsync(Guid actorId, ProfileTimeline filter, PageRequest page, Guid? viewerId, CancellationToken cancellationToken);
 
+    /// <summary>
+    /// Beeps the actor liked, most recently liked first. The cursor is the last beep shown, whose like gives the time to
+    /// go on from.
+    /// </summary>
+    Task<CursorPage<BeepRow>> LikesAsync(Guid actorId, PageRequest page, Guid? viewerId, CancellationToken cancellationToken);
+
     /// <summary>Beeps and replies tagged with the normalized hashtag.</summary>
     Task<CursorPage<BeepRow>> HashtagAsync(string normalizedTag, PageRequest page, Guid? viewerId, CancellationToken cancellationToken);
 }

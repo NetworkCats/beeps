@@ -1393,7 +1393,7 @@ span.beep-action {
   font-size: var(--beeps-text-size);
 }
 
-.search-users > li {
+.people-list > li {
   border-block-end: var(--cui-border-width) solid var(--cui-border);
 }
 
@@ -1527,6 +1527,28 @@ span.beep-action {
     &:not(:hover) {
       text-decoration: none;
     }
+  }
+}
+
+// As on Twitter: the numbers in full ink, what they count in grey, each leading to its list.
+.profile-follows {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--cui-space-1) var(--cui-space-4);
+  margin: var(--cui-space-3) 0 0;
+  color: var(--cui-text-2);
+  font-size: var(--beeps-text-size);
+
+  > a {
+    color: inherit;
+
+    &:not(:hover) {
+      text-decoration: none;
+    }
+  }
+
+  strong {
+    color: var(--cui-text);
   }
 }
 

@@ -1,6 +1,5 @@
-@page "/{handle}/{tab:regex(^replies$)?}"
+@page "/{handle}/{tab:regex(^(replies|likes)$)?}"
 @using Beeps.Features.Accounts
-@using Beeps.Features.Timelines
 @using Beeps.Pages.Islands
 @model Beeps.Pages.Profiles.IndexModel
 @{
@@ -9,11 +8,17 @@
     var handle = actor.Handle!;
     ViewData["Title"] = $"{actor.DisplayName} (@{handle})";
     var isAgent = actor.Kind == ActorKind.Agent;
-    var mine = User.IsHuman() && (actor.Relation == Beeps.Features.Beeps.Relations.Self || profile.Owner?.Id == User.ActorId());
     var editUrl = isAgent ? Url.Page("/Agents/Edit", new { id = actor.Id }) : SitePaths.SettingsSection(SettingsSections.Profile);
-    var replies = Model.Tab == ProfileTimeline.Replies;
+    var tab = Model.Tab;
+    var empty = tab switch
+    {
+        ProfileTabs.Likes when !profile.LikesShown => "Profile.LikesHidden",
+        ProfileTabs.Likes => "Profile.NoLikes",
+        ProfileTabs.Replies => "Profile.NoReplies",
+        _ => "Profile.NoBeeps",
+    };
     // Older pages by id: the "more" link still leads here after the profile's handle changes.
-    var list = new BeepList(Model.Beeps, L[replies ? "Profile.NoReplies" : "Profile.NoBeeps"], PagerPath: SitePaths.ProfileById(actor.Id, replies));
+    var list = new BeepList(Model.Beeps, L[empty], PagerPath: SitePaths.ProfileById(actor.Id, tab));
     // Gone (banned, deleted): the page is shown anew. Drawn again when one of the people it shows changes, from its
     // address by id, so a renamed handle still finds it.
     var props = new ProfileProps(
@@ -21,9 +26,10 @@
             LiveProps.WatchFor(User, Model.Live),
             Subject: $"actor:{actor.Id:D}",
             Actors: [actor.Id, .. profile.Owner is { } owner ? [owner.Id] : Array.Empty<Guid>(), .. profile.Agents.Select(a => a.Id)],
-            Url: SitePaths.ProfileById(actor.Id, replies)),
-        ProfileCardProps.From(profile, mine, mine ? editUrl : null),
-        replies,
+            Url: SitePaths.ProfileById(actor.Id, tab)),
+        ProfileCardProps.From(profile, profile.Mine ? editUrl : null),
+        tab,
+        profile.LikesShown,
         BeepListProps.From(list, Request.Path));
 }
 @* Client/app/pages/Profile.tsx draws this page from its props. Only signed-out visitors get the markup below as well (search
@@ -81,6 +87,30 @@
             <div><dt><icon name="calendar_month" /><span class="visually-hidden">@L["Profile.Joined"]</span></dt><dd>@L["Profile.Joined"] <utc-time value="profile.CreatedAt" /></dd></div>
         </dl>
 
+        @if (profile.Counts is not null || profile.FollowsShown)
+        {
+            <p class="profile-follows">
+                @foreach (var (followers, count) in new[] { (false, profile.Counts?.Following), (true, profile.Counts?.Followers) })
+                {
+                    var label = L[followers ? "Profile.Followers" : "Profile.Following"];
+                    if (profile.FollowsShown)
+                    {
+                        <a href="@SitePaths.ProfileTab(handle, followers ? ProfileTabs.Followers : ProfileTabs.Following)">
+                            @if (count is not null)
+                            {
+                                <strong>@count</strong>
+                            }
+                            @label
+                        </a>
+                    }
+                    else
+                    {
+                        <span><strong>@count</strong> @label</span>
+                    }
+                }
+            </p>
+        }
+
         @if (profile.Agents.Count > 0)
         {
             <section class="profile-agents" aria-labelledby="agents-title">
@@ -104,8 +134,12 @@
     </div>
 
     <nav class="tabs tabs-justify profile-tabs" aria-label="@L["Profile.Tabs"]">
-        <a class="tab" href="@SitePaths.Profile(handle)" aria-current="@(Model.Tab == ProfileTimeline.Beeps ? "page" : null)">@L["Profile.Beeps"]</a>
-        <a class="tab" href="@SitePaths.ProfileReplies(handle)" aria-current="@(Model.Tab == ProfileTimeline.Replies ? "page" : null)">@L["Profile.Replies"]</a>
+        <a class="tab" href="@SitePaths.Profile(handle)" aria-current="@(tab is null ? "page" : null)">@L["Profile.Beeps"]</a>
+        <a class="tab" href="@SitePaths.ProfileTab(handle, ProfileTabs.Replies)" aria-current="@(tab == ProfileTabs.Replies ? "page" : null)">@L["Profile.Replies"]</a>
+        @if (profile.LikesShown)
+        {
+            <a class="tab" href="@SitePaths.ProfileTab(handle, ProfileTabs.Likes)" aria-current="@(tab == ProfileTabs.Likes ? "page" : null)">@L["Profile.Likes"]</a>
+        }
     </nav>
 
     <partial name="_BeepList" model="list" />

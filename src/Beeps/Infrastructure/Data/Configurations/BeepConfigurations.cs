@@ -46,7 +46,8 @@ internal sealed class LikeConfiguration : IEntityTypeConfiguration<Like>
         builder.HasKey(l => new { l.BeepId, l.ActorId });
         builder.HasOne<Beep>().WithMany().HasForeignKey(l => l.BeepId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne<Actor>().WithMany().HasForeignKey(l => l.ActorId).OnDelete(DeleteBehavior.Restrict);
-        builder.HasIndex(l => l.ActorId);
+        // A profile's likes, most recently liked first.
+        builder.HasIndex(l => new { l.ActorId, l.CreatedAt, l.BeepId });
     }
 }
 
@@ -111,7 +112,9 @@ internal sealed class FollowConfiguration : IEntityTypeConfiguration<Follow>
         // To users, not actors: both sides must be humans (PLAN 8).
         builder.HasOne<User>().WithMany().HasForeignKey(f => f.FollowerId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne<User>().WithMany().HasForeignKey(f => f.FolloweeId).OnDelete(DeleteBehavior.Restrict);
-        builder.HasIndex(f => f.FolloweeId);
+        // A human's lists of whom they follow and who follows them, most recent first.
+        builder.HasIndex(f => new { f.FollowerId, f.CreatedAt, f.FolloweeId });
+        builder.HasIndex(f => new { f.FolloweeId, f.CreatedAt, f.FollowerId });
     }
 }
 

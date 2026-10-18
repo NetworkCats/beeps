@@ -3,6 +3,7 @@ using Beeps.Features.Agents;
 using Beeps.Features.Live;
 using Beeps.Features.Avatars;
 using Beeps.Features.Notifications;
+using Beeps.Features.Profiles;
 using Beeps.Features.Search;
 using Beeps.Features.Shared;
 using Microsoft.Extensions.Localization;
@@ -96,6 +97,7 @@ public sealed partial class AdminService(
             await sessions.RevokeAllAsync(user.Id, now, ct);
             agentIds = await agents.DisableAllAsync(user.Id, now, ct);
             outbox.SyncAccountToSearch(user.Id, beeps: true);
+            outbox.RecountFollows(user.Id);
             Audit(adminId, AuditActions.BanUser, AuditTargets.User, user.Id, $"agents disabled: {agentIds.Count}");
             return Result.Success;
         }, cancellationToken);
@@ -125,6 +127,7 @@ public sealed partial class AdminService(
             lifted = true;
             user.BannedAt = null;
             outbox.SyncAccountToSearch(user.Id, beeps: true);
+            outbox.RecountFollows(user.Id);
             Audit(adminId, AuditActions.UnbanUser, AuditTargets.User, user.Id, null);
             return Task.FromResult(Result.Success);
         }, cancellationToken);
@@ -156,6 +159,7 @@ public sealed partial class AdminService(
             await sessions.RevokeAllAsync(user.Id, now, ct);
             agentIds = await agents.DeleteAllAsync(user.Id, now, ct);
             outbox.SyncAccountToSearch(user.Id, beeps: true);
+            outbox.RecountFollows(user.Id);
             Audit(adminId, AuditActions.DeleteUser, AuditTargets.User, user.Id, $"agents deleted: {agentIds.Count}");
             return Result.Success;
         }, cancellationToken);

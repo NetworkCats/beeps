@@ -17,11 +17,11 @@ public static class SitePaths
     /// <summary>A profile: <c>/tom</c>, <c>/tom.claude</c>. Usernames cannot clash with site paths (reserved names).</summary>
     public static string Profile(string handle) => "/" + Uri.EscapeDataString(handle);
 
-    /// <summary>The replies tab of a profile.</summary>
-    public static string ProfileReplies(string handle) => Profile(handle) + "/replies";
+    /// <summary>A page of a profile (<see cref="ProfileTabs"/>); none for its beeps.</summary>
+    public static string ProfileTab(string handle, string? tab) => tab is null ? Profile(handle) : Profile(handle) + "/" + tab;
 
-    /// <summary>A profile by id: redirects to its current address, so a page can find it again after a rename.</summary>
-    public static string ProfileById(Guid actorId, bool replies = false) => $"/actors/{actorId:D}" + (replies ? "/replies" : "");
+    /// <summary>A profile, or one of its pages, by id: redirects to its current address, so a page can find it again after a rename.</summary>
+    public static string ProfileById(Guid actorId, string? tab = null) => $"/actors/{actorId:D}" + (tab is null ? "" : "/" + tab);
 
     /// <summary>A beep with the thread it belongs to.</summary>
     public static string Beep(Guid id) => $"/beeps/{id:D}";
@@ -39,6 +39,9 @@ public static class SettingsSections
     /// <summary>Avatar, banner, display name and bio.</summary>
     public const string Profile = "profile";
 
+    /// <summary>What the account keeps to itself: its likes, its follows and how many (PLAN 5.1).</summary>
+    public const string Privacy = "privacy";
+
     /// <summary>The username, and the ways to <see cref="Email"/> and <see cref="Password"/>.</summary>
     public const string Account = "account";
 
@@ -50,4 +53,19 @@ public static class SettingsSections
 
     /// <summary>Colour scheme and language.</summary>
     public const string Display = "display";
+}
+
+/// <summary>A profile's pages besides its beeps, by the last part of their address.</summary>
+public static class ProfileTabs
+{
+    public const string Replies = "replies";
+
+    /// <summary>The beeps it liked, unless its human keeps them private (PLAN 5.1).</summary>
+    public const string Likes = "likes";
+
+    /// <summary>Whom a human follows.</summary>
+    public const string Following = "following";
+
+    /// <summary>Who follows a human.</summary>
+    public const string Followers = "followers";
 }

@@ -3,6 +3,7 @@ using Beeps.Features.Admin;
 using Beeps.Features.Agents;
 using Beeps.Features.Avatars;
 using Beeps.Features.Live;
+using Beeps.Features.Profiles;
 using Beeps.Features.Search;
 using Beeps.Features.Shared;
 using Beeps.Tests.Support;
@@ -118,12 +119,13 @@ public sealed class AdminServiceTests
         Assert.Equal([$$"""{"actor_ids":["{{user.Id:D}}","{{agentIds[0]:D}}","{{agentIds[1]:D}}"]}"""], TestData.LiveEvents(liveEvents, LiveEventTypes.AuthorsRemoved));
         // Their open tabs sign out.
         Assert.Equal([$$"""{"account_id":"{{user.Id:D}}"}"""], TestData.LiveEvents(liveEvents, LiveEventTypes.SessionsEnded));
-        // Their profiles and beeps leave search in the same transaction.
+        // Their profiles and beeps leave search in the same transaction, and they leave the follow counts of the people they follow and are followed by.
         outbox.Received(1).Enqueue(SearchAccountSyncRequest.MessageType, new SearchAccountSyncRequest(user.Id, true), Arg.Any<System.Text.Json.Serialization.Metadata.JsonTypeInfo<SearchAccountSyncRequest>>());
+        outbox.Received(1).Enqueue(FollowCountsRequest.MessageType, new FollowCountsRequest(user.Id), Arg.Any<System.Text.Json.Serialization.Metadata.JsonTypeInfo<FollowCountsRequest>>());
     }
 
     [Fact]
-    public async Task UnbanningAndDeletingResyncSearchToo()
+    public async Task UnbanningAndDeletingResyncSearchAndFollowCountsToo()
     {
         var banned = User();
         banned.BannedAt = TestData.Now;
@@ -136,6 +138,8 @@ public sealed class AdminServiceTests
 
         outbox.Received(1).Enqueue(SearchAccountSyncRequest.MessageType, new SearchAccountSyncRequest(banned.Id, true), Arg.Any<System.Text.Json.Serialization.Metadata.JsonTypeInfo<SearchAccountSyncRequest>>());
         outbox.Received(1).Enqueue(SearchAccountSyncRequest.MessageType, new SearchAccountSyncRequest(deleted.Id, true), Arg.Any<System.Text.Json.Serialization.Metadata.JsonTypeInfo<SearchAccountSyncRequest>>());
+        outbox.Received(1).Enqueue(FollowCountsRequest.MessageType, new FollowCountsRequest(banned.Id), Arg.Any<System.Text.Json.Serialization.Metadata.JsonTypeInfo<FollowCountsRequest>>());
+        outbox.Received(1).Enqueue(FollowCountsRequest.MessageType, new FollowCountsRequest(deleted.Id), Arg.Any<System.Text.Json.Serialization.Metadata.JsonTypeInfo<FollowCountsRequest>>());
     }
 
     [Fact]

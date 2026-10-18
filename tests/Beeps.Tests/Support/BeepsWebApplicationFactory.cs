@@ -46,6 +46,11 @@ public sealed class BeepsWebApplicationFactory : WebApplicationFactory<Program>
         Timelines.HomeAsync(default, default!, default, CancellationToken.None).ReturnsForAnyArgs(new CursorPage<BeepRow>([], null));
         Timelines.ProfileAsync(default, default, default!, default, CancellationToken.None).ReturnsForAnyArgs(new CursorPage<BeepRow>([], null));
         Timelines.HashtagAsync(default!, default!, default, CancellationToken.None).ReturnsForAnyArgs(new CursorPage<BeepRow>([], null));
+        Timelines.LikesAsync(default, default!, default, CancellationToken.None).ReturnsForAnyArgs(new CursorPage<BeepRow>([], null));
+        // Profiles keep nothing private, nobody follows anyone, unless a test arranges it.
+        Profiles.GetPrivacyAsync(default, CancellationToken.None).ReturnsForAnyArgs(ProfilePrivacy.None);
+        Profiles.CountFollowsAsync(default, CancellationToken.None).ReturnsForAnyArgs(new FollowCounts(0, 0));
+        Profiles.ListFollowsAsync(default, default, default!, default, CancellationToken.None).ReturnsForAnyArgs(new CursorPage<PersonRow>([], null));
         Notifications.ListAsync(default, default!, default, CancellationToken.None).ReturnsForAnyArgs(new CursorPage<NotificationRow>([], null));
         // Nobody has a banner unless a test arranges one.
         Avatars.FindBannerKeyAsync(default, CancellationToken.None).ReturnsForAnyArgs((string?)null);

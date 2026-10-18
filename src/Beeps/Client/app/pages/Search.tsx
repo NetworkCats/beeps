@@ -7,22 +7,17 @@ import { BeepCard } from '../components/BeepCard.tsx';
 import { FormErrors } from '../components/Forms.tsx';
 import { Icon } from '../components/Icon.tsx';
 import { Pager } from '../components/Pager.tsx';
+import { PersonRow, type Person } from '../components/PersonRow.tsx';
 import { getIslands } from '../http.ts';
 import { t } from '../i18n.ts';
 import { useSnapshot, type IslandProps } from '../islands.tsx';
 import { appendPage, mergeFresh } from '../lists.ts';
 import { useLive } from '../page.ts';
-import { paths } from '../paths.ts';
-import type { ActorProps, BeepProps, LiveProps } from '../props.ts';
-
-interface UserResult {
-  actor: ActorProps;
-  bio?: string;
-}
+import type { BeepProps, LiveProps } from '../props.ts';
 
 interface SearchResults {
   beeps: BeepProps[];
-  users: UserResult[];
+  users: Person[];
   next?: string;
 }
 
@@ -37,30 +32,9 @@ interface SearchProps {
 
 interface ResultsState {
   ids: Signal<string[]>;
-  users: Signal<UserResult[]>;
+  users: Signal<Person[]>;
   next: Signal<string | undefined>;
   source?: SearchResults;
-}
-
-function UserRow({ result }: { result: UserResult }) {
-  const actor = result.actor;
-  return (
-    <li>
-      <a class="actor-row" href={paths.profile(actor.handle ?? '')}>
-        <span class="avatar">
-          <img src={actor.avatar} alt="" width={40} height={40} loading="lazy" />
-        </span>
-        <span class="actor-id">
-          <span class="actor-name">
-            {actor.displayName ?? actor.handle}
-            {actor.agent && <span class="badge">{t('Beep.Agent')}</span>}
-          </span>
-          <span class="actor-handle">@{actor.handle}</span>
-        </span>
-      </a>
-      {result.bio !== undefined && <p class="actor-bio">{result.bio}</p>}
-    </li>
-  );
 }
 
 /** The results as they are drawn: fresh ones (the index changed) are taken in without losing the pages loaded past them. */
@@ -152,9 +126,9 @@ export function SearchPage({ props, errors }: IslandProps<SearchProps>) {
         </div>
       )}
       {results && !empty && props.users && (
-        <ul class="actor-list search-users">
+        <ul class="actor-list people-list">
           {users.map((result) => (
-            <UserRow key={result.actor.id} result={result} />
+            <PersonRow key={result.actor.id} person={result} />
           ))}
         </ul>
       )}

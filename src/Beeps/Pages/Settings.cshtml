@@ -1,4 +1,4 @@
-@page "/settings/{section:regex(^(profile|account|email|password|display)$)?}"
+@page "/settings/{section:regex(^(profile|privacy|account|email|password|display)$)?}"
 @using Beeps.Features.Accounts
 @using Beeps.Features.Avatars
 @using Beeps.Features.Localization
@@ -23,6 +23,7 @@
         Model.Settings.PendingEmail?.ResendAt,
         Model.DisplayName,
         Model.Bio,
+        new PrivacyProps(Model.Settings.Privacy.HideLikes, Model.Settings.Privacy.HideFollows, Model.Settings.Privacy.HideFollowCounts),
         Model.Settings.Locale,
         [.. SupportedCultures.All.Select(c => new OptionProps(c, L[$"Language.{c}"], c))],
         theme,

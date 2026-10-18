@@ -604,12 +604,13 @@ public sealed class AccountServiceTests
     {
         var user = TestData.User();
         user.Actor.Bio = "hello";
+        user.HideFollowCounts = true;
         store.FindUserAsync(user.Id, Arg.Any<CancellationToken>()).Returns(user);
 
         var settings = await CreateService().GetSettingsAsync(user.Id, TestSupport.Ct);
         var missing = await CreateService().GetSettingsAsync(Guid.NewGuid(), TestSupport.Ct);
 
-        Assert.Equal(new AccountSettings("tom", "tom", "hello", "tom@example.com", null, "en"), settings.Value);
+        Assert.Equal(new AccountSettings("tom", "tom", "hello", "tom@example.com", null, "en", new ProfilePrivacy(false, false, true)), settings.Value);
         Assert.Equal(ErrorKind.NotFound, missing.Error?.Kind);
     }
 
@@ -627,6 +628,22 @@ public sealed class AccountServiceTests
         await store.Received(1).ForgetAccountAsync(user.Id, Arg.Any<CancellationToken>());
         outbox.Received(1).Enqueue(SearchAccountSyncRequest.MessageType, new SearchAccountSyncRequest(user.Id, false), Arg.Any<System.Text.Json.Serialization.Metadata.JsonTypeInfo<SearchAccountSyncRequest>>());
         Assert.Equal([$$"""{"actor_id":"{{user.Id:D}}"}"""], TestData.LiveEvents(liveEvents, LiveEventTypes.ActorChanged));
+    }
+
+    [Fact]
+    public async Task PrivacyIsSavedAndOpenProfilesCatchUp()
+    {
+        var user = TestData.User();
+        store.FindUserAsync(user.Id, Arg.Any<CancellationToken>()).Returns(user);
+
+        var result = await CreateService().SetPrivacyAsync(user.Id, new ProfilePrivacy(true, false, true), TestSupport.Ct);
+        var missing = await CreateService().SetPrivacyAsync(Guid.NewGuid(), ProfilePrivacy.None, TestSupport.Ct);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal((true, false, true), (user.HideLikes, user.HideFollows, user.HideFollowCounts));
+        Assert.Equal(1, unitOfWork.Saves);
+        Assert.Equal([$$"""{"actor_id":"{{user.Id:D}}"}"""], TestData.LiveEvents(liveEvents, LiveEventTypes.ActorChanged));
+        Assert.Equal(ErrorKind.NotFound, missing.Error?.Kind);
     }
 
     [Fact]

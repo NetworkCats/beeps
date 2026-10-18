@@ -1,6 +1,7 @@
 // The account's own settings (Settings.cshtml), split as Twitter splits them: /settings lists the sections, and each
 // has a page of its own, with a way back to the list. Profile is Twitter's "Edit profile" (the banner and avatar, the
-// name and bio, saved from the header); account shows the username and leads to the email's and the password's pages,
+// name and bio, saved from the header); privacy holds a switch for each thing the profile can keep to the account, sent
+// as soon as it is flipped; account shows the username and leads to the email's and the password's pages,
 // the email moving only once the code sent to the new address is entered; display holds the colour scheme, applied as
 // soon as one is picked, and the language. Each form is sent in the background and
 // answered in place; the saved name, bio, avatar and banner follow changes made in another tab, unless they are being
@@ -19,12 +20,18 @@ import { paths } from '../paths.ts';
 import type { Errors, LiveProps } from '../props.ts';
 import { theme } from '../state.ts';
 
-type Section = 'profile' | 'account' | 'email' | 'password' | 'display';
+type Section = 'profile' | 'privacy' | 'account' | 'email' | 'password' | 'display';
 
 interface Option {
   value: string;
   label: string;
   lang?: string;
+}
+
+interface Privacy {
+  hideLikes: boolean;
+  hideFollows: boolean;
+  hideFollowCounts: boolean;
 }
 
 export interface ProfileLimits {
@@ -46,6 +53,7 @@ interface SettingsProps {
   resendAt?: string;
   displayName?: string;
   bio?: string;
+  privacy: Privacy;
   culture: string;
   cultures: Option[];
   theme: string;
@@ -65,6 +73,7 @@ interface SectionProps {
 /** Each section's title, and where its back arrow leads: the list, or the section it is a step below. */
 const TITLES: Record<Section, { title: string; back: string }> = {
   profile: { title: 'Settings.Profile', back: paths.settings },
+  privacy: { title: 'Settings.Privacy', back: paths.settings },
   account: { title: 'Settings.Account', back: paths.settings },
   email: { title: 'Settings.ChangeEmail', back: paths.settingsSection('account') },
   password: { title: 'Settings.ChangePassword', back: paths.settingsSection('account') },
@@ -102,6 +111,7 @@ export function SettingsPage({ props, errors }: IslandProps<SettingsProps>) {
         <FormErrors errors={errors} />
         <nav class="settings-nav" aria-label={t('Settings.Title')}>
           <LinkRow href={paths.settingsSection('profile')} icon={<Icon name="person" />} title={t('Settings.Profile')} help={t('Settings.Profile.Help')} />
+          <LinkRow href={paths.settingsSection('privacy')} icon={<Icon name="shield" />} title={t('Settings.Privacy')} help={t('Settings.Privacy.Help')} />
           <LinkRow href={paths.settingsSection('account')} icon={<Icon name="lock" />} title={t('Settings.Account')} help={t('Settings.Account.Help')} />
           <LinkRow href={paths.settingsSection('display')} icon={<Icon name="palette" />} title={t('Settings.Display')} help={t('Settings.Display.Help')} />
         </nav>
@@ -125,6 +135,7 @@ export function SettingsPage({ props, errors }: IslandProps<SettingsProps>) {
       </header>
       <FormErrors errors={errors} />
       {section === 'profile' && <ProfileSection props={props} errors={errors} />}
+      {section === 'privacy' && <PrivacySection props={props} />}
       {section === 'account' && <AccountSection props={props} />}
       {section === 'email' && <EmailSection props={props} errors={errors} />}
       {section === 'password' && <PasswordSection props={props} errors={errors} />}
@@ -144,6 +155,43 @@ function ProfileSection({ props, errors }: SectionProps) {
         <FloatField errors={errors} name="Bio" label={t('Field.Bio')} max={props.limits.bioMaxLength} initial={props.bio}>
           <textarea class="float-field-input" {...field(errors, 'Bio')} rows={3} maxLength={props.limits.bioMaxLength} defaultValue={props.bio ?? ''} />
         </FloatField>
+        <Antiforgery />
+      </form>
+    </>
+  );
+}
+
+/** The switches, by the field each one sends and the strings that say what it hides. */
+const PRIVACY: Array<{ name: 'HideLikes' | 'HideFollows' | 'HideFollowCounts'; key: keyof Privacy; title: string; help: string }> = [
+  { name: 'HideLikes', key: 'hideLikes', title: 'Settings.Privacy.HideLikes', help: 'Settings.Privacy.HideLikes.Help' },
+  { name: 'HideFollows', key: 'hideFollows', title: 'Settings.Privacy.HideFollows', help: 'Settings.Privacy.HideFollows.Help' },
+  { name: 'HideFollowCounts', key: 'hideFollowCounts', title: 'Settings.Privacy.HideFollowCounts', help: 'Settings.Privacy.HideFollowCounts.Help' },
+];
+
+/**
+ * What the profile shows others, a switch each, all in one form sent whenever one is flipped. The switches show what
+ * is saved: the answer's props, so one refused flips back.
+ */
+function PrivacySection({ props }: { props: SettingsProps }) {
+  return (
+    <>
+      <p class="settings-intro">{t('Settings.Privacy.Intro')}</p>
+      <form class="settings-switches" method="post" action={action('privacy', 'Privacy')} onSubmit={sending()}>
+        {PRIVACY.map((option) => (
+          <label key={option.name} class="settings-link switch">
+            <span class="settings-link-text">
+              <span class="settings-link-title">{t(option.title)}</span>
+              <span class="settings-link-help">{t(option.help)}</span>
+            </span>
+            <input
+              type="checkbox"
+              name={option.name}
+              value="true"
+              checked={props.privacy[option.key]}
+              onChange={(event) => event.currentTarget.form?.requestSubmit()}
+            />
+          </label>
+        ))}
         <Antiforgery />
       </form>
     </>

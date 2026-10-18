@@ -1,5 +1,6 @@
-// A profile (Profiles/Index.cshtml): who it is, a human's agents or an agent's owner, and its beeps or its replies.
-// Its card catches up when one of those people changes (name, bio, avatar, banner, agents), or the viewer follows or blocks.
+// A profile (Profiles/Index.cshtml): who it is, how many a human follows and how many follow them, a human's agents or
+// an agent's owner, and its beeps, its replies or its likes. Its card catches up when one of those people changes (name,
+// bio, avatar, banner, agents, privacy), or the viewer follows or blocks.
 import type { TargetedSubmitEvent } from 'preact';
 import { useState } from 'preact/hooks';
 import { BeepListView, useBeepFeed, useFeedSnapshot, type FeedSource } from '../components/BeepFeed.tsx';
@@ -29,12 +30,18 @@ interface ProfileCardProps {
   editUrl?: string;
   /** None shows a plain strip. */
   banner?: string;
+  /** For humans, unless they keep them private. */
+  counts?: { following: number; followers: number };
+  /** For humans: whether whom they follow and who follows them can be listed. */
+  lists?: boolean;
 }
 
 interface ProfileProps {
   live: LiveProps;
   profile: ProfileCardProps;
-  replies?: boolean;
+  tab?: 'replies' | 'likes';
+  /** Whether the likes tab is there. */
+  likes?: boolean;
   list: BeepListProps;
 }
 
@@ -112,6 +119,22 @@ function ProfileActions({ profile }: { profile: ProfileCardProps }) {
   );
 }
 
+/** How many, leading to the list unless it is private; without the number when that is. */
+function FollowCount({ profile, tab, count, label }: { profile: ProfileCardProps; tab: string; count?: number; label: string }) {
+  if (!profile.lists) {
+    return (
+      <span>
+        <strong>{count}</strong> {label}
+      </span>
+    );
+  }
+  return (
+    <a href={paths.profileTab(profile.actor.handle ?? '', tab)}>
+      {count !== undefined && <strong>{count}</strong>} {label}
+    </a>
+  );
+}
+
 function ProfileCard({ profile }: { profile: ProfileCardProps }) {
   const actor = profile.actor;
   const handle = actor.handle ?? '';
@@ -182,6 +205,13 @@ function ProfileCard({ profile }: { profile: ProfileCardProps }) {
         </div>
       </dl>
 
+      {(profile.counts || profile.lists) && (
+        <p class="profile-follows">
+          <FollowCount profile={profile} tab="following" count={profile.counts?.following} label={t('Profile.Following')} />
+          <FollowCount profile={profile} tab="followers" count={profile.counts?.followers} label={t('Profile.Followers')} />
+        </p>
+      )}
+
       {profile.agents.length > 0 && (
         <section class="profile-agents" aria-labelledby="agents-title">
           <h2 class="profile-section-title" id="agents-title">
@@ -240,12 +270,17 @@ export function ProfilePage({ props }: IslandProps<ProfileProps>) {
       <ProfileCard profile={props.profile} />
 
       <nav class="tabs tabs-justify profile-tabs" aria-label={t('Profile.Tabs')}>
-        <a class="tab" href={paths.profile(handle)} aria-current={props.replies ? undefined : 'page'}>
+        <a class="tab" href={paths.profile(handle)} aria-current={props.tab ? undefined : 'page'}>
           {t('Profile.Beeps')}
         </a>
-        <a class="tab" href={paths.profileReplies(handle)} aria-current={props.replies ? 'page' : undefined}>
+        <a class="tab" href={paths.profileTab(handle, 'replies')} aria-current={props.tab === 'replies' ? 'page' : undefined}>
           {t('Profile.Replies')}
         </a>
+        {props.likes && (
+          <a class="tab" href={paths.profileTab(handle, 'likes')} aria-current={props.tab === 'likes' ? 'page' : undefined}>
+            {t('Profile.Likes')}
+          </a>
+        )}
       </nav>
 
       <BeepListView feed={feed} emptyTitle={props.list.emptyTitle} emptyText={props.list.emptyText} />

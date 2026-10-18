@@ -1,0 +1,24 @@
+@page "/{handle}/{list:regex(^(following|followers)$)}"
+@using Beeps.Features.Profiles
+@using Beeps.Pages.Islands
+@model Beeps.Pages.Profiles.FollowsModel
+@{
+    var actor = Model.Profile.Actor;
+    var followers = Model.List == FollowList.Followers;
+    var tab = followers ? ProfileTabs.Followers : ProfileTabs.Following;
+    ViewData["Title"] = L[followers ? "Follows.TitleFollowers" : "Follows.TitleFollowing", actor.DisplayName ?? "", actor.Handle!];
+    // Older pages by id, like the profile's: the "more" link still leads here after a rename. Drawn again when the
+    // human or someone listed changes, or the viewer follows or unfollows someone (a resync).
+    var people = Model.People;
+    var props = new FollowsProps(
+        new LiveProps(
+            Subject: $"actor:{actor.Id:D}",
+            Actors: [actor.Id, .. people.Items.Select(p => p.Actor.Id)],
+            Url: SitePaths.ProfileById(actor.Id, tab)),
+        ActorProps.From(actor),
+        followers,
+        !Model.Profile.FollowsShown,
+        PageProps.From(people, p => new UserResultProps(ActorProps.From(p.Actor), p.Bio), next => $"{SitePaths.ProfileById(actor.Id, tab)}?before={next}"));
+}
+@* Client/app/pages/Follows.tsx draws the page from these props, for everyone: lists of people need no search engine. *@
+<island name="follows" skeleton="list" props="props" client-only="true" />

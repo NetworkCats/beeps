@@ -9,6 +9,7 @@ export function registerPages(): void {
   lazyIsland('tag', () => import('./Feeds.tsx').then((m) => m.TagPage));
   lazyIsland('thread', () => import('./Thread.tsx').then((m) => m.ThreadPage));
   lazyIsland('profile', () => import('./Profile.tsx').then((m) => m.ProfilePage));
+  lazyIsland('follows', () => import('./Follows.tsx').then((m) => m.FollowsPage));
   lazyIsland('search', () => import('./Search.tsx').then((m) => m.SearchPage));
   lazyIsland('notifications', () => import('./Notifications.tsx').then((m) => m.NotificationsPage));
   lazyIsland('compose', () => import('./Compose.tsx').then((m) => m.ComposePage));

@@ -13,6 +13,6 @@ public sealed class ByIdModel(IProfileStore profiles) : PageModel
 {
     public async Task<IActionResult> OnGetAsync(Guid id, string? tab, CancellationToken cancellationToken) =>
         await profiles.FindHandleAsync(id, cancellationToken) is { Length: > 0 } handle
-            ? LocalRedirect((tab is null ? SitePaths.Profile(handle) : SitePaths.ProfileReplies(handle)) + Request.QueryString)
+            ? LocalRedirect(SitePaths.ProfileTab(handle, tab) + Request.QueryString)
             : NotFound();
 }

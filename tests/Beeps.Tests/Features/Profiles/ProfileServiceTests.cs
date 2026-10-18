@@ -28,6 +28,8 @@ public sealed class ProfileServiceTests
         store.FindByHandleAsync("tom.claude", Arg.Any<CancellationToken>()).Returns(new ProfileRow(TomsAgent, null, "Claude Opus 4.5", TestData.Now, Tom, BannerKey: "wide"));
         store.FindByHandleAsync("alice", Arg.Any<CancellationToken>()).Returns(new ProfileRow(Alice, null, null, TestData.Now, null));
         store.ListAgentsAsync(Tom.Id, Arg.Any<CancellationToken>()).Returns([TomsAgent]);
+        store.GetPrivacyAsync(default, TestSupport.Ct).ReturnsForAnyArgs(ProfilePrivacy.None);
+        store.CountFollowsAsync(default, TestSupport.Ct).ReturnsForAnyArgs(new FollowCounts(2, 3));
     }
 
     [Fact]
@@ -41,6 +43,84 @@ public sealed class ProfileServiceTests
         Assert.Equal(TomsAgent.Id, Assert.Single(result.Value.Agents).Id);
         Assert.Null(result.Value.Owner);
         Assert.True(result.Value.Following);
+    }
+
+    [Fact]
+    public async Task AHumansProfileCountsTheirFollowsAndShowsTheirLikesAndLists()
+    {
+        var result = await Create().GetAsync(null, "tom", TestSupport.Ct);
+
+        Assert.Equal(new FollowCounts(2, 3), result.Value.Counts);
+        Assert.True(result.Value.LikesShown);
+        Assert.True(result.Value.FollowsShown);
+        Assert.False(result.Value.Mine);
+    }
+
+    [Fact]
+    public async Task WhatAHumanKeepsPrivateIsHiddenFromOthersButNotFromThem()
+    {
+        store.GetPrivacyAsync(Tom.Id, Arg.Any<CancellationToken>()).Returns(new ProfilePrivacy(true, true, true));
+        var service = Create();
+
+        var others = await service.GetAsync(Viewer.Human(Alice.Id), "tom", TestSupport.Ct);
+        var signedOut = await service.GetAsync(null, "tom", TestSupport.Ct);
+        var own = await service.GetAsync(Viewer.Human(Tom.Id), "tom", TestSupport.Ct);
+
+        Assert.All([others.Value, signedOut.Value], profile =>
+        {
+            Assert.Null(profile.Counts);
+            Assert.False(profile.LikesShown);
+            Assert.False(profile.FollowsShown);
+        });
+        Assert.True(own.Value.Mine);
+        Assert.Equal(new FollowCounts(2, 3), own.Value.Counts);
+        Assert.True(own.Value.LikesShown);
+        Assert.True(own.Value.FollowsShown);
+        // Nothing is private from them, so their settings are not even read.
+        await store.Received(2).GetPrivacyAsync(Tom.Id, Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task EachSettingHidesOnlyWhatItSays()
+    {
+        store.GetPrivacyAsync(Tom.Id, Arg.Any<CancellationToken>()).Returns(new ProfilePrivacy(false, false, true), new ProfilePrivacy(false, true, false));
+        var service = Create();
+
+        var noCounts = await service.GetAsync(null, "tom", TestSupport.Ct);
+        var noLists = await service.GetAsync(null, "tom", TestSupport.Ct);
+
+        Assert.Equal((null, true, true), (noCounts.Value.Counts, noCounts.Value.LikesShown, noCounts.Value.FollowsShown));
+        Assert.Equal((new FollowCounts(2, 3), true, false), (noLists.Value.Counts, noLists.Value.LikesShown, noLists.Value.FollowsShown));
+    }
+
+    [Fact]
+    public async Task AnAgentKeepsItsLikesAsItsOwnerDoesAndHasNoFollows()
+    {
+        store.GetPrivacyAsync(Tom.Id, Arg.Any<CancellationToken>()).Returns(new ProfilePrivacy(true, false, false));
+        var service = Create();
+
+        var others = await service.GetAsync(Viewer.Human(Alice.Id), "tom.claude", TestSupport.Ct);
+        var owners = await service.GetAsync(Viewer.Human(Tom.Id), "tom.claude", TestSupport.Ct);
+
+        Assert.False(others.Value.LikesShown);
+        Assert.True(owners.Value.Mine);
+        Assert.True(owners.Value.LikesShown);
+        Assert.All([others.Value, owners.Value], profile => Assert.Equal((null, false), (profile.Counts, profile.FollowsShown)));
+        await store.DidNotReceiveWithAnyArgs().CountFollowsAsync(default, TestSupport.Ct);
+    }
+
+    [Fact]
+    public async Task FollowListsAreShownAsTheViewerSeesThePeople()
+    {
+        var page = PageRequest.Create(Guid.NewGuid());
+        store.ListFollowsAsync(Tom.Id, FollowList.Followers, page, Alice.Id, Arg.Any<CancellationToken>())
+            .Returns(new CursorPage<PersonRow>([new PersonRow(Alice, "hello")], Alice.Id));
+
+        var result = await Create().GetFollowsAsync(Viewer.Human(Alice.Id), Tom.Id, FollowList.Followers, page, TestSupport.Ct);
+
+        var person = Assert.Single(result.Items);
+        Assert.Equal((Alice.Id, Relations.Self, "hello"), (person.Actor.Id, person.Actor.Relation, person.Bio));
+        Assert.Equal(Alice.Id, result.NextCursor);
     }
 
     [Fact]

@@ -30,15 +30,20 @@ public sealed partial class ProfileService(
         }
 
         var actor = profile.Actor;
-        IReadOnlyList<ActorView> agents = actor.Kind == ActorKind.Human
+        var human = actor.Kind == ActorKind.Human;
+        var mine = viewer is { IsAgent: false } && IsOwn(viewer, actor);
+        IReadOnlyList<ActorView> agents = human
             ? [.. (await store.ListAgentsAsync(actor.Id, cancellationToken)).Select(a => views.Actor(a, viewer))]
             : [];
-        bool? following = viewer is { IsAgent: false } && actor.Kind == ActorKind.Human && actor.Id != viewer.ActorId
+        bool? following = viewer is { IsAgent: false } && human && actor.Id != viewer.ActorId
             ? await store.IsFollowingAsync(viewer.ActorId, actor.Id, cancellationToken)
             : null;
-        bool? blocked = viewer is { IsAgent: false } && !IsOwn(viewer, actor)
+        bool? blocked = viewer is { IsAgent: false } && !mine
             ? await store.IsBlockingAsync(viewer.ActorId, actor.Id, cancellationToken)
             : null;
+        // An agent's likes are kept as its owner keeps theirs (PLAN 5.1).
+        var privacy = mine ? ProfilePrivacy.None : await store.GetPrivacyAsync(actor.OwnerId ?? actor.Id, cancellationToken);
+        var counts = human && !privacy.HideFollowCounts ? await store.CountFollowsAsync(actor.Id, cancellationToken) : null;
         return new ProfileView(
             views.Actor(actor, viewer),
             profile.Bio,
@@ -48,7 +53,21 @@ public sealed partial class ProfileService(
             agents,
             following,
             blocked,
-            profile.BannerKey is { } banner ? media.Banner(banner) : null);
+            profile.BannerKey is { } banner ? media.Banner(banner) : null,
+            mine,
+            counts,
+            LikesShown: !privacy.HideLikes,
+            FollowsShown: human && !privacy.HideFollows);
+    }
+
+    /// <summary>
+    /// Whom a human follows, or who follows them: for a profile the caller found through <see cref="GetAsync"/>, whose
+    /// lists the viewer may see (<see cref="ProfileView.FollowsShown"/>).
+    /// </summary>
+    public async Task<CursorPage<PersonView>> GetFollowsAsync(Viewer? viewer, Guid humanId, FollowList list, PageRequest page, CancellationToken cancellationToken)
+    {
+        var rows = await store.ListFollowsAsync(humanId, list, page, viewer?.ActorId, cancellationToken);
+        return new CursorPage<PersonView>([.. rows.Items.Select(r => new PersonView(views.Actor(r.Actor, viewer), r.Bio))], rows.NextCursor);
     }
 
     /// <summary>The visible actor with this handle, for features that list its beeps.</summary>

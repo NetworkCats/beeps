@@ -24,6 +24,7 @@ namespace Beeps.Pages.Islands;
 [JsonSerializable(typeof(TagProps))]
 [JsonSerializable(typeof(ThreadProps))]
 [JsonSerializable(typeof(ProfileProps))]
+[JsonSerializable(typeof(FollowsProps))]
 [JsonSerializable(typeof(NotificationsProps))]
 [JsonSerializable(typeof(ComposeProps))]
 [JsonSerializable(typeof(ReportProps))]

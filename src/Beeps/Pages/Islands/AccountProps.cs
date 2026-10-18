@@ -40,6 +40,7 @@ public sealed record SettingsProps(
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] DateTimeOffset? ResendAt,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? DisplayName,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Bio,
+    PrivacyProps Privacy,
     string Culture,
     IReadOnlyList<OptionProps> Cultures,
     string Theme,
@@ -49,6 +50,9 @@ public sealed record SettingsProps(
     int PasswordMaxLength,
     int CodeLength,
     int CodeLifetimeMinutes);
+
+/// <summary>What the account keeps to itself (PLAN 5.1).</summary>
+public sealed record PrivacyProps(bool HideLikes, bool HideFollows, bool HideFollowCounts);
 
 /// <summary>Onboarding/Verify.cshtml: the code, a new one, or another address.</summary>
 /// <param name="Email">Where the code went.</param>

@@ -4,6 +4,7 @@ using Beeps.Features.Live;
 using Beeps.Features.Profiles;
 using Beeps.Features.Shared;
 using Beeps.Features.Shared.Http;
+using Beeps.Features.Site;
 using Beeps.Features.Timelines;
 using Beeps.Pages.Islands;
 using Microsoft.AspNetCore.Mvc;
@@ -13,8 +14,9 @@ using Microsoft.AspNetCore.OutputCaching;
 namespace Beeps.Pages.Profiles;
 
 /// <summary>
-/// A profile (PLAN 1): who it is, a human's agents or an agent's owner, and its beeps in two tabs, beeps and
-/// replies. A human's tabs include their agents' beeps too.
+/// A profile (PLAN 1): who it is, a human's agents or an agent's owner, and its beeps in three tabs, beeps, replies and
+/// likes. A human's beeps and replies include their agents' too; the likes are the actor's own, unless its human keeps
+/// them private (PLAN 5.1).
 /// </summary>
 [OutputCache(PolicyName = PublicPageCache.Policy)]
 [AppShell]
@@ -24,11 +26,13 @@ public sealed class IndexModel(ProfileService profiles, TimelineService timeline
 
     public ProfileView Profile { get; private set; } = null!;
 
-    public ProfileTimeline Tab { get; private set; }
+    /// <summary>A <see cref="ProfileTabs"/> value; none for the beeps.</summary>
+    public string? Tab { get; private set; }
 
     public CursorPage<BeepView> Beeps { get; private set; } = new([], null);
 
-    public LiveTopic Live => Before is null ? LiveTopic.Profile(Profile.Actor.Id, Tab == ProfileTimeline.Replies) : LiveTopic.None;
+    /// <summary>The likes come in the order they were given, so new beeps never join them.</summary>
+    public LiveTopic Live => Before is null && Tab != ProfileTabs.Likes ? LiveTopic.Profile(Profile.Actor.Id, Tab == ProfileTabs.Replies) : LiveTopic.None;
 
     public async Task<IActionResult> OnGetAsync(string handle, string? tab, CancellationToken cancellationToken)
     {
@@ -39,11 +43,19 @@ public sealed class IndexModel(ProfileService profiles, TimelineService timeline
             return NotFound();
         }
 
-        (Profile, Tab) = (profile.Value, tab is null ? ProfileTimeline.Beeps : ProfileTimeline.Replies);
-        Beeps = await timelines.GetProfileAsync(viewer, Profile.Actor.Id, Tab, PageRequest.Create(Before), cancellationToken);
+        (Profile, Tab) = (profile.Value, tab);
+        var actorId = Profile.Actor.Id;
+        var page = PageRequest.Create(Before);
+        Beeps = tab switch
+        {
+            ProfileTabs.Likes when Profile.LikesShown => await timelines.GetLikesAsync(viewer, actorId, page, cancellationToken),
+            ProfileTabs.Likes => new CursorPage<BeepView>([], null),
+            ProfileTabs.Replies => await timelines.GetProfileAsync(viewer, actorId, ProfileTimeline.Replies, page, cancellationToken),
+            _ => await timelines.GetProfileAsync(viewer, actorId, ProfileTimeline.Beeps, page, cancellationToken),
+        };
         PageTags.Add(HttpContext, [
-            PageTags.Actor(Profile.Actor.Id),
-            PageTags.Shows(Profile.Actor.Id),
+            PageTags.Actor(actorId),
+            PageTags.Shows(actorId),
             .. Profile.Owner is { } owner ? [PageTags.Shows(owner.Id)] : Array.Empty<string>(),
             .. Profile.Agents.Select(a => PageTags.Shows(a.Id)),
             .. PageTags.Showing(Beeps.Items)]);

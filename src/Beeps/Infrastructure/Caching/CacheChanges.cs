@@ -104,6 +104,14 @@ public sealed class PendingCacheChanges(BeepsDbContext db, CacheInvalidator inva
         nameof(Features.Accounts.Actor.BannerMediaId),
     ];
 
+    /// <summary>What a human's profile shows of them to others (PLAN 5.1).</summary>
+    private static readonly string[] PrivacyProperties =
+    [
+        nameof(User.HideLikes),
+        nameof(User.HideFollows),
+        nameof(User.HideFollowCounts),
+    ];
+
     private readonly HashSet<CacheChange> pending = [];
 
     public bool HasPending => pending.Count > 0;
@@ -144,6 +152,10 @@ public sealed class PendingCacheChanges(BeepsDbContext db, CacheInvalidator inva
                     break;
                 case User user when entry.State == EntityState.Modified && entry.Property(nameof(User.BannedAt)).IsModified:
                     pending.Add(user.BannedAt is null ? CacheChange.ActorRestored(user.Id) : CacheChange.ActorVisibility(user.Id));
+                    break;
+                // Their profile shows more or less of them now.
+                case User user when entry.State == EntityState.Modified && PrivacyProperties.Any(p => entry.Property(p).IsModified):
+                    pending.Add(CacheChange.Actor(user.Id));
                     break;
                 case Beep beep when entry.State == EntityState.Added:
                     pending.Add(CacheChange.BeepPosted(beep.Id));

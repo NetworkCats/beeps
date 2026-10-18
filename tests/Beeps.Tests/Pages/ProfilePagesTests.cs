@@ -52,6 +52,144 @@ public sealed class ProfilePagesTests : IDisposable
     }
 
     [Fact]
+    public async Task TheLikesTabListsWhatTheActorLikedInTheOrderTheyLikedIt()
+    {
+        var tom = ArrangeProfile("tom");
+        var liked = TestBeeps.Row("liked", TestBeeps.Human("alice"));
+        TestBeeps.Arrange(factory, liked);
+        factory.Timelines.LikesAsync(tom.Id, Arg.Any<PageRequest>(), null, Arg.Any<CancellationToken>()).Returns(new CursorPage<BeepRow>([liked], liked.Id));
+        using var client = WebAuth.NewClient(factory);
+
+        var html = await client.GetStringAsync(new Uri("/tom/likes", UriKind.Relative), TestSupport.Ct);
+
+        Assert.Contains("<a class=\"tab\" href=\"/tom/likes\" aria-current=\"page\">Likes</a>", html, StringComparison.Ordinal);
+        Assert.Contains("liked", html, StringComparison.Ordinal);
+        // Older pages by id, so a rename does not lose them; no live topic, as likes are not in the order beeps come.
+        Assert.Contains($"href=\"/actors/{tom.Id:D}/likes?before={liked.Id:D}\"", html, StringComparison.Ordinal);
+        Assert.False(Islands.Props(html, "profile").GetProperty("live").TryGetProperty("watch", out _));
+    }
+
+    [Fact]
+    public async Task PrivateLikesHaveNoTabAndAreNotReadForOthers()
+    {
+        var tom = ArrangeProfile("tom");
+        factory.Profiles.GetPrivacyAsync(tom.Id, Arg.Any<CancellationToken>()).Returns(new ProfilePrivacy(true, false, false));
+        using var client = WebAuth.NewClient(factory);
+
+        var profile = await client.GetStringAsync(new Uri("/tom", UriKind.Relative), TestSupport.Ct);
+        var likes = await client.GetStringAsync(new Uri("/tom/likes", UriKind.Relative), TestSupport.Ct);
+
+        Assert.DoesNotContain("/tom/likes", profile, StringComparison.Ordinal);
+        Assert.Contains("These likes are private", likes, StringComparison.Ordinal);
+        await factory.Timelines.DidNotReceiveWithAnyArgs().LikesAsync(default, default!, default, TestSupport.Ct);
+    }
+
+    [Fact]
+    public async Task YourOwnPrivateLikesAreStillYours()
+    {
+        var user = WebAuth.ArrangeUser(factory);
+        factory.Profiles.FindByHandleAsync("tom", Arg.Any<CancellationToken>()).Returns(new ProfileRow(TestBeeps.Human("tom", user.Id), null, null, TestData.Now, null));
+        factory.Profiles.ListAgentsAsync(user.Id, Arg.Any<CancellationToken>()).Returns([]);
+        factory.Profiles.GetPrivacyAsync(user.Id, Arg.Any<CancellationToken>()).Returns(new ProfilePrivacy(true, true, true));
+        using var client = await WebAuth.SignInAsync(factory, user);
+
+        var page = Islands.Props(await Islands.PageAsync(client, "/tom/likes"), "profile");
+
+        Assert.Equal("likes", page.GetProperty("tab").GetString());
+        Assert.True(page.GetProperty("likes").GetBoolean());
+        Assert.True(page.GetProperty("profile").GetProperty("lists").GetBoolean());
+        Assert.Equal(0, page.GetProperty("profile").GetProperty("counts").GetProperty("following").GetInt32());
+        await factory.Timelines.Received(1).LikesAsync(user.Id, Arg.Any<PageRequest>(), user.Id, Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task AHumansCardCountsTheirFollowsAndLeadsToTheLists()
+    {
+        var tom = ArrangeProfile("tom");
+        factory.Profiles.CountFollowsAsync(tom.Id, Arg.Any<CancellationToken>()).Returns(new FollowCounts(12, 3));
+        using var client = WebAuth.NewClient(factory);
+
+        var html = await client.GetStringAsync(new Uri("/tom", UriKind.Relative), TestSupport.Ct);
+
+        Assert.Matches("<a href=\"/tom/following\">\\s*<strong>12</strong>\\s*Following\\s*</a>", html);
+        Assert.Matches("<a href=\"/tom/followers\">\\s*<strong>3</strong>\\s*Followers\\s*</a>", html);
+    }
+
+    [Fact]
+    public async Task PrivateCountsAndListsLeaveOnlyWhatIsShown()
+    {
+        var tom = ArrangeProfile("tom");
+        var alice = ArrangeProfile("alice");
+        var bob = ArrangeProfile("bob");
+        factory.Profiles.GetPrivacyAsync(tom.Id, Arg.Any<CancellationToken>()).Returns(new ProfilePrivacy(false, false, true));
+        factory.Profiles.GetPrivacyAsync(alice.Id, Arg.Any<CancellationToken>()).Returns(new ProfilePrivacy(false, true, false));
+        factory.Profiles.GetPrivacyAsync(bob.Id, Arg.Any<CancellationToken>()).Returns(new ProfilePrivacy(false, true, true));
+        using var client = WebAuth.NewClient(factory);
+
+        var noCounts = await client.GetStringAsync(new Uri("/tom", UriKind.Relative), TestSupport.Ct);
+        var noLists = await client.GetStringAsync(new Uri("/alice", UriKind.Relative), TestSupport.Ct);
+        var neither = await client.GetStringAsync(new Uri("/bob", UriKind.Relative), TestSupport.Ct);
+
+        Assert.Matches("<a href=\"/tom/following\">\\s*Following\\s*</a>", noCounts);
+        Assert.Contains("<span><strong>0</strong> Following</span>", noLists, StringComparison.Ordinal);
+        Assert.DoesNotContain("/alice/following", noLists, StringComparison.Ordinal);
+        Assert.DoesNotContain("profile-follows", neither, StringComparison.Ordinal);
+        await factory.Profiles.DidNotReceive().CountFollowsAsync(tom.Id, Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task TheFollowListsShowThePeopleAndPageByThem()
+    {
+        var tom = ArrangeProfile("tom");
+        var alice = TestBeeps.Human("alice");
+        factory.Profiles.ListFollowsAsync(tom.Id, FollowList.Followers, Arg.Any<PageRequest>(), null, Arg.Any<CancellationToken>())
+            .Returns(new CursorPage<PersonRow>([new PersonRow(alice, "hi")], alice.Id));
+        using var client = WebAuth.NewClient(factory);
+
+        var followers = Islands.Props(await client.GetStringAsync(new Uri("/tom/followers", UriKind.Relative), TestSupport.Ct), "follows");
+        var following = Islands.Props(await client.GetStringAsync(new Uri("/tom/following", UriKind.Relative), TestSupport.Ct), "follows");
+
+        Assert.True(followers.GetProperty("followers").GetBoolean());
+        var person = Assert.Single(followers.GetProperty("page").GetProperty("items").EnumerateArray());
+        Assert.Equal(("alice", "hi"), (person.GetProperty("actor").GetProperty("handle").GetString(), person.GetProperty("bio").GetString()));
+        Assert.Equal($"/actors/{tom.Id:D}/followers?before={alice.Id:D}", followers.GetProperty("page").GetProperty("next").GetString());
+        Assert.False(following.TryGetProperty("followers", out _));
+        await factory.Profiles.Received(1).ListFollowsAsync(tom.Id, FollowList.Following, Arg.Any<PageRequest>(), null, Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task PrivateFollowListsAreNotReadAndAgentsHaveNone()
+    {
+        var tom = ArrangeProfile("tom");
+        factory.Profiles.GetPrivacyAsync(tom.Id, Arg.Any<CancellationToken>()).Returns(new ProfilePrivacy(false, true, false));
+        factory.Profiles.FindByHandleAsync("tom.claude", Arg.Any<CancellationToken>()).Returns(new ProfileRow(TestBeeps.Agent(tom.Id), null, "Claude", TestData.Now, tom));
+        using var client = WebAuth.NewClient(factory);
+
+        var page = Islands.Props(await client.GetStringAsync(new Uri("/tom/following", UriKind.Relative), TestSupport.Ct), "follows");
+        using var agents = await client.GetAsync(new Uri("/tom.claude/followers", UriKind.Relative), TestSupport.Ct);
+
+        Assert.True(page.GetProperty("hidden").GetBoolean());
+        Assert.Empty(page.GetProperty("page").GetProperty("items").EnumerateArray());
+        Assert.Equal(HttpStatusCode.NotFound, agents.StatusCode);
+        await factory.Profiles.DidNotReceiveWithAnyArgs().ListFollowsAsync(default, default, default!, default, TestSupport.Ct);
+    }
+
+    [Theory]
+    [InlineData("likes", "/tom/likes")]
+    [InlineData("followers", "/tom/followers")]
+    public async Task APageByIdGoesOnToItsAddress(string tab, string address)
+    {
+        var tom = TestBeeps.Human("tom");
+        factory.Profiles.FindHandleAsync(tom.Id, Arg.Any<CancellationToken>()).Returns("tom");
+        using var client = WebAuth.NewClient(factory);
+
+        using var response = await client.GetAsync(new Uri($"/actors/{tom.Id:D}/{tab}?before=x", UriKind.Relative), TestSupport.Ct);
+
+        Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
+        Assert.Equal(address + "?before=x", response.Headers.Location?.OriginalString);
+    }
+
+    [Fact]
     public async Task AnAgentsProfileNamesItsOwnerAndModel()
     {
         var owner = TestBeeps.Human("tom");

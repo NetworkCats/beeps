@@ -3,6 +3,7 @@ using Beeps.Features.Auth;
 using Beeps.Features.Avatars;
 using Beeps.Features.Localization;
 using Beeps.Features.Media;
+using Beeps.Features.Profiles;
 using Beeps.Features.Shared;
 using Beeps.Features.Site;
 using Beeps.Pages.Islands;
@@ -13,7 +14,8 @@ using Microsoft.Extensions.Localization;
 namespace Beeps.Pages;
 
 /// <summary>
-/// The account's own settings: avatar, banner, profile, language, colour scheme, email and password (PLAN 2.2, 3.4, 6.12). As on
+/// The account's own settings: avatar, banner, profile, privacy, language, colour scheme, email and password (PLAN 2.2, 3.4,
+/// 5.2, 6.12). As on
 /// Twitter, <c>/settings</c> lists the sections and each has a page of its own (<see cref="SettingsSections"/>); a form
 /// comes back to the section it belongs to, whichever address it was sent to.
 /// </summary>
@@ -44,6 +46,12 @@ public sealed class SettingsModel(AccountService accounts, AvatarService avatars
     [BindProperty] public string? NewEmail { get; set; }
 
     [BindProperty] public string? Code { get; set; }
+
+    [BindProperty] public bool HideLikes { get; set; }
+
+    [BindProperty] public bool HideFollows { get; set; }
+
+    [BindProperty] public bool HideFollowCounts { get; set; }
 
     [BindProperty] public IFormFile? Avatar { get; set; }
 
@@ -79,6 +87,14 @@ public sealed class SettingsModel(AccountService accounts, AvatarService avatars
 
     public async Task<IActionResult> OnPostProfileAsync(CancellationToken cancellationToken) =>
         await DoneAsync(await accounts.UpdateProfileAsync(User.ActorId(), DisplayName, Bio, cancellationToken), SettingsSections.Profile, "Settings.ProfileSaved", cancellationToken);
+
+    // Each switch is sent as it is flipped, and stays as it was flipped: no notice needed.
+    public async Task<IActionResult> OnPostPrivacyAsync(CancellationToken cancellationToken) =>
+        await DoneAsync(
+            await accounts.SetPrivacyAsync(User.ActorId(), new ProfilePrivacy(HideLikes, HideFollows, HideFollowCounts), cancellationToken),
+            SettingsSections.Privacy,
+            notice: null,
+            cancellationToken);
 
     // The page then simply shows up in the new language; no notice needed.
     public async Task<IActionResult> OnPostLanguageAsync(CancellationToken cancellationToken)

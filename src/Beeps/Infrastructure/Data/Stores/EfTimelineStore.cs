@@ -50,6 +50,30 @@ public sealed class EfTimelineStore(BeepsDbContext db, ContentReads reads) : ITi
     }
 
     /// <remarks>
+    /// Walks the <c>(actor_id, created_at, beep_id)</c> index newest first, stopping once the page is full. Once the like
+    /// the cursor names is gone (taken back since), the list ends there.
+    /// </remarks>
+    public async Task<CursorPage<BeepRow>> LikesAsync(Guid actorId, PageRequest page, Guid? viewerId, CancellationToken cancellationToken)
+    {
+        var likes = db.Set<Like>().Where(l => l.ActorId == actorId);
+        if (page.Before is { } before)
+        {
+            var at = likes.Where(l => l.BeepId == before).Select(l => (DateTimeOffset?)l.CreatedAt);
+            likes = likes.Where(l => l.CreatedAt < at.FirstOrDefault() || (l.CreatedAt == at.FirstOrDefault() && l.BeepId < before));
+        }
+
+        var hits = await likes
+            .Join(BeepQueries.Visible(db, viewerId), l => l.BeepId, b => b.Id, (l, b) => new { l.CreatedAt, l.BeepId, Beep = b })
+            .OrderByDescending(x => x.CreatedAt)
+            .ThenByDescending(x => x.BeepId)
+            .Take(page.Limit + 1)
+            .Select(x => x.Beep)
+            .Hits(db, viewerId)
+            .ToListAsync(cancellationToken);
+        return await BeepQueries.ToPageAsync(reads, hits, page.Limit, cancellationToken);
+    }
+
+    /// <remarks>
     /// The tag's id is read first (from the cache), and the query walks the <c>(hashtag_id, beep_id DESC)</c> index
     /// newest first, stopping once the page is full. Matching tagged beeps by id and then sorting them read every
     /// beep with the tag, which grows without bound for a popular one.

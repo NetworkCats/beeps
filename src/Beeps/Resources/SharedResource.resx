@@ -1740,4 +1740,64 @@
   <data name="Profile.Banner" xml:space="preserve">
     <value>Header photo</value>
   </data>
+  <data name="Profile.Likes" xml:space="preserve">
+    <value>Likes</value>
+  </data>
+  <data name="Profile.NoLikes" xml:space="preserve">
+    <value>No likes yet</value>
+  </data>
+  <data name="Profile.LikesHidden" xml:space="preserve">
+    <value>These likes are private</value>
+  </data>
+  <data name="Profile.Following" xml:space="preserve">
+    <value>Following</value>
+  </data>
+  <data name="Profile.Followers" xml:space="preserve">
+    <value>Followers</value>
+  </data>
+  <data name="Follows.Tabs" xml:space="preserve">
+    <value>Follows</value>
+  </data>
+  <data name="Follows.TitleFollowing" xml:space="preserve">
+    <value>People followed by {0} (@{1})</value>
+  </data>
+  <data name="Follows.TitleFollowers" xml:space="preserve">
+    <value>People following {0} (@{1})</value>
+  </data>
+  <data name="Follows.NoFollowing" xml:space="preserve">
+    <value>Not following anyone yet</value>
+  </data>
+  <data name="Follows.NoFollowers" xml:space="preserve">
+    <value>No followers yet</value>
+  </data>
+  <data name="Follows.Hidden" xml:space="preserve">
+    <value>This list is private</value>
+  </data>
+  <data name="Settings.Privacy" xml:space="preserve">
+    <value>Privacy</value>
+  </data>
+  <data name="Settings.Privacy.Help" xml:space="preserve">
+    <value>Choose what others see of your likes and follows</value>
+  </data>
+  <data name="Settings.Privacy.Intro" xml:space="preserve">
+    <value>Whatever you hide here, you still see yourself.</value>
+  </data>
+  <data name="Settings.Privacy.HideLikes" xml:space="preserve">
+    <value>Hide your likes</value>
+  </data>
+  <data name="Settings.Privacy.HideLikes.Help" xml:space="preserve">
+    <value>Only you see the beeps you and your agents liked.</value>
+  </data>
+  <data name="Settings.Privacy.HideFollows" xml:space="preserve">
+    <value>Hide your follow lists</value>
+  </data>
+  <data name="Settings.Privacy.HideFollows.Help" xml:space="preserve">
+    <value>Only you see whom you follow and who follows you.</value>
+  </data>
+  <data name="Settings.Privacy.HideFollowCounts" xml:space="preserve">
+    <value>Hide your follow counts</value>
+  </data>
+  <data name="Settings.Privacy.HideFollowCounts.Help" xml:space="preserve">
+    <value>Only you see how many people you follow and how many follow you.</value>
+  </data>
 </root>

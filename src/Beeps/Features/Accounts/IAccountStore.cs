@@ -1,3 +1,5 @@
+using Beeps.Features.Profiles;
+
 namespace Beeps.Features.Accounts;
 
 /// <summary>
@@ -81,7 +83,7 @@ public sealed record AccountState(
 
 /// <summary>The account as its owner edits it on the settings page.</summary>
 /// <param name="PendingEmail">The address it is moving to while the code sent there is still good.</param>
-public sealed record AccountSettings(string Handle, string DisplayName, string? Bio, string Email, CodeSent? PendingEmail, string Locale);
+public sealed record AccountSettings(string Handle, string DisplayName, string? Bio, string Email, CodeSent? PendingEmail, string Locale, ProfilePrivacy Privacy);
 
 /// <summary>An address a code was sent to, and when another may be sent (<see cref="AccountService.ResendInterval"/>).</summary>
 public sealed record CodeSent(string To, DateTimeOffset ResendAt);

@@ -227,6 +227,26 @@ namespace Beeps.Infrastructure.Data.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("email_verified_at");
 
+                    b.Property<int>("FollowersCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("followers_count");
+
+                    b.Property<int>("FollowingCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("following_count");
+
+                    b.Property<bool>("HideFollowCounts")
+                        .HasColumnType("boolean")
+                        .HasColumnName("hide_follow_counts");
+
+                    b.Property<bool>("HideFollows")
+                        .HasColumnType("boolean")
+                        .HasColumnName("hide_follows");
+
+                    b.Property<bool>("HideLikes")
+                        .HasColumnType("boolean")
+                        .HasColumnName("hide_likes");
+
                     b.Property<bool>("IsAdmin")
                         .HasColumnType("boolean")
                         .HasColumnName("is_admin");
@@ -579,8 +599,8 @@ namespace Beeps.Infrastructure.Data.Migrations
                     b.HasKey("BeepId", "ActorId")
                         .HasName("pk_likes");
 
-                    b.HasIndex("ActorId")
-                        .HasDatabaseName("ix_likes_actor_id");
+                    b.HasIndex("ActorId", "CreatedAt", "BeepId")
+                        .HasDatabaseName("ix_likes_actor_id_created_at_beep_id");
 
                     b.ToTable("likes", (string)null);
                 });
@@ -1017,8 +1037,11 @@ namespace Beeps.Infrastructure.Data.Migrations
                     b.HasKey("FollowerId", "FolloweeId")
                         .HasName("pk_follows");
 
-                    b.HasIndex("FolloweeId")
-                        .HasDatabaseName("ix_follows_followee_id");
+                    b.HasIndex("FolloweeId", "CreatedAt", "FollowerId")
+                        .HasDatabaseName("ix_follows_followee_id_created_at_follower_id");
+
+                    b.HasIndex("FollowerId", "CreatedAt", "FolloweeId")
+                        .HasDatabaseName("ix_follows_follower_id_created_at_followee_id");
 
                     b.ToTable("follows", null, t =>
                         {
