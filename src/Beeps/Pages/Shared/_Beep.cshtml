@@ -65,7 +65,7 @@
             </a>
             <span class="beep-action beep-action-like">
                 <span class="beep-action-icon"><icon name="favorite" /></span>
-                <span class="visually-hidden">@L["Beep.Likes", beep.LikeCount]</span>
+                <span class="visually-hidden">@(beep.LikeCount == 1 ? L["Beep.Likes.One"] : L["Beep.Likes", beep.LikeCount])</span>
                 <span class="beep-count" aria-hidden="true">@Count(beep.LikeCount)</span>
             </span>
             @* Copies the beep's address (BeepCard.tsx); without script it is that address, as a link. *@

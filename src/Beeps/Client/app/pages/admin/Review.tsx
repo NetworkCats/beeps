@@ -71,7 +71,7 @@ export function ReviewPage({ props }: IslandProps<AdminReviewProps>) {
                     </td>
                     <td data-label={t('Admin.Review.Why')}>
                       <span class="tag-group">
-                        {(item.openReports ?? 0) > 0 && <span class="badge badge-warning">{t('Admin.Review.Reports', item.openReports)}</span>}
+                        {(item.openReports ?? 0) > 0 && <span class="badge badge-warning">{item.openReports === 1 ? t('Admin.Review.Reports.One') : t('Admin.Review.Reports', item.openReports)}</span>}
                         {item.categories.map((category, index) => (
                           <span key={index} class="badge">
                             {category}

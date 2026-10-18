@@ -96,7 +96,7 @@
             <p class="profile-follows">
                 @foreach (var (followers, count) in new[] { (false, profile.Counts?.Following), (true, profile.Counts?.Followers) })
                 {
-                    var label = L[followers ? "Profile.Followers" : "Profile.Following"];
+                    var label = L[followers ? (count == 1 ? "Profile.Follower" : "Profile.Followers") : "Profile.Following"];
                     if (profile.FollowsShown)
                     {
                         <a href="@SitePaths.ProfileTab(handle, followers ? ProfileTabs.Followers : ProfileTabs.Following)">

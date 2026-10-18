@@ -1567,7 +1567,8 @@ span.beep-action {
 .profile-agents {
   margin-block-start: var(--cui-space-4);
 
-  .actor-row {
+  // The card's own list only: the dialog's rows (.list-dialog) span the dialog as in any list of people.
+  > .actor-list .actor-row {
     margin-inline: calc(-1 * var(--cui-space-2));
     padding: var(--cui-space-2);
     border-radius: var(--cui-radius-lg);
@@ -1601,6 +1602,9 @@ span.beep-action {
 // ---- A list of people in a dialog (all of a human's agents) ----------------------------------------
 
 .list-dialog {
+  // A little above the middle, as the confirmation (member.scss): centred exactly, it looks as if it sat low.
+  inset-block: 0 15dvh;
+
   // A plain dim page behind it, as behind the confirmation (no glass, see _theme.scss).
   &::backdrop {
     backdrop-filter: none;

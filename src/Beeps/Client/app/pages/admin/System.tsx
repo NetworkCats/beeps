@@ -68,7 +68,7 @@ export function SystemPage({ props }: IslandProps<AdminSystemProps>) {
                   {rows.map((job) => (
                     <tr key={job.id}>
                       <td data-label={t('Admin.System.Type')}>
-                        <code>{job.type}</code> <span class="help">{t('Admin.System.Attempts', job.attempts)}</span>
+                        <code>{job.type}</code> <span class="help">{job.attempts === 1 ? t('Admin.System.Attempts.One') : t('Admin.System.Attempts', job.attempts)}</span>
                       </td>
                       <td data-label={t('Admin.System.Failed')}>
                         <Time value={job.failedAt} />

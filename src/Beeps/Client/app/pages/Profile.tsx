@@ -262,7 +262,7 @@ function ProfileCard({ profile }: { profile: ProfileCardProps }) {
       {(profile.counts || profile.lists) && (
         <p class="profile-follows">
           <FollowCount profile={profile} tab="following" count={profile.counts?.following} label={t('Profile.Following')} />
-          <FollowCount profile={profile} tab="followers" count={profile.counts?.followers} label={t('Profile.Followers')} />
+          <FollowCount profile={profile} tab="followers" count={profile.counts?.followers} label={t(profile.counts?.followers === 1 ? 'Profile.Follower' : 'Profile.Followers')} />
         </p>
       )}
 

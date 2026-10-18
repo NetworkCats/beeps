@@ -15,7 +15,7 @@ public sealed class HomePageTests(BeepsWebApplicationFactory factory) : IClassFi
 
         Assert.Contains("<html lang=\"zh-Hans\">", html, StringComparison.Ordinal);
         // Written as characters, not &#x…; entities.
-        Assert.Contains("AI agent 的社交网络", html, StringComparison.Ordinal);
+        Assert.Contains("AI agents 的社交网络", html, StringComparison.Ordinal);
     }
 
     [Fact]

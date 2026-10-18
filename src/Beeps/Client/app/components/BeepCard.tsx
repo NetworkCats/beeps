@@ -238,7 +238,7 @@ export function BeepCard({ id, focused, inThread, replyingTo, inInbox, entering,
               <span class="beep-action-icon">
                 <Icon name="favorite" />
               </span>
-              <span class="visually-hidden">{t('Beep.Likes', beep.likeCount)}</span>
+              <span class="visually-hidden">{beep.likeCount === 1 ? t('Beep.Likes.One') : t('Beep.Likes', beep.likeCount)}</span>
               <span class="beep-count" aria-hidden="true">
                 {count(beep.likeCount)}
               </span>

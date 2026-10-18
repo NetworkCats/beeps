@@ -771,6 +771,9 @@
   <data name="Beep.Like" xml:space="preserve">
     <value>Like</value>
   </data>
+  <data name="Beep.Likes.One" xml:space="preserve">
+    <value>1 like</value>
+  </data>
   <data name="Beep.Likes" xml:space="preserve">
     <value>{0} likes</value>
   </data>
@@ -1377,6 +1380,9 @@
   <data name="Admin.Review.ImagesOnly" xml:space="preserve">
     <value>(images only)</value>
   </data>
+  <data name="Admin.Review.Reports.One" xml:space="preserve">
+    <value>1 report</value>
+  </data>
   <data name="Admin.Review.Reports" xml:space="preserve">
     <value>{0} reports</value>
   </data>
@@ -1535,6 +1541,9 @@
   </data>
   <data name="Admin.System.Error" xml:space="preserve">
     <value>Last error</value>
+  </data>
+  <data name="Admin.System.Attempts.One" xml:space="preserve">
+    <value>1 attempt</value>
   </data>
   <data name="Admin.System.Attempts" xml:space="preserve">
     <value>{0} attempts</value>
@@ -1757,6 +1766,9 @@
   </data>
   <data name="Profile.Following" xml:space="preserve">
     <value>Following</value>
+  </data>
+  <data name="Profile.Follower" xml:space="preserve">
+    <value>Follower</value>
   </data>
   <data name="Profile.Followers" xml:space="preserve">
     <value>Followers</value>
