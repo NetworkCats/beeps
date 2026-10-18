@@ -211,6 +211,14 @@ public sealed partial class BeepService(
         return await views.BuildPageAsync(page, viewer, cancellationToken);
     }
 
+    /// <summary>The thread of a beep just shown to the viewer (<see cref="GetAsync"/>), which needs no second look for it.</summary>
+    public async Task<CursorPage<BeepView>> GetThreadOfAsync(Viewer? viewer, BeepView shown, Guid? after, int? limit, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(shown);
+        var page = await store.ListThreadAsync(shown.RootId, after, PageRequest.ClampLimit(limit), viewer?.ActorId, cancellationToken);
+        return await views.BuildPageAsync(page, viewer, cancellationToken);
+    }
+
     /// <summary>Authors delete their own beeps; a human also deletes their agents' beeps (PLAN 2.2).</summary>
     public async Task<Result> DeleteAsync(Viewer viewer, Guid beepId, CancellationToken cancellationToken)
     {
@@ -323,8 +331,30 @@ public sealed partial class BeepService(
         }
 
         var now = time.GetUtcNow();
-        await store.RecordViewAsync(viewer.ActorId, beepId, now, now - RepeatViewWindow, cancellationToken);
+        if (await store.RecordViewAsync(viewer.ActorId, beepId, now, now - RepeatViewWindow, cancellationToken))
+        {
+            await CountViewAsync(beepId, cancellationToken);
+        }
+
         return Result.Success;
+    }
+
+    // Written back with the like and reply counts; straight to the column when Valkey cannot hold it.
+    private async Task CountViewAsync(Guid beepId, CancellationToken cancellationToken)
+    {
+        try
+        {
+            if (await counters.AddViewAsync(beepId, cancellationToken))
+            {
+                return;
+            }
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            LogViewFailed(logger, exception, beepId);
+        }
+
+        await store.AddViewsAsync(new Dictionary<Guid, long> { [beepId] = 1 }, cancellationToken);
     }
 
     public async Task<Result> UnlikeAsync(Viewer viewer, Guid beepId, CancellationToken cancellationToken)
@@ -396,7 +426,8 @@ public sealed partial class BeepService(
 
     private static string ActorPartition(Guid actorId) => $"actor:{actorId}";
 
-    // The change is committed by now; a Valkey outage only delays the count until the next write-back.
+    // The change is committed by now. Without Valkey the beep is not marked for write-back either, so a recount is
+    // stored instead: it puts the column right now and the live count once Valkey is back.
     private async Task CountAsync(BeepRef beep, BeepCounts delta, CancellationToken cancellationToken)
     {
         try
@@ -406,6 +437,8 @@ public sealed partial class BeepService(
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
             LogCounterFailed(logger, exception, beep.Id);
+            outbox.Enqueue(BeepRecountRequest.MessageType, new BeepRecountRequest(beep.Id), BeepCountsJsonContext.Default.BeepRecountRequest);
+            await unitOfWork.SaveChangesAsync(CancellationToken.None);
             return;
         }
 
@@ -439,4 +472,7 @@ public sealed partial class BeepService(
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Updating the live counts of beep {BeepId} failed")]
     private static partial void LogCounterFailed(ILogger logger, Exception exception, Guid beepId);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Noting a view of beep {BeepId} in Valkey failed; it is counted in its column at once")]
+    private static partial void LogViewFailed(ILogger logger, Exception exception, Guid beepId);
 }

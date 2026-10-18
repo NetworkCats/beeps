@@ -95,8 +95,9 @@ public sealed partial class LiveService(
             return Error.Validation(LiveErrorCodes.InvalidEventId, localizer["Error.LiveEventIdInvalid"]);
         }
 
-        // Read again whenever the viewer follows or unfollows someone (a relation_changed event).
-        var home = topic.Kind == LiveTopicKind.Home ? await HomeAccountsAsync(viewer, cancellationToken) : null;
+        // As the home page read it (cached); read again, fresh, whenever the viewer follows or unfollows someone (a
+        // relation_changed event), as the cached copy may not have been dropped yet when that event comes.
+        var home = topic.Kind == LiveTopicKind.Home ? await HomeAccountsAsync(viewer, fresh: false, cancellationToken) : null;
         // A first connection is replayed a little from before the page was rendered; a reconnection from its last event.
         DateTimeOffset? renderedAt = request.LastEventId is null && request.From is { } from ? DateTimeOffset.FromUnixTimeMilliseconds(from) : null;
         var connection = new Connection(NewConnectionId(), viewer, session.Verified ? topic : LiveTopic.None, watched, home)
@@ -106,7 +107,7 @@ public sealed partial class LiveService(
             WatchesAll = request.All,
             AccountOnly = !session.Verified,
         };
-        return Result.Of(StreamAsync(connection, after, cancellationToken));
+        return Result.Of(StreamAsync(connection, after, resuming: request.LastEventId is not null, cancellationToken));
     }
 
     /// <summary>An agent's inbox (PLAN 4.3): the unread count on connecting and whenever it changes.</summary>
@@ -115,11 +116,16 @@ public sealed partial class LiveService(
     {
         ArgumentNullException.ThrowIfNull(agent);
         return TryResolveStart(lastEventId, null, out var after)
-            ? Result.Of(StreamAsync(new Connection(NewConnectionId(), agent, LiveTopic.None, [], null, inboxOnly: true) { KeyId = keyId }, after, cancellationToken))
+            ? Result.Of(StreamAsync(new Connection(NewConnectionId(), agent, LiveTopic.None, [], null, inboxOnly: true) { KeyId = keyId }, after, resuming: false, cancellationToken))
             : Error.Validation(LiveErrorCodes.InvalidEventId, localizer["Error.LiveEventIdInvalid"]);
     }
 
-    private async IAsyncEnumerable<LiveMessage> StreamAsync(Connection connection, LiveEventId? after, [EnumeratorCancellation] CancellationToken cancellationToken)
+    /// <param name="resuming">
+    /// A page coming back from its last event (a reconnect, or moving to another page): it has the unread count already,
+    /// and what changed it since comes again from the stream (or as a gap, which counts it), so it is not counted again
+    /// on every page shown. Agents always get it on connecting, as skill.md says.
+    /// </param>
+    private async IAsyncEnumerable<LiveMessage> StreamAsync(Connection connection, LiveEventId? after, bool resuming, [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         await RegisterAsync(connection, cancellationToken);
         // Figures with no events of their own are looked at only while an admin page follows them.
@@ -127,8 +133,10 @@ public sealed partial class LiveService(
         try
         {
             using var subscription = feed.Subscribe(after);
-            var inbox = await InboxAsync(connection, null, cancellationToken);
-            yield return inbox with { Retry = options.Value.ReconnectDelay };
+            var first = resuming && !connection.InboxOnly
+                ? Message(LiveMessages.Ping, new EmptyMessage(), LiveJsonContext.Default.EmptyMessage, after?.ToString())
+                : await InboxAsync(connection, null, cancellationToken);
+            yield return first with { Retry = options.Value.ReconnectDelay };
 
             var lastId = after?.ToString();
             await foreach (var item in WithHeartbeatAsync(subscription, cancellationToken))
@@ -280,7 +288,7 @@ public sealed partial class LiveService(
 
         if (connection.Home is not null)
         {
-            connection.Home = await HomeAccountsAsync(connection.Viewer, cancellationToken);
+            connection.Home = await HomeAccountsAsync(connection.Viewer, fresh: true, cancellationToken);
         }
 
         return
@@ -325,8 +333,10 @@ public sealed partial class LiveService(
             ? [Message(LiveMessages.Close, new EmptyMessage(), LiveJsonContext.Default.EmptyMessage, item.Id)]
             : [];
 
-    private async Task<IReadOnlySet<Guid>> HomeAccountsAsync(Viewer viewer, CancellationToken cancellationToken) =>
-        new HashSet<Guid>(await profiles.ListFollowedAsync(viewer.AccountId, cancellationToken)) { viewer.AccountId };
+    private async Task<IReadOnlySet<Guid>> HomeAccountsAsync(Viewer viewer, bool fresh, CancellationToken cancellationToken) =>
+        new HashSet<Guid>(fresh
+            ? await profiles.ListFollowedAsync(viewer.AccountId, cancellationToken)
+            : await profiles.ListFollowedCachedAsync(viewer.AccountId, cancellationToken)) { viewer.AccountId };
 
     private static bool RenderedSince(Connection connection, LiveEvent item) =>
         connection.RenderedAt is { } rendered && LiveEventId.TryParse(item.Id, out var id) && id.Time < rendered;
@@ -511,8 +521,8 @@ public sealed partial class LiveService(
 
     private string NewConnectionId() => Guid.CreateVersion7(time.GetUtcNow()).ToString("N");
 
-    private static T Read<T>(LiveEvent item, JsonTypeInfo<T> type) =>
-        JsonSerializer.Deserialize(item.Data, type) ?? throw new JsonException($"Live event {item.Id} ({item.Type}) has no payload.");
+    private static T Read<T>(LiveEvent item, JsonTypeInfo<T> type)
+        where T : class => item.Read(type);
 
     private static LiveMessage Message<T>(string type, T payload, JsonTypeInfo<T> payloadType, string? id = null) =>
         new(type, JsonSerializer.Serialize(payload, payloadType), id);

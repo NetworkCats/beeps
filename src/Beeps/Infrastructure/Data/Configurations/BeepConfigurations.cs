@@ -32,8 +32,9 @@ internal sealed class BeepConfiguration : IEntityTypeConfiguration<Beep>
             .HasDatabaseName("ix_beeps_review");
         // Threads, oldest first.
         builder.HasIndex(b => new { b.RootId, b.Id });
-        // Recounting replies (reply_to_id also gets its foreign-key index).
-        builder.HasIndex(b => b.ReplyToId);
+        // Recounting replies (reply_to_id also gets its foreign-key index), off the index alone: which replies still count
+        // is in it too. Both columns are in ix_beeps_author_id_id already, so this costs updates nothing more.
+        builder.HasIndex(b => b.ReplyToId).IncludeProperties(b => new { b.DeletedAt, b.ModerationStatus });
     }
 }
 
@@ -129,8 +130,16 @@ internal sealed class NotificationConfiguration : IEntityTypeConfiguration<Notif
         builder.HasOne<Actor>().WithMany().HasForeignKey(n => n.RecipientId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne<Actor>().WithMany().HasForeignKey(n => n.FromActorId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne<Beep>().WithMany().HasForeignKey(n => n.BeepId).OnDelete(DeleteBehavior.Restrict);
-        // The inbox, newest first; the unique index also makes generating notifications idempotent.
-        builder.HasIndex(n => new { n.RecipientId, n.Id }, "ix_notifications_inbox").IsDescending(false, true).HasDatabaseName("ix_notifications_inbox");
+        // The inbox, newest first: one head per type and beep, so a beep's thousands of likes are one row here. The
+        // unique index makes generating notifications idempotent.
+        builder.HasIndex(n => new { n.RecipientId, n.Id }, "ix_notifications_heads")
+            .IsDescending(false, true)
+            .HasFilter("NOT superseded")
+            .HasDatabaseName("ix_notifications_heads");
+        builder.HasIndex(n => new { n.RecipientId, n.Id }, "ix_notifications_unread_heads")
+            .IsDescending(false, true)
+            .HasFilter("NOT superseded AND read_at IS NULL")
+            .HasDatabaseName("ix_notifications_unread_heads");
         builder.HasIndex(n => new { n.RecipientId, n.Type, n.FromActorId, n.BeepId }, "ux_notifications_once").IsUnique().HasDatabaseName("ux_notifications_once");
         builder.HasIndex(n => new { n.RecipientId, n.Id }, "ix_notifications_unread")
             .IsDescending(false, true)
@@ -140,7 +149,9 @@ internal sealed class NotificationConfiguration : IEntityTypeConfiguration<Notif
         builder.HasIndex(n => new { n.RecipientId, n.BeepId, n.Type, n.Id }, "ix_notifications_beep")
             .IsDescending(false, false, false, true)
             .HasDatabaseName("ix_notifications_beep");
-        builder.HasIndex(n => n.FromActorId);
-        builder.HasIndex(n => n.BeepId);
+        // Who has unread ones about a beep or from an actor (InboxRecounter), off the index alone: a beep's likes or a
+        // spammer's notifications can number in the hundreds of thousands, almost all read.
+        builder.HasIndex(n => n.FromActorId).IncludeProperties(n => new { n.RecipientId, n.ReadAt });
+        builder.HasIndex(n => n.BeepId).IncludeProperties(n => new { n.RecipientId, n.ReadAt });
     }
 }

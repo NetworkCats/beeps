@@ -24,8 +24,8 @@ public interface ILiveEventStore
     /// <summary>The newest entry; null when the stream is empty.</summary>
     Task<LiveEventId?> LastIdAsync(CancellationToken cancellationToken);
 
-    /// <summary>Notes that a beep's live counts changed, for the next merged <see cref="LiveEventTypes.Counts"/> event.</summary>
-    Task MarkCountsChangedAsync(Guid beepId, CancellationToken cancellationToken);
+    /// <summary>Notes that the beeps' live counts changed, for the next merged <see cref="LiveEventTypes.Counts"/> event. One call for all of them.</summary>
+    Task MarkCountsChangedAsync(IReadOnlyCollection<Guid> beepIds, CancellationToken cancellationToken);
 
     /// <summary>Removes and returns up to <paramref name="max"/> beeps whose counts changed.</summary>
     Task<IReadOnlyList<Guid>> TakeChangedCountsAsync(int max, CancellationToken cancellationToken);

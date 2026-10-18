@@ -125,21 +125,35 @@ public sealed class EfBeepStore(BeepsDbContext db, ContentReads reads, PendingCa
     public async Task<bool> RemoveLikeAsync(Guid actorId, Guid beepId, CancellationToken cancellationToken) =>
         await db.Set<Like>().Where(l => l.BeepId == beepId && l.ActorId == actorId).ExecuteDeleteAsync(cancellationToken) == 1;
 
-    // One statement: the beep's count goes up only when the person's did.
     public async Task<bool> RecordViewAsync(Guid userId, Guid beepId, DateTimeOffset now, DateTimeOffset repeatAfter, CancellationToken cancellationToken) =>
         await db.Database.ExecuteSqlAsync(
             $"""
-            WITH counted AS (
-                INSERT INTO viewed_beeps (user_id, beep_id, first_viewed_at, last_viewed_at, view_count)
-                VALUES ({userId}, {beepId}, {now}, {now}, 1)
-                ON CONFLICT (user_id, beep_id) DO UPDATE
-                SET last_viewed_at = excluded.last_viewed_at, view_count = viewed_beeps.view_count + 1
-                WHERE viewed_beeps.last_viewed_at <= {repeatAfter}
-                RETURNING 1)
-            UPDATE beeps SET view_count = view_count + 1
-            WHERE id = {beepId} AND EXISTS (SELECT 1 FROM counted)
+            INSERT INTO viewed_beeps (user_id, beep_id, first_viewed_at, last_viewed_at, view_count)
+            VALUES ({userId}, {beepId}, {now}, {now}, 1)
+            ON CONFLICT (user_id, beep_id) DO UPDATE
+            SET last_viewed_at = excluded.last_viewed_at, view_count = viewed_beeps.view_count + 1
+            WHERE viewed_beeps.last_viewed_at <= {repeatAfter}
             """,
             cancellationToken) == 1;
+
+    public async Task AddViewsAsync(IReadOnlyDictionary<Guid, long> views, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(views);
+        if (views.Count == 0)
+        {
+            return;
+        }
+
+        var ids = views.Keys.ToArray();
+        var counts = ids.Select(id => views[id]).ToArray();
+        await db.Database.ExecuteSqlAsync(
+            $"""
+            UPDATE beeps AS b SET view_count = b.view_count + v.n
+            FROM unnest({ids}::uuid[], {counts}::bigint[]) AS v(id, n)
+            WHERE b.id = v.id
+            """,
+            cancellationToken);
+    }
 
     public async Task<IReadOnlyDictionary<Guid, BeepCounts>> RecountAsync(IReadOnlyCollection<Guid> beepIds, CancellationToken cancellationToken)
     {
@@ -151,8 +165,8 @@ public sealed class EfBeepStore(BeepsDbContext db, ContentReads reads, PendingCa
                     .SetProperty(b => b.ReplyCount, b => db.Set<Beep>().Count(r => r.ReplyToId == b.Id && r.DeletedAt == null && r.ModerationStatus != ModerationStatus.Hidden)),
                 cancellationToken);
         return await db.Set<Beep>()
-            .AsNoTracking()
             .Where(b => beepIds.Contains(b.Id))
+            .Select(b => new { b.Id, b.LikeCount, b.ReplyCount })
             .ToDictionaryAsync(b => b.Id, b => new BeepCounts(b.LikeCount, b.ReplyCount), cancellationToken);
     }
 }

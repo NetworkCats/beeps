@@ -60,23 +60,30 @@ public sealed class EfMediaStore(BeepsDbContext db, PendingCacheChanges cacheCha
             .ToListAsync(cancellationToken);
     }
 
-    public async Task<IReadOnlyList<string>> DeleteUnusedAsync(DateTimeOffset cutoff, int batchSize, CancellationToken cancellationToken) =>
+    public async Task<UnusedMediaBatch> DeleteUnusedAsync(DateTimeOffset cutoff, MediaPosition? after, int batchSize, CancellationToken cancellationToken)
+    {
+        // Media are never older than this, so it stands for "from the start".
+        var (afterCreatedAt, afterId) = after is null ? (DateTimeOffset.UnixEpoch, Guid.Empty) : (after.CreatedAt, after.Id);
         // SKIP LOCKED passes over media a beep, an avatar or a banner is taking right now (see LockOwnedAsync).
-        await db.Database
-            .SqlQuery<string>(
+        var deleted = await db.Database
+            .SqlQuery<DeletedMedia>(
                 $"""
                 DELETE FROM media WHERE id IN (
                     SELECT m.id FROM media m
                     WHERE m.created_at < {cutoff}
+                      AND m.created_at >= {afterCreatedAt} AND (m.created_at, m.id) > ({afterCreatedAt}, {afterId})
                       AND NOT EXISTS (SELECT 1 FROM beep_media bm WHERE bm.media_id = m.id)
                       AND NOT EXISTS (SELECT 1 FROM actors a WHERE a.avatar_media_id = m.id)
                       AND NOT EXISTS (SELECT 1 FROM actors a WHERE a.banner_media_id = m.id)
-                    ORDER BY m.created_at
+                    ORDER BY m.created_at, m.id
                     LIMIT {batchSize}
                     FOR UPDATE SKIP LOCKED)
-                RETURNING storage_key AS "Value"
+                RETURNING storage_key, created_at, id
                 """)
             .ToListAsync(cancellationToken);
+        var last = deleted.OrderBy(d => d.CreatedAt).ThenBy(d => d.Id).LastOrDefault();
+        return new UnusedMediaBatch([.. deleted.Select(d => d.StorageKey)], last is null ? null : new MediaPosition(last.CreatedAt, last.Id));
+    }
 
     public Task<AvatarTarget?> FindActorAsync(Guid actorId, CancellationToken cancellationToken) =>
         db.Set<Actor>()
@@ -107,4 +114,6 @@ public sealed class EfMediaStore(BeepsDbContext db, PendingCacheChanges cacheCha
             .Where(a => a.Id == actorId && a.BannerMedia != null && a.BannerMedia.Status == MediaStatus.Ready)
             .Select(a => a.BannerMedia!.StorageKey)
             .FirstOrDefaultAsync(cancellationToken);
+
+    private sealed record DeletedMedia(string StorageKey, DateTimeOffset CreatedAt, Guid Id);
 }

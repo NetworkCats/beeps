@@ -72,6 +72,8 @@ public sealed partial class LiveEventHub(
         // shutdown timeout) with nothing more to deliver, while their clients could already be on another instance.
         using var stopping = lifetime.ApplicationStopping.Register(EndAll);
         using var ending = stoppingToken.Register(EndAll);
+        // Connecting may take a while; the host does not wait for it.
+        await Task.Yield();
         LiveEventId? position = null;
         var subscribed = false;
         while (!stoppingToken.IsCancellationRequested)

@@ -38,9 +38,19 @@ public sealed record ProfileRow(ActorRow Actor, string? Bio, string? ModelName, 
 /// What a human keeps to themselves (PLAN 5.1): their likes (and their agents'), the lists of whom they follow and who
 /// follows them, and how many there are. They always see all of it themselves.
 /// </summary>
-public sealed record ProfilePrivacy(bool HideLikes, bool HideFollows, bool HideFollowCounts)
+/// <param name="Counts">Their follow counts, read from the same row when the store has them at hand.</param>
+public sealed record ProfilePrivacy(bool HideLikes, bool HideFollows, bool HideFollowCounts, FollowCounts? Counts = null)
 {
     public static readonly ProfilePrivacy None = new(false, false, false);
+}
+
+/// <summary>A human's followers, and the humans they follow.</summary>
+public sealed record FollowCounterparts(IReadOnlyList<Guid> Followers, IReadOnlyList<Guid> Followed);
+
+/// <summary>Where a viewer stands with a profile's actor.</summary>
+public sealed record ProfileRelation(bool Following, bool Blocking)
+{
+    public static readonly ProfileRelation None = new(false, false);
 }
 
 /// <summary>How many visible humans a human follows, and how many follow them.</summary>
@@ -95,10 +105,14 @@ public interface IProfileStore
     /// <summary>The human's agents that have connected (so have a handle) and are not deleted, oldest first.</summary>
     Task<IReadOnlyList<ActorRow>> ListAgentsAsync(Guid ownerId, CancellationToken cancellationToken);
 
-    Task<bool> IsFollowingAsync(Guid followerId, Guid followeeId, CancellationToken cancellationToken);
+    /// <summary>Whether the viewer follows the actor, and whether they blocked it: both in one query.</summary>
+    Task<ProfileRelation> GetRelationAsync(Guid viewerId, Guid actorId, CancellationToken cancellationToken);
 
     /// <summary>The humans this human follows.</summary>
     Task<IReadOnlyList<Guid>> ListFollowedAsync(Guid followerId, CancellationToken cancellationToken);
+
+    /// <summary>As <see cref="ListFollowedAsync"/>, from the content cache the home timeline reads it from, so they agree.</summary>
+    Task<IReadOnlyList<Guid>> ListFollowedCachedAsync(Guid followerId, CancellationToken cancellationToken);
 
     /// <summary>A human's privacy settings; none for an id that is not a human's.</summary>
     Task<ProfilePrivacy> GetPrivacyAsync(Guid humanId, CancellationToken cancellationToken);
@@ -106,11 +120,14 @@ public interface IProfileStore
     /// <summary>How many visible humans the human follows, and how many visible humans follow them.</summary>
     Task<FollowCounts> CountFollowsAsync(Guid humanId, CancellationToken cancellationToken);
 
-    /// <summary>Everyone the human follows or is followed by.</summary>
-    Task<IReadOnlyList<Guid>> ListFollowCounterpartsAsync(Guid humanId, CancellationToken cancellationToken);
+    /// <summary>Everyone who follows the human, and everyone the human follows.</summary>
+    Task<FollowCounterparts> ListFollowCounterpartsAsync(Guid humanId, CancellationToken cancellationToken);
 
-    /// <summary>Counts the humans' follows again from the rows, as <see cref="CountFollowsAsync"/> reads them. Within a transaction.</summary>
-    Task RecountFollowsAsync(IReadOnlyList<Guid> humanIds, CancellationToken cancellationToken);
+    /// <summary>
+    /// Counts again from the rows, as <see cref="CountFollowsAsync"/> reads them, whom <paramref name="followingOf"/> follow
+    /// and who follows <paramref name="followersOf"/>: only the count that can have changed. Within a transaction.
+    /// </summary>
+    Task RecountFollowsAsync(IReadOnlyCollection<Guid> followingOf, IReadOnlyCollection<Guid> followersOf, CancellationToken cancellationToken);
 
     /// <summary>
     /// Whom the human follows, or who follows them, most recently followed first, without anyone the viewer may not
@@ -123,8 +140,6 @@ public interface IProfileStore
 
     /// <summary>Runs immediately, with both humans' follow counts; false if not following. Within a transaction.</summary>
     Task<bool> RemoveFollowAsync(Guid followerId, Guid followeeId, CancellationToken cancellationToken);
-
-    Task<bool> IsBlockingAsync(Guid blockerId, Guid blockedId, CancellationToken cancellationToken);
 
     /// <summary>Whether either of two humans blocked the other.</summary>
     Task<bool> AnyBlockBetweenAsync(Guid humanId, Guid otherHumanId, CancellationToken cancellationToken);

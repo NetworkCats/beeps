@@ -87,7 +87,8 @@ public interface ISearchStore
 
     /// <summary>
     /// Findable actors whose handle starts with <paramref name="normalizedPrefix"/>, for completing an @mention: the
-    /// viewer's own agents first, then those they follow, then shorter handles. Never the viewer, nor anyone they blocked.
+    /// viewer's own agents first, then those they follow, then shorter handles (of one length, in byte order). Never the
+    /// viewer, nor anyone they blocked.
     /// </summary>
     Task<IReadOnlyList<ActorRow>> SuggestActorsAsync(string normalizedPrefix, Viewer viewer, int limit, CancellationToken cancellationToken);
 }

@@ -13,6 +13,9 @@ namespace Beeps.Infrastructure.Data.Stores;
 /// </summary>
 public sealed class EfTimelineStore(BeepsDbContext db, ContentReads reads) : ITimelineStore
 {
+    /// <summary>Past this many authors, a page is narrowed down first (<see cref="NarrowAsync"/>).</summary>
+    private const int ManyAuthors = 200;
+
     public Task<CursorPage<BeepRow>> PublicAsync(PageRequest page, Guid? viewerId, CancellationToken cancellationToken) =>
         BeepQueries.Visible(db, viewerId)
             .Where(b => b.ReplyToId == null)
@@ -59,7 +62,8 @@ public sealed class EfTimelineStore(BeepsDbContext db, ContentReads reads) : ITi
         if (page.Before is { } before)
         {
             var at = likes.Where(l => l.BeepId == before).Select(l => (DateTimeOffset?)l.CreatedAt);
-            likes = likes.Where(l => l.CreatedAt < at.FirstOrDefault() || (l.CreatedAt == at.FirstOrDefault() && l.BeepId < before));
+            // The first condition is the index range; the OR alone is only a filter, which read every page before this one.
+            likes = likes.Where(l => l.CreatedAt <= at.FirstOrDefault() && (l.CreatedAt < at.FirstOrDefault() || l.BeepId < before));
         }
 
         var hits = await likes
@@ -119,6 +123,11 @@ public sealed class EfTimelineStore(BeepsDbContext db, ContentReads reads) : ITi
     private async Task<CursorPage<BeepRow>> NewestByAuthorsAsync(List<Guid> authors, IQueryable<Beep> beeps, PageRequest page, Guid? viewerId, CancellationToken cancellationToken)
     {
         var take = page.Limit + 1;
+        if (authors.Count > ManyAuthors)
+        {
+            (authors, beeps) = await NarrowAsync(authors, beeps, take, viewerId, cancellationToken);
+        }
+
         var hits = await BeepQueries.VisibleActors(db, viewerId)
             .Where(a => authors.Contains(a.Id))
             // "b.Id != a.Id" always holds (a beep is not its author). It is there because EF rewrites a correlation
@@ -129,6 +138,30 @@ public sealed class EfTimelineStore(BeepsDbContext db, ContentReads reads) : ITi
             .Hits(db, viewerId)
             .ToListAsync(cancellationToken);
         return await BeepQueries.ToPageAsync(reads, hits, page.Limit, cancellationToken);
+    }
+
+    /// <summary>
+    /// For many authors (someone following thousands), the authors and the range the page can come from: each author's
+    /// newest beep is found first, one row each, and with M the <paramref name="take"/>-th newest of those, the page lies
+    /// at or above M (that many authors have a beep there) and only among the authors whose newest is. The page itself
+    /// then walks a handful of authors instead of <paramref name="take"/> beeps of every one.
+    /// </summary>
+    private async Task<(List<Guid> Authors, IQueryable<Beep> Beeps)> NarrowAsync(
+        List<Guid> authors, IQueryable<Beep> beeps, int take, Guid? viewerId, CancellationToken cancellationToken)
+    {
+        var newest = await BeepQueries.VisibleActors(db, viewerId)
+            .Where(a => authors.Contains(a.Id))
+            // "b.Id != a.Id": see NewestByAuthorsAsync.
+            .SelectMany(a => beeps.Where(b => b.AuthorId == a.Id && b.Id != a.Id).OrderByDescending(b => b.Id).Take(1))
+            .Select(b => new { b.AuthorId, b.Id })
+            .ToListAsync(cancellationToken);
+        if (newest.Count <= take)
+        {
+            return ([.. newest.Select(n => n.AuthorId)], beeps);
+        }
+
+        var from = newest.Select(n => n.Id).OrderDescending().ElementAt(take - 1);
+        return ([.. newest.Where(n => n.Id.CompareTo(from) >= 0).Select(n => n.AuthorId)], beeps.Where(b => b.Id >= from));
     }
 
     /// <summary>What the viewer may see of beeps whose authors are checked separately, within the page's cursor.</summary>

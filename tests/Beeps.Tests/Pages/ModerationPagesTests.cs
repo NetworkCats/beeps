@@ -107,7 +107,7 @@ public sealed class ModerationPagesTests : IDisposable
         using var client = await WebAuth.SignInAsync(factory, viewer);
 
         var open = await Islands.PageAsync(client, "/@tom");
-        factory.Profiles.IsBlockingAsync(viewer.Id, tom.Id, Arg.Any<CancellationToken>()).Returns(true);
+        factory.Profiles.GetRelationAsync(viewer.Id, tom.Id, Arg.Any<CancellationToken>()).Returns(new ProfileRelation(Following: false, Blocking: true));
         var blocked = await client.GetStringAsync(new Uri("/@tom", UriKind.Relative), TestSupport.Ct);
         var blockedData = await Islands.PageAsync(client, "/@tom");
 

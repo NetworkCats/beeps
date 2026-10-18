@@ -17,6 +17,7 @@ public static class CacheSetup
         services.AddHostedService<CacheInvalidationListener>();
         services.AddScoped<PendingCacheChanges>();
         services.AddScoped<IOutboxHandler, CacheInvalidationHandler>();
+        services.AddScoped<IOutboxHandler, SharedCacheForgetHandler>();
         services.AddScoped<ContentReads>();
         return services;
     }

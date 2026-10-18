@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Npgsql;
 
 namespace Beeps.Infrastructure.Data;
@@ -24,8 +25,11 @@ public static class DatabaseSetup
         return services;
     }
 
+    // Some limits are caps on a count or a list of anyone (the unread count stops at 100), where any rows will do: an
+    // ORDER BY there would read every row to sort them, so the warning about a limit without one is off.
     public static void Configure(DbContextOptionsBuilder options, NpgsqlDataSource dataSource) =>
         options
             .UseNpgsql(dataSource, npgsql => npgsql.MigrationsHistoryTable("ef_migrations_history"))
-            .UseSnakeCaseNamingConvention();
+            .UseSnakeCaseNamingConvention()
+            .ConfigureWarnings(w => w.Ignore(CoreEventId.RowLimitingOperationWithoutOrderByWarning));
 }

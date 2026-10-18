@@ -30,6 +30,9 @@ public interface ISessionStore
     /// <summary>Drops the cached copies of the user's sessions. Call after committing <see cref="RevokeAllAsync"/> or <see cref="RevokeOthersAsync"/>.</summary>
     Task ForgetAllAsync(Guid userId, CancellationToken cancellationToken);
 
+    /// <summary>As <see cref="ForgetAllAsync"/>, for many users at once (one query, one removal).</summary>
+    Task ForgetUsersAsync(IReadOnlyCollection<Guid> userIds, CancellationToken cancellationToken);
+
     /// <summary>Deletes up to <paramref name="batchSize"/> sessions that expired or were revoked before <paramref name="cutoff"/>. Runs immediately; returns how many.</summary>
     Task<int> DeleteEndedAsync(DateTimeOffset cutoff, int batchSize, CancellationToken cancellationToken);
 }

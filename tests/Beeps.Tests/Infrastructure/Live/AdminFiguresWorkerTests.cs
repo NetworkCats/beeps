@@ -20,7 +20,7 @@ public sealed class AdminFiguresWorkerTests
 
     public AdminFiguresWorkerTests()
     {
-        system.CountAsync(default, TestSupport.Ct).ReturnsForAnyArgs(_ => new SiteCounts(1, 1, 1, 0, 0, 0, 0, outbox, 0));
+        system.CountUnannouncedAsync(default, TestSupport.Ct).ReturnsForAnyArgs(_ => new UnannouncedCounts(0, 0, outbox, 0));
         system.ListDeadJobsAsync(default, default, TestSupport.Ct).ReturnsForAnyArgs(new CursorPage<DeadJobRow>([], null));
         system.ListScheduledJobsAsync(TestSupport.Ct).ReturnsForAnyArgs([]);
     }
@@ -32,7 +32,7 @@ public sealed class AdminFiguresWorkerTests
         await worker.StartAsync(TestSupport.Ct);
 
         await Task.Delay(100, TestSupport.Ct);
-        await system.DidNotReceiveWithAnyArgs().CountAsync(default, TestSupport.Ct);
+        await system.DidNotReceiveWithAnyArgs().CountUnannouncedAsync(default, TestSupport.Ct);
 
         using (watchers.Watch())
         {

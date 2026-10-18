@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Serialization.Metadata;
 using Beeps.Features.Accounts;
 using Beeps.Features.Media;
 using Beeps.Features.Shared;
@@ -31,6 +32,7 @@ public sealed class CacheInvalidatorTests : IAsyncDisposable
     private readonly CacheOptions options = new() { SecondPassDelay = TimeSpan.FromMilliseconds(50) };
     private readonly IOutputCacheStore pages = Substitute.For<IOutputCacheStore>();
     private readonly HybridCache hybrid = Substitute.For<HybridCache>();
+    private readonly IOutbox outbox = Substitute.For<IOutbox>();
     private readonly ContentCache cache;
     private readonly ServiceProvider services;
     private readonly CacheInvalidator invalidator;
@@ -42,6 +44,7 @@ public sealed class CacheInvalidatorTests : IAsyncDisposable
         services = new ServiceCollection()
             .AddDbContext<BeepsDbContext>(o => o.UseNpgsql("Host=postgres.invalid;Database=beeps").UseSnakeCaseNamingConvention())
             .AddSingleton(cache)
+            .AddSingleton(outbox)
             .AddScoped<ContentReads>()
             .BuildServiceProvider();
         invalidator = new CacheInvalidator(
@@ -165,7 +168,7 @@ public sealed class CacheInvalidatorTests : IAsyncDisposable
         Assert.Equal([CacheKinds.Actor.Key(Agent)], message.Keys);
         Assert.Equal([PageTags.Shows(Agent)], message.PageTags);
         Assert.Empty(shared.Gets);
-        await hybrid.Received().RemoveAsync(Arg.Is<IEnumerable<string>>(keys => keys.Single() == $"account:{Agent:D}"), Arg.Any<CancellationToken>());
+        await hybrid.Received().RemoveAsync(Arg.Is<IEnumerable<string>>(keys => keys.Single() == SharedCache.AccountKey(Agent)), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -199,6 +202,21 @@ public sealed class CacheInvalidatorTests : IAsyncDisposable
         await invalidator.ForgetSharedAsync(["agentkey:abc"]);
 
         await WaitUntilAsync(() => RemovalsOf("agentkey:abc") >= 3);
+        // And stored, in case this instance stops before Valkey is back.
+        outbox.Received(1).Enqueue(
+            SharedCacheForgetRequest.MessageType,
+            Arg.Is<SharedCacheForgetRequest>(r => r.Keys.Single() == "agentkey:abc"),
+            Arg.Any<JsonTypeInfo<SharedCacheForgetRequest>>());
+    }
+
+    [Fact]
+    public async Task TheStoredRetryOfASignInEntryDropsIt()
+    {
+        var payload = JsonSerializer.Serialize(new SharedCacheForgetRequest(["session:abc"]), ContentCacheJsonContext.Default.SharedCacheForgetRequest);
+
+        await new SharedCacheForgetHandler(hybrid).HandleAsync(new OutboxEnvelope(Guid.NewGuid(), SharedCacheForgetRequest.MessageType, payload, 1, TestData.Now), TestSupport.Ct);
+
+        await hybrid.Received(1).RemoveAsync(Arg.Is<IEnumerable<string>>(keys => keys.Single() == "session:abc"), Arg.Any<CancellationToken>());
     }
 
     [Fact]

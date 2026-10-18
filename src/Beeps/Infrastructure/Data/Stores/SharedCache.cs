@@ -36,6 +36,11 @@ internal sealed class SourceGeneratedCacheSerializer<T>(JsonTypeInfo<T> typeInfo
 /// Valkey only, with no per-instance copy: a change removes the entry, and a local copy on another
 /// instance could not be removed, so it would keep a revoked key or session working.
 /// </summary>
+/// <remarks>
+/// When a record's shape changes, give its key a new name, as <see cref="AccountKey"/> and <see cref="Caching.CacheKinds"/> do:
+/// a field missing from an entry written by the old code reads as its default (not an admin, not verified) until the
+/// entry expires.
+/// </remarks>
 internal static class SharedCache
 {
     public static readonly HybridCacheEntryOptions AgentKey = SharedOnly(TimeSpan.FromMinutes(1));
@@ -48,7 +53,8 @@ internal static class SharedCache
 
     public static string SessionKey(string tokenHash) => $"session:{tokenHash}";
 
-    public static string AccountKey(Guid userId) => $"account:{userId:D}";
+    // "2": the record gained Theme.
+    public static string AccountKey(Guid userId) => $"account2:{userId:D}";
 
     /// <summary>The admin overview's totals; not about who a request is, but HybridCache needs a serializer here all the same.</summary>
     public const string SiteTotalsKey = "admin:totals";

@@ -57,7 +57,7 @@ public sealed class LiveUpdatesTests
     public async Task AValkeyOutageNeverFailsTheChangeThatPublishes()
     {
         store.AppendAsync(default!, default!, TestSupport.Ct).ReturnsForAnyArgs(Task.FromException(new RedisException("Valkey is down")));
-        store.MarkCountsChangedAsync(default, TestSupport.Ct).ReturnsForAnyArgs(Task.FromException(new RedisException("Valkey is down")));
+        store.MarkCountsChangedAsync(default!, TestSupport.Ct).ReturnsForAnyArgs(Task.FromException(new RedisException("Valkey is down")));
         var live = TestData.Live(store, counters);
 
         await live.BeepPostedAsync(new BeepPostedEvent(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), null, null, Guid.NewGuid(), []), TestSupport.Ct);
@@ -78,7 +78,7 @@ public sealed class LiveUpdatesTests
         var taken = await live.PublishCountsAsync(TestSupport.Ct);
 
         Assert.Equal([a, b], taken);
-        await store.Received(1).MarkCountsChangedAsync(a, Arg.Any<CancellationToken>());
+        await store.Received(1).MarkCountsChangedAsync(Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Single() == a), Arg.Any<CancellationToken>());
         Assert.Equal([$$"""{"beeps":[{"id":"{{a:D}}","like_count":0,"reply_count":2}]}"""], TestData.LiveEvents(store, LiveEventTypes.Counts));
     }
 

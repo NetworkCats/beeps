@@ -41,24 +41,27 @@ public sealed partial class MediaCleanupJob(
     {
         var cutoff = time.GetUtcNow() - options.Value.UnusedRetention;
         var total = 0;
+        MediaPosition? after = null;
         int deleted;
         do
         {
-            var batch = await unitOfWork.InTransactionAsync<IReadOnlyList<string>>(
+            // Each batch goes on from the last: the media in use before it (almost all, the older they are) are read once a run.
+            var batch = await unitOfWork.InTransactionAsync<UnusedMediaBatch>(
                 null,
                 async ct =>
                 {
-                    var keys = await store.DeleteUnusedAsync(cutoff, BatchSize, ct);
-                    if (keys.Count > 0)
+                    var found = await store.DeleteUnusedAsync(cutoff, after, BatchSize, ct);
+                    if (found.StorageKeys.Count > 0)
                     {
-                        outbox.Enqueue(DeleteMediaObjectsRequest.MessageType, new DeleteMediaObjectsRequest(keys), MediaJsonContext.Default.DeleteMediaObjectsRequest);
+                        outbox.Enqueue(DeleteMediaObjectsRequest.MessageType, new DeleteMediaObjectsRequest(found.StorageKeys), MediaJsonContext.Default.DeleteMediaObjectsRequest);
                         await unitOfWork.SaveChangesAsync(ct);
                     }
 
-                    return Result.Of(keys);
+                    return Result.Of(found);
                 },
                 cancellationToken);
-            deleted = batch.Value.Count;
+            deleted = batch.Value.StorageKeys.Count;
+            after = batch.Value.Last;
             total += deleted;
         }
         while (deleted >= BatchSize);

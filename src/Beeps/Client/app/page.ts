@@ -88,7 +88,28 @@ async function refresh(): Promise<void> {
   if (!shownHere) await showAnew();
 }
 
-/** Fetches the page's islands again, soon; with `minInterval`, not sooner than that after the last time. */
+// A refresh asked for while the tab was in the background, made once it is looked at again.
+let refreshWhenShown = false;
+
+function refreshOnceShown(): void {
+  if (document.visibilityState === 'hidden') return;
+  document.removeEventListener('visibilitychange', refreshOnceShown);
+  refreshWhenShown = false;
+  schedule(refresh);
+}
+
+/**
+ * Fetches the page's islands again, soon; with `minInterval`, not sooner than that after the last time. A tab in the
+ * background does it once it is shown again, not for every change meanwhile (open search tabs would otherwise ask
+ * again every few seconds while the site is busy).
+ */
 export function refreshPage(minInterval = 0): void {
+  if (document.visibilityState === 'hidden') {
+    if (!refreshWhenShown) {
+      refreshWhenShown = true;
+      document.addEventListener('visibilitychange', refreshOnceShown);
+    }
+    return;
+  }
   schedule(refresh, minInterval);
 }

@@ -81,6 +81,12 @@ public sealed record CacheInvalidationRequest(IReadOnlyList<CacheChange> Changes
     public const string MessageType = "cache.invalidate";
 }
 
+/// <summary>Outbox payload: sign-in entries to drop from Valkey (<see cref="SharedCacheForgetHandler"/>).</summary>
+public sealed record SharedCacheForgetRequest(IReadOnlyList<string> Keys)
+{
+    public const string MessageType = "cache.forget_shared";
+}
+
 /// <summary>
 /// The cache invalidations of the request's database work, held until it commits. Stores note what their
 /// immediate writes changed; <see cref="EfUnitOfWork"/> notes what tracked entities changed, hands everything to

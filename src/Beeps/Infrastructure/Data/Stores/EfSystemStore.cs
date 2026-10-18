@@ -13,14 +13,15 @@ namespace Beeps.Infrastructure.Data.Stores;
 public sealed class EfSystemStore(BeepsDbContext db, HybridCache cache) : ISystemStore
 {
     /// <summary>
-    /// The totals scan whole tables, so every open admin page shares one count for a few seconds; the admin pages follow
-    /// them live (AdminFiguresWorker), so that is how far behind they may be.
+    /// The totals scan whole tables (a parallel scan of every beep), so every open admin page shares one count for a
+    /// minute; the admin pages follow them live (AdminFiguresWorker, every few seconds), so that is how far behind they
+    /// may be. Today's counts, which is where the changes show, stay exact.
     /// </summary>
-    private static readonly HybridCacheEntryOptions TotalsCache = new() { Expiration = TimeSpan.FromSeconds(5), LocalCacheExpiration = TimeSpan.FromSeconds(5) };
+    private static readonly HybridCacheEntryOptions TotalsCache = new() { Expiration = TimeSpan.FromMinutes(1), LocalCacheExpiration = TimeSpan.FromMinutes(1) };
 
     /// <remarks>
     /// "New" compares ids rather than creation times: UUIDv7 ids sort by time, so the primary keys answer it.
-    /// The totals count whole tables, so they are cached for a few seconds; today's counts and the backlogs are exact.
+    /// The totals count whole tables, so they are cached for a minute; today's counts and the backlogs are exact.
     /// </remarks>
     public async Task<SiteCounts> CountAsync(DateTimeOffset since, CancellationToken cancellationToken)
     {
@@ -42,6 +43,16 @@ public sealed class EfSystemStore(BeepsDbContext db, HybridCache cache) : ISyste
             await humans.CountAsync(u => u.Id >= first, cancellationToken),
             await agents.CountAsync(a => a.Id >= first, cancellationToken),
             await beeps.CountAsync(b => b.Id >= first, cancellationToken),
+            await db.Set<ModerationJob>().CountAsync(cancellationToken),
+            await db.Set<OutboxMessage>().CountAsync(cancellationToken),
+            await db.Set<OutboxDeadMessage>().CountAsync(cancellationToken));
+    }
+
+    public async Task<UnannouncedCounts> CountUnannouncedAsync(DateTimeOffset since, CancellationToken cancellationToken)
+    {
+        var first = FirstIdAt(since);
+        return new UnannouncedCounts(
+            await db.Set<User>().CountAsync(u => u.Actor.DeletedAt == null && u.Id >= first, cancellationToken),
             await db.Set<ModerationJob>().CountAsync(cancellationToken),
             await db.Set<OutboxMessage>().CountAsync(cancellationToken),
             await db.Set<OutboxDeadMessage>().CountAsync(cancellationToken));

@@ -50,12 +50,21 @@ public sealed class EfSessionStore(BeepsDbContext db, HybridCache cache, CacheIn
             .Where(s => s.UserId == userId && s.Id != keepSessionId && s.RevokedAt == null)
             .ExecuteUpdateAsync(s => s.SetProperty(x => x.RevokedAt, now), cancellationToken);
 
-    public async Task ForgetAllAsync(Guid userId, CancellationToken cancellationToken)
+    public Task ForgetAllAsync(Guid userId, CancellationToken cancellationToken) => ForgetUsersAsync([userId], cancellationToken);
+
+    public async Task ForgetUsersAsync(IReadOnlyCollection<Guid> userIds, CancellationToken cancellationToken)
     {
-        // Expired sessions are rejected by their expiry anyway; only the rest can still be cached as live.
+        if (userIds.Count == 0)
+        {
+            return;
+        }
+
+        // Expired sessions are rejected by their expiry anyway, and one revoked longer ago than its cached copy lives is
+        // cached as revoked, if at all; only the rest can still be cached as live.
         var now = time.GetUtcNow();
+        var revokedSince = now - 2 * SharedCache.Session.Expiration!.Value;
         var hashes = await db.Set<UserSession>()
-            .Where(s => s.UserId == userId && s.ExpiresAt > now)
+            .Where(s => userIds.Contains(s.UserId) && s.ExpiresAt > now && (s.RevokedAt == null || s.RevokedAt > revokedSince))
             .Select(s => s.TokenHash)
             .ToListAsync(cancellationToken);
         await invalidator.ForgetSharedAsync([.. hashes.Select(SharedCache.SessionKey)]);

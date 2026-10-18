@@ -5,7 +5,7 @@ using StackExchange.Redis;
 namespace Beeps.Infrastructure.Redis;
 
 /// <summary>Fixed-window counters in Valkey, checked and incremented in one Lua script.</summary>
-public sealed class RedisRateLimitStore(IConnectionMultiplexer redis) : IRateLimitStore
+public sealed class RedisRateLimitStore(RedisConnection redis) : IRateLimitStore
 {
     // KEYS: counter keys. ARGV: limit1, windowMs1, limit2, windowMs2, …
     // Returns 0 when allowed (every counter incremented), otherwise the longest wait in ms
@@ -73,6 +73,6 @@ public sealed class RedisRateLimitStore(IConnectionMultiplexer redis) : IRateLim
         }
 
         // StackExchange.Redis has no per-call cancellation; the multiplexer's own timeouts bound the wait.
-        return (long)await redis.GetDatabase().ScriptEvaluateAsync(script, keys, values);
+        return (long)await (await redis.DatabaseAsync()).ScriptEvaluateAsync(script, keys, values);
     }
 }

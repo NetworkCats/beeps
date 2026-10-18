@@ -50,6 +50,7 @@ public sealed class BeepsWebApplicationFactory : WebApplicationFactory<Program>
         // Profiles keep nothing private, nobody follows anyone, unless a test arranges it.
         Profiles.GetPrivacyAsync(default, CancellationToken.None).ReturnsForAnyArgs(ProfilePrivacy.None);
         Profiles.CountFollowsAsync(default, CancellationToken.None).ReturnsForAnyArgs(new FollowCounts(0, 0));
+        Profiles.GetRelationAsync(default, default, CancellationToken.None).ReturnsForAnyArgs(ProfileRelation.None);
         Profiles.ListFollowsAsync(default, default, default!, default, CancellationToken.None).ReturnsForAnyArgs(new CursorPage<PersonRow>([], null));
         Notifications.ListAsync(default, default!, default, CancellationToken.None).ReturnsForAnyArgs(new CursorPage<NotificationRow>([], null));
         // Nobody has a banner unless a test arranges one.

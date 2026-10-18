@@ -294,7 +294,7 @@ public sealed class ProfilePagesTests : IDisposable
         using var client = await WebAuth.SignInAsync(factory, viewer);
 
         using var response = await WebAuth.PostFormAsync(client, "/@tom", "/@tom/follow?handler=Follow");
-        factory.Profiles.IsFollowingAsync(viewer.Id, tom.Id, Arg.Any<CancellationToken>()).Returns(true);
+        factory.Profiles.GetRelationAsync(viewer.Id, tom.Id, Arg.Any<CancellationToken>()).Returns(new ProfileRelation(Following: true, Blocking: false));
         var page = await Islands.PageAsync(client, "/@tom");
 
         Assert.Equal("/@tom", response.Headers.Location?.OriginalString);

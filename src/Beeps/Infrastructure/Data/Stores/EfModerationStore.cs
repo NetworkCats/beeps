@@ -48,6 +48,11 @@ public sealed class EfModerationStore(BeepsDbContext db, PendingCacheChanges cac
             // Whether a beep is hidden is never cached, only the pages showing it.
             cacheChanges.Add(CacheChange.BeepHidden(beepId));
         }
+        else if (changed && from.Contains(ModerationStatus.Hidden))
+        {
+            // Shown again (when it was hidden): back on the pages it belongs on, which left it out meanwhile.
+            cacheChanges.Add(CacheChange.BeepPosted(beepId));
+        }
 
         return changed;
     }
@@ -95,7 +100,20 @@ public sealed class EfModerationStore(BeepsDbContext db, PendingCacheChanges cac
         return CursorPage.FromOverfetch(rows, limit, r => r.BeepId);
     }
 
-    public Task<int> CountQueueAsync(CancellationToken cancellationToken) => Queue().CountAsync(cancellationToken);
+    /// <remarks>
+    /// As <see cref="Queue"/> counts them, without looking the flagged beeps up again: <c>ix_beeps_review</c> lists only
+    /// those not deleted, so only reported ones need the check. The admin pages count it every few seconds.
+    /// </remarks>
+    public Task<int> CountQueueAsync(CancellationToken cancellationToken)
+    {
+        var flagged = db.Set<Beep>()
+            .Where(b => (b.ModerationStatus == ModerationStatus.Hidden || b.ModerationStatus == ModerationStatus.Failed) && b.DeletedAt == null)
+            .Select(b => b.Id);
+        var reported = db.Set<Report>()
+            .Where(r => r.ResolvedAt == null)
+            .Join(db.Set<Beep>().Where(b => b.DeletedAt == null), r => r.BeepId, b => b.Id, (r, b) => b.Id);
+        return flagged.Union(reported).CountAsync(cancellationToken);
+    }
 
     public async Task<ReviewBeepRow?> GetReviewBeepAsync(Guid beepId, CancellationToken cancellationToken)
     {
@@ -177,7 +195,13 @@ public sealed class EfModerationStore(BeepsDbContext db, PendingCacheChanges cac
                 .Where(a => db.Set<BeepMedia>().Any(bm => bm.BeepId == beepId && (bm.MediaId == a.AvatarMediaId || bm.MediaId == a.BannerMediaId)))
                 .Select(a => a.Id)
                 .ToListAsync(cancellationToken);
-            cacheChanges.Add([CacheChange.Beep(beepId), .. avatarUsers.Select(CacheChange.Actor)]);
+            // And on the other beeps it was attached to (an uploader may attach one image to several).
+            var beeps = await db.Set<BeepMedia>()
+                .Where(bm => db.Set<BeepMedia>().Any(o => o.BeepId == beepId && o.MediaId == bm.MediaId))
+                .Select(bm => bm.BeepId)
+                .Distinct()
+                .ToListAsync(cancellationToken);
+            cacheChanges.Add([CacheChange.Beep(beepId), .. beeps.Select(CacheChange.Beep), .. avatarUsers.Select(CacheChange.Actor)]);
         }
 
         return keys;

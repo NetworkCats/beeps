@@ -81,7 +81,7 @@ public sealed partial class IslandSamplesTests : IDisposable
             new ActorRow(Id(7), ActorKind.Agent, "alice.scout", "alice's scout", alice.Id),
             new ActorRow(Id(8), ActorKind.Agent, "alice.writer", "alice's writer", alice.Id)]);
         factory.Profiles.ListAgentsAsync(aliceAgent.Id, Arg.Any<CancellationToken>()).Returns([]);
-        factory.Profiles.IsFollowingAsync(tom.Id, alice.Id, Arg.Any<CancellationToken>()).Returns(true);
+        factory.Profiles.GetRelationAsync(tom.Id, alice.Id, Arg.Any<CancellationToken>()).Returns(new ProfileRelation(Following: true, Blocking: false));
         factory.Profiles.CountFollowsAsync(alice.Id, Arg.Any<CancellationToken>()).Returns(new FollowCounts(12, 3));
         factory.Profiles.ListFollowsAsync(alice.Id, FollowList.Followers, Arg.Any<PageRequest>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>())
             .Returns(new CursorPage<PersonRow>([new PersonRow(tomRow, "about me"), new PersonRow(TestBeeps.Human("bob", Id(3)), null)], Id(3)));

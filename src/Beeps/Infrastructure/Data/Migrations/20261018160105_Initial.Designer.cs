@@ -13,8 +13,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Beeps.Infrastructure.Data.Migrations
 {
     [DbContext(typeof(BeepsDbContext))]
-    [Migration("20261018114202_PrivacyAndProfileLists")]
-    partial class PrivacyAndProfileLists
+    [Migration("20261018160105_Initial")]
+    partial class Initial
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -230,6 +230,14 @@ namespace Beeps.Infrastructure.Data.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("email_verified_at");
 
+                    b.Property<int>("FollowersCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("followers_count");
+
+                    b.Property<int>("FollowingCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("following_count");
+
                     b.Property<bool>("HideFollowCounts")
                         .HasColumnType("boolean")
                         .HasColumnName("hide_follow_counts");
@@ -292,7 +300,7 @@ namespace Beeps.Infrastructure.Data.Migrations
 
                     b.HasIndex(new[] { "CreatedAt" }, "ix_users_unverified")
                         .HasDatabaseName("ix_users_unverified")
-                        .HasFilter("email_verified_at IS NULL");
+                        .HasFilter("email_verified_at IS NULL AND normalized_email NOT LIKE 'released:%'");
 
                     b.ToTable("users", (string)null);
                 });
@@ -510,6 +518,8 @@ namespace Beeps.Infrastructure.Data.Migrations
 
                     b.HasIndex("ReplyToId")
                         .HasDatabaseName("ix_beeps_reply_to_id");
+
+                    NpgsqlIndexBuilderExtensions.IncludeProperties(b.HasIndex("ReplyToId"), new[] { "DeletedAt", "ModerationStatus" });
 
                     b.HasIndex("AuthorId", "Id")
                         .IsDescending(false, true)
@@ -954,6 +964,10 @@ namespace Beeps.Infrastructure.Data.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("recipient_id");
 
+                    b.Property<bool>("Superseded")
+                        .HasColumnType("boolean")
+                        .HasColumnName("superseded");
+
                     b.Property<string>("Type")
                         .IsRequired()
                         .HasMaxLength(16)
@@ -966,21 +980,31 @@ namespace Beeps.Infrastructure.Data.Migrations
                     b.HasIndex("BeepId")
                         .HasDatabaseName("ix_notifications_beep_id");
 
+                    NpgsqlIndexBuilderExtensions.IncludeProperties(b.HasIndex("BeepId"), new[] { "RecipientId", "ReadAt" });
+
                     b.HasIndex("FromActorId")
                         .HasDatabaseName("ix_notifications_from_actor_id");
+
+                    NpgsqlIndexBuilderExtensions.IncludeProperties(b.HasIndex("FromActorId"), new[] { "RecipientId", "ReadAt" });
 
                     b.HasIndex(new[] { "RecipientId", "BeepId", "Type", "Id" }, "ix_notifications_beep")
                         .IsDescending(false, false, false, true)
                         .HasDatabaseName("ix_notifications_beep");
 
-                    b.HasIndex(new[] { "RecipientId", "Id" }, "ix_notifications_inbox")
+                    b.HasIndex(new[] { "RecipientId", "Id" }, "ix_notifications_heads")
                         .IsDescending(false, true)
-                        .HasDatabaseName("ix_notifications_inbox");
+                        .HasDatabaseName("ix_notifications_heads")
+                        .HasFilter("NOT superseded");
 
                     b.HasIndex(new[] { "RecipientId", "Id" }, "ix_notifications_unread")
                         .IsDescending(false, true)
                         .HasDatabaseName("ix_notifications_unread")
                         .HasFilter("read_at IS NULL");
+
+                    b.HasIndex(new[] { "RecipientId", "Id" }, "ix_notifications_unread_heads")
+                        .IsDescending(false, true)
+                        .HasDatabaseName("ix_notifications_unread_heads")
+                        .HasFilter("NOT superseded AND read_at IS NULL");
 
                     b.HasIndex(new[] { "RecipientId", "Type", "FromActorId", "BeepId" }, "ux_notifications_once")
                         .IsUnique()

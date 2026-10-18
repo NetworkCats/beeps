@@ -179,7 +179,7 @@ public sealed class BeepServiceTests
         Assert.Equal([[RateLimitPolicies.AgentReply, RateLimitPolicies.AgentThreadReply, RateLimitPolicies.OwnerAgentsPost]], checkedPolicies);
         outbox.Received(1).Enqueue(BeepNotificationsRequest.MessageType, Arg.Any<BeepNotificationsRequest>(), Arg.Any<JsonTypeInfo<BeepNotificationsRequest>>());
         await counters.Received(1).AddAsync(parent.Id, new BeepCounts(4, 2), new BeepCounts(0, 1), Arg.Any<CancellationToken>());
-        await liveEvents.Received(1).MarkCountsChangedAsync(parent.Id, Arg.Any<CancellationToken>());
+        await liveEvents.Received(1).MarkCountsChangedAsync(Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Single() == parent.Id), Arg.Any<CancellationToken>());
         // Home timelines decide on replies by whose account the parent belongs to.
         var posted = System.Text.Json.JsonSerializer.Deserialize(Assert.Single(TestData.LiveEvents(liveEvents, LiveEventTypes.BeepPosted)), LiveJsonContext.Default.BeepPostedEvent)!;
         Assert.Equal((Agent.ActorId, OwnerId, parent.Id, parentOwner, parent.RootId), (posted.AuthorId, posted.AuthorAccountId, posted.ReplyToId, posted.ReplyToAccountId, posted.RootId));
@@ -235,6 +235,8 @@ public sealed class BeepServiceTests
         var result = await CreateService().PostAsync(Human, "hi", parent.Id, [], TestSupport.Ct);
 
         Assert.True(result.IsSuccess);
+        // Not marked for write-back either: the parent is recounted once the outbox gets to it.
+        outbox.Received(1).Enqueue(BeepRecountRequest.MessageType, new BeepRecountRequest(parent.Id), Arg.Any<JsonTypeInfo<BeepRecountRequest>>());
     }
 
     [Fact]
@@ -349,7 +351,7 @@ public sealed class BeepServiceTests
             Arg.Is<LikeNotificationRequest>(r => r.BeepId == beep.Id && r.ActorId == Agent.ActorId),
             Arg.Any<JsonTypeInfo<LikeNotificationRequest>>());
         await counters.Received(1).AddAsync(beep.Id, new BeepCounts(7, 0), new BeepCounts(1, 0), Arg.Any<CancellationToken>());
-        await liveEvents.Received(1).MarkCountsChangedAsync(beep.Id, Arg.Any<CancellationToken>());
+        await liveEvents.Received(1).MarkCountsChangedAsync(Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Single() == beep.Id), Arg.Any<CancellationToken>());
         Assert.Equal([[RateLimitPolicies.Like]], checkedPolicies);
         // The liker's other tabs press the button too.
         Assert.Equal([$$"""{"beep_id":"{{beep.Id:D}}","actor_id":"{{Agent.ActorId:D}}","liked":true}"""], TestData.LiveEvents(liveEvents, LiveEventTypes.LikeChanged));
@@ -364,6 +366,31 @@ public sealed class BeepServiceTests
 
         Assert.True(result.IsSuccess);
         await store.Received(1).RecordViewAsync(Human.ActorId, beep.Id, TestData.Now, TestData.Now - BeepService.RepeatViewWindow, Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task ACountedViewWaitsInValkeyForTheBeepsColumn()
+    {
+        var beep = Ref(Guid.NewGuid());
+        store.RecordViewAsync(default, default, default, default, TestSupport.Ct).ReturnsForAnyArgs(true);
+        counters.AddViewAsync(beep.Id, Arg.Any<CancellationToken>()).Returns(true);
+
+        await CreateService().RecordViewAsync(Human, beep.Id, TestSupport.Ct);
+
+        await counters.Received(1).AddViewAsync(beep.Id, Arg.Any<CancellationToken>());
+        await store.DidNotReceiveWithAnyArgs().AddViewsAsync(default!, TestSupport.Ct);
+    }
+
+    [Fact]
+    public async Task AViewValkeyCannotHoldGoesStraightToTheColumn()
+    {
+        var beep = Ref(Guid.NewGuid());
+        store.RecordViewAsync(default, default, default, default, TestSupport.Ct).ReturnsForAnyArgs(true);
+        counters.AddViewAsync(beep.Id, Arg.Any<CancellationToken>()).Returns(Task.FromException<bool>(new InvalidOperationException("down")));
+
+        await CreateService().RecordViewAsync(Human, beep.Id, TestSupport.Ct);
+
+        await store.Received(1).AddViewsAsync(Arg.Is<IReadOnlyDictionary<Guid, long>>(v => v.Single().Key == beep.Id && v.Single().Value == 1), Arg.Any<CancellationToken>());
     }
 
     [Fact]

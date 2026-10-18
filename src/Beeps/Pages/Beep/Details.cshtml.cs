@@ -28,13 +28,13 @@ public sealed class DetailsModel(BeepService beeps) : PageModel
     {
         var viewer = User.OptionalViewer();
         var focus = await beeps.GetAsync(viewer, id, cancellationToken);
-        var thread = focus.IsSuccess ? await beeps.GetThreadAsync(viewer, id, After, PageRequest.MaxLimit, cancellationToken) : null;
-        if (thread is not { IsSuccess: true })
+        if (!focus.IsSuccess)
         {
             return NotFound();
         }
 
-        (Focus, Thread) = (focus.Value, thread.Value);
+        Focus = focus.Value;
+        Thread = await beeps.GetThreadOfAsync(viewer, Focus, After, PageRequest.MaxLimit, cancellationToken);
         PageTags.Add(HttpContext, [PageTags.Thread(Focus.RootId), .. PageTags.Showing([Focus, .. Thread.Items])]);
         return Page();
     }

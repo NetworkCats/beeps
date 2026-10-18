@@ -33,6 +33,12 @@ public sealed class Notification
     public DateTimeOffset CreatedAt { get; init; }
 
     public DateTimeOffset? ReadAt { get; set; }
+
+    /// <summary>
+    /// A newer one of the same type about the same beep exists, so this one is not an inbox entry's head; the inbox walks
+    /// only heads, however many likes a beep collects. Set when the newer one is added.
+    /// </summary>
+    public bool Superseded { get; init; }
 }
 
 /// <summary>Who a new beep concerns, for notifications.</summary>

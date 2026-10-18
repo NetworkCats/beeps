@@ -22,6 +22,9 @@ public sealed record AdminOverview(
     int DeadJobs);
 
 /// <summary>The counts the overview shows, besides the review queue.</summary>
+/// <summary>See <see cref="ISystemStore.CountUnannouncedAsync"/>.</summary>
+public sealed record UnannouncedCounts(int NewUsers, int ModerationBacklog, int OutboxBacklog, int DeadJobs);
+
 public sealed record SiteCounts(int Users, int Agents, int Beeps, int NewUsers, int NewAgents, int NewBeeps, int ModerationBacklog, int OutboxBacklog, int DeadJobs);
 
 /// <summary>An outbox message that ran out of attempts. Its payload is not shown: it can hold email addresses.</summary>
@@ -34,6 +37,12 @@ public interface ISystemStore
 {
     /// <param name="since">For the "new" counts.</param>
     Task<SiteCounts> CountAsync(DateTimeOffset since, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// The figures of <see cref="CountAsync"/> that change with no event of their own (beeps and agents have theirs), for
+    /// watching them every few seconds: new sign-ups and the backlogs.
+    /// </summary>
+    Task<UnannouncedCounts> CountUnannouncedAsync(DateTimeOffset since, CancellationToken cancellationToken);
 
     /// <summary>Newest failure first.</summary>
     Task<CursorPage<DeadJobRow>> ListDeadJobsAsync(Guid? before, int limit, CancellationToken cancellationToken);

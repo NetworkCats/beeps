@@ -30,10 +30,16 @@ public sealed class EfProfileStore(BeepsDbContext db, ContentReads reads, Pendin
         {{CountsChange("-", "removed")}}
         """;
 
-    /// <summary>{0} the humans.</summary>
-    private static readonly string RecountSql = $$"""
+    /// <summary>{0} the humans whose following count to recount.</summary>
+    private static readonly string RecountFollowingSql = $$"""
         UPDATE users AS u SET
-            following_count = (SELECT count(*) FROM follows AS f WHERE f.follower_id = u.id AND {{Shown("f.followee_id")}}),
+            following_count = (SELECT count(*) FROM follows AS f WHERE f.follower_id = u.id AND {{Shown("f.followee_id")}})
+        WHERE u.id = ANY ({0})
+        """;
+
+    /// <summary>{0} the humans whose followers count to recount.</summary>
+    private static readonly string RecountFollowersSql = $$"""
+        UPDATE users AS u SET
             followers_count = (SELECT count(*) FROM follows AS f WHERE f.followee_id = u.id AND {{Shown("f.follower_id")}})
         WHERE u.id = ANY ({0})
         """;
@@ -68,16 +74,24 @@ public sealed class EfProfileStore(BeepsDbContext db, ContentReads reads, Pendin
         return [.. ids.Select(agents.GetValueOrDefault).Where(a => a is { Actor: { Deleted: false, Handle: not null } }).Select(a => a!.Row)];
     }
 
-    public Task<bool> IsFollowingAsync(Guid followerId, Guid followeeId, CancellationToken cancellationToken) =>
-        db.Set<Follow>().AnyAsync(f => f.FollowerId == followerId && f.FolloweeId == followeeId, cancellationToken);
+    public async Task<ProfileRelation> GetRelationAsync(Guid viewerId, Guid actorId, CancellationToken cancellationToken) =>
+        await db.Set<Actor>()
+            .Where(a => a.Id == actorId)
+            .Select(a => new ProfileRelation(
+                db.Set<Follow>().Any(f => f.FollowerId == viewerId && f.FolloweeId == actorId),
+                db.Set<Block>().Any(k => k.BlockerId == viewerId && k.BlockedId == actorId)))
+            .FirstOrDefaultAsync(cancellationToken) ?? ProfileRelation.None;
 
     public async Task<IReadOnlyList<Guid>> ListFollowedAsync(Guid followerId, CancellationToken cancellationToken) =>
         await db.Set<Follow>().Where(f => f.FollowerId == followerId).Select(f => f.FolloweeId).ToListAsync(cancellationToken);
 
+    public Task<IReadOnlyList<Guid>> ListFollowedCachedAsync(Guid followerId, CancellationToken cancellationToken) =>
+        reads.GetFollowedAsync(followerId, cancellationToken);
+
     public async Task<ProfilePrivacy> GetPrivacyAsync(Guid humanId, CancellationToken cancellationToken) =>
         await db.Set<User>()
             .Where(u => u.Id == humanId)
-            .Select(u => new ProfilePrivacy(u.HideLikes, u.HideFollows, u.HideFollowCounts))
+            .Select(u => new ProfilePrivacy(u.HideLikes, u.HideFollows, u.HideFollowCounts, new FollowCounts(u.FollowingCount, u.FollowersCount)))
             .FirstOrDefaultAsync(cancellationToken) ?? ProfilePrivacy.None;
 
     /// <remarks>The counts are kept on the human's row (<see cref="User.FollowingCount"/>): one primary-key read.</remarks>
@@ -87,22 +101,30 @@ public sealed class EfProfileStore(BeepsDbContext db, ContentReads reads, Pendin
             .Select(u => new FollowCounts(u.FollowingCount, u.FollowersCount))
             .FirstOrDefaultAsync(cancellationToken) ?? new FollowCounts(0, 0);
 
-    public async Task<IReadOnlyList<Guid>> ListFollowCounterpartsAsync(Guid humanId, CancellationToken cancellationToken) =>
-        await db.Set<Follow>().Where(f => f.FollowerId == humanId).Select(f => f.FolloweeId)
-            .Union(db.Set<Follow>().Where(f => f.FolloweeId == humanId).Select(f => f.FollowerId))
-            .ToListAsync(cancellationToken);
+    public async Task<FollowCounterparts> ListFollowCounterpartsAsync(Guid humanId, CancellationToken cancellationToken) =>
+        new(
+            await db.Set<Follow>().Where(f => f.FolloweeId == humanId).Select(f => f.FollowerId).ToListAsync(cancellationToken),
+            await db.Set<Follow>().Where(f => f.FollowerId == humanId).Select(f => f.FolloweeId).ToListAsync(cancellationToken));
 
     /// <remarks>
     /// The rows are locked first, in id order as a follow locks them, and counted in a statement of their own: its
     /// snapshot then has every follow that changed them, so a follow running meanwhile is neither lost nor counted twice.
     /// </remarks>
-    public async Task RecountFollowsAsync(IReadOnlyList<Guid> humanIds, CancellationToken cancellationToken)
+    public async Task RecountFollowsAsync(IReadOnlyCollection<Guid> followingOf, IReadOnlyCollection<Guid> followersOf, CancellationToken cancellationToken)
     {
-        var ids = humanIds.ToArray();
+        var ids = followingOf.Union(followersOf).ToArray();
         await db.Database.ExecuteSqlAsync(
             $"SELECT 1 FROM users WHERE id = ANY ({ids}) ORDER BY id FOR NO KEY UPDATE",
             cancellationToken);
-        await db.Database.ExecuteSqlRawAsync(RecountSql, [ids], cancellationToken);
+        if (followingOf.Count > 0)
+        {
+            await db.Database.ExecuteSqlRawAsync(RecountFollowingSql, [followingOf.ToArray()], cancellationToken);
+        }
+
+        if (followersOf.Count > 0)
+        {
+            await db.Database.ExecuteSqlRawAsync(RecountFollowersSql, [followersOf.ToArray()], cancellationToken);
+        }
     }
 
     /// <remarks>
@@ -118,7 +140,8 @@ public sealed class EfProfileStore(BeepsDbContext db, ContentReads reads, Pendin
         if (page.Before is { } before)
         {
             var at = follows.Where(f => f.Id == before).Select(f => (DateTimeOffset?)f.CreatedAt);
-            follows = follows.Where(f => f.CreatedAt < at.FirstOrDefault() || (f.CreatedAt == at.FirstOrDefault() && f.Id < before));
+            // The first condition is the index range; the OR alone is only a filter, which read every page before this one.
+            follows = follows.Where(f => f.CreatedAt <= at.FirstOrDefault() && (f.CreatedAt < at.FirstOrDefault() || f.Id < before));
         }
 
         var visible = BeepQueries.VisibleActors(db, viewerId);
@@ -156,9 +179,6 @@ public sealed class EfProfileStore(BeepsDbContext db, ContentReads reads, Pendin
         var removed = await db.Database.ExecuteSqlRawAsync(RemoveFollowSql, [followerId, followeeId], cancellationToken);
         return FollowingChanged(followerId, removed > 0);
     }
-
-    public Task<bool> IsBlockingAsync(Guid blockerId, Guid blockedId, CancellationToken cancellationToken) =>
-        db.Set<Block>().AnyAsync(k => k.BlockerId == blockerId && k.BlockedId == blockedId, cancellationToken);
 
     public Task<bool> AnyBlockBetweenAsync(Guid humanId, Guid otherHumanId, CancellationToken cancellationToken) =>
         db.Set<Block>().AnyAsync(

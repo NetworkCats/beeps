@@ -56,6 +56,9 @@ public sealed class EfAccountStore(BeepsDbContext db, HybridCache cache, CacheIn
     public Task ForgetAccountAsync(Guid userId, CancellationToken cancellationToken) =>
         invalidator.ForgetSharedAsync([SharedCache.AccountKey(userId)]);
 
+    public Task ForgetAccountsAsync(IReadOnlyCollection<Guid> userIds, CancellationToken cancellationToken) =>
+        invalidator.ForgetSharedAsync([.. userIds.Select(SharedCache.AccountKey)]);
+
     public async Task<RegistrationMode> GetRegistrationModeAsync(CancellationToken cancellationToken)
     {
         var value = await db.Set<SiteSetting>()
@@ -100,7 +103,7 @@ public sealed class EfAccountStore(BeepsDbContext db, HybridCache cache, CacheIn
                 WITH due AS (
                     SELECT u.id FROM users u
                     JOIN actors a ON a.id = u.id AND a.deleted_at IS NULL
-                    WHERE u.email_verified_at IS NULL AND u.created_at < {registeredBefore} AND NOT u.is_admin
+                    WHERE u.email_verified_at IS NULL AND u.normalized_email NOT LIKE 'released:%' AND u.created_at < {registeredBefore} AND NOT u.is_admin
                       AND NOT EXISTS (SELECT 1 FROM invites i WHERE i.used_by = u.id)
                     ORDER BY u.created_at
                     LIMIT {batchSize}

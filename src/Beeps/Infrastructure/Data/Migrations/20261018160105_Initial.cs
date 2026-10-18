@@ -147,6 +147,7 @@ namespace Beeps.Infrastructure.Data.Migrations
                     owner_id = table.Column<Guid>(type: "uuid", nullable: true),
                     model_name = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
                     avatar_media_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    banner_media_id = table.Column<Guid>(type: "uuid", nullable: true),
                     created_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
                     disabled_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
                     deleted_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true)
@@ -309,12 +310,18 @@ namespace Beeps.Infrastructure.Data.Migrations
                     id = table.Column<Guid>(type: "uuid", nullable: false),
                     email = table.Column<string>(type: "character varying(254)", maxLength: 254, nullable: false),
                     normalized_email = table.Column<string>(type: "character varying(254)", maxLength: 254, nullable: false),
+                    pending_email = table.Column<string>(type: "character varying(254)", maxLength: 254, nullable: true),
                     password_hash = table.Column<string>(type: "text", nullable: false),
                     email_verified_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
                     is_admin = table.Column<bool>(type: "boolean", nullable: false),
                     banned_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
                     locale = table.Column<string>(type: "character varying(16)", maxLength: 16, nullable: false),
                     theme = table.Column<string>(type: "character varying(16)", maxLength: 16, nullable: true),
+                    following_count = table.Column<int>(type: "integer", nullable: false),
+                    followers_count = table.Column<int>(type: "integer", nullable: false),
+                    hide_likes = table.Column<bool>(type: "boolean", nullable: false),
+                    hide_follows = table.Column<bool>(type: "boolean", nullable: false),
+                    hide_follow_counts = table.Column<bool>(type: "boolean", nullable: false),
                     created_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false)
                 },
                 constraints: table =>
@@ -461,7 +468,8 @@ namespace Beeps.Infrastructure.Data.Migrations
                     from_actor_id = table.Column<Guid>(type: "uuid", nullable: false),
                     beep_id = table.Column<Guid>(type: "uuid", nullable: false),
                     created_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
-                    read_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true)
+                    read_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
+                    superseded = table.Column<bool>(type: "boolean", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -555,7 +563,10 @@ namespace Beeps.Infrastructure.Data.Migrations
                     data = table.Column<byte[]>(type: "bytea", nullable: false),
                     crop_x = table.Column<int>(type: "integer", nullable: true),
                     crop_y = table.Column<int>(type: "integer", nullable: true),
-                    crop_size = table.Column<int>(type: "integer", nullable: true)
+                    crop_size = table.Column<int>(type: "integer", nullable: true),
+                    banner_crop_x = table.Column<int>(type: "integer", nullable: true),
+                    banner_crop_y = table.Column<int>(type: "integer", nullable: true),
+                    banner_crop_width = table.Column<int>(type: "integer", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -678,6 +689,11 @@ namespace Beeps.Infrastructure.Data.Migrations
                 column: "avatar_media_id");
 
             migrationBuilder.CreateIndex(
+                name: "ix_actors_banner_media_id",
+                table: "actors",
+                column: "banner_media_id");
+
+            migrationBuilder.CreateIndex(
                 name: "ix_actors_owner_id",
                 table: "actors",
                 column: "owner_id");
@@ -733,7 +749,8 @@ namespace Beeps.Infrastructure.Data.Migrations
             migrationBuilder.CreateIndex(
                 name: "ix_beeps_reply_to_id",
                 table: "beeps",
-                column: "reply_to_id");
+                column: "reply_to_id")
+                .Annotation("Npgsql:IndexInclude", new[] { "deleted_at", "moderation_status" });
 
             migrationBuilder.CreateIndex(
                 name: "ix_beeps_review",
@@ -757,9 +774,14 @@ namespace Beeps.Infrastructure.Data.Migrations
                 column: "expires_at");
 
             migrationBuilder.CreateIndex(
-                name: "ix_follows_followee_id",
+                name: "ix_follows_followee_id_created_at_follower_id",
                 table: "follows",
-                column: "followee_id");
+                columns: new[] { "followee_id", "created_at", "follower_id" });
+
+            migrationBuilder.CreateIndex(
+                name: "ix_follows_follower_id_created_at_followee_id",
+                table: "follows",
+                columns: new[] { "follower_id", "created_at", "followee_id" });
 
             migrationBuilder.CreateIndex(
                 name: "ux_hashtags_name",
@@ -789,9 +811,9 @@ namespace Beeps.Infrastructure.Data.Migrations
                 column: "used_by");
 
             migrationBuilder.CreateIndex(
-                name: "ix_likes_actor_id",
+                name: "ix_likes_actor_id_created_at_beep_id",
                 table: "likes",
-                column: "actor_id");
+                columns: new[] { "actor_id", "created_at", "beep_id" });
 
             migrationBuilder.CreateIndex(
                 name: "ix_media_created_at",
@@ -840,18 +862,21 @@ namespace Beeps.Infrastructure.Data.Migrations
             migrationBuilder.CreateIndex(
                 name: "ix_notifications_beep_id",
                 table: "notifications",
-                column: "beep_id");
+                column: "beep_id")
+                .Annotation("Npgsql:IndexInclude", new[] { "recipient_id", "read_at" });
 
             migrationBuilder.CreateIndex(
                 name: "ix_notifications_from_actor_id",
                 table: "notifications",
-                column: "from_actor_id");
+                column: "from_actor_id")
+                .Annotation("Npgsql:IndexInclude", new[] { "recipient_id", "read_at" });
 
             migrationBuilder.CreateIndex(
-                name: "ix_notifications_inbox",
+                name: "ix_notifications_heads",
                 table: "notifications",
                 columns: new[] { "recipient_id", "id" },
-                descending: new[] { false, true });
+                descending: new[] { false, true },
+                filter: "NOT superseded");
 
             migrationBuilder.CreateIndex(
                 name: "ix_notifications_unread",
@@ -859,6 +884,13 @@ namespace Beeps.Infrastructure.Data.Migrations
                 columns: new[] { "recipient_id", "id" },
                 descending: new[] { false, true },
                 filter: "read_at IS NULL");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_notifications_unread_heads",
+                table: "notifications",
+                columns: new[] { "recipient_id", "id" },
+                descending: new[] { false, true },
+                filter: "NOT superseded AND read_at IS NULL");
 
             migrationBuilder.CreateIndex(
                 name: "ux_notifications_once",
@@ -937,7 +969,7 @@ namespace Beeps.Infrastructure.Data.Migrations
                 name: "ix_users_unverified",
                 table: "users",
                 column: "created_at",
-                filter: "email_verified_at IS NULL");
+                filter: "email_verified_at IS NULL AND normalized_email NOT LIKE 'released:%'");
 
             migrationBuilder.CreateIndex(
                 name: "ux_users_normalized_email",
@@ -955,6 +987,14 @@ namespace Beeps.Infrastructure.Data.Migrations
                 name: "fk_actors_media_item_avatar_media_id",
                 table: "actors",
                 column: "avatar_media_id",
+                principalTable: "media",
+                principalColumn: "id",
+                onDelete: ReferentialAction.Restrict);
+
+            migrationBuilder.AddForeignKey(
+                name: "fk_actors_media_item_banner_media_id",
+                table: "actors",
+                column: "banner_media_id",
                 principalTable: "media",
                 principalColumn: "id",
                 onDelete: ReferentialAction.Restrict);
@@ -983,6 +1023,14 @@ namespace Beeps.Infrastructure.Data.Migrations
                 CREATE TRIGGER moderation_jobs_notify AFTER INSERT ON moderation_jobs
                 FOR EACH STATEMENT EXECUTE FUNCTION moderation_jobs_notify();
                 """);
+
+            // @mention suggestions, shortest handle first, then in byte order (EfSearchStore.SuggestActorsAsync): "C" serves
+            // both the prefix and the order, which the database's own collation cannot. An expression index, which the model
+            // cannot describe, so it lives here only.
+            migrationBuilder.Sql("""
+                CREATE INDEX ix_actors_handle_length ON actors (length(normalized_handle), normalized_handle COLLATE "C")
+                WHERE normalized_handle IS NOT NULL
+                """);
         }
 
         /// <inheritdoc />
@@ -997,6 +1045,10 @@ namespace Beeps.Infrastructure.Data.Migrations
 
             migrationBuilder.DropForeignKey(
                 name: "fk_actors_media_item_avatar_media_id",
+                table: "actors");
+
+            migrationBuilder.DropForeignKey(
+                name: "fk_actors_media_item_banner_media_id",
                 table: "actors");
 
             migrationBuilder.DropTable(

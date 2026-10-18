@@ -14,17 +14,25 @@ public sealed class FollowCountsSyncTests
     public async Task TheHumanAndEveryoneOnTheOtherSideAreCountedAgainInSortedBatches()
     {
         var banned = Guid.NewGuid();
-        List<Guid> people = [.. Enumerable.Range(0, FollowCountsHandler.BatchSize + 10).Select(_ => Guid.NewGuid())];
-        store.ListFollowCounterpartsAsync(banned, Arg.Any<CancellationToken>()).Returns(people);
-        List<Guid[]> batches = [];
-        await store.RecountFollowsAsync(Arg.Do<IReadOnlyList<Guid>>(b => batches.Add([.. b])), Arg.Any<CancellationToken>());
+        List<Guid> followers = [.. Enumerable.Range(0, FollowCountsHandler.BatchSize).Select(_ => Guid.NewGuid())];
+        List<Guid> followed = [.. Enumerable.Range(0, 10).Select(_ => Guid.NewGuid())];
+        store.ListFollowCounterpartsAsync(banned, Arg.Any<CancellationToken>()).Returns(new FollowCounterparts(followers, followed));
+        List<(Guid[] Following, Guid[] Followers)> batches = [];
+        await store.RecountFollowsAsync(
+            Arg.Do<IReadOnlyCollection<Guid>>(f => batches.Add(([.. f], []))),
+            Arg.Do<IReadOnlyCollection<Guid>>(f => batches[^1] = (batches[^1].Following, [.. f])),
+            Arg.Any<CancellationToken>());
 
         await new FollowCountsHandler(store, unitOfWork).HandleAsync(Envelope(new FollowCountsRequest(banned)), TestSupport.Ct);
 
         // Each batch in a transaction of its own, locked in id order as follows lock.
-        Assert.Equal([FollowCountsHandler.BatchSize, 11], batches.Select(b => b.Length));
+        var all = batches.Select(b => b.Following.Union(b.Followers).Order().ToArray()).ToList();
+        Assert.Equal([FollowCountsHandler.BatchSize, 11], all.Select(b => b.Length));
         Assert.Equal(batches.Count, unitOfWork.Locks.Count);
-        Assert.Equal([.. people.Append(banned).Order()], batches.SelectMany(b => b));
+        Assert.Equal([.. followers.Concat(followed).Append(banned).Order()], all.SelectMany(b => b));
+        // Only the count that changed: whom their followers follow, who follows those they follow; both for them.
+        Assert.Equal([.. followers.Append(banned).Order()], batches.SelectMany(b => b.Following).Order());
+        Assert.Equal([.. followed.Append(banned).Order()], batches.SelectMany(b => b.Followers).Order());
     }
 
     [Fact]

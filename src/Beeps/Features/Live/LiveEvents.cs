@@ -1,3 +1,5 @@
+using System.Text.Json;
+using System.Text.Json.Serialization.Metadata;
 using System.Text.Json.Serialization;
 
 namespace Beeps.Features.Live;
@@ -8,7 +10,32 @@ namespace Beeps.Features.Live;
 /// </summary>
 /// <param name="Id">The stream entry id (<c>{ms}-{seq}</c>), which is also the SSE event id.</param>
 /// <param name="Data">JSON of the type's payload record.</param>
-public sealed record LiveEvent(string Id, string Type, string Data);
+public sealed record LiveEvent(string Id, string Type, string Data)
+{
+    private object? payload;
+
+    /// <summary>
+    /// The payload, parsed once: an instance hands the same event to every connection it serves, and each would
+    /// otherwise parse it again (a counts event, every few seconds, with hundreds of entries).
+    /// </summary>
+    public T Read<T>(JsonTypeInfo<T> type)
+        where T : class
+    {
+        if (Volatile.Read(ref payload) is T parsed)
+        {
+            return parsed;
+        }
+
+        var value = JsonSerializer.Deserialize(Data, type) ?? throw new JsonException($"Live event {Id} ({Type}) has no payload.");
+        Volatile.Write(ref payload, value);
+        return value;
+    }
+
+    // The parsed payload is only a copy of Data.
+    public bool Equals(LiveEvent? other) => other is not null && Id == other.Id && Type == other.Type && Data == other.Data;
+
+    public override int GetHashCode() => HashCode.Combine(Id, Type, Data);
+}
 
 /// <summary>Types of <see cref="LiveEvent"/>. Internal to beeps; what clients receive is <see cref="LiveMessages"/>.</summary>
 public static class LiveEventTypes

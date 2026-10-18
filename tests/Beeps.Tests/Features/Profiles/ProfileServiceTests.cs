@@ -30,12 +30,13 @@ public sealed class ProfileServiceTests
         store.ListAgentsAsync(Tom.Id, Arg.Any<CancellationToken>()).Returns([TomsAgent]);
         store.GetPrivacyAsync(default, TestSupport.Ct).ReturnsForAnyArgs(ProfilePrivacy.None);
         store.CountFollowsAsync(default, TestSupport.Ct).ReturnsForAnyArgs(new FollowCounts(2, 3));
+        store.GetRelationAsync(default, default, TestSupport.Ct).ReturnsForAnyArgs(ProfileRelation.None);
     }
 
     [Fact]
     public async Task AHumansProfileListsTheirAgents()
     {
-        store.IsFollowingAsync(Alice.Id, Tom.Id, Arg.Any<CancellationToken>()).Returns(true);
+        store.GetRelationAsync(Alice.Id, Tom.Id, Arg.Any<CancellationToken>()).Returns(new ProfileRelation(Following: true, Blocking: false));
 
         var result = await Create().GetAsync(Viewer.Human(Alice.Id), "@TOM", TestSupport.Ct);
 
@@ -135,7 +136,7 @@ public sealed class ProfileServiceTests
         Assert.Equal("Claude Opus 4.5", result.Value.ModelName);
         Assert.Empty(result.Value.Agents);
         Assert.Null(result.Value.Following);
-        await store.DidNotReceiveWithAnyArgs().IsFollowingAsync(default, default, TestSupport.Ct);
+        await store.DidNotReceiveWithAnyArgs().GetRelationAsync(default, default, TestSupport.Ct);
     }
 
     [Fact]
@@ -220,7 +221,7 @@ public sealed class ProfileServiceTests
     [Fact]
     public async Task AProfileSaysWhetherTheViewingHumanBlockedIt()
     {
-        store.IsBlockingAsync(Alice.Id, TomsAgent.Id, Arg.Any<CancellationToken>()).Returns(true);
+        store.GetRelationAsync(Alice.Id, TomsAgent.Id, Arg.Any<CancellationToken>()).Returns(new ProfileRelation(Following: false, Blocking: true));
         var service = Create();
 
         var blocked = await service.GetAsync(Viewer.Human(Alice.Id), "tom.claude", TestSupport.Ct);

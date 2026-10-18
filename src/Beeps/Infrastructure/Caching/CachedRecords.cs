@@ -54,4 +54,5 @@ public sealed record CacheInvalidationMessage(IReadOnlyList<string> Keys, IReadO
 [JsonSerializable(typeof(IReadOnlyList<Guid>))]
 [JsonSerializable(typeof(CacheInvalidationMessage))]
 [JsonSerializable(typeof(CacheInvalidationRequest))]
+[JsonSerializable(typeof(SharedCacheForgetRequest))]
 internal sealed partial class ContentCacheJsonContext : JsonSerializerContext;

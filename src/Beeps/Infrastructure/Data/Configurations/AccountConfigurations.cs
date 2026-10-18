@@ -50,8 +50,11 @@ internal sealed class UserConfiguration : IEntityTypeConfiguration<User>
         builder.HasIndex(u => u.NormalizedEmail).IsUnique().HasDatabaseName(AccountIndexes.UniqueEmail).HasOperators("text_pattern_ops");
         // Counting admins (last-admin rule, admin checks) only ever looks at this handful of rows.
         builder.HasIndex(u => u.Id).HasFilter("is_admin").HasDatabaseName("ix_users_admins");
-        // The cleanup job: sign-ups that never verified, oldest first.
-        builder.HasIndex(u => u.CreatedAt, "ix_users_unverified").HasFilter("email_verified_at IS NULL").HasDatabaseName("ix_users_unverified");
+        // The cleanup job: sign-ups that never verified, oldest first. Those it released already leave the index, or every
+        // run would walk all of them again before getting to new ones.
+        builder.HasIndex(u => u.CreatedAt, "ix_users_unverified")
+            .HasFilter("email_verified_at IS NULL AND normalized_email NOT LIKE 'released:%'")
+            .HasDatabaseName("ix_users_unverified");
         // Visibility checks every author against the banned ones, who are few.
         builder.HasIndex(u => u.Id, "ix_users_banned").HasFilter("banned_at IS NOT NULL").HasDatabaseName("ix_users_banned");
     }

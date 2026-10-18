@@ -114,11 +114,14 @@ public sealed partial class LiveUpdates(ILiveEventStore store, IBeepCounterStore
     /// Counts are not published one change at a time: a popular beep would flood every page showing it.
     /// They are noted here and sent together by <see cref="PublishCountsAsync"/> every few seconds (PLAN 6.10).
     /// </summary>
-    public async Task CountsChangedAsync(Guid beepId, CancellationToken cancellationToken)
+    public Task CountsChangedAsync(Guid beepId, CancellationToken cancellationToken) => CountsChangedAsync([beepId], cancellationToken);
+
+    /// <summary>As <see cref="CountsChangedAsync(Guid, CancellationToken)"/>, for many beeps in one round trip.</summary>
+    public async Task CountsChangedAsync(IReadOnlyCollection<Guid> beepIds, CancellationToken cancellationToken)
     {
         try
         {
-            await store.MarkCountsChangedAsync(beepId, cancellationToken);
+            await store.MarkCountsChangedAsync(beepIds, cancellationToken);
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {

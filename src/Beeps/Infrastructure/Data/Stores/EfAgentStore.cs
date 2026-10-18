@@ -7,7 +7,7 @@ using Microsoft.Extensions.Caching.Hybrid;
 
 namespace Beeps.Infrastructure.Data.Stores;
 
-public sealed class EfAgentStore(BeepsDbContext db, HybridCache cache, CacheInvalidator invalidator, PendingCacheChanges cacheChanges) : IAgentStore
+public sealed class EfAgentStore(BeepsDbContext db, HybridCache cache, CacheInvalidator invalidator, PendingCacheChanges cacheChanges, TimeProvider time) : IAgentStore
 {
     public Task<int> CountAgentsAsync(Guid ownerId, CancellationToken cancellationToken) =>
         Agents().CountAsync(a => a.OwnerId == ownerId, cancellationToken);
@@ -69,8 +69,11 @@ public sealed class EfAgentStore(BeepsDbContext db, HybridCache cache, CacheInva
             return;
         }
 
+        // A key revoked longer ago than its cached copy lives is cached as revoked, if at all: only the rest can still be
+        // cached as working (the list would otherwise grow with every key ever made).
+        var revokedSince = time.GetUtcNow() - 2 * SharedCache.AgentKey.Expiration!.Value;
         var hashes = await db.Set<AgentKey>()
-            .Where(k => agentIds.Contains(k.AgentId))
+            .Where(k => agentIds.Contains(k.AgentId) && (k.RevokedAt == null || k.RevokedAt > revokedSince))
             .Select(k => k.KeyHash)
             .ToListAsync(cancellationToken);
         await invalidator.ForgetSharedAsync([.. hashes.Select(SharedCache.AgentKeyKey)]);

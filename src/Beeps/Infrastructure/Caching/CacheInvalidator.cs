@@ -1,7 +1,9 @@
 using System.Text.Json;
 using System.Threading.Channels;
 using Beeps.Features.Beeps;
+using Beeps.Features.Shared;
 using Beeps.Features.Shared.Http;
+using Beeps.Infrastructure.Data;
 using Beeps.Infrastructure.Data.Stores;
 using Microsoft.AspNetCore.OutputCaching;
 using Microsoft.Extensions.Caching.Hybrid;
@@ -62,7 +64,9 @@ public sealed partial class CacheInvalidator(
     /// at once, so the change applies to the very next request, and again <see cref="CacheOptions.SecondPassDelay"/>
     /// later, as a request that read the old row just before the change may have written it back in between. Never
     /// fails the caller, whose change is committed already: if Valkey is away, the removal is retried here until it is
-    /// back, and until then every read of these entries goes to the database anyway.
+    /// back, and until then every read of these entries goes to the database anyway. The retry is also written to the
+    /// outbox (<see cref="SharedCacheForgetHandler"/>), so a restart before Valkey is back does not leave a revoked
+    /// session or key cached.
     /// </summary>
     public async Task ForgetSharedAsync(IReadOnlyCollection<string> keys)
     {
@@ -82,6 +86,7 @@ public sealed partial class CacheInvalidator(
         {
             LogForgetFailed(logger, exception, keys.Count);
             queue.Writer.TryWrite(pass);
+            await StoreForgetAsync(keys);
         }
 
         QueueLater(pass, CancellationToken.None);
@@ -154,6 +159,22 @@ public sealed partial class CacheInvalidator(
                     return;
                 }
             }
+        }
+    }
+
+    private async Task StoreForgetAsync(IReadOnlyCollection<string> keys)
+    {
+        try
+        {
+            await using var scope = scopes.CreateAsyncScope();
+            scope.ServiceProvider.GetRequiredService<IOutbox>()
+                .Enqueue(SharedCacheForgetRequest.MessageType, new SharedCacheForgetRequest([.. keys]), ContentCacheJsonContext.Default.SharedCacheForgetRequest);
+            await scope.ServiceProvider.GetRequiredService<BeepsDbContext>().SaveChangesAsync(CancellationToken.None);
+        }
+        catch (Exception exception)
+        {
+            // The in-process retry is still queued.
+            LogForgetNotStored(logger, exception, keys.Count);
         }
     }
 
@@ -326,7 +347,9 @@ public sealed partial class CacheInvalidator(
 
     private void ScheduleSecondPass(List<Pass> batch, Resolved resolved, CancellationToken stoppingToken)
     {
-        if (batch.All(p => p.Resolved is not null))
+        // Counts are read live from Valkey, which changed before the pages were evicted: no read can have put old
+        // ones back, and the counts worker sends them every few seconds.
+        if (batch.All(p => p.Resolved is not null || p.Changes.All(c => c.Kind == CacheChangeKind.BeepCounts)))
         {
             return;
         }
@@ -362,6 +385,9 @@ public sealed partial class CacheInvalidator(
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Dropping {Count} cached sign-in entries failed; retrying in the background")]
     private static partial void LogForgetFailed(ILogger logger, Exception exception, int count);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Storing the retry of {Count} cached sign-in entries failed; it is retried in this process only")]
+    private static partial void LogForgetNotStored(ILogger logger, Exception exception, int count);
 
     [LoggerMessage(Level = LogLevel.Error, Message = "{Count} cache invalidations were dropped while Valkey was away; those entries stay until they expire")]
     private static partial void LogDropped(ILogger logger, int count);

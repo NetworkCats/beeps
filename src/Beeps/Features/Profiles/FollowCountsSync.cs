@@ -40,14 +40,18 @@ public sealed class FollowCountsHandler(IProfileStore store, IUnitOfWork unitOfW
         ArgumentNullException.ThrowIfNull(message);
         var humanId = message.ReadPayload(ProfilesJsonContext.Default.FollowCountsRequest).HumanId;
         var people = await store.ListFollowCounterpartsAsync(humanId, cancellationToken);
+        // Their followers now follow one shown human more or fewer, the people they follow have one more or fewer
+        // following them; only that count is taken again (the other is as large as the people on its side).
+        HashSet<Guid> followingOf = [.. people.Followers, humanId];
+        HashSet<Guid> followersOf = [.. people.Followed, humanId];
         // Sorted, so the batches lock in the order follows do.
-        foreach (var batch in people.Append(humanId).Distinct().Order().Chunk(BatchSize))
+        foreach (var batch in followingOf.Union(followersOf).Order().Chunk(BatchSize))
         {
             await unitOfWork.InTransactionAsync(
                 null,
                 async ct =>
                 {
-                    await store.RecountFollowsAsync(batch, ct);
+                    await store.RecountFollowsAsync([.. batch.Where(followingOf.Contains)], [.. batch.Where(followersOf.Contains)], ct);
                     return Result.Success;
                 },
                 cancellationToken);

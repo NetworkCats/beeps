@@ -34,7 +34,7 @@ public sealed class LiveServiceTests : IAsyncDisposable
     public LiveServiceTests()
     {
         store.AddConnectionAsync(default, default!, default, default, TestSupport.Ct).ReturnsForAnyArgs([]);
-        profiles.ListFollowedAsync(Tom, Arg.Any<CancellationToken>()).Returns([Alice]);
+        profiles.ListFollowedCachedAsync(Tom, Arg.Any<CancellationToken>()).Returns([Alice]);
         notifications.CountUnreadAsync(default, default, TestSupport.Ct).ReturnsForAnyArgs(_ => unread);
     }
 
@@ -73,6 +73,16 @@ public sealed class LiveServiceTests : IAsyncDisposable
         Assert.Equal(new LiveMessage(LiveMessages.Inbox, """{"unread_count":3}""", null, options.ReconnectDelay), first);
         await store.Received(1).AddConnectionAsync(Tom, connectionId, TestData.Now, options.MaxConnectionsPerAccount, Arg.Any<CancellationToken>());
         await store.Received(1).RemoveConnectionAsync(Tom, connectionId, Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task APageComingBackFromItsLastEventIsNotCountedAgain()
+    {
+        var first = await OpenAsync(new LiveRequest("home", null, "1760603400000-7", null));
+
+        // It has the count; what changed it since is replayed.
+        Assert.Equal(new LiveMessage(LiveMessages.Ping, "{}", "1760603400000-7", options.ReconnectDelay), first);
+        await notifications.DidNotReceiveWithAnyArgs().CountUnreadAsync(default, default, TestSupport.Ct);
     }
 
     [Fact]

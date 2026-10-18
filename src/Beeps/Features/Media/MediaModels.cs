@@ -7,6 +7,12 @@ public sealed record MediaRow(Guid Id, string StorageKey, int Width, int Height,
 /// An image as shown: absolute URLs on the media domain, and the size of the full image. While it is
 /// <see cref="MediaStatus.Processing"/> (only right after the upload) the URLs do not work yet.
 /// </summary>
+/// <summary>Where a cleanup pass got to, so the next batch does not read the media in use before it again.</summary>
+public sealed record MediaPosition(DateTimeOffset CreatedAt, Guid Id);
+
+/// <param name="Last">The last media deleted; null when none were.</param>
+public sealed record UnusedMediaBatch(IReadOnlyList<string> StorageKeys, MediaPosition? Last);
+
 public sealed record MediaView(Guid Id, Uri Url, Uri ThumbnailUrl, int Width, int Height, MediaStatus Status = MediaStatus.Ready);
 
 /// <summary>What <see cref="ProcessMediaHandler"/> needs of an upload that is still waiting.</summary>
@@ -148,8 +154,9 @@ public interface IMediaStore
     Task<IReadOnlyList<Guid>> LockOwnedAsync(Guid ownerActorId, IReadOnlyCollection<Guid> mediaIds, CancellationToken cancellationToken);
 
     /// <summary>
-    /// Deletes up to <paramref name="batchSize"/> media created before <paramref name="cutoff"/> that no beep,
-    /// avatar or banner uses, skipping any being used right now. Runs immediately; returns their storage keys.
+    /// Deletes up to <paramref name="batchSize"/> media created before <paramref name="cutoff"/> and after
+    /// <paramref name="after"/> (the previous batch's last), oldest first, that no beep, avatar or banner uses, skipping
+    /// any being used right now. Runs immediately.
     /// </summary>
-    Task<IReadOnlyList<string>> DeleteUnusedAsync(DateTimeOffset cutoff, int batchSize, CancellationToken cancellationToken);
+    Task<UnusedMediaBatch> DeleteUnusedAsync(DateTimeOffset cutoff, MediaPosition? after, int batchSize, CancellationToken cancellationToken);
 }

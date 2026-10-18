@@ -33,6 +33,9 @@ public interface IAccountStore
     /// <summary>Drops the cached <see cref="AccountState"/>. Call after committing any change to it.</summary>
     Task ForgetAccountAsync(Guid userId, CancellationToken cancellationToken);
 
+    /// <summary>As <see cref="ForgetAccountAsync"/>, for many accounts at once.</summary>
+    Task ForgetAccountsAsync(IReadOnlyCollection<Guid> userIds, CancellationToken cancellationToken);
+
     /// <summary><see cref="RegistrationMode.Open"/> until an admin changes it.</summary>
     Task<RegistrationMode> GetRegistrationModeAsync(CancellationToken cancellationToken);
 

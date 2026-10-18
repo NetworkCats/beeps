@@ -68,7 +68,8 @@ public sealed partial class AdminFiguresWorker(
         var system = scope.ServiceProvider.GetRequiredService<ISystemStore>();
         var moderation = scope.ServiceProvider.GetRequiredService<IModerationStore>();
         var since = new DateTimeOffset(time.GetUtcNow().UtcDateTime.Date, TimeSpan.Zero);
-        var counts = await system.CountAsync(since, cancellationToken);
+        // Today's beeps grow with the day's posts, and each new one refreshes the admin pages by its own event already.
+        var counts = await system.CountUnannouncedAsync(since, cancellationToken);
         var queue = await moderation.CountQueueAsync(cancellationToken);
         var dead = (await system.ListDeadJobsAsync(null, 1, cancellationToken)).Items;
         var text = new StringBuilder();

@@ -8,8 +8,10 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Beeps.Infrastructure.Data.Stores;
 
-public sealed class EfSearchStore(BeepsDbContext db) : ISearchStore
+public sealed class EfSearchStore(BeepsDbContext db, ContentReads reads) : ISearchStore
 {
+    private const string ByteOrder = "C";
+
     public async Task<BeepDocument?> FindBeepAsync(Guid beepId, CancellationToken cancellationToken)
     {
         var row = await BeepQueries.Visible(db, null).Where(b => b.Id == beepId).Select(ToRow).FirstOrDefaultAsync(cancellationToken);
@@ -65,31 +67,71 @@ public sealed class EfSearchStore(BeepsDbContext db) : ISearchStore
                     a.Bio))
                 .ToListAsync(cancellationToken);
 
-    // The handle index (text_pattern_ops) serves the prefix; following a human counts for their agents too.
+    /// <remarks>
+    /// A one-letter prefix matches a good share of everyone, so neither part reads all the matches. The people the viewer is
+    /// close to (their agents, the humans they follow and those humans' agents) come from the cached lists, by primary key.
+    /// The rest come shortest handle first off <c>ix_actors_handle_length</c> (<c>length(normalized_handle),
+    /// normalized_handle COLLATE "C"</c>): one short walk per handle length (LATERAL), each stopping once the page is full.
+    /// Handles of one length are in byte order ("C"), which is what lets the index give them in order.
+    /// </remarks>
     public async Task<IReadOnlyList<ActorRow>> SuggestActorsAsync(string normalizedPrefix, Viewer viewer, int limit, CancellationToken cancellationToken)
     {
+        ArgumentNullException.ThrowIfNull(normalizedPrefix);
         ArgumentNullException.ThrowIfNull(viewer);
-        var followed = db.Set<Follow>().Where(f => f.FollowerId == viewer.AccountId).Select(f => f.FolloweeId);
-        return await Findable(viewer.ActorId)
-            .Where(a => a.Id != viewer.ActorId && EF.Functions.Like(a.NormalizedHandle!, SqlLike.Prefix(normalizedPrefix), SqlLike.Escape))
-            .OrderByDescending(a => a.OwnerId == viewer.AccountId)
-            .ThenByDescending(a => followed.Contains(a.Id) || (a.OwnerId != null && followed.Contains(a.OwnerId.Value)))
-            .ThenBy(a => a.NormalizedHandle!.Length)
-            .ThenBy(a => a.NormalizedHandle)
-            .Take(limit)
-            .Select(a => new ActorRow(a.Id, a.Kind, a.Handle, a.DisplayName, a.OwnerId, a.AvatarMedia == null || a.AvatarMedia.Status != MediaStatus.Ready ? null : a.AvatarMedia.StorageKey))
+        var pattern = SqlLike.Prefix(normalizedPrefix);
+        var matching = Findable(viewer.ActorId)
+            .Where(a => a.Id != viewer.ActorId && a.NormalizedHandle != null && EF.Functions.Like(EF.Functions.Collate(a.NormalizedHandle, ByteOrder), pattern, SqlLike.Escape));
+
+        // Following a human counts for their agents too.
+        var followed = await reads.GetFollowedAsync(viewer.AccountId, cancellationToken);
+        var agents = await reads.GetAgentIdsAsync([viewer.AccountId, .. followed], cancellationToken);
+        Guid[] close = [.. agents.Values.SelectMany(a => a), .. followed];
+        List<ActorRow> found = close.Length == 0
+            ? []
+            : await matching
+                .Where(a => close.Contains(a.Id))
+                .OrderByDescending(a => a.OwnerId == viewer.AccountId)
+                .ThenBy(a => a.NormalizedHandle!.Length)
+                .ThenBy(a => EF.Functions.Collate(a.NormalizedHandle!, ByteOrder))
+                .Take(limit)
+                .Select(ToActorRow)
+                .ToListAsync(cancellationToken);
+        if (found.Count >= limit)
+        {
+            return found;
+        }
+
+        // As many again as were found already, which may come up here too.
+        var take = limit + found.Count;
+        var lengths = db.Database.SqlQuery<int>($"SELECT generate_series({normalizedPrefix.Length}, {Actor.HandleMaxLength}) AS \"Value\"");
+        var rest = await lengths
+            .SelectMany(length => matching.Where(a => a.NormalizedHandle!.Length == length).OrderBy(a => EF.Functions.Collate(a.NormalizedHandle!, ByteOrder)).Take(take))
+            .OrderBy(a => a.NormalizedHandle!.Length)
+            .ThenBy(a => EF.Functions.Collate(a.NormalizedHandle!, ByteOrder))
+            .Take(take)
+            .Select(ToActorRow)
             .ToListAsync(cancellationToken);
+        var shown = found.Select(a => a.Id).ToHashSet();
+        return [.. found, .. rest.Where(a => !shown.Contains(a.Id)).Take(limit - found.Count)];
     }
 
     /// <summary>
     /// Who can be found: visible actors with a handle (agents get one when they connect), and none the viewer blocked.
     /// People only once they verified their email, so sign-ups that never finish do not fill the results.
     /// </summary>
+    /// <remarks>
+    /// The check is a primary-key probe per actor: as <c>IN (verified users)</c>, PostgreSQL hashed every verified user
+    /// for each query.
+    /// </remarks>
     private IQueryable<Actor> Findable(Guid? viewerId = null)
     {
-        var verified = db.Set<User>().Where(u => u.EmailVerifiedAt != null).Select(u => u.Id);
-        return BeepQueries.VisibleActors(db, viewerId).Where(a => a.Handle != null && (a.Kind == ActorKind.Agent || verified.Contains(a.Id)));
+        var users = db.Set<User>();
+        return BeepQueries.VisibleActors(db, viewerId)
+            .Where(a => a.Handle != null && (a.Kind == ActorKind.Agent || users.Any(u => u.Id == a.Id && u.EmailVerifiedAt != null)));
     }
+
+    private static readonly Expression<Func<Actor, ActorRow>> ToActorRow = a =>
+        new ActorRow(a.Id, a.Kind, a.Handle, a.DisplayName, a.OwnerId, a.AvatarMedia == null || a.AvatarMedia.Status != MediaStatus.Ready ? null : a.AvatarMedia.StorageKey);
 
     private static readonly Expression<Func<Beep, BeepTextRow>> ToRow = b => new BeepTextRow(b.Id, b.Text, b.AuthorId, b.CreatedAt);
 

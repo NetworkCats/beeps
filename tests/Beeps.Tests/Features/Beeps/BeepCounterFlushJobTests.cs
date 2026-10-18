@@ -12,6 +12,21 @@ public sealed class BeepCounterFlushJobTests
     private readonly ILiveEventStore liveEvents = Substitute.For<ILiveEventStore>();
 
     [Fact]
+    public async Task WaitingViewsAreAddedToTheirColumnsAndPutBackIfThatFails()
+    {
+        var views = new Dictionary<Guid, long> { [Guid.NewGuid()] = 3 };
+        counters.TakeDirtyAsync(default, TestSupport.Ct).ReturnsForAnyArgs([]);
+        counters.TakeViewsAsync(Arg.Any<CancellationToken>()).Returns(views);
+
+        await Create().RunAsync(TestSupport.Ct);
+        beeps.AddViewsAsync(views, Arg.Any<CancellationToken>()).Returns(Task.FromException(new InvalidOperationException("down")));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => Create().RunAsync(TestSupport.Ct));
+
+        await beeps.Received(2).AddViewsAsync(views, Arg.Any<CancellationToken>());
+        await counters.Received(1).ReturnViewsAsync(views, Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task EveryDirtyBeepIsRecountedAndPutBack()
     {
         IReadOnlyList<Guid> full = [.. Enumerable.Range(0, BeepCounterFlushJob.BatchSize).Select(_ => Guid.NewGuid())];
@@ -38,8 +53,7 @@ public sealed class BeepCounterFlushJobTests
 
         await Create().RunAsync(TestSupport.Ct);
 
-        await liveEvents.Received(1).MarkCountsChangedAsync(drifted, Arg.Any<CancellationToken>());
-        await liveEvents.DidNotReceive().MarkCountsChangedAsync(right, Arg.Any<CancellationToken>());
+        await liveEvents.Received(1).MarkCountsChangedAsync(Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.SequenceEqual(new[] { drifted })), Arg.Any<CancellationToken>());
     }
 
     [Fact]

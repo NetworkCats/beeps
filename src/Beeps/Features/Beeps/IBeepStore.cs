@@ -49,10 +49,14 @@ public interface IBeepStore
     Task<bool> RemoveLikeAsync(Guid actorId, Guid beepId, CancellationToken cancellationToken);
 
     /// <summary>
-    /// Counts a view of the beep by the human, in their history and in the beep's views, unless they last viewed it
-    /// after <paramref name="repeatAfter"/> (the same view still). Runs immediately; false when it was not counted.
+    /// Counts a view of the beep in the human's history, unless they last viewed it after <paramref name="repeatAfter"/>
+    /// (the same view still). Runs immediately; false when it was not counted. The beep's own count is
+    /// <see cref="AddViewsAsync"/>'s.
     /// </summary>
     Task<bool> RecordViewAsync(Guid userId, Guid beepId, DateTimeOffset now, DateTimeOffset repeatAfter, CancellationToken cancellationToken);
+
+    /// <summary>Adds views to the beeps' counts, in one statement. Runs immediately.</summary>
+    Task AddViewsAsync(IReadOnlyDictionary<Guid, long> views, CancellationToken cancellationToken);
 
     /// <summary>
     /// Recounts likes and replies from their rows and writes them to the beeps' count columns. Runs
@@ -81,6 +85,18 @@ public interface IBeepCounterStore
 
     /// <summary>Marks beeps for write-back again (after a failed flush).</summary>
     Task MarkDirtyAsync(IReadOnlyCollection<Guid> beepIds, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Adds a view to those waiting to be written to the beep's column (<see cref="BeepCounterFlushJob"/>), so a viral beep's
+    /// row is not updated on every view. False when as many beeps as allowed are waiting already: count it there at once.
+    /// </summary>
+    Task<bool> AddViewAsync(Guid beepId, CancellationToken cancellationToken);
+
+    /// <summary>Removes and returns the views waiting to be written, per beep.</summary>
+    Task<IReadOnlyDictionary<Guid, long>> TakeViewsAsync(CancellationToken cancellationToken);
+
+    /// <summary>Puts taken views back (after a failed write).</summary>
+    Task ReturnViewsAsync(IReadOnlyDictionary<Guid, long> views, CancellationToken cancellationToken);
 
     /// <summary>Replaces the live counts with recounted ones.</summary>
     Task SetAsync(IReadOnlyDictionary<Guid, BeepCounts> counts, CancellationToken cancellationToken);

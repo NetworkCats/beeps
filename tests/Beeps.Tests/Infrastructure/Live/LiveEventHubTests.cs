@@ -325,7 +325,7 @@ public sealed class LiveEventHubTests : IAsyncDisposable
 
         public Task AppendAsync(string type, string data, CancellationToken cancellationToken) => throw new NotSupportedException();
 
-        public Task MarkCountsChangedAsync(Guid beepId, CancellationToken cancellationToken) => throw new NotSupportedException();
+        public Task MarkCountsChangedAsync(IReadOnlyCollection<Guid> beepIds, CancellationToken cancellationToken) => throw new NotSupportedException();
 
         public Task<IReadOnlyList<Guid>> TakeChangedCountsAsync(int max, CancellationToken cancellationToken) => throw new NotSupportedException();
 

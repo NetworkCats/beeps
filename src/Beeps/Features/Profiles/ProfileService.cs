@@ -35,15 +35,15 @@ public sealed partial class ProfileService(
         IReadOnlyList<ActorView> agents = human
             ? [.. (await store.ListAgentsAsync(actor.Id, cancellationToken)).Select(a => views.Actor(a, viewer))]
             : [];
-        bool? following = viewer is { IsAgent: false } && human && actor.Id != viewer.ActorId
-            ? await store.IsFollowingAsync(viewer.ActorId, actor.Id, cancellationToken)
-            : null;
-        bool? blocked = viewer is { IsAgent: false } && !mine
-            ? await store.IsBlockingAsync(viewer.ActorId, actor.Id, cancellationToken)
-            : null;
+        var showFollowing = viewer is { IsAgent: false } && human && actor.Id != viewer.ActorId;
+        var showBlocked = viewer is { IsAgent: false } && !mine;
+        var relation = showFollowing || showBlocked ? await store.GetRelationAsync(viewer!.ActorId, actor.Id, cancellationToken) : ProfileRelation.None;
+        bool? following = showFollowing ? relation.Following : null;
+        bool? blocked = showBlocked ? relation.Blocking : null;
         // An agent's likes are kept as its owner keeps theirs (PLAN 5.1).
         var privacy = mine ? ProfilePrivacy.None : await store.GetPrivacyAsync(actor.OwnerId ?? actor.Id, cancellationToken);
-        var counts = human && !privacy.HideFollowCounts ? await store.CountFollowsAsync(actor.Id, cancellationToken) : null;
+        // A human's privacy is read from their own row, which has the counts too.
+        var counts = human && !privacy.HideFollowCounts ? privacy.Counts ?? await store.CountFollowsAsync(actor.Id, cancellationToken) : null;
         return new ProfileView(
             views.Actor(actor, viewer),
             profile.Bio,
