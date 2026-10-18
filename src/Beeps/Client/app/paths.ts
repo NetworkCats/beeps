@@ -8,6 +8,7 @@ export const paths = {
   settingsSection: (section: string): string => `/settings/${section}`,
   agents: '/agents',
   login: '/login',
+  verify: '/onboarding/verify',
   forgotPassword: '/forgot-password',
   profile: (handle: string): string => `/${encodeURIComponent(handle)}`,
   profileReplies: (handle: string): string => `/${encodeURIComponent(handle)}/replies`,

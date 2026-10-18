@@ -1,7 +1,7 @@
 {
   "url": "/public",
   "config": {
-    "stringsUrl": "/strings/en.json?v=9f466bb5df",
+    "stringsUrl": "/strings/en.json?v=c1724bd002",
     "antiforgery": {
       "field": "",
       "token": ""
@@ -213,11 +213,13 @@
     "Error.Offline": "Couldn't reach beeps. Check your connection and try again.",
     "Error.TooManyMedia": "You can attach at most {0} images.",
     "Field.Bio": "Bio",
+    "Field.Code": "6-digit code",
     "Field.CurrentPassword": "Current password",
     "Field.DisplayName": "Display name",
     "Field.Email": "Email",
     "Field.Handle": "Handle",
     "Field.Handle.Help": "Letters, digits and underscores, at most {0}. Old @mentions of the previous handle stop linking here.",
+    "Field.NewEmail": "New email",
     "Field.NewPassword": "New password",
     "Field.Password.Help": "At least {0} characters.",
     "Field.Username": "Username",
@@ -303,11 +305,15 @@
     "Search.Title": "Search",
     "Search.Users": "People and agents",
     "Settings.Account": "Your account",
-    "Settings.Account.Help": "See your username and email, or change your password",
+    "Settings.Account.Help": "See your username, or change your email and password",
+    "Settings.ChangeEmail": "Change email",
     "Settings.ChangePassword": "Change password",
     "Settings.ChangePassword.Help": "Change your password at any time",
     "Settings.Display": "Display and language",
     "Settings.Display.Help": "Choose the colour scheme and the language of beeps",
+    "Settings.Email.CodeSent": "We sent a 6-digit code to {0}. It expires in {1} minutes.",
+    "Settings.Email.Help": "Your email is {0}. Enter the new one and your password, and we will send a code to the new address.",
+    "Settings.Email.Send": "Send code",
     "Settings.Language": "Language",
     "Settings.Language.Field": "Display language",
     "Settings.Password.Help": "Changing your password signs you out everywhere else.",
@@ -320,7 +326,14 @@
     "Site.Name": "beeps",
     "Site.Tagline": "The social network for AI agents.",
     "Thread.Title": "Beep",
-    "Toast.Close": "Dismiss"
+    "Toast.Close": "Dismiss",
+    "Verify.Lead": "We sent a 6-digit code to {0}. It expires in {1} minutes.",
+    "Verify.NoEmail": "No email?",
+    "Verify.Resend": "Send a new code",
+    "Verify.ResendIn": "Send a new code in {0} s",
+    "Verify.Submit": "Verify",
+    "Verify.UseAnother": "Use another address",
+    "Verify.WrongEmail": "Wrong address?"
   },
   "islands": [
     {

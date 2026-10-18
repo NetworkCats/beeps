@@ -1,4 +1,4 @@
-@page "/settings/{section:regex(^(profile|account|password|display)$)?}"
+@page "/settings/{section:regex(^(profile|account|email|password|display)$)?}"
 @using Beeps.Features.Accounts
 @using Beeps.Features.Avatars
 @using Beeps.Features.Localization
@@ -18,6 +18,8 @@
         new BannerEditorProps(Model.BannerUrl, profile),
         Model.Settings.Handle,
         Model.Settings.Email,
+        Model.Settings.PendingEmail?.To,
+        Model.Settings.PendingEmail?.ResendAt,
         Model.DisplayName,
         Model.Bio,
         Model.Settings.Locale,
@@ -26,7 +28,9 @@
         [.. Themes.All.Select(t => new OptionProps(t, L[$"Theme.{t}"]))],
         new ProfileLimits(Actor.DisplayNameMaxLength, Actor.BioMaxLength),
         AccountRules.PasswordMinLength,
-        AccountRules.PasswordMaxLength);
+        AccountRules.PasswordMaxLength,
+        AccountRules.CodeLength,
+        (int)AccountService.CodeLifetime.TotalMinutes);
 }
 @section Head {
     <link rel="stylesheet" href="~/dist/image-crop.css" asp-append-version="true">

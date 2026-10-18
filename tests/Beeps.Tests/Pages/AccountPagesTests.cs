@@ -110,6 +110,38 @@ public sealed class AccountPagesTests : IDisposable
     }
 
     [Fact]
+    public async Task TheVerificationPageSaysWhereTheCodeWentAndTakesAnotherAddress()
+    {
+        var user = WebAuth.ArrangeUser(factory, verified: false);
+        using var client = await WebAuth.SignInAsync(factory, user);
+
+        var before = Islands.Props(await client.GetStringAsync(new Uri("/onboarding/verify", UriKind.Relative), TestSupport.Ct), "verify");
+        using var changed = await WebAuth.PostFormAsync(client, "/onboarding/verify", "/onboarding/verify?handler=Email",
+            ("NewEmail", "tom@example.org"), ("CurrentPassword", WebAuth.Password));
+        var after = await client.GetStringAsync(new Uri("/onboarding/verify", UriKind.Relative), TestSupport.Ct);
+
+        Assert.Equal("tom@example.com", before.GetProperty("email").GetString());
+        Assert.Equal("/onboarding/verify", changed.Headers.Location?.OriginalString);
+        Assert.Equal("tom@example.org", Islands.Props(after, "verify").GetProperty("email").GetString());
+        Assert.Contains("A new code is on its way.", after, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task AWrongPasswordKeepsTheOtherAddressFormOpen()
+    {
+        var user = WebAuth.ArrangeUser(factory, verified: false);
+        using var client = await WebAuth.SignInAsync(factory, user);
+
+        using var response = await WebAuth.PostFormAsync(client, "/onboarding/verify", "/onboarding/verify?handler=Email",
+            ("NewEmail", "tom@example.org"), ("CurrentPassword", "not it"));
+        var html = await response.Content.ReadAsStringAsync(TestSupport.Ct);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.True(Islands.Props(html, "verify").GetProperty("changing").GetBoolean());
+        Assert.Equal("tom@example.com", user.NormalizedEmail);
+    }
+
+    [Fact]
     public async Task LoginReturnsToTheRequestedPage()
     {
         WebAuth.ArrangeUser(factory);

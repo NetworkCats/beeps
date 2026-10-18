@@ -1,13 +1,15 @@
 // The account's own settings (Settings.cshtml), split as Twitter splits them: /settings lists the sections, and each
 // has a page of its own, with a way back to the list. Profile is Twitter's "Edit profile" (the banner and avatar, the
-// name and bio, saved from the header); account shows the username and email and leads to the password's page; display
-// holds the colour scheme, applied as soon as one is picked, and the language. Each form is sent in the background and
+// name and bio, saved from the header); account shows the username and leads to the email's and the password's pages,
+// the email moving only once the code sent to the new address is entered; display holds the colour scheme, applied as
+// soon as one is picked, and the language. Each form is sent in the background and
 // answered in place; the saved name, bio, avatar and banner follow changes made in another tab, unless they are being
 // edited here. A new language shows the page anew in it.
 import type { ComponentChildren } from 'preact';
 import { FloatField } from '../components/FloatField.tsx';
 import { Antiforgery, FormErrors, field } from '../components/Forms.tsx';
 import { Icon } from '../components/Icon.tsx';
+import { CodeResend } from '../components/CodeResend.tsx';
 import { ProfileImages, type AvatarEditorProps, type BannerEditorProps } from '../components/ProfileImageEditor.tsx';
 import { sending } from '../forms.ts';
 import { t } from '../i18n.ts';
@@ -17,7 +19,7 @@ import { paths } from '../paths.ts';
 import type { Errors, LiveProps } from '../props.ts';
 import { theme } from '../state.ts';
 
-type Section = 'profile' | 'account' | 'password' | 'display';
+type Section = 'profile' | 'account' | 'email' | 'password' | 'display';
 
 interface Option {
   value: string;
@@ -38,6 +40,10 @@ interface SettingsProps {
   banner: BannerEditorProps;
   handle: string;
   email: string;
+  /** The address a code was sent to, while it can still be entered. */
+  pendingEmail?: string;
+  /** When another code may be sent to `pendingEmail`. */
+  resendAt?: string;
   displayName?: string;
   bio?: string;
   culture: string;
@@ -47,6 +53,8 @@ interface SettingsProps {
   limits: ProfileLimits;
   passwordMinLength: number;
   passwordMaxLength: number;
+  codeLength: number;
+  codeLifetimeMinutes: number;
 }
 
 interface SectionProps {
@@ -58,6 +66,7 @@ interface SectionProps {
 const TITLES: Record<Section, { title: string; back: string }> = {
   profile: { title: 'Settings.Profile', back: paths.settings },
   account: { title: 'Settings.Account', back: paths.settings },
+  email: { title: 'Settings.ChangeEmail', back: paths.settingsSection('account') },
   password: { title: 'Settings.ChangePassword', back: paths.settingsSection('account') },
   display: { title: 'Settings.Display', back: paths.settings },
 };
@@ -117,6 +126,7 @@ export function SettingsPage({ props, errors }: IslandProps<SettingsProps>) {
       <FormErrors errors={errors} />
       {section === 'profile' && <ProfileSection props={props} errors={errors} />}
       {section === 'account' && <AccountSection props={props} />}
+      {section === 'email' && <EmailSection props={props} errors={errors} />}
       {section === 'password' && <PasswordSection props={props} errors={errors} />}
       {section === 'display' && <DisplaySection props={props} errors={errors} />}
     </section>
@@ -140,7 +150,7 @@ function ProfileSection({ props, errors }: SectionProps) {
   );
 }
 
-/** Twitter's "Account information": what the account is, which cannot be changed here, then the way to the password. */
+/** Twitter's "Account information": the username, which never changes, then the ways to the email and the password. */
 function AccountSection({ props }: { props: SettingsProps }) {
   return (
     <>
@@ -153,17 +163,75 @@ function AccountSection({ props }: { props: SettingsProps }) {
             <span class="settings-link-help">@{props.handle}</span>
           </span>
         </div>
-        <div class="settings-link">
-          <Icon name="mail" />
-          <span class="settings-link-text">
-            <span class="settings-link-title">{t('Field.Email')}</span>
-            <span class="settings-link-help">{props.email}</span>
-          </span>
-        </div>
       </div>
       <nav class="settings-nav" aria-label={t('Settings.Account')}>
+        <LinkRow href={paths.settingsSection('email')} icon={<Icon name="mail" />} title={t('Field.Email')} help={props.email} />
         <LinkRow href={paths.settingsSection('password')} icon={<Icon name="key" />} title={t('Settings.ChangePassword')} help={t('Settings.ChangePassword.Help')} />
       </nav>
+    </>
+  );
+}
+
+/** Two steps: the new address and the password send a code there; the code then moves the account. */
+function EmailSection({ props, errors }: SectionProps) {
+  if (props.pendingEmail) {
+    return (
+      <>
+        <p class="settings-intro">{t('Settings.Email.CodeSent', props.pendingEmail, props.codeLifetimeMinutes)}</p>
+        <form class="settings-form" method="post" action={action('email', 'ConfirmEmail')} onSubmit={sending()}>
+          <FloatField errors={errors} name="Code" label={t('Field.Code')}>
+            <input
+              class="float-field-input"
+              {...field(errors, 'Code')}
+              inputMode="numeric"
+              autocomplete="one-time-code"
+              pattern={`[0-9]{${props.codeLength}}`}
+              maxLength={props.codeLength}
+              required
+            />
+          </FloatField>
+          <div class="form-actions">
+            <button class="btn btn-primary" type="submit">
+              {t('Verify.Submit')}
+            </button>
+          </div>
+          <Antiforgery />
+        </form>
+        <CodeResend class="settings-aside" action={action('email', 'ResendEmail')} resendAt={props.resendAt} />
+        {/* The wrong address: the first step again. */}
+        <form class="settings-aside" method="post" action={action('email', 'CancelEmail')} onSubmit={sending()}>
+          <span>{t('Verify.WrongEmail')}</span>
+          <button class="btn btn-ghost btn-sm" type="submit">
+            {t('Verify.UseAnother')}
+          </button>
+          <Antiforgery />
+        </form>
+      </>
+    );
+  }
+  return (
+    <>
+      <p class="settings-intro">{t('Settings.Email.Help', props.email)}</p>
+      <form class="settings-form" method="post" action={action('email', 'Email')} onSubmit={sending()}>
+        <input type="hidden" name="username" value={props.handle} autocomplete="username" />
+        <FloatField errors={errors} name="NewEmail" label={t('Field.NewEmail')}>
+          <input class="float-field-input" {...field(errors, 'NewEmail')} type="email" autocomplete="email" required />
+        </FloatField>
+        <div class="settings-field-group">
+          <FloatField errors={errors} name="CurrentPassword" label={t('Field.CurrentPassword')}>
+            <input class="float-field-input" {...field(errors, 'CurrentPassword')} type="password" autocomplete="current-password" required />
+          </FloatField>
+          <a class="settings-aside-link" href={paths.forgotPassword}>
+            {t('Login.Forgot')}
+          </a>
+        </div>
+        <div class="form-actions">
+          <button class="btn btn-primary" type="submit">
+            {t('Settings.Email.Send')}
+          </button>
+        </div>
+        <Antiforgery />
+      </form>
     </>
   );
 }

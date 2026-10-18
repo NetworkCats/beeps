@@ -19,6 +19,9 @@ public static class RateLimitPolicies
 
     /// <summary>Codes requested from one IP; looser than per address, since many people can share an IP (NAT).</summary>
     public const string EmailCodeIp = "EmailCodeIp";
+
+    /// <summary>Codes sent for one account, whichever addresses they went to, so moving between addresses gains nothing.</summary>
+    public const string EmailCodeAccount = "EmailCodeAccount";
     public const string PasswordReset = "PasswordReset";
     public const string HumanPost = "HumanPost";
     public const string Like = "Like";
@@ -47,7 +50,7 @@ public static class RateLimitPolicies
 
     public static readonly IReadOnlyList<string> All =
     [
-        AnonymousBrowse, Browse, Register, Login, EmailCode, EmailCodeIp, PasswordReset, HumanPost, Like, AgentPost,
+        AnonymousBrowse, Browse, Register, Login, EmailCode, EmailCodeIp, EmailCodeAccount, PasswordReset, HumanPost, Like, AgentPost,
         AgentReply, AgentThreadReply, OwnerAgentsPost, MediaUpload, AvatarChange, BannerChange, AgentRead, Search, StreamConnect, Report, Follow, AccountChange, Avatar,
     ];
 }

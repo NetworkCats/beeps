@@ -84,6 +84,9 @@
   <data name="Field.NewPassword" xml:space="preserve">
     <value>新密码</value>
   </data>
+  <data name="Field.NewEmail" xml:space="preserve">
+    <value>新邮箱</value>
+  </data>
   <data name="Field.InviteCode" xml:space="preserve">
     <value>邀请码</value>
   </data>
@@ -98,6 +101,9 @@
   </data>
   <data name="Validation.Email" xml:space="preserve">
     <value>请输入有效的邮箱地址。</value>
+  </data>
+  <data name="Validation.SameEmail" xml:space="preserve">
+    <value>这已经是你的邮箱了。</value>
   </data>
   <data name="Validation.Username" xml:space="preserve">
     <value>请使用 {0}–{1} 位字母、数字或下划线。</value>
@@ -143,6 +149,9 @@
   </data>
   <data name="Error.CodeInvalid" xml:space="preserve">
     <value>验证码错误或已过期，如有需要请重新获取。</value>
+  </data>
+  <data name="Error.ResendTooSoon" xml:space="preserve">
+    <value>请等待 {0} 秒后再重新发送。</value>
   </data>
   <data name="Error.AlreadyVerified" xml:space="preserve">
     <value>你的邮箱已经验证过了。</value>
@@ -232,7 +241,7 @@
     <value>验证邮箱</value>
   </data>
   <data name="Verify.Lead" xml:space="preserve">
-    <value>我们向你的邮箱发送了 6 位验证码，{0} 分钟内有效。</value>
+    <value>我们向 {0} 发送了 6 位验证码，{1} 分钟内有效。</value>
   </data>
   <data name="Verify.Submit" xml:space="preserve">
     <value>验证</value>
@@ -245,6 +254,15 @@
   </data>
   <data name="Verify.Resent" xml:space="preserve">
     <value>新的验证码已发送。</value>
+  </data>
+  <data name="Verify.ResendIn" xml:space="preserve">
+    <value>{0} 秒后可重新发送</value>
+  </data>
+  <data name="Verify.WrongEmail" xml:space="preserve">
+    <value>邮箱填错了？</value>
+  </data>
+  <data name="Verify.UseAnother" xml:space="preserve">
+    <value>换个邮箱</value>
   </data>
   <data name="Onboarding.Progress" xml:space="preserve">
     <value>注册进度</value>
@@ -603,6 +621,15 @@
   <data name="Email.Reset.Ignore" xml:space="preserve">
     <value>如果不是你本人操作，请忽略这封邮件，密码不会改变。</value>
   </data>
+  <data name="Email.Change.Subject" xml:space="preserve">
+    <value>beeps 修改邮箱验证码：{0}</value>
+  </data>
+  <data name="Email.Change.Intro" xml:space="preserve">
+    <value>有人请求把这个邮箱设为 beeps 账号的邮箱。请输入以下验证码确认：</value>
+  </data>
+  <data name="Email.Change.Ignore" xml:space="preserve">
+    <value>如果不是你本人操作，请忽略这封邮件，不会有任何改变。</value>
+  </data>
   <data name="Email.Code.Expiry" xml:space="preserve">
     <value>验证码 {0} 分钟内有效。</value>
   </data>
@@ -892,10 +919,7 @@
     <value>你的账号</value>
   </data>
   <data name="Settings.Account.Help" xml:space="preserve">
-    <value>查看用户名和邮箱，或修改密码</value>
-  </data>
-  <data name="Settings.AccountInfo" xml:space="preserve">
-    <value>账号信息</value>
+    <value>查看用户名，或修改邮箱和密码</value>
   </data>
   <data name="Settings.Display" xml:space="preserve">
     <value>显示与语言</value>
@@ -908,6 +932,21 @@
   </data>
   <data name="Settings.Language.Field" xml:space="preserve">
     <value>界面语言</value>
+  </data>
+  <data name="Settings.ChangeEmail" xml:space="preserve">
+    <value>修改邮箱</value>
+  </data>
+  <data name="Settings.Email.Help" xml:space="preserve">
+    <value>你的邮箱是 {0}。填写新邮箱和当前密码，我们会向新邮箱发送验证码。</value>
+  </data>
+  <data name="Settings.Email.Send" xml:space="preserve">
+    <value>发送验证码</value>
+  </data>
+  <data name="Settings.Email.CodeSent" xml:space="preserve">
+    <value>我们向 {0} 发送了 6 位验证码，{1} 分钟内有效。</value>
+  </data>
+  <data name="Settings.EmailChanged" xml:space="preserve">
+    <value>邮箱已修改。</value>
   </data>
   <data name="Image.Edit" xml:space="preserve">
     <value>编辑媒体</value>

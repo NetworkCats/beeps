@@ -43,6 +43,8 @@ public sealed class AccountCodeEmailHandlerTests
     [InlineData("zh-Hans", EmailCodePurpose.VerifyEmail, "beeps 验证码", "10 分钟内有效")]
     [InlineData("en", EmailCodePurpose.ResetPassword, "password reset code", "expires in 10 minutes")]
     [InlineData("zh-Hans", EmailCodePurpose.ResetPassword, "重置密码验证码", "10 分钟内有效")]
+    [InlineData("en", EmailCodePurpose.ChangeEmail, "code to change your email", "expires in 10 minutes")]
+    [InlineData("zh-Hans", EmailCodePurpose.ChangeEmail, "修改邮箱验证码", "10 分钟内有效")]
     public void IsWrittenInTheRecipientsLanguage(string locale, EmailCodePurpose purpose, string subject, string expiry)
     {
         var email = CreateHandler().Compose(new AccountCodeEmail("tom@example.com", locale, purpose, ""), "123456");

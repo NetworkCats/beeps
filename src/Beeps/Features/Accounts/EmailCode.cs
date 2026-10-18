@@ -4,6 +4,9 @@ public enum EmailCodePurpose
 {
     VerifyEmail,
     ResetPassword,
+
+    /// <summary>Sent to the address the account is moving to; kept under the account's current address.</summary>
+    ChangeEmail,
 }
 
 /// <summary>A pending 6-digit code (PLAN 6.13). One per address and purpose; a new one replaces the old.</summary>

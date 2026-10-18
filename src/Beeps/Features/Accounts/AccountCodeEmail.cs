@@ -9,7 +9,7 @@ using Microsoft.Extensions.Localization;
 namespace Beeps.Features.Accounts;
 
 /// <summary>
-/// Outbox payload for a verification or password-reset code. The code itself is encrypted with Data
+/// Outbox payload for a verification, password-reset or email-change code. The code itself is encrypted with Data
 /// Protection: the database keeps only hashes of codes (PLAN 6.13), and the outbox is in the database.
 /// </summary>
 public sealed record AccountCodeEmail(string To, string Locale, EmailCodePurpose Purpose, string ProtectedCode)
@@ -49,7 +49,13 @@ public sealed class AccountCodeEmailHandler(
         CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(payload.Locale);
         try
         {
-            var prefix = payload.Purpose == EmailCodePurpose.VerifyEmail ? "Email.Verify" : "Email.Reset";
+            var prefix = payload.Purpose switch
+            {
+                EmailCodePurpose.VerifyEmail => "Email.Verify",
+                EmailCodePurpose.ResetPassword => "Email.Reset",
+                EmailCodePurpose.ChangeEmail => "Email.Change",
+                _ => throw new ArgumentOutOfRangeException(nameof(payload), payload.Purpose, null),
+            };
             var subject = localizer[$"{prefix}.Subject", code].Value;
             var intro = localizer[$"{prefix}.Intro"].Value;
             var expiry = localizer["Email.Code.Expiry", (int)AccountService.CodeLifetime.TotalMinutes].Value;

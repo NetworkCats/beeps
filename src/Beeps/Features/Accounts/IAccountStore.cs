@@ -80,4 +80,12 @@ public sealed record AccountState(
     string? Theme = null);
 
 /// <summary>The account as its owner edits it on the settings page.</summary>
-public sealed record AccountSettings(string Handle, string DisplayName, string? Bio, string Email, string Locale);
+/// <param name="PendingEmail">The address it is moving to while the code sent there is still good.</param>
+public sealed record AccountSettings(string Handle, string DisplayName, string? Bio, string Email, CodeSent? PendingEmail, string Locale);
+
+/// <summary>An address a code was sent to, and when another may be sent (<see cref="AccountService.ResendInterval"/>).</summary>
+public sealed record CodeSent(string To, DateTimeOffset ResendAt);
+
+/// <summary>The account waiting to verify its address.</summary>
+/// <param name="ResendAt">When another code may be sent; null when none is waiting, so one may be sent now.</param>
+public sealed record Verification(string Email, DateTimeOffset? ResendAt);

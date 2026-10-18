@@ -33,4 +33,5 @@ public static class AccountFields
     public const string Login = "Login";
     public const string CurrentPassword = "CurrentPassword";
     public const string NewPassword = "NewPassword";
+    public const string NewEmail = "NewEmail";
 }

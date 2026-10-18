@@ -27,6 +27,8 @@ public sealed record ProfileLimits(int DisplayNameMaxLength, int BioMaxLength);
 /// <summary>Settings.cshtml.</summary>
 /// <param name="Section">The section shown (<see cref="SettingsSections"/>); none for the list of them.</param>
 /// <param name="DisplayName">What the profile form shows: what is saved, or what was just sent and refused.</param>
+/// <param name="PendingEmail">The address a code was sent to, which the email page then asks for.</param>
+/// <param name="ResendAt">When another code may be sent to <paramref name="PendingEmail"/>.</param>
 public sealed record SettingsProps(
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Section,
     LiveProps Live,
@@ -34,6 +36,8 @@ public sealed record SettingsProps(
     BannerEditorProps Banner,
     string Handle,
     string Email,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? PendingEmail,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] DateTimeOffset? ResendAt,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? DisplayName,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Bio,
     string Culture,
@@ -42,7 +46,20 @@ public sealed record SettingsProps(
     IReadOnlyList<OptionProps> Themes,
     ProfileLimits Limits,
     int PasswordMinLength,
-    int PasswordMaxLength);
+    int PasswordMaxLength,
+    int CodeLength,
+    int CodeLifetimeMinutes);
+
+/// <summary>Onboarding/Verify.cshtml: the code, a new one, or another address.</summary>
+/// <param name="Email">Where the code went.</param>
+/// <param name="ResendAt">When another code may be sent; none when one may be sent now.</param>
+/// <param name="Changing">Whether the form for another address is open: it was just sent and refused.</param>
+public sealed record VerifyProps(
+    string Email,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] DateTimeOffset? ResendAt,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] bool Changing,
+    int CodeLength,
+    int CodeLifetimeMinutes);
 
 /// <summary>An agent as its owner sees it on the agents page.</summary>
 public sealed record AgentRowProps(

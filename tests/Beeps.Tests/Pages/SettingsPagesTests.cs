@@ -1,7 +1,10 @@
 using System.Net;
 using Beeps.Features.Accounts;
 using Beeps.Features.Agents;
+using Beeps.Features.Shared;
 using Beeps.Tests.Support;
+using Microsoft.AspNetCore.DataProtection;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Beeps.Tests.Pages;
 
@@ -32,6 +35,7 @@ public sealed class SettingsPagesTests : IDisposable
     [InlineData("/settings", null)]
     [InlineData("/settings/profile", "profile")]
     [InlineData("/settings/account", "account")]
+    [InlineData("/settings/email", "email")]
     [InlineData("/settings/password", "password")]
     [InlineData("/settings/display", "display")]
     public async Task EachSectionHasAPageOfItsOwn(string url, string? section)
@@ -166,6 +170,67 @@ public sealed class SettingsPagesTests : IDisposable
     }
 
     [Fact]
+    public async Task ChangingTheEmailAsksForTheCodeSentToTheNewAddressThenMovesTheAccount()
+    {
+        var user = WebAuth.ArrangeUser(factory);
+        EmailCode? stored = null;
+        factory.Accounts.When(s => s.AddEmailCode(Arg.Any<EmailCode>())).Do(ci => stored = ci.Arg<EmailCode>());
+        factory.Accounts.FindEmailCodeAsync(EmailCodePurpose.ChangeEmail, "tom@example.com", Arg.Any<CancellationToken>()).Returns(_ => stored);
+        factory.Accounts.TryCountCodeAttemptAsync(default, default!, default, default, TestSupport.Ct).ReturnsForAnyArgs(true);
+        using var client = await WebAuth.SignInAsync(factory, user);
+
+        using var asked = await WebAuth.PostFormAsync(client, "/settings/email", "/settings/email?handler=Email",
+            ("NewEmail", "new@example.org"), ("CurrentPassword", WebAuth.Password));
+        var waiting = Islands.Props(await client.GetStringAsync(new Uri("/settings/email", UriKind.Relative), TestSupport.Ct), "settings");
+        var code = factory.Services.GetRequiredService<IDataProtectionProvider>().CreateProtector(AccountCodeEmail.ProtectorPurpose)
+            .Unprotect(SentCode().ProtectedCode);
+        using var confirmed = await WebAuth.PostFormAsync(client, "/settings/email", "/settings/email?handler=ConfirmEmail", ("Code", code));
+        var account = await client.GetStringAsync(new Uri("/settings/account", UriKind.Relative), TestSupport.Ct);
+
+        Assert.Equal("/settings/email", asked.Headers.Location?.OriginalString);
+        Assert.Equal("new@example.org", waiting.GetProperty("pendingEmail").GetString());
+        Assert.Equal("tom@example.com", waiting.GetProperty("email").GetString());
+        Assert.Equal("/settings/account", confirmed.Headers.Location?.OriginalString);
+        Assert.Equal(("new@example.org", null), (user.NormalizedEmail, user.PendingEmail));
+        Assert.Contains("Email changed.", account, StringComparison.Ordinal);
+        Assert.Equal("new@example.org", Islands.Props(account, "settings").GetProperty("email").GetString());
+    }
+
+    [Fact]
+    public async Task AWrongCodeIsShownOnTheEmailPage()
+    {
+        var user = WebAuth.ArrangeUser(factory);
+        user.PendingEmail = "new@example.org";
+        using var client = await WebAuth.SignInAsync(factory, user);
+
+        using var response = await WebAuth.PostFormAsync(client, "/settings/email", "/settings/email?handler=ConfirmEmail", ("Code", "123456"));
+        var html = await response.Content.ReadAsStringAsync(TestSupport.Ct);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal("email", Islands.Props(html, "settings").GetProperty("section").GetString());
+        Assert.True(Islands.Envelope(html, "settings").GetProperty("errors").TryGetProperty("Code", out _));
+        Assert.Equal("tom@example.com", user.NormalizedEmail);
+    }
+
+    [Fact]
+    public async Task TheCodeForANewAddressCanBeSentAgainOnceAMinuteHasPassed()
+    {
+        var user = WebAuth.ArrangeUser(factory);
+        user.PendingEmail = "new@example.org";
+        var code = new EmailCode { Purpose = EmailCodePurpose.ChangeEmail, NormalizedEmail = "tom@example.com", CodeHash = "x", CreatedAt = TestData.Now, ExpiresAt = DateTimeOffset.MaxValue };
+        factory.Accounts.FindEmailCodeAsync(EmailCodePurpose.ChangeEmail, "tom@example.com", Arg.Any<CancellationToken>()).Returns(code);
+        using var client = await WebAuth.SignInAsync(factory, user);
+
+        var page = Islands.Props(await client.GetStringAsync(new Uri("/settings/email", UriKind.Relative), TestSupport.Ct), "settings");
+        code.CreatedAt = DateTimeOffset.UtcNow - TimeSpan.FromMinutes(2);
+        using var resent = await WebAuth.PostFormAsync(client, "/settings/email", "/settings/email?handler=ResendEmail");
+
+        Assert.Equal(TestData.Now + AccountService.ResendInterval, page.GetProperty("resendAt").GetDateTimeOffset());
+        Assert.Equal("/settings/email", resent.Headers.Location?.OriginalString);
+        Assert.Equal("new@example.org", SentCode().To);
+    }
+
+    [Fact]
     public async Task SigningInAgainWhileSignedInKeepsTheAccountAndSaysSo()
     {
         var tom = WebAuth.ArrangeUser(factory);
@@ -236,4 +301,10 @@ public sealed class SettingsPagesTests : IDisposable
     }
 
     public void Dispose() => factory.Dispose();
+
+    private AccountCodeEmail SentCode() =>
+        factory.Outbox.ReceivedCalls()
+            .Where(c => c.GetMethodInfo().Name == nameof(IOutbox.Enqueue) && (string)c.GetArguments()[0]! == AccountCodeEmail.MessageType)
+            .Select(c => (AccountCodeEmail)c.GetArguments()[1]!)
+            .Last();
 }

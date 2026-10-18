@@ -113,6 +113,7 @@ public sealed partial class IslandSamplesTests : IDisposable
         { "settings", "/settings" },
         { "settings-profile", "/settings/profile" },
         { "settings-account", "/settings/account" },
+        { "settings-email", "/settings/email" },
         { "settings-password", "/settings/password" },
         { "settings-display", "/settings/display" },
         { "agents", "/agents" },
@@ -159,6 +160,17 @@ public sealed partial class IslandSamplesTests : IDisposable
             Assert.DoesNotContain("__RequestVerificationToken", html, StringComparison.Ordinal);
         }
         await MatchSampleAsync(name, url, html);
+    }
+
+    [Fact]
+    public async Task TheVerificationPageMatchesItsSample()
+    {
+        var ann = WebAuth.ArrangeUser(factory, "ann", verified: false);
+        using var client = await WebAuth.SignInAsync(factory, ann);
+
+        var html = await client.GetStringAsync(new Uri("/onboarding/verify", UriKind.Relative), TestSupport.Ct);
+
+        await MatchSampleAsync("verify", "/onboarding/verify", html);
     }
 
     [Fact]

@@ -248,6 +248,11 @@ namespace Beeps.Infrastructure.Data.Migrations
                         .HasColumnType("text")
                         .HasColumnName("password_hash");
 
+                    b.Property<string>("PendingEmail")
+                        .HasMaxLength(254)
+                        .HasColumnType("character varying(254)")
+                        .HasColumnName("pending_email");
+
                     b.Property<string>("Theme")
                         .HasMaxLength(16)
                         .HasColumnType("character varying(16)")

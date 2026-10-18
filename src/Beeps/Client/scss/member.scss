@@ -460,6 +460,18 @@ fieldset.settings-group {
   }
 }
 
+// A way out under a form ("No email? Start over"), grey, as small as the intro.
+.settings-aside {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--cui-space-2);
+  margin: 0;
+  padding: 0 var(--beeps-pad) var(--cui-space-5);
+  color: var(--cui-text-2);
+  font-size: var(--cui-text-sm);
+}
+
 // Saved from the header: the button sits at its end.
 .column-header-end {
   flex-shrink: 0;

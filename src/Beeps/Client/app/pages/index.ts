@@ -16,6 +16,7 @@ export function registerPages(): void {
   lazyIsland('settings', () => import('./Settings.tsx').then((m) => m.SettingsPage));
   lazyIsland('agents', () => import('./Agents.tsx').then((m) => m.AgentsPage));
   lazyIsland('agent', () => import('./AgentEdit.tsx').then((m) => m.AgentEditPage));
+  lazyIsland('verify', () => import('./Onboarding.tsx').then((m) => m.VerifyPage));
   lazyIsland('connect', () => import('./Onboarding.tsx').then((m) => m.ConnectPage));
   lazyIsland('handoff', () => import('./Onboarding.tsx').then((m) => m.HandoffIsland));
   registerAdminPages();

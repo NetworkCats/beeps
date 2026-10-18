@@ -1657,6 +1657,11 @@ span.beep-action {
   font-size: var(--beeps-text-size);
 }
 
+// Another address for the code, opened under the code's form.
+.auth-change {
+  margin-block-start: var(--cui-space-8);
+}
+
 .onboarding-steps {
   margin-block-end: var(--cui-space-8);
 }

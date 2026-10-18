@@ -12,7 +12,7 @@ using Microsoft.Extensions.Localization;
 namespace Beeps.Pages;
 
 /// <summary>
-/// The account's own settings: avatar, banner, profile, language, colour scheme and password (PLAN 2.2, 3.4, 6.12). As on
+/// The account's own settings: avatar, banner, profile, language, colour scheme, email and password (PLAN 2.2, 3.4, 6.12). As on
 /// Twitter, <c>/settings</c> lists the sections and each has a page of its own (<see cref="SettingsSections"/>); a form
 /// comes back to the section it belongs to, whichever address it was sent to.
 /// </summary>
@@ -38,6 +38,10 @@ public sealed class SettingsModel(AccountService accounts, AvatarService avatars
     [BindProperty] public string? CurrentPassword { get; set; }
 
     [BindProperty] public string? NewPassword { get; set; }
+
+    [BindProperty] public string? NewEmail { get; set; }
+
+    [BindProperty] public string? Code { get; set; }
 
     [BindProperty] public IFormFile? Avatar { get; set; }
 
@@ -104,6 +108,27 @@ public sealed class SettingsModel(AccountService accounts, AvatarService avatars
             SettingsSections.Password,
             "Settings.PasswordChanged",
             cancellationToken);
+
+    // The page then asks for the code sent to the new address.
+    public async Task<IActionResult> OnPostEmailAsync(CancellationToken cancellationToken) =>
+        await DoneAsync(
+            await accounts.RequestEmailChangeAsync(User.ActorId(), NewEmail, CurrentPassword, this.Origin(), cancellationToken),
+            SettingsSections.Email,
+            notice: null,
+            cancellationToken);
+
+    // Done, back to the account, which shows the new address.
+    public async Task<IActionResult> OnPostConfirmEmailAsync(CancellationToken cancellationToken)
+    {
+        var result = await accounts.ConfirmEmailChangeAsync(User.ActorId(), Code, cancellationToken);
+        return await DoneAsync(result, result.IsSuccess ? SettingsSections.Account : SettingsSections.Email, "Settings.EmailChanged", cancellationToken);
+    }
+
+    public async Task<IActionResult> OnPostResendEmailAsync(CancellationToken cancellationToken) =>
+        await DoneAsync(await accounts.ResendEmailChangeAsync(User.ActorId(), this.Origin(), cancellationToken), SettingsSections.Email, "Verify.Resent", cancellationToken);
+
+    public async Task<IActionResult> OnPostCancelEmailAsync(CancellationToken cancellationToken) =>
+        await DoneAsync(await accounts.CancelEmailChangeAsync(User.ActorId(), cancellationToken), SettingsSections.Email, notice: null, cancellationToken);
 
     private async Task<IActionResult> DoneAsync(Result result, string section, string? notice, CancellationToken cancellationToken)
     {

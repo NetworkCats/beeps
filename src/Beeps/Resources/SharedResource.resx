@@ -84,6 +84,9 @@
   <data name="Field.NewPassword" xml:space="preserve">
     <value>New password</value>
   </data>
+  <data name="Field.NewEmail" xml:space="preserve">
+    <value>New email</value>
+  </data>
   <data name="Field.InviteCode" xml:space="preserve">
     <value>Invite code</value>
   </data>
@@ -98,6 +101,9 @@
   </data>
   <data name="Validation.Email" xml:space="preserve">
     <value>Enter a valid email address.</value>
+  </data>
+  <data name="Validation.SameEmail" xml:space="preserve">
+    <value>This is already your email.</value>
   </data>
   <data name="Validation.Username" xml:space="preserve">
     <value>Use {0}–{1} letters, digits or underscores.</value>
@@ -143,6 +149,9 @@
   </data>
   <data name="Error.CodeInvalid" xml:space="preserve">
     <value>The code is wrong or has expired. Request a new one if needed.</value>
+  </data>
+  <data name="Error.ResendTooSoon" xml:space="preserve">
+    <value>Wait {0} seconds before asking for a new code.</value>
   </data>
   <data name="Error.AlreadyVerified" xml:space="preserve">
     <value>Your email address is already verified.</value>
@@ -232,7 +241,7 @@
     <value>Verify your email</value>
   </data>
   <data name="Verify.Lead" xml:space="preserve">
-    <value>We sent a 6-digit code to your email address. It expires in {0} minutes.</value>
+    <value>We sent a 6-digit code to {0}. It expires in {1} minutes.</value>
   </data>
   <data name="Verify.Submit" xml:space="preserve">
     <value>Verify</value>
@@ -245,6 +254,15 @@
   </data>
   <data name="Verify.Resent" xml:space="preserve">
     <value>A new code is on its way.</value>
+  </data>
+  <data name="Verify.ResendIn" xml:space="preserve">
+    <value>Send a new code in {0} s</value>
+  </data>
+  <data name="Verify.WrongEmail" xml:space="preserve">
+    <value>Wrong address?</value>
+  </data>
+  <data name="Verify.UseAnother" xml:space="preserve">
+    <value>Use another address</value>
   </data>
   <data name="Onboarding.Progress" xml:space="preserve">
     <value>Sign-up progress</value>
@@ -603,6 +621,15 @@
   <data name="Email.Reset.Ignore" xml:space="preserve">
     <value>If it wasn't you, ignore this email; your password stays the same.</value>
   </data>
+  <data name="Email.Change.Subject" xml:space="preserve">
+    <value>{0} is your beeps code to change your email</value>
+  </data>
+  <data name="Email.Change.Intro" xml:space="preserve">
+    <value>Someone asked to use this address for their beeps account. Enter this code to confirm it:</value>
+  </data>
+  <data name="Email.Change.Ignore" xml:space="preserve">
+    <value>If it wasn't you, ignore this email; nothing changes.</value>
+  </data>
   <data name="Email.Code.Expiry" xml:space="preserve">
     <value>The code expires in {0} minutes.</value>
   </data>
@@ -892,10 +919,7 @@
     <value>Your account</value>
   </data>
   <data name="Settings.Account.Help" xml:space="preserve">
-    <value>See your username and email, or change your password</value>
-  </data>
-  <data name="Settings.AccountInfo" xml:space="preserve">
-    <value>Account information</value>
+    <value>See your username, or change your email and password</value>
   </data>
   <data name="Settings.Display" xml:space="preserve">
     <value>Display and language</value>
@@ -908,6 +932,21 @@
   </data>
   <data name="Settings.Language.Field" xml:space="preserve">
     <value>Display language</value>
+  </data>
+  <data name="Settings.ChangeEmail" xml:space="preserve">
+    <value>Change email</value>
+  </data>
+  <data name="Settings.Email.Help" xml:space="preserve">
+    <value>Your email is {0}. Enter the new one and your password, and we will send a code to the new address.</value>
+  </data>
+  <data name="Settings.Email.Send" xml:space="preserve">
+    <value>Send code</value>
+  </data>
+  <data name="Settings.Email.CodeSent" xml:space="preserve">
+    <value>We sent a 6-digit code to {0}. It expires in {1} minutes.</value>
+  </data>
+  <data name="Settings.EmailChanged" xml:space="preserve">
+    <value>Email changed.</value>
   </data>
   <data name="Image.Edit" xml:space="preserve">
     <value>Edit media</value>

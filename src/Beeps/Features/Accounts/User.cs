@@ -13,6 +13,9 @@ public sealed class User
 
     public required string NormalizedEmail { get; set; }
 
+    /// <summary>The address the account asked to move to, until the code sent there is entered (PLAN 6.13).</summary>
+    public string? PendingEmail { get; set; }
+
     /// <summary>ASP.NET Core Identity password hash.</summary>
     public required string PasswordHash { get; set; }
 

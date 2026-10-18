@@ -280,12 +280,97 @@ public sealed class AccountServiceTests
         Assert.NotEqual("old", existing.CodeHash);
         Assert.Equal(0, existing.Attempts);
         Assert.Single(sentCodes);
-        // The address has the strict limit; the IP a looser one of its own, so people sharing an IP are not blocked.
+        // The address has the strict limit; the IP a looser one of its own, so people sharing an IP are not blocked;
+        // the account one too, whatever addresses it moves between.
         await rateLimitStore.Received(1).TryAcquireAsync(
-            Arg.Is<IReadOnlyList<RateLimitCounter>>(c => c.Count == 2
+            Arg.Is<IReadOnlyList<RateLimitCounter>>(c => c.Count == 3
                 && c[0].Key.StartsWith(RateLimitPolicies.EmailCodeIp + ":", StringComparison.Ordinal)
-                && c[1].Key.StartsWith(RateLimitPolicies.EmailCode + ":", StringComparison.Ordinal)),
+                && c[1].Key.StartsWith(RateLimitPolicies.EmailCode + ":", StringComparison.Ordinal)
+                && c[2].Key.StartsWith(RateLimitPolicies.EmailCodeAccount + ":", StringComparison.Ordinal)),
             Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task ANewCodeWaitsAMinuteAfterTheLastOne()
+    {
+        var user = TestData.User(verified: false);
+        var (_, stored) = await IssueVerificationCodeAsync(user);
+        sentCodes.Clear();
+        stored.CreatedAt = TestData.Now - TimeSpan.FromSeconds(20);
+
+        var result = await CreateService().ResendVerificationAsync(user.Id, TestData.Origin, TestSupport.Ct);
+
+        Assert.Equal(ErrorKind.RateLimited, result.Error?.Kind);
+        Assert.Equal(TimeSpan.FromSeconds(40), result.Error?.RetryAfter);
+        Assert.Equal("Error.ResendTooSoon(40)", result.Error?.Detail);
+        Assert.Empty(sentCodes);
+    }
+
+    [Fact]
+    public async Task TheVerificationPageKnowsWhenAnotherCodeMayBeSent()
+    {
+        var user = TestData.User(verified: false);
+        await IssueVerificationCodeAsync(user);
+
+        var verification = await CreateService().GetVerificationAsync(user.Id, TestSupport.Ct);
+
+        Assert.Equal(new Verification("tom@example.com", TestData.Now + AccountService.ResendInterval), verification.Value);
+    }
+
+    [Fact]
+    public async Task AMistypedAddressIsReplacedAndTheCodeGoesToTheNewOne()
+    {
+        var user = TestData.User(verified: false, passwordHash: "hashed:old password");
+        var (_, old) = await IssueVerificationCodeAsync(user);
+        sentCodes.Clear();
+
+        var result = await CreateService().ChangeUnverifiedEmailAsync(user.Id, " Tom@Example.org ", "old password", TestData.Origin, TestSupport.Ct);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(("Tom@Example.org", "tom@example.org", null), (user.Email, user.NormalizedEmail, user.EmailVerifiedAt));
+        store.Received(1).RemoveEmailCode(old);
+        var email = Assert.Single(sentCodes);
+        Assert.Equal((EmailCodePurpose.VerifyEmail, "Tom@Example.org"), (email.Purpose, email.To));
+        store.Received().AddEmailCode(Arg.Is<EmailCode>(c => c.Purpose == EmailCodePurpose.VerifyEmail && c.NormalizedEmail == "tom@example.org"));
+        Assert.Single(TestData.LiveEvents(liveEvents, LiveEventTypes.AdminChanged));
+    }
+
+    [Fact]
+    public async Task AnotherAddressBeforeVerifyingNeedsThePassword()
+    {
+        var user = TestData.User(verified: false, passwordHash: "hashed:old password");
+        store.FindUserAsync(user.Id, Arg.Any<CancellationToken>()).Returns(user);
+
+        var result = await CreateService().ChangeUnverifiedEmailAsync(user.Id, "tom@example.org", "guess", TestData.Origin, TestSupport.Ct);
+
+        Assert.Equal(["Error.WrongPassword"], result.Error?.Fields?[AccountFields.CurrentPassword]!);
+        Assert.Equal("tom@example.com", user.NormalizedEmail);
+        Assert.Empty(sentCodes);
+    }
+
+    [Fact]
+    public async Task AVerifiedAccountChangesItsAddressFromTheSettings()
+    {
+        var user = TestData.User(passwordHash: "hashed:old password");
+        store.FindUserAsync(user.Id, Arg.Any<CancellationToken>()).Returns(user);
+
+        var result = await CreateService().ChangeUnverifiedEmailAsync(user.Id, "tom@example.org", "old password", TestData.Origin, TestSupport.Ct);
+
+        Assert.Equal(AccountErrorCodes.AlreadyVerified, result.Error?.Code);
+        Assert.Equal("tom@example.com", user.NormalizedEmail);
+    }
+
+    [Fact]
+    public async Task AnAddressWithAnAccountCannotBeTakenBeforeVerifyingEither()
+    {
+        var user = TestData.User(verified: false, passwordHash: "hashed:old password");
+        store.FindUserAsync(user.Id, Arg.Any<CancellationToken>()).Returns(user);
+        store.EmailTakenAsync("alice@example.com", Arg.Any<CancellationToken>()).Returns(true);
+
+        var result = await CreateService().ChangeUnverifiedEmailAsync(user.Id, "alice@example.com", "old password", TestData.Origin, TestSupport.Ct);
+
+        Assert.Equal(["Error.EmailTaken"], result.Error?.Fields?[AccountFields.NewEmail]!);
+        Assert.Empty(sentCodes);
     }
 
     [Fact]
@@ -524,7 +609,7 @@ public sealed class AccountServiceTests
         var settings = await CreateService().GetSettingsAsync(user.Id, TestSupport.Ct);
         var missing = await CreateService().GetSettingsAsync(Guid.NewGuid(), TestSupport.Ct);
 
-        Assert.Equal(new AccountSettings("tom", "tom", "hello", "tom@example.com", "en"), settings.Value);
+        Assert.Equal(new AccountSettings("tom", "tom", "hello", "tom@example.com", null, "en"), settings.Value);
         Assert.Equal(ErrorKind.NotFound, missing.Error?.Kind);
     }
 
@@ -641,6 +726,230 @@ public sealed class AccountServiceTests
         Assert.Equal([AccountFields.CurrentPassword, AccountFields.NewPassword], result.Error!.Fields!.Keys.Order());
     }
 
+    // ---- Email change ------------------------------------------------------
+
+    [Fact]
+    public async Task AskingToChangeTheEmailSendsACodeToTheNewAddressAndChangesNothingYet()
+    {
+        var user = TestData.User(passwordHash: "hashed:old password");
+        EmailCode? stored = null;
+        store.FindUserAsync(user.Id, Arg.Any<CancellationToken>()).Returns(user);
+        store.When(s => s.AddEmailCode(Arg.Any<EmailCode>())).Do(ci => stored = ci.Arg<EmailCode>());
+
+        var result = await CreateService().RequestEmailChangeAsync(user.Id, " New@Example.org ", "old password", TestData.Origin, TestSupport.Ct);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(("tom@example.com", "New@Example.org"), (user.NormalizedEmail, user.PendingEmail));
+        var email = Assert.Single(sentCodes);
+        Assert.Equal((EmailCodePurpose.ChangeEmail, "New@Example.org"), (email.Purpose, email.To));
+        // Kept under the account's own address: one move at a time, and nobody else's code is replaced.
+        Assert.Equal((EmailCodePurpose.ChangeEmail, "tom@example.com"), (stored?.Purpose, stored?.NormalizedEmail));
+        Assert.Equal(1, unitOfWork.Saves);
+    }
+
+    [Fact]
+    public async Task AWrongPasswordSendsNoCode()
+    {
+        var user = TestData.User(passwordHash: "hashed:old password");
+        store.FindUserAsync(user.Id, Arg.Any<CancellationToken>()).Returns(user);
+
+        var result = await CreateService().RequestEmailChangeAsync(user.Id, "new@example.org", "guess", TestData.Origin, TestSupport.Ct);
+
+        Assert.Equal(["Error.WrongPassword"], result.Error?.Fields?[AccountFields.CurrentPassword]!);
+        Assert.Empty(sentCodes);
+        Assert.Null(user.PendingEmail);
+    }
+
+    [Fact]
+    public async Task EmailChangePasswordGuessesShareTheAccountsSignInLimit()
+    {
+        var user = TestData.User(passwordHash: "hashed:old password");
+        store.FindUserAsync(user.Id, Arg.Any<CancellationToken>()).Returns(user);
+        IReadOnlyList<RateLimitCounter>? counted = null;
+        rateLimitStore.TryAcquireAsync(Arg.Do<IReadOnlyList<RateLimitCounter>>(c => counted = c), Arg.Any<CancellationToken>())
+            .Returns(RateLimitDecision.Denied(TimeSpan.FromMinutes(3)));
+
+        var result = await CreateService().RequestEmailChangeAsync(user.Id, "new@example.org", "old password", TestData.Origin, TestSupport.Ct);
+
+        Assert.Equal(ErrorKind.RateLimited, result.Error?.Kind);
+        Assert.Equal([RateLimitPolicies.Login], TestData.Policies(counted!));
+        hasher.DidNotReceiveWithAnyArgs().VerifyHashedPassword(default!, default!, default!);
+    }
+
+    [Fact]
+    public async Task CodesToTheNewAddressCountAgainstItsLimits()
+    {
+        var user = TestData.User(passwordHash: "hashed:old password");
+        store.FindUserAsync(user.Id, Arg.Any<CancellationToken>()).Returns(user);
+        var calls = new List<IReadOnlyList<RateLimitCounter>>();
+        rateLimitStore.TryAcquireAsync(Arg.Do<IReadOnlyList<RateLimitCounter>>(calls.Add), Arg.Any<CancellationToken>())
+            .Returns(RateLimitDecision.Allowed, RateLimitDecision.Denied(TimeSpan.FromMinutes(1)));
+
+        var result = await CreateService().RequestEmailChangeAsync(user.Id, "new@example.org", "old password", TestData.Origin, TestSupport.Ct);
+
+        Assert.Equal(ErrorKind.RateLimited, result.Error?.Kind);
+        Assert.Equal([RateLimitPolicies.EmailCodeIp, RateLimitPolicies.EmailCode, RateLimitPolicies.EmailCodeAccount], TestData.Policies(calls[^1]));
+        Assert.Empty(sentCodes);
+        Assert.Null(user.PendingEmail);
+    }
+
+    [Theory]
+    [InlineData("not-an-email", "old password", new[] { AccountFields.NewEmail })]
+    [InlineData("new@example.org", "", new[] { AccountFields.CurrentPassword })]
+    public async Task ABadEmailChangeNamesTheBadField(string email, string password, string[] fields)
+    {
+        var result = await CreateService().RequestEmailChangeAsync(Guid.NewGuid(), email, password, TestData.Origin, TestSupport.Ct);
+
+        Assert.Equal(fields, result.Error!.Fields!.Keys.Order());
+        await store.DidNotReceiveWithAnyArgs().FindUserAsync(default, TestSupport.Ct);
+    }
+
+    [Fact]
+    public async Task TheSameAddressIsNotAChange()
+    {
+        var user = TestData.User(passwordHash: "hashed:old password");
+        store.FindUserAsync(user.Id, Arg.Any<CancellationToken>()).Returns(user);
+
+        var result = await CreateService().RequestEmailChangeAsync(user.Id, "TOM@example.com", "old password", TestData.Origin, TestSupport.Ct);
+
+        Assert.Equal(["Validation.SameEmail"], result.Error?.Fields?[AccountFields.NewEmail]!);
+        Assert.Empty(sentCodes);
+    }
+
+    [Fact]
+    public async Task AnAddressWithAnAccountCannotBeMovedTo()
+    {
+        var user = TestData.User(passwordHash: "hashed:old password");
+        store.FindUserAsync(user.Id, Arg.Any<CancellationToken>()).Returns(user);
+        store.EmailTakenAsync("alice@example.com", Arg.Any<CancellationToken>()).Returns(true);
+
+        var result = await CreateService().RequestEmailChangeAsync(user.Id, "alice@example.com", "old password", TestData.Origin, TestSupport.Ct);
+
+        Assert.Equal(AccountErrorCodes.EmailTaken, result.Error?.Code);
+        Assert.Equal(["Error.EmailTaken"], result.Error?.Fields?[AccountFields.NewEmail]!);
+        Assert.Empty(sentCodes);
+    }
+
+    [Fact]
+    public async Task TheCodeMovesTheAccountToTheNewAddress()
+    {
+        var user = TestData.User(passwordHash: "hashed:old password");
+        var (code, stored) = await IssueEmailChangeCodeAsync(user, "New@Example.org");
+
+        var result = await CreateService().ConfirmEmailChangeAsync(user.Id, code, TestSupport.Ct);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(("New@Example.org", "new@example.org", null), (user.Email, user.NormalizedEmail, user.PendingEmail));
+        store.Received(1).RemoveEmailCode(stored);
+        // The admin user list shows the address.
+        Assert.Single(TestData.LiveEvents(liveEvents, LiveEventTypes.AdminChanged));
+    }
+
+    [Fact]
+    public async Task AWrongCodeLeavesTheEmailAsItWas()
+    {
+        var user = TestData.User(passwordHash: "hashed:old password");
+        var (code, _) = await IssueEmailChangeCodeAsync(user, "new@example.org");
+
+        var result = await CreateService().ConfirmEmailChangeAsync(user.Id, code == "000000" ? "111111" : "000000", TestSupport.Ct);
+
+        Assert.Equal(AccountErrorCodes.CodeInvalid, result.Error?.Code);
+        Assert.Equal(("tom@example.com", "new@example.org"), (user.NormalizedEmail, user.PendingEmail));
+        await store.Received(1).TryCountCodeAttemptAsync(EmailCodePurpose.ChangeEmail, "tom@example.com", TestData.Now, AccountService.MaxCodeAttempts, Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task WithNothingAskedForNoCodeWorks()
+    {
+        var user = TestData.User();
+        store.FindUserAsync(user.Id, Arg.Any<CancellationToken>()).Returns(user);
+
+        var result = await CreateService().ConfirmEmailChangeAsync(user.Id, "123456", TestSupport.Ct);
+
+        Assert.Equal(AccountErrorCodes.CodeInvalid, result.Error?.Code);
+        await store.DidNotReceiveWithAnyArgs().TryCountCodeAttemptAsync(default, default!, default, default, TestSupport.Ct);
+    }
+
+    [Fact]
+    public async Task AnAddressTakenSinceTheCodeWasSentIsRefusedWithoutUsingAGuess()
+    {
+        var user = TestData.User(passwordHash: "hashed:old password");
+        var (code, _) = await IssueEmailChangeCodeAsync(user, "new@example.org");
+        store.EmailTakenAsync("new@example.org", Arg.Any<CancellationToken>()).Returns(true);
+
+        var result = await CreateService().ConfirmEmailChangeAsync(user.Id, code, TestSupport.Ct);
+
+        Assert.Equal(AccountErrorCodes.EmailTaken, result.Error?.Code);
+        Assert.Equal("tom@example.com", user.NormalizedEmail);
+        await store.DidNotReceiveWithAnyArgs().TryCountCodeAttemptAsync(default, default!, default, default, TestSupport.Ct);
+    }
+
+    [Fact]
+    public async Task TheSettingsShowAMoveOnlyWhileItsCodeCanBeEntered()
+    {
+        var user = TestData.User(passwordHash: "hashed:old password");
+        var (_, stored) = await IssueEmailChangeCodeAsync(user, "new@example.org");
+
+        var waiting = await CreateService().GetSettingsAsync(user.Id, TestSupport.Ct);
+        stored.Attempts = AccountService.MaxCodeAttempts;
+        var spent = await CreateService().GetSettingsAsync(user.Id, TestSupport.Ct);
+        stored.Attempts = 0;
+        stored.ExpiresAt = TestData.Now;
+        var expired = await CreateService().GetSettingsAsync(user.Id, TestSupport.Ct);
+
+        Assert.Equal(new CodeSent("new@example.org", TestData.Now + AccountService.ResendInterval), waiting.Value.PendingEmail);
+        Assert.Null(spent.Value.PendingEmail);
+        Assert.Null(expired.Value.PendingEmail);
+    }
+
+    [Fact]
+    public async Task TheCodeForAMoveIsSentAgainToTheSameAddressAfterAMinute()
+    {
+        var user = TestData.User(passwordHash: "hashed:old password");
+        var (_, stored) = await IssueEmailChangeCodeAsync(user, "New@Example.org");
+        var tooSoon = await CreateService().ResendEmailChangeAsync(user.Id, TestData.Origin, TestSupport.Ct);
+        stored.CreatedAt = TestData.Now - AccountService.ResendInterval;
+        stored.Attempts = 3;
+
+        var result = await CreateService().ResendEmailChangeAsync(user.Id, TestData.Origin, TestSupport.Ct);
+
+        Assert.Equal(ErrorKind.RateLimited, tooSoon.Error?.Kind);
+        Assert.True(result.IsSuccess);
+        Assert.Equal(2, sentCodes.Count);
+        Assert.Equal((EmailCodePurpose.ChangeEmail, "New@Example.org"), (sentCodes[^1].Purpose, sentCodes[^1].To));
+        Assert.Equal((0, TestData.Now), (stored.Attempts, stored.CreatedAt));
+    }
+
+    [Fact]
+    public async Task WithNoMoveUnderWayThereIsNothingToSendAgain()
+    {
+        var user = TestData.User(passwordHash: "hashed:old password");
+        var (_, stored) = await IssueEmailChangeCodeAsync(user, "new@example.org");
+        stored.ExpiresAt = TestData.Now;
+        var other = TestData.User("ann");
+        store.FindUserAsync(other.Id, Arg.Any<CancellationToken>()).Returns(other);
+
+        var expired = await CreateService().ResendEmailChangeAsync(user.Id, TestData.Origin, TestSupport.Ct);
+        var none = await CreateService().ResendEmailChangeAsync(other.Id, TestData.Origin, TestSupport.Ct);
+
+        Assert.Equal(AccountErrorCodes.CodeInvalid, expired.Error?.Code);
+        Assert.Equal(AccountErrorCodes.CodeInvalid, none.Error?.Code);
+        Assert.Single(sentCodes);
+    }
+
+    [Fact]
+    public async Task StartingOverDropsTheMoveAndItsCode()
+    {
+        var user = TestData.User(passwordHash: "hashed:old password");
+        var (_, stored) = await IssueEmailChangeCodeAsync(user, "new@example.org");
+
+        var result = await CreateService().CancelEmailChangeAsync(user.Id, TestSupport.Ct);
+
+        Assert.True(result.IsSuccess);
+        Assert.Null(user.PendingEmail);
+        store.Received(1).RemoveEmailCode(stored);
+    }
+
     private static RegisterRequest Request(string username = "Tom_1", string? invite = null) =>
         new("Tom@Example.com", username, "correct horse", invite, "token");
 
@@ -663,6 +972,16 @@ public sealed class AccountServiceTests
         await CreateService().RequestPasswordResetAsync(user.Email, "token", TestData.Origin, TestSupport.Ct);
         store.FindEmailCodeAsync(EmailCodePurpose.ResetPassword, user.NormalizedEmail, Arg.Any<CancellationToken>()).Returns(stored);
         return Unprotect(sentCodes[^1]);
+    }
+
+    private async Task<(string Code, EmailCode Stored)> IssueEmailChangeCodeAsync(User user, string newEmail)
+    {
+        EmailCode? stored = null;
+        store.FindUserAsync(user.Id, Arg.Any<CancellationToken>()).Returns(user);
+        store.When(s => s.AddEmailCode(Arg.Any<EmailCode>())).Do(ci => stored = ci.Arg<EmailCode>());
+        await CreateService().RequestEmailChangeAsync(user.Id, newEmail, "old password", TestData.Origin, TestSupport.Ct);
+        store.FindEmailCodeAsync(EmailCodePurpose.ChangeEmail, user.NormalizedEmail, Arg.Any<CancellationToken>()).Returns(stored);
+        return (Unprotect(sentCodes[^1]), stored!);
     }
 
     private string Unprotect(AccountCodeEmail email) =>

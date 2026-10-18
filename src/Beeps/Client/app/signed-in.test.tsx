@@ -117,12 +117,35 @@ test('the settings list the sections, each a page of its own with its forms', as
   assert.match(list, /<a class="settings-link" href="\/settings\/account">/);
   assert.match(list, /<a class="settings-link" href="\/settings\/display">/);
   assert.doesNotMatch(list, /<form/);
-  // The account shows what it is and leads on to the password, a step below it.
+  // The account shows what it is and leads on to the email and the password, a step below it.
   const account = await draw('settings-account.json', 'settings');
   assert.match(account, /<a class="column-back" href="\/settings"/);
+  assert.match(account, /<a class="settings-link" href="\/settings\/email">/);
   assert.match(account, /tom@example.com/);
   assert.match(account, /<a class="settings-link" href="\/settings\/password">/);
   assert.doesNotMatch(account, /<form/);
+  // The email: the new address and the password first, then the code sent there.
+  const email = await draw('settings-email.json', 'settings');
+  assert.match(email, /<a class="column-back" href="\/settings\/account"/);
+  assert.match(email, /action="\/settings\/email\?handler=Email"/);
+  assert.match(email, /name="NewEmail"/);
+  assert.match(email, /name="CurrentPassword"/);
+  const code = await draw('settings-email.json', 'settings', (props) => {
+    props.pendingEmail = 'new@example.org';
+  });
+  assert.match(code, /new@example.org/);
+  assert.match(code, /action="\/settings\/email\?handler=ConfirmEmail"/);
+  assert.match(code, /name="Code"/);
+  assert.match(code, /action="\/settings\/email\?handler=CancelEmail"/);
+  assert.doesNotMatch(code, /name="NewEmail"/);
+  // A new code once the minute since the last one is up; until then the button counts down.
+  assert.match(code, /action="\/settings\/email\?handler=ResendEmail"/);
+  assert.match(code, /<button class="btn btn-ghost btn-sm" type="submit">Send a new code<\/button>/);
+  const waiting = await draw('settings-email.json', 'settings', (props) => {
+    props.pendingEmail = 'new@example.org';
+    props.resendAt = new Date(Date.now() + 42_000).toISOString();
+  });
+  assert.match(waiting, /<button class="btn btn-ghost btn-sm" type="submit" disabled>Send a new code in 42 s<\/button>/);
   const password = await draw('settings-password.json', 'settings');
   assert.match(password, /<a class="column-back" href="\/settings\/account"/);
   assert.match(password, /action="\/settings\/password\?handler=Password"/);
@@ -136,4 +159,24 @@ test('the settings list the sections, each a page of its own with its forms', as
   const display = await draw('settings-display.json', 'settings');
   assert.match(display, /<input type="radio" name="Theme" value="dark"/);
   assert.match(display, /action="\/settings\/display\?handler=Language"/);
+});
+
+test('the verification page says where the code went, sends another after a minute, and takes another address', async () => {
+  const page = await draw('verify.json', 'verify');
+  assert.match(page, /ann@example.com/);
+  assert.match(page, /action="\/onboarding\/verify"/);
+  assert.match(page, /action="\/onboarding\/verify\?handler=Resend"/);
+  assert.match(page, /<button class="btn btn-ghost btn-sm" type="submit">Send a new code<\/button>/);
+  // The form for another address opens from a button; refused, it comes back open.
+  assert.doesNotMatch(page, /name="NewEmail"/);
+  const waiting = await draw('verify.json', 'verify', (props) => {
+    props.resendAt = new Date(Date.now() + 59_500).toISOString();
+  });
+  assert.match(waiting, /disabled>Send a new code in 60 s<\/button>/);
+  const changing = await draw('verify.json', 'verify', (props) => {
+    props.changing = true;
+  });
+  assert.match(changing, /action="\/onboarding\/verify\?handler=Email"/);
+  assert.match(changing, /name="NewEmail"/);
+  assert.match(changing, /name="CurrentPassword"/);
 });

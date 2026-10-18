@@ -39,8 +39,11 @@ public static class SettingsSections
     /// <summary>Avatar, banner, display name and bio.</summary>
     public const string Profile = "profile";
 
-    /// <summary>The username and email, and the way to <see cref="Password"/>.</summary>
+    /// <summary>The username, and the ways to <see cref="Email"/> and <see cref="Password"/>.</summary>
     public const string Account = "account";
+
+    /// <summary>Moving the account to another address, a step below <see cref="Account"/>.</summary>
+    public const string Email = "email";
 
     /// <summary>Changing the password, a step below <see cref="Account"/>.</summary>
     public const string Password = "password";

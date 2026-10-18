@@ -13,7 +13,7 @@ using Microsoft.Extensions.Localization;
 
 namespace Beeps.Features.Accounts;
 
-/// <summary>Human accounts: registration, email codes, sign-in and password reset (PLAN 3.1, 6.13–6.15).</summary>
+/// <summary>Human accounts: registration, email codes, sign-in, password reset and email changes (PLAN 3.1, 6.13–6.15).</summary>
 public sealed partial class AccountService(
     IAccountStore store,
     ISessionStore sessions,
@@ -31,6 +31,9 @@ public sealed partial class AccountService(
     public static readonly TimeSpan CodeLifetime = TimeSpan.FromMinutes(10);
 
     public const int MaxCodeAttempts = 5;
+
+    /// <summary>The least time between two codes for the same thing (PLAN 6.13); the pages count it down.</summary>
+    public static readonly TimeSpan ResendInterval = TimeSpan.FromMinutes(1);
 
     private static readonly User TimingDummy = new()
     {
@@ -238,15 +241,16 @@ public sealed partial class AccountService(
 
         if (user.EmailVerifiedAt is not null)
         {
-            return Error.Conflict(AccountErrorCodes.AlreadyVerified, localizer["Error.AlreadyVerified"]);
+            return AlreadyVerified();
         }
 
-        var limited = await rateLimits.CheckAsync(
-            [
-                new RateLimitTarget(RateLimitPolicies.EmailCodeIp, IpPartition(origin)),
-                new RateLimitTarget(RateLimitPolicies.EmailCode, EmailPartition(user.NormalizedEmail)),
-            ],
-            cancellationToken);
+        var tooSoon = TooSoon(await store.FindEmailCodeAsync(EmailCodePurpose.VerifyEmail, user.NormalizedEmail, cancellationToken));
+        if (!tooSoon.IsSuccess)
+        {
+            return tooSoon;
+        }
+
+        var limited = await CheckCodeLimitsAsync(user, user.NormalizedEmail, origin, cancellationToken);
         if (!limited.IsSuccess)
         {
             return limited;
@@ -254,6 +258,69 @@ public sealed partial class AccountService(
 
         await IssueCodeAsync(EmailCodePurpose.VerifyEmail, user, cancellationToken);
         await unitOfWork.SaveChangesAsync(cancellationToken);
+        return Result.Success;
+    }
+
+    /// <summary>What the verification page shows: where the code went, and when another may be sent.</summary>
+    public async Task<Result<Verification>> GetVerificationAsync(Guid userId, CancellationToken cancellationToken)
+    {
+        var user = await store.FindUserAsync(userId, cancellationToken);
+        if (user is null)
+        {
+            return AccountNotFound();
+        }
+
+        var code = await store.FindEmailCodeAsync(EmailCodePurpose.VerifyEmail, user.NormalizedEmail, cancellationToken);
+        return new Verification(user.Email, code?.CreatedAt + ResendInterval);
+    }
+
+    /// <summary>
+    /// For an address mistyped at sign-up: the account, not yet verified, moves to another one at once and the
+    /// verification code goes there instead. Needs the password, as <see cref="RequestEmailChangeAsync"/> does once
+    /// verified. The account keeps its sign-up date, so it is still released if it never verifies (PLAN 6.13).
+    /// </summary>
+    public async Task<Result> ChangeUnverifiedEmailAsync(Guid userId, string? newEmail, string? currentPassword, RequestOrigin origin, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(origin);
+        var checkedEmail = await CheckNewEmailAsync(userId, newEmail, currentPassword, cancellationToken);
+        if (!checkedEmail.IsSuccess)
+        {
+            return checkedEmail.Error;
+        }
+
+        var (user, email) = checkedEmail.Value;
+        if (user.EmailVerifiedAt is not null)
+        {
+            return AlreadyVerified();
+        }
+
+        var limited = await CheckCodeLimitsAsync(user, email, origin, cancellationToken);
+        if (!limited.IsSuccess)
+        {
+            return limited;
+        }
+
+        // The code sent to the old address stops working.
+        if (await store.FindEmailCodeAsync(EmailCodePurpose.VerifyEmail, user.NormalizedEmail, cancellationToken) is { } old)
+        {
+            store.RemoveEmailCode(old);
+        }
+
+        user.Email = newEmail!.Trim();
+        user.NormalizedEmail = email;
+        await IssueCodeAsync(EmailCodePurpose.VerifyEmail, user, cancellationToken);
+        try
+        {
+            await unitOfWork.SaveChangesAsync(cancellationToken);
+        }
+        catch (UniqueViolationException exception) when (exception.IndexName == AccountIndexes.UniqueEmail)
+        {
+            return NewEmailTaken();
+        }
+
+        // The admin user list shows the address.
+        await live.AdminChangedAsync(cancellationToken);
+        LogEmailChanged(logger, user.Id);
         return Result.Success;
     }
 
@@ -474,9 +541,19 @@ public sealed partial class AccountService(
     public async Task<Result<AccountSettings>> GetSettingsAsync(Guid userId, CancellationToken cancellationToken)
     {
         var user = await store.FindUserAsync(userId, cancellationToken);
-        return user is null
-            ? AccountNotFound()
-            : new AccountSettings(user.Actor.Handle!, user.Actor.DisplayName!, user.Actor.Bio, user.Email, user.Locale);
+        if (user is null)
+        {
+            return AccountNotFound();
+        }
+
+        // A move whose code has expired or run out of guesses is over: the page asks for an address again.
+        var pending = user.PendingEmail is null
+            ? null
+            : await store.FindEmailCodeAsync(EmailCodePurpose.ChangeEmail, user.NormalizedEmail, cancellationToken);
+        var waiting = pending is not null && pending.ExpiresAt > time.GetUtcNow() && pending.Attempts < MaxCodeAttempts
+            ? new CodeSent(user.PendingEmail!, pending.CreatedAt + ResendInterval)
+            : null;
+        return new AccountSettings(user.Actor.Handle!, user.Actor.DisplayName!, user.Actor.Bio, user.Email, waiting, user.Locale);
     }
 
     /// <summary>The human's own display name and bio (PLAN 2.2); the username never changes.</summary>
@@ -579,6 +656,145 @@ public sealed partial class AccountService(
         return Result.Success;
     }
 
+    /// <summary>
+    /// The first step of moving the account to another address: needs the current password, like
+    /// <see cref="ChangePasswordAsync"/>, and sends a code to the new address. Nothing changes until it is entered
+    /// (<see cref="ConfirmEmailChangeAsync"/>); a new request replaces the one before.
+    /// </summary>
+    public async Task<Result> RequestEmailChangeAsync(Guid userId, string? newEmail, string? currentPassword, RequestOrigin origin, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(origin);
+        var checkedEmail = await CheckNewEmailAsync(userId, newEmail, currentPassword, cancellationToken);
+        if (!checkedEmail.IsSuccess)
+        {
+            return checkedEmail.Error;
+        }
+
+        var (user, email) = checkedEmail.Value;
+        var limited = await CheckCodeLimitsAsync(user, email, origin, cancellationToken);
+        if (!limited.IsSuccess)
+        {
+            return limited;
+        }
+
+        // The address and its code are saved together, so a code only ever stands for the address it was sent to.
+        user.PendingEmail = newEmail!.Trim();
+        await IssueCodeAsync(EmailCodePurpose.ChangeEmail, user, user.PendingEmail, cancellationToken);
+        await unitOfWork.SaveChangesAsync(cancellationToken);
+        return Result.Success;
+    }
+
+    /// <summary>Sends the code for the move under way again, to the same address; the password was given when it was asked for.</summary>
+    public async Task<Result> ResendEmailChangeAsync(Guid userId, RequestOrigin origin, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(origin);
+        var user = await store.FindUserAsync(userId, cancellationToken);
+        if (user is null)
+        {
+            return AccountNotFound();
+        }
+
+        // Expired codes count as none: the page then asks for the address and the password again.
+        var code = user.PendingEmail is null
+            ? null
+            : await store.FindEmailCodeAsync(EmailCodePurpose.ChangeEmail, user.NormalizedEmail, cancellationToken);
+        if (code is null || code.ExpiresAt <= time.GetUtcNow())
+        {
+            return CodeInvalid();
+        }
+
+        var tooSoon = TooSoon(code);
+        if (!tooSoon.IsSuccess)
+        {
+            return tooSoon;
+        }
+
+        var limited = await CheckCodeLimitsAsync(user, AccountRules.NormalizeEmail(user.PendingEmail!), origin, cancellationToken);
+        if (!limited.IsSuccess)
+        {
+            return limited;
+        }
+
+        await IssueCodeAsync(EmailCodePurpose.ChangeEmail, user, user.PendingEmail!, cancellationToken);
+        await unitOfWork.SaveChangesAsync(cancellationToken);
+        return Result.Success;
+    }
+
+    /// <summary>
+    /// Moves the account to the address <see cref="RequestEmailChangeAsync"/> sent the code to. The old address is
+    /// free from then on; sign-in and password resets use the new one.
+    /// </summary>
+    public async Task<Result> ConfirmEmailChangeAsync(Guid userId, string? code, CancellationToken cancellationToken)
+    {
+        if (!AccountRules.IsWellFormedCode(code))
+        {
+            return CodeInvalid();
+        }
+
+        var user = await store.FindUserAsync(userId, cancellationToken);
+        if (user is null)
+        {
+            return AccountNotFound();
+        }
+
+        if (user.PendingEmail is null)
+        {
+            return CodeInvalid();
+        }
+
+        var email = AccountRules.NormalizeEmail(user.PendingEmail);
+        // Someone may have registered or moved to it since; the code is kept for nothing then.
+        if (await store.EmailTakenAsync(email, cancellationToken))
+        {
+            return FieldError(ErrorKind.Conflict, AccountErrorCodes.EmailTaken, "Error.EmailTaken", AccountFields.Code);
+        }
+
+        // Outside the save: a wrong guess must stay counted even though nothing else is saved.
+        var consumed = await ConsumeCodeAsync(EmailCodePurpose.ChangeEmail, user.NormalizedEmail, code!, cancellationToken);
+        if (!consumed.IsSuccess)
+        {
+            return consumed;
+        }
+
+        user.Email = user.PendingEmail;
+        user.NormalizedEmail = email;
+        user.PendingEmail = null;
+        // The code proved the address works.
+        user.EmailVerifiedAt ??= time.GetUtcNow();
+        try
+        {
+            await unitOfWork.SaveChangesAsync(cancellationToken);
+        }
+        catch (UniqueViolationException exception) when (exception.IndexName == AccountIndexes.UniqueEmail)
+        {
+            return FieldError(ErrorKind.Conflict, AccountErrorCodes.EmailTaken, "Error.EmailTaken", AccountFields.Code);
+        }
+
+        // The admin user list shows the address.
+        await live.AdminChangedAsync(cancellationToken);
+        LogEmailChanged(logger, user.Id);
+        return Result.Success;
+    }
+
+    /// <summary>Drops a move that was asked for: its code no longer works.</summary>
+    public async Task<Result> CancelEmailChangeAsync(Guid userId, CancellationToken cancellationToken)
+    {
+        var user = await store.FindUserAsync(userId, cancellationToken);
+        if (user is null)
+        {
+            return AccountNotFound();
+        }
+
+        if (await store.FindEmailCodeAsync(EmailCodePurpose.ChangeEmail, user.NormalizedEmail, cancellationToken) is { } code)
+        {
+            store.RemoveEmailCode(code);
+        }
+
+        user.PendingEmail = null;
+        await unitOfWork.SaveChangesAsync(cancellationToken);
+        return Result.Success;
+    }
+
     public Task<RegistrationMode> GetRegistrationModeAsync(CancellationToken cancellationToken) =>
         store.GetRegistrationModeAsync(cancellationToken);
 
@@ -592,6 +808,8 @@ public sealed partial class AccountService(
 
     private static string IpPartition(RequestOrigin origin) => $"ip:{origin.ClientIp}";
 
+    private static string AccountPartition(Guid userId) => $"account:{userId}";
+
     private static string EmailPartition(string normalizedEmail) => $"email:{normalizedEmail}";
 
     private static string HashCode(EmailCodePurpose purpose, string normalizedEmail, string code) =>
@@ -600,7 +818,13 @@ public sealed partial class AccountService(
     private string TimingDummyHash() => timingDummyHash ??= passwordHasher.HashPassword(TimingDummy, "timing-dummy-password");
 
     /// <summary>Stages a fresh code (replacing any earlier one) and its email; the caller saves.</summary>
-    private async Task IssueCodeAsync(EmailCodePurpose purpose, User user, CancellationToken cancellationToken)
+    private Task IssueCodeAsync(EmailCodePurpose purpose, User user, CancellationToken cancellationToken) =>
+        IssueCodeAsync(purpose, user, user.Email, cancellationToken);
+
+    /// <summary>
+    /// Stages a fresh code kept under the account's current address, sent to <paramref name="to"/>; the caller saves.
+    /// </summary>
+    private async Task IssueCodeAsync(EmailCodePurpose purpose, User user, string to, CancellationToken cancellationToken)
     {
         var code = RandomNumberGenerator.GetInt32(0, 1_000_000).ToString("D6", CultureInfo.InvariantCulture);
         var now = time.GetUtcNow();
@@ -627,7 +851,7 @@ public sealed partial class AccountService(
 
         outbox.Enqueue(
             AccountCodeEmail.MessageType,
-            new AccountCodeEmail(user.Email, user.Locale, purpose, codeProtector.Protect(code)),
+            new AccountCodeEmail(to, user.Locale, purpose, codeProtector.Protect(code)),
             AccountsJsonContext.Default.AccountCodeEmail);
     }
 
@@ -648,6 +872,82 @@ public sealed partial class AccountService(
         store.RemoveEmailCode(stored);
         return Result.Success;
     }
+
+    /// <summary>
+    /// What both ways of moving to another address check, in order: the form, the password (its guesses count as
+    /// signing in to the account), and that the address is a new one nobody has.
+    /// </summary>
+    private async Task<Result<(User User, string Email)>> CheckNewEmailAsync(Guid userId, string? newEmail, string? currentPassword, CancellationToken cancellationToken)
+    {
+        var fields = new Dictionary<string, string[]>();
+        if (!AccountRules.IsValidEmail(newEmail?.Trim()))
+        {
+            fields[AccountFields.NewEmail] = [localizer["Validation.Email"]];
+        }
+
+        if (string.IsNullOrEmpty(currentPassword))
+        {
+            fields[AccountFields.CurrentPassword] = [localizer["Validation.Required"]];
+        }
+
+        if (fields.Count > 0)
+        {
+            return InvalidInput(fields);
+        }
+
+        var user = await store.FindUserAsync(userId, cancellationToken);
+        if (user is null)
+        {
+            return AccountNotFound();
+        }
+
+        var limited = await rateLimits.CheckAsync(RateLimitPolicies.Login, $"login:{user.Actor.NormalizedHandle}", cancellationToken);
+        if (!limited.IsSuccess)
+        {
+            return limited.Error;
+        }
+
+        if (passwordHasher.VerifyHashedPassword(user, user.PasswordHash, currentPassword!) == PasswordVerificationResult.Failed)
+        {
+            return FieldError(ErrorKind.Validation, AccountErrorCodes.InvalidCredentials, "Error.WrongPassword", AccountFields.CurrentPassword);
+        }
+
+        var email = AccountRules.NormalizeEmail(newEmail!);
+        if (email == user.NormalizedEmail)
+        {
+            return InvalidInput(new() { [AccountFields.NewEmail] = [localizer["Validation.SameEmail"]] });
+        }
+
+        if (await store.EmailTakenAsync(email, cancellationToken))
+        {
+            return NewEmailTaken();
+        }
+
+        return (user, email);
+    }
+
+    /// <summary>The limits on codes sent for an account once it exists: per IP, per address and per account.</summary>
+    private Task<Result> CheckCodeLimitsAsync(User user, string normalizedEmail, RequestOrigin origin, CancellationToken cancellationToken) =>
+        rateLimits.CheckAsync(
+            [
+                new RateLimitTarget(RateLimitPolicies.EmailCodeIp, IpPartition(origin)),
+                new RateLimitTarget(RateLimitPolicies.EmailCode, EmailPartition(normalizedEmail)),
+                new RateLimitTarget(RateLimitPolicies.EmailCodeAccount, AccountPartition(user.Id)),
+            ],
+            cancellationToken);
+
+    /// <summary>Refuses another code while the last one is younger than <see cref="ResendInterval"/>.</summary>
+    private Result TooSoon(EmailCode? last)
+    {
+        var wait = last is null ? TimeSpan.Zero : last.CreatedAt + ResendInterval - time.GetUtcNow();
+        return wait > TimeSpan.Zero
+            ? Error.RateLimited(wait, localizer["Error.ResendTooSoon", (int)Math.Ceiling(wait.TotalSeconds)])
+            : Result.Success;
+    }
+
+    private Error AlreadyVerified() => Error.Conflict(AccountErrorCodes.AlreadyVerified, localizer["Error.AlreadyVerified"]);
+
+    private Error NewEmailTaken() => FieldError(ErrorKind.Conflict, AccountErrorCodes.EmailTaken, "Error.EmailTaken", AccountFields.NewEmail);
 
     private Error InvalidInput(Dictionary<string, string[]> fields) =>
         Error.Validation(AccountErrorCodes.InvalidInput, localizer["Error.InvalidInput"], fields);
@@ -678,4 +978,7 @@ public sealed partial class AccountService(
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Account {UserId} changed its password; its other sessions ended")]
     private static partial void LogPasswordChanged(ILogger logger, Guid userId);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Account {UserId} moved to another email address")]
+    private static partial void LogEmailChanged(ILogger logger, Guid userId);
 }

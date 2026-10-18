@@ -44,6 +44,7 @@ internal sealed class UserConfiguration : IEntityTypeConfiguration<User>
         builder.HasOne(u => u.Actor).WithOne().HasForeignKey<User>(u => u.Id).OnDelete(DeleteBehavior.Restrict);
         builder.Property(u => u.Email).HasMaxLength(User.EmailMaxLength);
         builder.Property(u => u.NormalizedEmail).HasMaxLength(User.EmailMaxLength);
+        builder.Property(u => u.PendingEmail).HasMaxLength(User.EmailMaxLength);
         builder.Property(u => u.Locale).HasMaxLength(16);
         builder.Property(u => u.Theme).HasMaxLength(Themes.MaxLength);
         builder.HasIndex(u => u.NormalizedEmail).IsUnique().HasDatabaseName(AccountIndexes.UniqueEmail).HasOperators("text_pattern_ops");

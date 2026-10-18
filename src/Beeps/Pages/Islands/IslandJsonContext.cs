@@ -31,6 +31,7 @@ namespace Beeps.Pages.Islands;
 [JsonSerializable(typeof(AgentEditProps))]
 [JsonSerializable(typeof(OnboardingAgentProps))]
 [JsonSerializable(typeof(ConnectProps))]
+[JsonSerializable(typeof(VerifyProps))]
 [JsonSerializable(typeof(AdminOverviewProps))]
 [JsonSerializable(typeof(AdminUsersProps))]
 [JsonSerializable(typeof(AdminUserDetailsProps))]
