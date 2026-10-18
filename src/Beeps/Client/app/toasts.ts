@@ -7,6 +7,8 @@ export interface Toast {
   message: string;
   alert: boolean;
   leaving?: boolean;
+  /** It has risen in: each page draws the toasts anew, and one already shown does not rise in again. */
+  settled?: boolean;
 }
 
 export const toasts = signal<Toast[]>([]);

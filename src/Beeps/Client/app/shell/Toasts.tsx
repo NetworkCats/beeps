@@ -21,12 +21,12 @@ export function Toasts({ props }: IslandProps<{ notice?: string; alert?: string 
       {list.map((toast) => (
         <div
           key={toast.id}
-          class={`toast ${toast.alert ? 'toast-danger' : 'toast-dark'}${toast.leaving ? ' toast-leaving' : ''}`}
+          class={`toast ${toast.alert ? 'toast-danger' : 'toast-dark'}${toast.settled ? ' toast-settled' : ''}${toast.leaving ? ' toast-leaving' : ''}`}
           role={toast.alert ? 'alert' : 'status'}
-         
-         
           onAnimationEnd={() => {
             if (toast.leaving) removeToast(toast.id);
+            // Kept on the toast itself, not drawn now: it only matters the next time a page draws it.
+            else toast.settled = true;
           }}
         >
           {toast.alert ? <Icon name="error" class="toast-icon" /> : <Icon name="check_circle" class="toast-icon" />}

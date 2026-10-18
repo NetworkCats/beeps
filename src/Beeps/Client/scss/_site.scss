@@ -98,6 +98,11 @@
     min-height: 100dvh;
     border-inline: var(--cui-border-width) solid var(--cui-border);
   }
+
+  // Focused by the router when another page is shown (for screen readers), not by the person: no ring around it all.
+  &:focus {
+    outline: none;
+  }
 }
 
 // ---- Navigation rail (sm and up) ---------------------------------------------------------------
@@ -1723,6 +1728,11 @@ span.beep-action {
   align-items: center;
   border-radius: var(--cui-radius-lg);
   box-shadow: var(--cui-shadow-lg);
+}
+
+// Already in: drawn again on the next page, it stays put instead of rising in once more.
+.toast-settled:not(.toast-leaving) {
+  animation: none;
 }
 
 .toast-message {

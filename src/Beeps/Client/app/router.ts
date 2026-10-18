@@ -2,7 +2,8 @@
 // followed in the background: the page they lead to is fetched (as HTML, so it is exactly what a reload shows), its
 // content is put in place of this one's, and its islands are taken over. The script, the live connection and what
 // the app knows of each beep stay. Going back shows the page as it was left (more pages loaded, where it was
-// scrolled), then lets it catch up.
+// scrolled), then lets it catch up. The answer to a form takes the form's place in the tab's history, as the page
+// already shown does when it is visited again: going back never lands on a form already sent, or on the same page.
 //
 // A page signed in as someone else, or signed out, is loaded in full instead: it needs other scripts.
 //
@@ -30,8 +31,6 @@ interface Entry {
   key: string;
   /** How many pages of this site came before this one in the tab, as far as this script knows. */
   index: number;
-  /** This page is the answer to a form: going back would only show the form again (or send it again). */
-  posted?: boolean;
 }
 
 interface Snapshot {
@@ -160,13 +159,12 @@ function scrollToTarget(hash: string): void {
 }
 
 interface ShowOptions {
-  /** Instead of a new history entry: going back, or the same page shown anew. */
+  /** Instead of a new history entry: going back, the same page shown anew, or the answer to a form. */
   replace?: boolean;
   /** Where it was scrolled, for the same page shown anew. */
   keepScroll?: boolean;
   /** Fetched ahead, when the link was hovered. */
   ahead?: boolean;
-  posted?: boolean;
   hash?: string;
 }
 
@@ -195,7 +193,7 @@ async function show(response: Response, options: ShowOptions, signal: AbortSigna
     window.history.replaceState({ beeps: current }, '', url);
   } else {
     save();
-    current = { key: newKey(), index: current.index + 1, posted: options.posted };
+    current = { key: newKey(), index: current.index + 1 };
     drawn = swapIn(fresh, options.ahead ?? false);
     window.history.pushState({ beeps: current }, '', url);
   }
@@ -234,10 +232,11 @@ async function request(url: string, init: RequestInit, options: ShowOptions): Pr
   }
 }
 
-/** Goes to another page of the site. */
-export function visit(url: string): Promise<void> {
+/** Goes to another page of the site; `replace`, in place of this one (it showed a form, and this is its answer). */
+export function visit(url: string, replace = false): Promise<void> {
   const target = new URL(url, window.location.href);
-  return request(target.href, {}, { hash: target.hash });
+  const here = target.pathname === window.location.pathname && target.search === window.location.search;
+  return request(target.href, {}, { hash: target.hash, replace: replace || here });
 }
 
 /**
@@ -250,7 +249,7 @@ export function reload(): Promise<void> {
 
 /** Sends a form the plain way and shows the page that comes back: what the browser itself would do. */
 export function submitPage(action: string, data: FormData): Promise<void> {
-  return request(new URL(action, window.location.href).href, { method: 'POST', body: data }, { posted: true }).catch(() => {});
+  return request(new URL(action, window.location.href).href, { method: 'POST', body: data }, { replace: true }).catch(() => {});
 }
 
 // ---- Fetched ahead on hover --------------------------------------------------------------------
@@ -329,7 +328,7 @@ function isPage(url: URL): boolean {
 
 /** A column header's back arrow goes back as the browser would, to where that page was left, when there is one to go to. */
 function goesBack(link: HTMLAnchorElement): boolean {
-  return link.matches('a.column-back') && current.index > 0 && !current.posted;
+  return link.matches('a.column-back') && current.index > 0;
 }
 
 function onClick(event: MouseEvent): void {
@@ -364,7 +363,7 @@ async function onSubmit(event: SubmitEvent): Promise<void> {
       url.search = new URLSearchParams([...data].map(([name, value]) => [name, String(value)])).toString();
       await visit(url.href).catch(() => {});
     } else {
-      await request(url.href, { method: 'POST', body: data }, { posted: true }).catch(() => {
+      await request(url.href, { method: 'POST', body: data }, { replace: true }).catch(() => {
         // The page stays as it was; sent the plain way, the browser shows what went wrong.
         form.submit();
       });

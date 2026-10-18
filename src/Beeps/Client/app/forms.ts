@@ -55,7 +55,7 @@ export async function sendForm(form: HTMLFormElement, submitter: HTMLElement | n
     // What the form did was said on the way (the redirect's notice): it shows over the page it led to.
     if (answer.page?.notice) showToast(answer.page.notice);
     if (answer.page?.alert) showToast(answer.page.alert, true);
-    await visit(answer.url).catch(() => {});
+    await visit(answer.url, true).catch(() => {});
     return;
   }
   // Anything else (an error page): sent again the plain way, which nothing came of the first time, to show what went wrong.
