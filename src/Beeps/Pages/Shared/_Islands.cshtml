@@ -1,16 +1,22 @@
+@using System.Globalization
+@using Beeps.Features.Auth
 @using Beeps.Pages.Islands
-@* The layout of an islands request (IslandRequests): no markup, only what the page's islands are drawn from. *@
+@inject ClientConfig AppConfig
+@inject TimeProvider Time
+@* The layout of an islands request (IslandRequests): no markup, only the page's data. Its content column has the
+   islands empty (IslandTagHelper), and their props are beside it, with what the app needs to show the page (IslandPageProps). *@
 @{
-    IgnoreBody();
-    // What pages put in the layout's head (stylesheets) has no place in JSON.
-    if (IsSectionDefined("Head"))
-    {
-        IgnoreSection("Head");
-    }
+    using var main = new StringWriter();
+    RenderBody().WriteTo(main, HtmlEncoder);
+    var page = new IslandPageProps(
+        CultureInfo.CurrentUICulture.Name,
+        User.IsHuman() ? User.AuthState() : null,
+        Time.GetUtcNow().ToUnixTimeMilliseconds(),
+        AppConfig.Props(Context),
+        PageShell.For(ViewContext),
+        main.ToString());
     var (notice, alert) = Notices.Take(Context, TempData);
     Context.Response.ContentType = "application/json; charset=utf-8";
-    // The same address answers with HTML too: neither may stand in for the other in a cache.
     Context.Response.Headers.CacheControl = "no-store";
-    Context.Response.Headers.Vary = IslandRequests.Header;
 }
-@Html.Raw(IslandJson.Page($"{ViewData["Title"]} · {L["Site.Name"]}", notice, alert, IslandRequests.Collected(Context)))
+@Html.Raw(IslandJson.Page($"{ViewData["Title"]} · {L["Site.Name"]}", notice, alert, IslandRequests.Collected(Context), page))

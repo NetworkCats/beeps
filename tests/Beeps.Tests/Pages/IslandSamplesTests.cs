@@ -25,7 +25,8 @@ namespace Beeps.Tests.Pages;
 /// The two must be the same markup, or the page changes as the script takes over. These tests draw the pages with fixed
 /// data and keep, for every island, what the server drew and the props it was drawn from, in <c>Pages/IslandSamples</c>.
 /// The client's tests (<c>Client/app/islands.test.tsx</c>) draw the same props with the components and compare. Signed
-/// in the server draws no markup in islands; their props are kept all the same, for the components to be drawn from.
+/// in the server draws no markup in islands, and an app page is its layout (an app shell) and its data; their props are
+/// kept all the same, in the order the page has them, for the components to be drawn from.
 /// </summary>
 /// <remarks>
 /// A changed template (or props) changes the samples: run the tests with <c>BEEPS_UPDATE_SAMPLES=1</c> to write them
@@ -129,7 +130,7 @@ public sealed partial class IslandSamplesTests : IDisposable
     {
         using var client = await WebAuth.SignInAsync(factory, tom);
 
-        var html = await client.GetStringAsync(new Uri(url, UriKind.Relative), TestSupport.Ct);
+        var html = await DrawnAsync(client, url);
 
         await MatchSampleAsync(name, url, html);
     }
@@ -168,7 +169,7 @@ public sealed partial class IslandSamplesTests : IDisposable
         var ann = WebAuth.ArrangeUser(factory, "ann", verified: false);
         using var client = await WebAuth.SignInAsync(factory, ann);
 
-        var html = await client.GetStringAsync(new Uri("/onboarding/verify", UriKind.Relative), TestSupport.Ct);
+        var html = await DrawnAsync(client, "/onboarding/verify");
 
         await MatchSampleAsync("verify", "/onboarding/verify", html);
     }
@@ -213,7 +214,7 @@ public sealed partial class IslandSamplesTests : IDisposable
             _ => $"/admin/{page}",
         };
 
-        var html = await client.GetStringAsync(new Uri(url, UriKind.Relative), TestSupport.Ct);
+        var html = await DrawnAsync(client, url);
 
         await MatchSampleAsync($"admin-{page}", url, html);
     }
@@ -274,6 +275,24 @@ public sealed partial class IslandSamplesTests : IDisposable
 
     private static BeepRow Beep(int n, string text, ActorRow author, Guid? replyTo = null, Guid? root = null, bool liked = false, int likes = 0, int replies = 0) =>
         new(Id(n), text, author, replyTo, root ?? Id(n), TestData.Now.AddMinutes(-n), likes, replies, liked);
+
+    /// <summary>
+    /// An app page as the app shows it signed in: the app shell, its content column from the page's data, with each
+    /// island's props where the page has the island, and the app's config.
+    /// </summary>
+    private static async Task<string> DrawnAsync(HttpClient client, string url)
+    {
+        var shell = await client.GetStringAsync(new Uri(url, UriKind.Relative), TestSupport.Ct);
+        using var data = JsonDocument.Parse(await Islands.PageAsync(client, url));
+        var islands = data.RootElement.GetProperty("islands");
+        var page = data.RootElement.GetProperty("page");
+        var main = EmptyIslandPattern().Replace(
+            page.GetProperty("main").GetString()!,
+            m => $"<div class=\"island\" data-island=\"{m.Groups["name"].Value}\"><script data-island-props=\"\" type=\"application/json\">{islands.GetProperty(m.Groups["name"].Value).GetRawText()}</script></div>");
+        Assert.Matches(ShellMainPattern(), shell);
+        return ShellMainPattern().Replace(shell, m => m.Groups[1].Value + main + m.Groups[2].Value, 1)
+            .Replace("</body>", $"<script type=\"application/json\" id=\"app-config\">{page.GetProperty("config").GetRawText()}</script></body>", StringComparison.Ordinal);
+    }
 
     private async Task MatchSampleAsync(string name, string url, string html)
     {
@@ -376,6 +395,12 @@ public sealed partial class IslandSamplesTests : IDisposable
 
     [GeneratedRegex("<script type=\"application/json\" id=\"app-config\">(.*?)</script>")]
     private static partial Regex AppConfigPattern();
+
+    [GeneratedRegex("<div class=\"island\" data-island=\"(?<name>[a-z-]+)\"></div>")]
+    private static partial Regex EmptyIslandPattern();
+
+    [GeneratedRegex("(<main id=\"main\" class=\"shell-main\" data-app-shell>).*?(</main>)", RegexOptions.Singleline)]
+    private static partial Regex ShellMainPattern();
 
     [GeneratedRegex("^/strings/([A-Za-z-]+)\\.json\\?v=")]
     private static partial Regex StringsCulturePattern();

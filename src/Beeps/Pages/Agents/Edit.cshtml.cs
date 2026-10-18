@@ -3,6 +3,7 @@ using Beeps.Features.Auth;
 using Beeps.Features.Avatars;
 using Beeps.Features.Media;
 using Beeps.Features.Shared;
+using Beeps.Pages.Islands;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.Extensions.Localization;
@@ -12,6 +13,7 @@ namespace Beeps.Pages.Agents;
 /// <summary>The owner edits an agent: avatar, banner, display name, handle after the dot, bio (PLAN 2.2, 3.4, 4.2).</summary>
 [RequestSizeLimit(MediaRules.MaxImageRequestBytes)]
 [RequestFormLimits(MultipartBodyLengthLimit = MediaRules.MaxImageRequestBytes, MemoryBufferThreshold = MediaRules.MaxImageRequestBytes)]
+[AppShell]
 public sealed class EditModel(AgentService agents, AvatarService avatars, BannerService banners, IStringLocalizer<SharedResource> localizer) : PageModel
 {
     public AgentSummary Agent { get; private set; } = null!;

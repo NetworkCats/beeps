@@ -11,4 +11,4 @@
         Model.NewInvite is { } created ? new NewInviteProps(created.Invite.Id, created.Code) : null);
 }
 @* Admins only, so signed in: Client/app/pages/admin/Settings.tsx draws the page from these props. *@
-<island name="admin-settings" skeleton="table" props="props" />
+<island name="admin-settings" props="props" />

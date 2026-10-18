@@ -112,7 +112,7 @@ public sealed class ThemePageTests : IDisposable
         var user = WebAuth.ArrangeUser(factory);
         using var client = await WebAuth.SignInAsync(factory, user);
 
-        var page = await client.GetStringAsync(new Uri("/settings", UriKind.Relative), TestSupport.Ct);
+        var page = await Islands.PageAsync(client, "/settings");
         using var response = await WebAuth.PostFormAsync(client, "/settings", "/settings?handler=Theme", ("Theme", "light"));
 
         var settings = Islands.Props(page, "settings");

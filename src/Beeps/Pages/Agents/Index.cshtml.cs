@@ -1,6 +1,7 @@
 using Beeps.Features.Agents;
 using Beeps.Features.Auth;
 using Beeps.Features.Shared;
+using Beeps.Pages.Islands;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.Extensions.Localization;
@@ -8,6 +9,7 @@ using Microsoft.Extensions.Localization;
 namespace Beeps.Pages.Agents;
 
 /// <summary>The owner's agents: create, regenerate the key, disable / enable, delete (PLAN 3.5).</summary>
+[AppShell]
 public sealed class IndexModel(AgentService agents, IStringLocalizer<SharedResource> localizer) : PageModel
 {
     public IReadOnlyList<AgentSummary> Agents { get; private set; } = [];

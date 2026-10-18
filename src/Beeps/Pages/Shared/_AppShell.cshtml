@@ -1,0 +1,7 @@
+@using Beeps.Pages.Islands
+@* What a signed-in GET of an app page answers (AppShellAttribute): the layout, and in place of the content a skeleton
+   shaped like the page, which the app replaces once it has the page's data. *@
+@{
+    ViewData[PageShell.AppShell] = true;
+}
+<partial name="_Skeleton" model="PageShell.Skeleton(ViewContext)" />

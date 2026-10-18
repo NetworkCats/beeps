@@ -4,6 +4,7 @@ using Beeps.Features.Live;
 using Beeps.Features.Shared;
 using Beeps.Features.Shared.Http;
 using Beeps.Features.Timelines;
+using Beeps.Pages.Islands;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.AspNetCore.OutputCaching;
@@ -12,6 +13,7 @@ namespace Beeps.Pages;
 
 /// <summary>The newest top-level beeps from everyone (PLAN 1).</summary>
 [OutputCache(PolicyName = PublicPageCache.Policy)]
+[AppShell]
 public sealed class PublicModel(TimelineService timelines) : PageModel
 {
     [BindProperty(SupportsGet = true)] public Guid? Before { get; set; }

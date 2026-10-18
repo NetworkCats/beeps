@@ -454,8 +454,7 @@
         "usersUrl": "/search?q=beeps&type=users"
       },
       "errors": null,
-      "html": "",
-      "skeleton": "list"
+      "html": ""
     },
     {
       "name": "site-options",

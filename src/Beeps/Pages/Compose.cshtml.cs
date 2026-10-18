@@ -2,6 +2,7 @@ using Beeps.Features.Auth;
 using Beeps.Features.Beeps;
 using Beeps.Features.Media;
 using Beeps.Features.Site;
+using Beeps.Pages.Islands;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.Extensions.Localization;
@@ -14,6 +15,7 @@ namespace Beeps.Pages;
 /// </summary>
 [RequestSizeLimit(MediaRules.MaxBeepRequestBytes)]
 [RequestFormLimits(MultipartBodyLengthLimit = MediaRules.MaxBeepRequestBytes, MemoryBufferThreshold = MediaRules.MaxBeepRequestBytes)]
+[AppShell]
 public sealed class ComposeModel(BeepService beeps, IStringLocalizer<SharedResource> localizer) : PageModel
 {
     [BindProperty(SupportsGet = true)] public Guid? ReplyTo { get; set; }

@@ -11,6 +11,7 @@ namespace Beeps.Pages.Islands;
 [JsonSerializable(typeof(List<string>))]
 [JsonSerializable(typeof(Dictionary<string, string>))]
 [JsonSerializable(typeof(ClientConfigProps))]
+[JsonSerializable(typeof(IslandPageProps))]
 [JsonSerializable(typeof(LiveItems<BeepProps>))]
 [JsonSerializable(typeof(LiveItems<NotificationProps>))]
 [JsonSerializable(typeof(LiveItems<ActorProps>))]

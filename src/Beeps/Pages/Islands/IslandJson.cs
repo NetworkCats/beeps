@@ -64,10 +64,11 @@ public static class IslandJson
         });
     }
 
-    /// <summary>What <c>_Islands.cshtml</c> answers: the page's title and notices, and its islands by name.</summary>
-    public static string Page(string title, string? notice, string? alert, IReadOnlyDictionary<string, string> islands)
+    /// <summary>What <c>_Islands.cshtml</c> answers: the page's title and notices, its islands by name, and the rest of the page.</summary>
+    public static string Page(string title, string? notice, string? alert, IReadOnlyDictionary<string, string> islands, IslandPageProps page)
     {
         ArgumentNullException.ThrowIfNull(islands);
+        ArgumentNullException.ThrowIfNull(page);
         return Write(writer =>
         {
             writer.WriteStartObject();
@@ -90,6 +91,9 @@ public static class IslandJson
             }
 
             writer.WriteEndObject();
+            writer.WritePropertyName("page");
+            JsonSerializer.Serialize(writer, page, Context.IslandPageProps);
+
             writer.WriteEndObject();
         });
     }

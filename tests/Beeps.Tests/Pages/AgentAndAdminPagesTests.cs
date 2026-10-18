@@ -42,8 +42,9 @@ public sealed partial class AgentAndAdminPagesTests : IDisposable
         using var client = await WebAuth.SignInAsync(factory, user);
 
         var html = await client.GetStringAsync(new Uri("/agents", UriKind.Relative), TestSupport.Ct);
+        var page = await Islands.PageAsync(client, "/agents");
 
-        var agent = Islands.Props(html, "agents").GetProperty("agents").EnumerateArray().Single();
+        var agent = Islands.Props(page, "agents").GetProperty("agents").EnumerateArray().Single();
         Assert.Equal("tom's Claude", agent.GetProperty("displayName").GetString());
         Assert.Equal("beeps_abc123", agent.GetProperty("keyPrefix").GetString());
         Assert.Equal(TestData.Now, agent.GetProperty("keyLastUsedAt").GetDateTimeOffset());
@@ -59,11 +60,11 @@ public sealed partial class AgentAndAdminPagesTests : IDisposable
         using var client = await WebAuth.SignInAsync(factory, user);
 
         using var response = await WebAuth.PostFormAsync(client, "/agents", $"/agents?handler=Disable&id={agent.Id}");
-        var html = await client.GetStringAsync(new Uri("/agents", UriKind.Relative), TestSupport.Ct);
+        var page = await Islands.PageAsync(client, "/agents");
 
         Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
         Assert.NotNull(agent.DisabledAt);
-        Assert.Contains("Agent disabled.", html, StringComparison.Ordinal);
+        Assert.Contains("Agent disabled.", page, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -88,14 +89,22 @@ public sealed partial class AgentAndAdminPagesTests : IDisposable
         using var client = await WebAuth.SignInAsync(factory, admin);
 
         var html = await client.GetStringAsync(new Uri("/admin/users", UriKind.Relative), TestSupport.Ct);
+        var page = await Islands.PageAsync(client, "/admin/users");
 
-        var users = Islands.Props(html, "admin-users").GetProperty("users");
+        var users = Islands.Props(page, "admin-users").GetProperty("users");
         Assert.Equal("tom@example.com", users.GetProperty("items").EnumerateArray().Single().GetProperty("email").GetString());
         Assert.Contains("before=", users.GetProperty("next").GetString(), StringComparison.Ordinal);
-        Assert.Contains("aria-current=\"page\"", html, StringComparison.Ordinal);
         // The account menu opens the admin area for an admin.
-        Assert.True(Islands.Config(html).GetProperty("viewer").GetProperty("admin").GetBoolean());
+        Assert.True(Islands.Config(page).GetProperty("viewer").GetProperty("admin").GetBoolean());
         PageAssert.NoInlineScriptsOrStyles(html);
+        // The page brings the admin area's navigation along, and the wide layout and its stylesheet.
+        var data = Islands.Data(page);
+        var main = data.GetProperty("main").GetString();
+        Assert.Contains("<nav class=\"nav nav-horizontal admin-nav\"", main, StringComparison.Ordinal);
+        Assert.Contains("aria-current=\"page\"", main, StringComparison.Ordinal);
+        Assert.Contains("<div class=\"island\" data-island=\"admin-users\"></div>", main, StringComparison.Ordinal);
+        Assert.True(data.GetProperty("shell").GetProperty("wide").GetBoolean());
+        Assert.Equal(["main", "member", "admin"], Islands.Strings(data.GetProperty("shell").GetProperty("styles")));
     }
 
     [Fact]
@@ -141,11 +150,11 @@ public sealed partial class AgentAndAdminPagesTests : IDisposable
         using var client = await WebAuth.SignInAsync(factory, admin);
 
         using var response = await WebAuth.PostFormAsync(client, $"/admin/users/{target.Id}", $"/admin/users/{target.Id}?handler=Ban");
-        var html = await client.GetStringAsync(new Uri($"/admin/users/{target.Id}", UriKind.Relative), TestSupport.Ct);
+        var page = await Islands.PageAsync(client, $"/admin/users/{target.Id}");
 
         Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
         Assert.Equal(TestData.Now.Year, target.BannedAt?.Year);
-        Assert.Contains("User banned.", html, StringComparison.Ordinal);
+        Assert.Contains("User banned.", page, StringComparison.Ordinal);
     }
 
     public void Dispose() => factory.Dispose();

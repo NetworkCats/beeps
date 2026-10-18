@@ -469,8 +469,7 @@
         "noteMaxLength": 500
       },
       "errors": null,
-      "html": "",
-      "skeleton": "form"
+      "html": ""
     },
     {
       "name": "site-options",

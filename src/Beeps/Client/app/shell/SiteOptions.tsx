@@ -8,6 +8,7 @@ import { Icon } from '../components/Icon.tsx';
 import { Menu } from '../components/Menu.tsx';
 import { t } from '../i18n.ts';
 import type { IslandProps } from '../islands.tsx';
+import { pagePath } from '../router.ts';
 import { theme } from '../state.ts';
 
 interface OptionProps {
@@ -29,6 +30,8 @@ interface SiteOptionsProps {
 
 function Options({ props }: { props: SiteOptionsProps }) {
   const method = props.signedIn ? 'post' : 'get';
+  // The layout's islands stay as other pages are shown in place: the page to come back to is the one shown now.
+  const returnUrl = pagePath.value ?? props.returnUrl;
 
   const submitOnChange = (event: TargetedEvent<HTMLSelectElement>): void => {
     event.currentTarget.form?.requestSubmit();
@@ -53,7 +56,7 @@ function Options({ props }: { props: SiteOptionsProps }) {
         {t('Footer.About')}
       </a>
       <form class="footer-switch" method={method} action="/culture">
-        <input type="hidden" name="returnUrl" value={props.returnUrl} />
+        <input type="hidden" name="returnUrl" value={returnUrl} />
         <Icon name="language" />
         <select class="footer-select" name="culture" aria-label={t('Footer.Language')} onChange={submitOnChange}>
           {props.cultures.map((option) => (
@@ -68,7 +71,7 @@ function Options({ props }: { props: SiteOptionsProps }) {
         <Antiforgery />
       </form>
       <form class="footer-switch" method={method} action="/theme" onSubmit={switchTheme}>
-        <input type="hidden" name="returnUrl" value={props.returnUrl} />
+        <input type="hidden" name="returnUrl" value={returnUrl} />
         <Icon name="contrast" />
         <select class="footer-select" name="theme" aria-label={t('Footer.Theme')} onChange={submitOnChange}>
           {props.themes.map((option) => (

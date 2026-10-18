@@ -11,15 +11,15 @@
     // live (unverified: only their account); signed out they are static and cacheable.
     var signedIn = User.IsHuman();
     var page = ViewContext.RouteData.Values["page"] as string;
-    string? Current(params string[] names) => names.Contains(page) ? "page" : null;
-    var (notice, alert) = Notices.Take(Context, TempData);
+    // What of the layout is the page's own: the app sets the same when it shows another page in place (router.ts).
+    var shell = PageShell.For(ViewContext);
+    // An app shell (AppShellAttribute) has no page in it yet: the page's data brings its title, notices and the app's config.
+    var appShell = ViewData[PageShell.AppShell] is true;
+    var (notice, alert) = appShell ? (null, null) : Notices.Take(Context, TempData);
     var handle = signedIn ? User.Identity?.Name ?? "" : "";
     var profilePath = signedIn ? SitePaths.Profile(handle) : "";
-    var onOwnProfile = signedIn && page == "/Profiles/Index" && string.Equals(Context.Request.Path.Value?.TrimStart('/').Split('/')[0], handle, StringComparison.OrdinalIgnoreCase);
     // The pages that are themselves the way in: the shell offers no other sign-in or sign-up there.
     var offerSignIn = !signedIn && page is not ("/Account/Login" or "/Account/Register" or "/Account/ForgotPassword" or "/Account/ResetPassword");
-    // Admin pages hold tables: a wider column and no side column.
-    var wide = ViewData["Wide"] is true;
     // Light or dark when picked by hand (settings, the footer, the top bar's menu); otherwise the device's.
     var theme = Themes.Scheme(Themes.For(User, Context.Request));
     // What only signed-in people see, and the admin pages, have stylesheets of their own (Client/scss): linked where
@@ -37,37 +37,31 @@
     @* The app (state.ts) keeps these in step when the scheme is switched in place. *@
     <meta name="theme-color" content="#ffffff" data-scheme="light" media="@(theme switch { null => "(prefers-color-scheme: light)", Themes.Light => "all", _ => "not all" })">
     <meta name="theme-color" content="#0a0a0a" data-scheme="dark" media="@(theme switch { null => "(prefers-color-scheme: dark)", Themes.Dark => "all", _ => "not all" })">
-    <title>@ViewData["Title"] · @L["Site.Name"]</title>
+    <title>@(appShell ? L["Site.Name"] : $"{ViewData["Title"]} · {L["Site.Name"]}")</title>
     <meta name="description" content="@L["Site.Tagline"]">
     <link rel="icon" type="image/png" href="~/images/logo.png" asp-append-version="true">
     <link rel="apple-touch-icon" href="~/images/logo.png" asp-append-version="true">
     <link rel="preload" href="~/fonts/material-symbols-rounded.woff2" as="font" type="font/woff2" crossorigin>
-    <link rel="stylesheet" href="~/dist/main.css" asp-append-version="true">
-    @if (signedIn)
+    @foreach (var style in shell.Styles)
     {
-        <link rel="stylesheet" href="~/dist/member.css" asp-append-version="true">
-    }
-    @if (adminPage)
-    {
-        <link rel="stylesheet" href="~/dist/admin.css" asp-append-version="true">
+        <link rel="stylesheet" href="@($"~/dist/{style}.css")" asp-append-version="true" data-style="@style">
     }
     <script type="module" src="~/dist/app.js" asp-append-version="true"></script>
     @Chunks.ForApp(Context)
-    @await RenderSectionAsync("Head", required: false)
     @if (!signedIn)
     {
-        <link rel="prefetch" href="~/dist/member.css" asp-append-version="true">
+        <link rel="prefetch" href="~/dist/member.css" asp-append-version="true" data-style="member">
     }
     @if (admin && !adminPage)
     {
-        <link rel="prefetch" href="~/dist/admin.css" asp-append-version="true">
+        <link rel="prefetch" href="~/dist/admin.css" asp-append-version="true" data-style="admin">
     }
     @* The avatar and banner forms' (settings, an agent's page), which link it themselves. *@
-    <link rel="prefetch" href="~/dist/image-crop.css" asp-append-version="true">
+    <link rel="prefetch" href="~/dist/image-crop.css" asp-append-version="true" data-style="image-crop">
 </head>
 <body class="page" live-stream>
     <a class="skip-link" href="#main">@L["Nav.SkipToContent"]</a>
-    <div class="shell@(wide ? " shell-wide" : "")">
+    <div class="shell@(shell.Wide ? " shell-wide" : "")">
         @* Narrow screens: the logo and the account, or the way in; the sections are in the tab bar at the bottom. *@
         <header class="topbar">
             @if (signedIn)
@@ -100,17 +94,17 @@
                 </a>
                 @if (signedIn)
                 {
-                    <a class="sidenav-item" href="~/" aria-current="@Current("/Index")"><icon name="home" /><span class="sidenav-label">@L["Nav.Home"]</span></a>
-                    <a class="sidenav-item" asp-page="/Public" aria-current="@Current("/Public")"><icon name="public" /><span class="sidenav-label">@L["Nav.Public"]</span></a>
-                    <a class="sidenav-item" asp-page="/Search" aria-current="@Current("/Search")"><icon name="search" /><span class="sidenav-label">@L["Nav.Search"]</span></a>
-                    <a class="sidenav-item" asp-page="/Notifications" aria-current="@Current("/Notifications")">
+                    <a class="sidenav-item" href="~/" data-nav="home" aria-current="@shell.Current("home")"><icon name="home" /><span class="sidenav-label">@L["Nav.Home"]</span></a>
+                    <a class="sidenav-item" asp-page="/Public" data-nav="public" aria-current="@shell.Current("public")"><icon name="public" /><span class="sidenav-label">@L["Nav.Public"]</span></a>
+                    <a class="sidenav-item" asp-page="/Search" data-nav="search" aria-current="@shell.Current("search")"><icon name="search" /><span class="sidenav-label">@L["Nav.Search"]</span></a>
+                    <a class="sidenav-item" asp-page="/Notifications" data-nav="notifications" aria-current="@shell.Current("notifications")">
                         <icon name="notifications" /><span class="sidenav-label">@L["Nav.Notifications"]</span>
                         @* The unread count, once the live connection says it. *@
                         <island name="inbox-count" tag="span" />
                     </a>
-                    <a class="sidenav-item" asp-page="/Agents/Index" aria-current="@Current("/Agents/Index", "/Agents/Edit")"><icon name="smart_toy" /><span class="sidenav-label">@L["Nav.Agents"]</span></a>
-                    <a class="sidenav-item" href="@profilePath" aria-current="@(onOwnProfile ? "page" : null)"><icon name="person" /><span class="sidenav-label">@L["Nav.Profile"]</span></a>
-                    <a class="sidenav-item" asp-page="/Settings" aria-current="@Current("/Settings")"><icon name="settings" /><span class="sidenav-label">@L["Nav.Settings"]</span></a>
+                    <a class="sidenav-item" asp-page="/Agents/Index" data-nav="agents" aria-current="@shell.Current("agents")"><icon name="smart_toy" /><span class="sidenav-label">@L["Nav.Agents"]</span></a>
+                    <a class="sidenav-item" href="@profilePath" data-nav="profile" aria-current="@shell.Current("profile")"><icon name="person" /><span class="sidenav-label">@L["Nav.Profile"]</span></a>
+                    <a class="sidenav-item" asp-page="/Settings" data-nav="settings" aria-current="@shell.Current("settings")"><icon name="settings" /><span class="sidenav-label">@L["Nav.Settings"]</span></a>
                     @if (User.IsMember())
                     {
                         <a class="btn btn-primary sidenav-cta" asp-page="/Compose" aria-label="@L["Compose.Title"]"><icon name="edit_square" /><span class="sidenav-label">@L["Compose.Title"]</span></a>
@@ -118,8 +112,8 @@
                 }
                 else
                 {
-                    <a class="sidenav-item" asp-page="/Public" aria-current="@Current("/Public", "/Index")"><icon name="public" /><span class="sidenav-label">@L["Nav.Public"]</span></a>
-                    <a class="sidenav-item" asp-page="/Search" aria-current="@Current("/Search")"><icon name="search" /><span class="sidenav-label">@L["Nav.Search"]</span></a>
+                    <a class="sidenav-item" asp-page="/Public" data-nav="public" aria-current="@shell.Current("public")"><icon name="public" /><span class="sidenav-label">@L["Nav.Public"]</span></a>
+                    <a class="sidenav-item" asp-page="/Search" data-nav="search" aria-current="@shell.Current("search")"><icon name="search" /><span class="sidenav-label">@L["Nav.Search"]</span></a>
                     @if (offerSignIn)
                     {
                         <a class="sidenav-item" asp-page="/Account/Login"><icon name="login" /><span class="sidenav-label">@L["Nav.Login"]</span></a>
@@ -134,18 +128,16 @@
             }
         </nav>
 
-        <main id="main" class="shell-main">
+        @* Razor writes a data-* attribute even when null. *@
+        <main id="main" class="shell-main"@Html.Raw(appShell ? " data-app-shell" : "")>
             @RenderBody()
         </main>
 
         <aside class="shell-aside">
-            @if (page != "/Search")
-            {
-                <form class="search search-pill aside-search" role="search" method="get" asp-page="/Search">
-                    <icon name="search" />
-                    <input class="search-input" type="search" name="q" placeholder="@L["Search.Placeholder"]" aria-label="@L["Search.Label"]" autocomplete="off" required>
-                </form>
-            }
+            <form class="search search-pill aside-search" role="search" method="get" asp-page="/Search" data-part="@PageShell.SearchPart" hidden="@shell.Hide(PageShell.SearchPart)">
+                <icon name="search" />
+                <input class="search-input" type="search" name="q" placeholder="@L["Search.Placeholder"]" aria-label="@L["Search.Label"]" autocomplete="off" required>
+            </form>
             @if (offerSignIn)
             {
                 <section class="aside-card" aria-labelledby="join-title">
@@ -154,15 +146,11 @@
                     <a class="btn btn-block" asp-page="/Account/Register">@L["Nav.Register"]</a>
                 </section>
             }
-            @* The about page says all of it already. *@
-            @if (page != "/About")
-            {
-                <section class="aside-card" aria-labelledby="about-title">
-                    <h2 class="aside-title" id="about-title">@L["Aside.About.Title"]</h2>
-                    <p class="aside-text">@L["Aside.About.Text"]</p>
-                    <a class="aside-link" href="~/skill.md"><icon name="smart_toy" />@L["Footer.ForAgents"]</a>
-                </section>
-            }
+            <section class="aside-card" aria-labelledby="about-title" data-part="@PageShell.AboutPart" hidden="@shell.Hide(PageShell.AboutPart)">
+                <h2 class="aside-title" id="about-title">@L["Aside.About.Title"]</h2>
+                <p class="aside-text">@L["Aside.About.Text"]</p>
+                <a class="aside-link" href="~/skill.md"><icon name="smart_toy" />@L["Footer.ForAgents"]</a>
+            </section>
             <footer class="site-footer">
                 <partial name="_SiteOptions" model="false" />
             </footer>
@@ -171,18 +159,18 @@
         @if (signedIn)
         {
             <nav class="tabbar" aria-label="@L["Nav.Main"]">
-                <a class="tabbar-item" href="~/" aria-current="@Current("/Index")"><icon name="home" /><span class="visually-hidden">@L["Nav.Home"]</span></a>
-                <a class="tabbar-item" asp-page="/Public" aria-current="@Current("/Public")"><icon name="public" /><span class="visually-hidden">@L["Nav.Public"]</span></a>
-                <a class="tabbar-item" asp-page="/Search" aria-current="@Current("/Search")"><icon name="search" /><span class="visually-hidden">@L["Nav.Search"]</span></a>
-                <a class="tabbar-item" asp-page="/Notifications" aria-current="@Current("/Notifications")">
+                <a class="tabbar-item" href="~/" data-nav="home" aria-current="@shell.Current("home")"><icon name="home" /><span class="visually-hidden">@L["Nav.Home"]</span></a>
+                <a class="tabbar-item" asp-page="/Public" data-nav="public" aria-current="@shell.Current("public")"><icon name="public" /><span class="visually-hidden">@L["Nav.Public"]</span></a>
+                <a class="tabbar-item" asp-page="/Search" data-nav="search" aria-current="@shell.Current("search")"><icon name="search" /><span class="visually-hidden">@L["Nav.Search"]</span></a>
+                <a class="tabbar-item" asp-page="/Notifications" data-nav="notifications" aria-current="@shell.Current("notifications")">
                     <icon name="notifications" /><span class="visually-hidden">@L["Nav.Notifications"]</span>
                     <island name="inbox-count" tag="span" />
                 </a>
-                <a class="tabbar-item" asp-page="/Agents/Index" aria-current="@Current("/Agents/Index", "/Agents/Edit")"><icon name="smart_toy" /><span class="visually-hidden">@L["Nav.Agents"]</span></a>
+                <a class="tabbar-item" asp-page="/Agents/Index" data-nav="agents" aria-current="@shell.Current("agents")"><icon name="smart_toy" /><span class="visually-hidden">@L["Nav.Agents"]</span></a>
             </nav>
-            @if (User.IsMember() && page != "/Compose")
+            @if (User.IsMember())
             {
-                <a class="fab" asp-page="/Compose" aria-label="@L["Compose.Title"]"><icon name="edit_square" /></a>
+                <a class="fab" asp-page="/Compose" aria-label="@L["Compose.Title"]" data-part="@PageShell.ComposePart" hidden="@shell.Hide(PageShell.ComposePart)"><icon name="edit_square" /></a>
             }
         }
     </div>
@@ -221,7 +209,10 @@
     }
     @* A beep's images, or a profile's avatar or banner, shown at full size over the page (shell/Lightbox.tsx). *@
     <island name="lightbox" />
-    @* What the app needs besides the islands' props (Client/app/config.ts). *@
-    <script type="application/json" id="app-config">@Html.Raw(AppConfig.For(Context))</script>
+    @* What the app needs besides the islands' props (Client/app/config.ts); an app shell's comes with the page's data. *@
+    @if (!appShell)
+    {
+        <script type="application/json" id="app-config">@Html.Raw(AppConfig.For(Context))</script>
+    }
 </body>
 </html>

@@ -5,6 +5,7 @@ using Beeps.Features.Localization;
 using Beeps.Features.Media;
 using Beeps.Features.Shared;
 using Beeps.Features.Site;
+using Beeps.Pages.Islands;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.Extensions.Localization;
@@ -18,6 +19,7 @@ namespace Beeps.Pages;
 /// </summary>
 [RequestSizeLimit(MediaRules.MaxImageRequestBytes)]
 [RequestFormLimits(MultipartBodyLengthLimit = MediaRules.MaxImageRequestBytes, MemoryBufferThreshold = MediaRules.MaxImageRequestBytes)]
+[AppShell]
 public sealed class SettingsModel(AccountService accounts, AvatarService avatars, BannerService banners, IStringLocalizer<SharedResource> localizer) : PageModel
 {
     public AccountSettings Settings { get; private set; } = null!;

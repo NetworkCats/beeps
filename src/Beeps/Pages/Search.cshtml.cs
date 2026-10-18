@@ -3,6 +3,7 @@ using Beeps.Features.Live;
 using Beeps.Features.RateLimiting;
 using Beeps.Features.Search;
 using Beeps.Features.Site;
+using Beeps.Pages.Islands;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 
@@ -10,6 +11,7 @@ namespace Beeps.Pages;
 
 /// <summary>Searching beeps and people (PLAN 6.18). <c>#tag</c> goes straight to the hashtag's page (PLAN 6.19).</summary>
 [RateLimitPolicy(RateLimitPolicies.Search)]
+[AppShell]
 public sealed class SearchModel(SearchService search) : PageModel
 {
     [BindProperty(SupportsGet = true, Name = "q")] public string? Query { get; set; }

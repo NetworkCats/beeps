@@ -9,4 +9,4 @@
         PageProps.From(Model.Entries, entry => AuditEntryProps.From(entry, L, Url), next => Url.Page("/Admin/AuditLog", new { before = next })!));
 }
 @* Admins only, so signed in: Client/app/pages/admin/AuditLog.tsx draws the page from these props. *@
-<island name="admin-audit" skeleton="table" props="props" />
+<island name="admin-audit" props="props" />

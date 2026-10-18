@@ -109,20 +109,22 @@ public sealed partial class ClientAssetsTests : IDisposable
     }
 
     [Fact]
-    public async Task APageIslandWithoutMarkupShowsItsSkeletonUntilItsComponentDrawsIt()
+    public async Task AnAppShellShowsASkeletonShapedLikeThePageUntilItsDataIsDrawn()
     {
         var user = WebAuth.ArrangeUser(factory);
         using var signedOut = WebAuth.NewClient(factory);
         using var signedIn = await WebAuth.SignInAsync(factory, user);
 
         var drawn = await signedOut.GetStringAsync(new Uri("/public", UriKind.Relative), TestSupport.Ct);
-        var empty = await signedIn.GetStringAsync(new Uri("/public", UriKind.Relative), TestSupport.Ct);
+        var shell = await signedIn.GetStringAsync(new Uri("/public", UriKind.Relative), TestSupport.Ct);
+        var settings = await signedIn.GetStringAsync(new Uri("/settings/profile", UriKind.Relative), TestSupport.Ct);
 
         // Signed out the server draws the page itself.
         Assert.DoesNotContain("skeleton-page", drawn, StringComparison.Ordinal);
-        Assert.Matches("data-island=\"public\"><script[^>]*>.*?</script><div class=\"skeleton-page\" data-skeleton=\"feed\" aria-busy=\"true\">\\s*<p class=\"visually-hidden\" role=\"status\">Loading…</p>", empty);
+        Assert.Matches("<main id=\"main\" class=\"shell-main\" data-app-shell>\\s*<div class=\"skeleton-page\" data-skeleton=\"feed\" aria-busy=\"true\">\\s*<p class=\"visually-hidden\" role=\"status\">Loading…</p>", shell);
+        Assert.Contains("data-skeleton=\"form\"", settings, StringComparison.Ordinal);
         // The layout's small islands have none.
-        Assert.Single(SkeletonPage().Matches(empty));
+        Assert.Single(SkeletonPage().Matches(shell));
     }
 
     public void Dispose() => factory.Dispose();

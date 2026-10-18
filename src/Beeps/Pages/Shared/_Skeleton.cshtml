@@ -1,7 +1,7 @@
 @model string
-@* What a page island shows until its component draws it (Pages/Islands/IslandTagHelper.cs): signed in, or for a page
-   drawn in the browser only, the island comes without markup, and this stands in for it, shaped like the page so that
-   little moves when the content arrives. The component draws over it. *@
+@* What stands in for a page's content until the app draws it, shaped like the page so that little moves when it
+   arrives: signed in, an app shell's content (_AppShell.cshtml) until the page's data has come; signed out, a page drawn
+   in the browser only (Pages/Islands/IslandTagHelper.cs) until its component has loaded. *@
 @{
     // Line widths, so the placeholders do not all look the same.
     string[] widths = ["w-90", "w-70", "w-80", "w-60", "w-90", "w-50"];
@@ -9,15 +9,7 @@
 <div class="skeleton-page" data-skeleton="@Model" aria-busy="true">
     <p class="visually-hidden" role="status">@L["Page.Loading"]</p>
     <div aria-hidden="true">
-        @if (Model == "block")
-        {
-            <div class="skeleton-block">
-                <span class="skeleton skeleton-text skeleton-w-80"></span>
-                <span class="skeleton skeleton-text skeleton-w-60"></span>
-                <span class="skeleton skeleton-input"></span>
-            </div>
-        }
-        else if (Model == "table")
+        @if (Model == "table")
         {
             <div class="skeleton-admin">
                 <span class="skeleton skeleton-title skeleton-w-30"></span>

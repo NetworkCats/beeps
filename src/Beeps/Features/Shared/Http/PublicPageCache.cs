@@ -24,7 +24,7 @@ public sealed class PublicPageCacheOptions
 /// </summary>
 public static class PublicPageCache
 {
-    /// <summary>Pages.Islands.IslandRequests.Header: Features do not depend on the pages.</summary>
+    /// <summary>Pages.Islands.IslandRequests.Header, which marks a request for a page's data: Features do not depend on the pages.</summary>
     private const string IslandsHeader = "X-Beeps-Islands";
 
     /// <summary>Put on a PageModel as <c>[OutputCache(PolicyName = PublicPageCache.Policy)]</c>.</summary>
@@ -48,7 +48,7 @@ public static class PublicPageCache
                     .Tag(PageTags.All)
                     .VaryByValue(_ => new KeyValuePair<string, string>("culture", CultureInfo.CurrentUICulture.Name))
                     .VaryByValue(context => new KeyValuePair<string, string>("theme", ThemeCookie.Read(context.Request) ?? Themes.System))
-                    // The same address answers with a page or, for the app, with its islands' props (Pages/Islands).
+                    // A page's data (/page-data/…) is asked for as the page itself, marked by this header (Pages/Islands).
                     .SetVaryByHeader(IslandsHeader);
             }));
         return services;

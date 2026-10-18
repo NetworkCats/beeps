@@ -1,5 +1,4 @@
 using System.Net;
-using System.Text.Json;
 using Beeps.Features.Accounts;
 using Beeps.Features.Agents;
 using Beeps.Features.Beeps;
@@ -24,11 +23,12 @@ public sealed partial class LivePagesTests : IDisposable
         using var client = await WebAuth.SignInAsync(factory, user);
 
         var html = await client.GetStringAsync(new Uri("/", UriKind.Relative), TestSupport.Ct);
+        var page = await Islands.PageAsync(client, "/");
 
         Assert.Matches("<script type=\"module\" src=\"/dist/app\\.[^\"]+\"></script>", html);
         // The render time lets the stream replay what happened before the script connected.
         Assert.Matches($"<body class=\"page\" data-auth=\"member:{user.Id:D}\" data-live-stream=\"/stream\" data-live-from=\"[0-9]{{13}}\">", html);
-        Assert.Equal("home", Islands.Props(html, "index").GetProperty("live").GetProperty("watch").GetString());
+        Assert.Equal("home", Islands.Props(page, "index").GetProperty("live").GetProperty("watch").GetString());
         PageAssert.NoInlineScriptsOrStyles(html);
     }
 
@@ -38,10 +38,8 @@ public sealed partial class LivePagesTests : IDisposable
         var user = WebAuth.ArrangeUser(factory);
         using var client = await WebAuth.SignInAsync(factory, user);
 
-        var html = await client.GetStringAsync(new Uri("/", UriKind.Relative), TestSupport.Ct);
-        using var config = JsonDocument.Parse(AppConfigPattern().Match(html).Groups[1].Value);
+        var root = Islands.Config(await Islands.PageAsync(client, "/"));
 
-        var root = config.RootElement;
         // Only where the text is: it is fetched apart and kept by the browser (ClientStringsTests).
         Assert.Matches("^/strings/en\\.json\\?v=[0-9a-f]{10}$", root.GetProperty("stringsUrl").GetString());
         Assert.False(string.IsNullOrEmpty(root.GetProperty("antiforgery").GetProperty("token").GetString()));
@@ -57,11 +55,12 @@ public sealed partial class LivePagesTests : IDisposable
         using var client = await WebAuth.SignInAsync(factory, newbie);
 
         var html = await client.GetStringAsync(new Uri("/public", UriKind.Relative), TestSupport.Ct);
+        var page = await Islands.PageAsync(client, "/public");
 
         // Connected, so the tab follows its verification elsewhere, but nothing on the page is followed.
         Assert.Matches($"<body class=\"page\" data-auth=\"unverified:{newbie.Id:D}\" data-live-stream=\"/stream\" data-live-from=\"[0-9]{{13}}\">", html);
         Assert.Contains("/dist/app.", html, StringComparison.Ordinal);
-        Assert.False(Islands.Props(html, "public").GetProperty("live").TryGetProperty("watch", out _));
+        Assert.False(Islands.Props(page, "public").GetProperty("live").TryGetProperty("watch", out _));
     }
 
     [Fact]
@@ -99,10 +98,10 @@ public sealed partial class LivePagesTests : IDisposable
         factory.Timelines.PublicAsync(default!, default, TestSupport.Ct).ReturnsForAnyArgs(new CursorPage<BeepRow>([root], null));
         using var client = await WebAuth.SignInAsync(factory, user);
 
-        var first = await client.GetStringAsync(new Uri("/public", UriKind.Relative), TestSupport.Ct);
-        var older = await client.GetStringAsync(new Uri($"/public?before={Guid.NewGuid()}", UriKind.Relative), TestSupport.Ct);
-        var lastPage = await client.GetStringAsync(new Uri($"/beeps/{root.Id}", UriKind.Relative), TestSupport.Ct);
-        var notLast = await client.GetStringAsync(new Uri($"/beeps/{root.Id}", UriKind.Relative), TestSupport.Ct);
+        var first = await Islands.PageAsync(client, "/public");
+        var older = await Islands.PageAsync(client, $"/public?before={Guid.NewGuid()}");
+        var lastPage = await Islands.PageAsync(client, $"/beeps/{root.Id}");
+        var notLast = await Islands.PageAsync(client, $"/beeps/{root.Id}");
 
         Assert.Equal("public", Islands.Props(first, "public").GetProperty("live").GetProperty("watch").GetString());
         Assert.Equal(root.Id, Islands.Props(first, "public").GetProperty("list").GetProperty("items")[0].GetProperty("id").GetGuid());
@@ -127,9 +126,9 @@ public sealed partial class LivePagesTests : IDisposable
         factory.Profiles.ListAgentsAsync(alice.Id, Arg.Any<CancellationToken>()).Returns([]);
         using var client = await WebAuth.SignInAsync(factory, user);
 
-        var profile = await client.GetStringAsync(new Uri("/alice/replies", UriKind.Relative), TestSupport.Ct);
-        var tag = await client.GetStringAsync(new Uri("/tags/%23Beeps", UriKind.Relative), TestSupport.Ct);
-        var inbox = await client.GetStringAsync(new Uri("/notifications", UriKind.Relative), TestSupport.Ct);
+        var profile = await Islands.PageAsync(client, "/alice/replies");
+        var tag = await Islands.PageAsync(client, "/tags/%23Beeps");
+        var inbox = await Islands.PageAsync(client, "/notifications");
 
         var live = Islands.Props(profile, "profile").GetProperty("live");
         Assert.Equal($"replies:{alice.Id:D}", live.GetProperty("watch").GetString());
@@ -152,14 +151,14 @@ public sealed partial class LivePagesTests : IDisposable
         var user = WebAuth.ArrangeUser(factory);
         using var client = await WebAuth.SignInAsync(factory, user);
 
-        var list = await client.GetStringAsync(new Uri("/agents", UriKind.Relative), TestSupport.Ct);
+        var list = await Islands.PageAsync(client, "/agents");
         using var created = await WebAuth.PostFormAsync(client, "/agents", "/agents?handler=Create");
         var withKey = await created.Content.ReadAsStringAsync(TestSupport.Ct);
         var agentId = Islands.Props(withKey, "agents").GetProperty("newKey").GetProperty("agentId").GetString()!;
         factory.Agents.ListAgentsAsync(user.Id, Arg.Any<CancellationToken>())
             .Returns([new AgentRow(Guid.Parse(agentId), null, null, null, TestData.Now, null, "beeps_abc", TestData.Now, null)]);
-        var waiting = await client.GetStringAsync(new Uri($"/onboarding/connect/{agentId}", UriKind.Relative), TestSupport.Ct);
-        var again = await client.GetStringAsync(new Uri("/agents", UriKind.Relative), TestSupport.Ct);
+        var waiting = await Islands.PageAsync(client, $"/onboarding/connect/{agentId}");
+        var again = await Islands.PageAsync(client, "/agents");
 
         Assert.Equal([user.Id.ToString("D")], Islands.Strings(Islands.Props(list, "agents").GetProperty("live").GetProperty("actors")));
         var newKey = Islands.Props(withKey, "agents").GetProperty("newKey");
@@ -201,7 +200,7 @@ public sealed partial class LivePagesTests : IDisposable
         using var anonymous = WebAuth.NewClient(factory);
         var beep = TestBeeps.Row("hi", TestBeeps.Human("alice"));
         TestBeeps.Arrange(factory, beep);
-        var token = TestSupport.AntiforgeryToken(await client.GetStringAsync(new Uri("/public", UriKind.Relative), TestSupport.Ct));
+        var token = await WebAuth.TokenAsync(client, "/public");
         var url = new Uri($"/live/beeps/{beep.Id:D}/view", UriKind.Relative);
 
         using var viewed = await client.PostAsync(url, new FormUrlEncodedContent([KeyValuePair.Create("__RequestVerificationToken", token)]), TestSupport.Ct);
@@ -220,7 +219,7 @@ public sealed partial class LivePagesTests : IDisposable
     {
         var member = WebAuth.ArrangeUser(factory, "tom");
         using var client = await WebAuth.SignInAsync(factory, member);
-        var token = TestSupport.AntiforgeryToken(await client.GetStringAsync(new Uri("/public", UriKind.Relative), TestSupport.Ct));
+        var token = await WebAuth.TokenAsync(client, "/public");
         var (one, two) = (Guid.CreateVersion7(), Guid.CreateVersion7());
         var url = new Uri("/live/notifications/seen", UriKind.Relative);
         FormUrlEncodedContent Form(string ids) => new([KeyValuePair.Create("__RequestVerificationToken", token), KeyValuePair.Create("ids", ids)]);
@@ -346,11 +345,12 @@ public sealed partial class LivePagesTests : IDisposable
         var user = WebAuth.ArrangeUser(factory);
         using var client = await WebAuth.SignInAsync(factory, user);
 
-        var settings = await client.GetStringAsync(new Uri("/settings", UriKind.Relative), TestSupport.Ct);
+        var html = await client.GetStringAsync(new Uri("/settings", UriKind.Relative), TestSupport.Ct);
+        var settings = await Islands.PageAsync(client, "/settings");
         using var response = await client.GetAsync(new Uri("/live/viewer", UriKind.Relative), TestSupport.Ct);
 
         // The navigation's account menus show the avatar, and the settings page its own, which follows the account.
-        Assert.Equal(2, Islands.Names(settings).Count(name => name == "account-menu"));
+        Assert.Equal(2, Islands.Names(html).Count(name => name == "account-menu"));
         Assert.Equal([user.Id.ToString("D")], Islands.Strings(Islands.Props(settings, "settings").GetProperty("live").GetProperty("actors")));
         var viewer = await Islands.JsonAsync(response);
         Assert.Equal(user.Id, viewer.GetProperty("id").GetGuid());
@@ -389,7 +389,7 @@ public sealed partial class LivePagesTests : IDisposable
         using var byId = await anonymous.GetAsync(new Uri($"/actors/{agent.Id:D}/replies?before={Guid.Empty:D}", UriKind.Relative), TestSupport.Ct);
         using var gone = await anonymous.GetAsync(new Uri($"/actors/{Guid.NewGuid():D}", UriKind.Relative), TestSupport.Ct);
         var signedOut = await anonymous.GetStringAsync(new Uri("/tom.renamed", UriKind.Relative), TestSupport.Ct);
-        var signedIn = await member.GetStringAsync(new Uri("/tom.renamed", UriKind.Relative), TestSupport.Ct);
+        var signedIn = await Islands.PageAsync(member, "/tom.renamed");
 
         Assert.Equal(HttpStatusCode.Redirect, byId.StatusCode);
         Assert.Equal($"/tom.renamed/replies?before={Guid.Empty:D}", byId.Headers.Location?.OriginalString);
@@ -403,7 +403,7 @@ public sealed partial class LivePagesTests : IDisposable
     }
 
     [Fact]
-    public async Task AnIslandsRequestAnswersWithThePagesPropsAlone()
+    public async Task APagesDataIsJsonAtItsAddressUnderPageData()
     {
         var user = WebAuth.ArrangeUser(factory);
         var beep = TestBeeps.Row("hello", TestBeeps.Human("alice"));
@@ -420,12 +420,127 @@ public sealed partial class LivePagesTests : IDisposable
         var islands = page.GetProperty("islands");
         Assert.Equal(["public"], islands.EnumerateObject().Select(p => p.Name));
         Assert.Equal(beep.Id, islands.GetProperty("public").GetProperty("props").GetProperty("list").GetProperty("items")[0].GetProperty("id").GetGuid());
-        // The same address answers with HTML too: neither may stand in for the other.
+        // An address of its own: nothing to vary by, and never kept.
         Assert.Equal("no-store", response.Headers.CacheControl?.ToString());
-        Assert.Contains(Beeps.Pages.Islands.IslandRequests.Header, response.Headers.Vary);
+        Assert.Empty(response.Headers.Vary);
         // Signed out too (a list's next page): the same props, nothing personal.
         var signedOutPage = await Islands.JsonAsync(signedOut);
         Assert.False(signedOutPage.GetProperty("islands").GetProperty("public").GetProperty("props").GetProperty("live").TryGetProperty("watch", out _));
+        Assert.Equal("", signedOutPage.GetProperty("page").GetProperty("config").GetProperty("antiforgery").GetProperty("token").GetString());
+        Assert.False(signedOutPage.GetProperty("page").TryGetProperty("auth", out _));
+    }
+
+    [Fact]
+    public async Task APagesDataSaysAllTheAppNeedsToShowIt()
+    {
+        var user = WebAuth.ArrangeUser(factory);
+        var beep = TestBeeps.Row("hello", TestBeeps.Human("alice"));
+        TestBeeps.Arrange(factory, beep);
+        factory.Timelines.PublicAsync(default!, default, TestSupport.Ct).ReturnsForAnyArgs(new CursorPage<BeepRow>([beep], null));
+        using var member = await WebAuth.SignInAsync(factory, user);
+
+        using var response = await Islands.GetAsync(member, "/public");
+        using var search = await Islands.GetAsync(member, "/search");
+
+        var answer = await Islands.JsonAsync(response);
+        Assert.Equal(beep.Id, answer.GetProperty("islands").GetProperty("public").GetProperty("props").GetProperty("list").GetProperty("items")[0].GetProperty("id").GetGuid());
+        var page = answer.GetProperty("page");
+        // The content column with its island empty, no skeleton and no props in it: those come as JSON beside it.
+        Assert.Equal("<div class=\"island\" data-island=\"public\"></div>", page.GetProperty("main").GetString()!.Trim());
+        Assert.Equal("en", page.GetProperty("lang").GetString());
+        Assert.Equal($"member:{user.Id:D}", page.GetProperty("auth").GetString());
+        Assert.True(page.GetProperty("liveFrom").GetInt64() > 0);
+        Assert.Equal("tom", page.GetProperty("config").GetProperty("viewer").GetProperty("handle").GetString());
+        Assert.False(string.IsNullOrEmpty(page.GetProperty("config").GetProperty("antiforgery").GetProperty("token").GetString()));
+        var shell = page.GetProperty("shell");
+        Assert.Equal("public", shell.GetProperty("nav").GetString());
+        Assert.Empty(shell.GetProperty("hidden").EnumerateArray());
+        Assert.Equal(["main", "member"], Islands.Strings(shell.GetProperty("styles")));
+        // The search page has a search box of its own: the side column's is left out.
+        var searchShell = (await Islands.JsonAsync(search)).GetProperty("page").GetProperty("shell");
+        Assert.Equal("search", searchShell.GetProperty("nav").GetString());
+        Assert.Equal(["search"], Islands.Strings(searchShell.GetProperty("hidden")));
+    }
+
+    [Fact]
+    public async Task AskingForAPagesDataIsOnlyDoneUnderPageData()
+    {
+        var user = WebAuth.ArrangeUser(factory);
+        using var member = await WebAuth.SignInAsync(factory, user);
+        using var anonymous = WebAuth.NewClient(factory);
+
+        using var signedOut = await GetMarkedAsync(anonymous, "/public");
+        using var signedIn = await GetMarkedAsync(member, "/public");
+
+        // The mark is the server's own: brought along, it is dropped, and the page answers as a page.
+        Assert.Equal("text/html", signedOut.Content.Headers.ContentType?.MediaType);
+        Assert.Contains("<section class=\"feed\">", await signedOut.Content.ReadAsStringAsync(TestSupport.Ct), StringComparison.Ordinal);
+        Assert.Equal("text/html", signedIn.Content.Headers.ContentType?.MediaType);
+
+        static async Task<HttpResponseMessage> GetMarkedAsync(HttpClient client, string url)
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Get, new Uri(url, UriKind.Relative));
+            request.Headers.Add(Beeps.Pages.Islands.IslandRequests.Header, "1");
+            return await client.SendAsync(request, TestSupport.Ct);
+        }
+    }
+
+    [Fact]
+    public async Task SignedInAnAppPageIsItsLayoutAloneAndRunsNothingOfThePage()
+    {
+        var user = WebAuth.ArrangeUser(factory);
+        using var client = await WebAuth.SignInAsync(factory, user);
+
+        var html = await client.GetStringAsync(new Uri("/public", UriKind.Relative), TestSupport.Ct);
+        var profile = await client.GetStringAsync(new Uri("/alice", UriKind.Relative), TestSupport.Ct);
+
+        // A skeleton shaped like the page, until the app has its data: no title of its own, no props, no config.
+        Assert.Matches("<main id=\"main\" class=\"shell-main\" data-app-shell>\\s*<div class=\"skeleton-page\" data-skeleton=\"feed\"", html);
+        Assert.Contains("<title>beeps</title>", html, StringComparison.Ordinal);
+        Assert.DoesNotContain("data-island=\"public\"", html, StringComparison.Ordinal);
+        Assert.DoesNotContain("id=\"app-config\"", html, StringComparison.Ordinal);
+        // The layout is there as ever, its islands with their props.
+        Assert.Matches($"<body class=\"page\" data-auth=\"member:{user.Id:D}\" data-live-stream=\"/stream\" data-live-from=\"[0-9]{{13}}\">", html);
+        Assert.Equal(2, Islands.Names(html).Count(name => name == "account-menu"));
+        Assert.Contains("data-skeleton=\"profile\"", profile, StringComparison.Ordinal);
+        await factory.Timelines.DidNotReceiveWithAnyArgs().PublicAsync(default!, default, TestSupport.Ct);
+        await factory.Profiles.DidNotReceiveWithAnyArgs().FindByHandleAsync(default!, TestSupport.Ct);
+        PageAssert.NoInlineScriptsOrStyles(html);
+    }
+
+    [Fact]
+    public async Task ARedirectFromAPagesDataLeadsToTheDataOfThePageItLeadsTo()
+    {
+        var user = WebAuth.ArrangeUser(factory);
+        var beep = Guid.NewGuid();
+        using var client = await WebAuth.SignInAsync(factory, user);
+
+        using var anonymous = WebAuth.NewClient(factory);
+
+        using var response = await Islands.GetAsync(client, $"/beeps/{beep:D}/actions");
+        using var signedOut = await Islands.GetAsync(anonymous, "/settings");
+
+        Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
+        Assert.Equal($"/page-data/beeps/{beep:D}", response.Headers.Location?.OriginalString);
+        // The sign-in challenge's, which is absolute, too; it comes back to the page itself.
+        Assert.Equal(HttpStatusCode.Redirect, signedOut.StatusCode);
+        Assert.Equal("/page-data/login", signedOut.Headers.Location?.AbsolutePath);
+        Assert.Contains("ReturnUrl=%2Fsettings", signedOut.Headers.Location?.Query, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task APageNotFoundAnswersAsDataToo()
+    {
+        var user = WebAuth.ArrangeUser(factory);
+        using var client = await WebAuth.SignInAsync(factory, user);
+
+        using var response = await Islands.GetAsync(client, $"/beeps/{Guid.NewGuid():D}");
+
+        // The error page, as JSON: the app shows it in place, and shows the page again once what it is about is back.
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        var page = await Islands.JsonAsync(response);
+        Assert.Empty(page.GetProperty("islands").EnumerateObject());
+        Assert.Contains("error-page", page.GetProperty("page").GetProperty("main").GetString(), StringComparison.Ordinal);
     }
 
     [Fact]
@@ -438,12 +553,13 @@ public sealed partial class LivePagesTests : IDisposable
         using var client = await WebAuth.SignInAsync(factory, user);
 
         using var followed = await Islands.PostFormAsync(client, "/bob", "/bob/follow?handler=Follow");
-        // The browser follows the redirect with the same header; this client does not.
-        using var back = await Islands.GetAsync(client, followed.Headers.Location!.OriginalString);
+        // The browser follows the redirect, which stays with the page's data; this client does not.
+        using var back = await client.GetAsync(followed.Headers.Location, TestSupport.Ct);
         using var refused = await Islands.PostFormAsync(client, "/settings", "/settings?handler=Profile", ("DisplayName", ""), ("Bio", ""));
 
         // Followed: back on the profile, whose props come with what was done.
         Assert.Equal(HttpStatusCode.Redirect, followed.StatusCode);
+        Assert.Equal("/page-data/bob", followed.Headers.Location?.OriginalString);
         var page = await Islands.JsonAsync(back);
         Assert.False(string.IsNullOrEmpty(page.GetProperty("notice").GetString()));
         Assert.True(page.GetProperty("islands").TryGetProperty("profile", out _));
@@ -489,7 +605,4 @@ public sealed partial class LivePagesTests : IDisposable
 
     [System.Text.RegularExpressions.GeneratedRegex("<script data-island-props=\"\" type=\"application/json\">.*?</script>")]
     private static partial System.Text.RegularExpressions.Regex IslandPropsPattern();
-
-    [System.Text.RegularExpressions.GeneratedRegex("<script type=\"application/json\" id=\"app-config\">(.*?)</script>")]
-    private static partial System.Text.RegularExpressions.Regex AppConfigPattern();
 }

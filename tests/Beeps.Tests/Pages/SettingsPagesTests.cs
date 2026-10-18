@@ -20,8 +20,9 @@ public sealed class SettingsPagesTests : IDisposable
         using var client = await WebAuth.SignInAsync(factory, user);
 
         var html = await client.GetStringAsync(new Uri("/settings", UriKind.Relative), TestSupport.Ct);
+        var page = await Islands.PageAsync(client, "/settings");
 
-        var settings = Islands.Props(html, "settings");
+        var settings = Islands.Props(page, "settings");
         Assert.Equal("tom", settings.GetProperty("handle").GetString());
         Assert.Equal("tom", settings.GetProperty("displayName").GetString());
         Assert.Equal("about me", settings.GetProperty("bio").GetString());
@@ -43,9 +44,9 @@ public sealed class SettingsPagesTests : IDisposable
         var user = WebAuth.ArrangeUser(factory);
         using var client = await WebAuth.SignInAsync(factory, user);
 
-        var html = await client.GetStringAsync(new Uri(url, UriKind.Relative), TestSupport.Ct);
+        var page = await Islands.PageAsync(client, url);
 
-        var settings = Islands.Props(html, "settings");
+        var settings = Islands.Props(page, "settings");
         Assert.Equal(section, settings.TryGetProperty("section", out var shown) ? shown.GetString() : null);
         Assert.Equal("tom@example.com", settings.GetProperty("email").GetString());
     }
@@ -99,11 +100,11 @@ public sealed class SettingsPagesTests : IDisposable
         using var client = await WebAuth.SignInAsync(factory, user);
 
         using var response = await WebAuth.PostFormAsync(client, "/settings", "/settings?handler=Profile", ("DisplayName", "Tom T."), ("Bio", "hello"));
-        var html = await client.GetStringAsync(new Uri("/settings", UriKind.Relative), TestSupport.Ct);
+        var page = await Islands.PageAsync(client, "/settings");
 
         Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
         Assert.Equal(("Tom T.", "hello"), (user.Actor.DisplayName, user.Actor.Bio));
-        Assert.Contains("Profile saved.", html, StringComparison.Ordinal);
+        Assert.Contains("Profile saved.", page, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -143,7 +144,7 @@ public sealed class SettingsPagesTests : IDisposable
 
         using var response = await WebAuth.PostFormAsync(client, "/settings", "/settings?handler=Password",
             ("CurrentPassword", WebAuth.Password), ("NewPassword", "a brand new password"));
-        using var here = await client.GetAsync(new Uri("/settings", UriKind.Relative), TestSupport.Ct);
+        using var here = await Islands.GetAsync(client, "/settings");
         using var there = await elsewhere.GetAsync(new Uri("/settings", UriKind.Relative), TestSupport.Ct);
 
         Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
@@ -181,11 +182,11 @@ public sealed class SettingsPagesTests : IDisposable
 
         using var asked = await WebAuth.PostFormAsync(client, "/settings/email", "/settings/email?handler=Email",
             ("NewEmail", "new@example.org"), ("CurrentPassword", WebAuth.Password));
-        var waiting = Islands.Props(await client.GetStringAsync(new Uri("/settings/email", UriKind.Relative), TestSupport.Ct), "settings");
+        var waiting = Islands.Props(await Islands.PageAsync(client, "/settings/email"), "settings");
         var code = factory.Services.GetRequiredService<IDataProtectionProvider>().CreateProtector(AccountCodeEmail.ProtectorPurpose)
             .Unprotect(SentCode().ProtectedCode);
         using var confirmed = await WebAuth.PostFormAsync(client, "/settings/email", "/settings/email?handler=ConfirmEmail", ("Code", code));
-        var account = await client.GetStringAsync(new Uri("/settings/account", UriKind.Relative), TestSupport.Ct);
+        var account = await Islands.PageAsync(client, "/settings/account");
 
         Assert.Equal("/settings/email", asked.Headers.Location?.OriginalString);
         Assert.Equal("new@example.org", waiting.GetProperty("pendingEmail").GetString());
@@ -221,7 +222,7 @@ public sealed class SettingsPagesTests : IDisposable
         factory.Accounts.FindEmailCodeAsync(EmailCodePurpose.ChangeEmail, "tom@example.com", Arg.Any<CancellationToken>()).Returns(code);
         using var client = await WebAuth.SignInAsync(factory, user);
 
-        var page = Islands.Props(await client.GetStringAsync(new Uri("/settings/email", UriKind.Relative), TestSupport.Ct), "settings");
+        var page = Islands.Props(await Islands.PageAsync(client, "/settings/email"), "settings");
         code.CreatedAt = DateTimeOffset.UtcNow - TimeSpan.FromMinutes(2);
         using var resent = await WebAuth.PostFormAsync(client, "/settings/email", "/settings/email?handler=ResendEmail");
 
@@ -240,13 +241,14 @@ public sealed class SettingsPagesTests : IDisposable
         using var page = await client.GetAsync(new Uri("/login", UriKind.Relative), TestSupport.Ct);
         using var response = await WebAuth.PostFormAsync(client, "/", "/login", ("Login", "alice"), ("Password", WebAuth.Password));
         var html = await client.GetStringAsync(new Uri("/", UriKind.Relative), TestSupport.Ct);
+        var data = await Islands.PageAsync(client, "/");
 
         Assert.Equal("/", page.Headers.Location?.OriginalString);
         Assert.Equal("/", response.Headers.Location?.OriginalString);
-        Assert.Contains("You are already signed in as @tom.", html, StringComparison.Ordinal);
+        Assert.Contains("You are already signed in as @tom.", data, StringComparison.Ordinal);
         // Still tom's account menu.
         Assert.Contains("account-menu", Islands.Names(html));
-        Assert.Equal("tom", Islands.Config(html).GetProperty("viewer").GetProperty("handle").GetString());
+        Assert.Equal("tom", Islands.Config(data).GetProperty("viewer").GetProperty("handle").GetString());
         Assert.DoesNotContain(factory.Sessions.All, s => s.UserId == alice.Id);
     }
 
@@ -265,12 +267,13 @@ public sealed class SettingsPagesTests : IDisposable
         using var client = await WebAuth.SignInAsync(factory, user);
 
         var html = await client.GetStringAsync(new Uri($"/agents/{agent.Id}", UriKind.Relative), TestSupport.Ct);
+        var page = await Islands.PageAsync(client, $"/agents/{agent.Id}");
         using var response = await WebAuth.PostFormAsync(client, $"/agents/{agent.Id}", $"/agents/{agent.Id}",
             ("DisplayName", "Helper"), ("HandleName", "helper"), ("Bio", "I help."));
-        var list = await client.GetStringAsync(new Uri("/agents", UriKind.Relative), TestSupport.Ct);
+        var list = await Islands.PageAsync(client, "/agents");
 
         // The name after "@tom.", which is fixed.
-        var edit = Islands.Props(html, "agent");
+        var edit = Islands.Props(page, "agent");
         Assert.Equal("tom", edit.GetProperty("ownerHandle").GetString());
         Assert.Equal("claude", edit.GetProperty("handleName").GetString());
         PageAssert.NoInlineScriptsOrStyles(html);
@@ -291,12 +294,12 @@ public sealed class SettingsPagesTests : IDisposable
         factory.Agents.ListAgentsAsync(user.Id, Arg.Any<CancellationToken>()).Returns([new AgentRow(id, null, null, null, TestData.Now, null, "beeps_abc", TestData.Now, null)]);
         using var client = await WebAuth.SignInAsync(factory, user);
 
-        var html = await client.GetStringAsync(new Uri($"/agents/{id}", UriKind.Relative), TestSupport.Ct);
-        using var someoneElses = await client.GetAsync(new Uri($"/agents/{Guid.NewGuid()}", UriKind.Relative), TestSupport.Ct);
+        var data = await Islands.PageAsync(client, $"/agents/{id}");
+        using var someoneElses = await Islands.GetAsync(client, $"/agents/{Guid.NewGuid()}");
 
         // The page says so (AgentEdit.tsx) and offers no form.
-        Assert.False(Islands.Props(html, "agent").GetProperty("agent").TryGetProperty("connected", out _));
-        Assert.DoesNotContain("HandleName", html, StringComparison.Ordinal);
+        Assert.False(Islands.Props(data, "agent").GetProperty("agent").TryGetProperty("connected", out _));
+        Assert.DoesNotContain("HandleName", data, StringComparison.Ordinal);
         Assert.Equal(HttpStatusCode.NotFound, someoneElses.StatusCode);
     }
 

@@ -99,11 +99,11 @@ public sealed class MediaPagesTests : IDisposable
         var user = WebAuth.ArrangeUser(factory);
         using var client = await WebAuth.SignInAsync(factory, user);
 
-        var html = await client.GetStringAsync(new Uri("/", UriKind.Relative), TestSupport.Ct);
+        var page = await Islands.PageAsync(client, "/");
 
         // The composer, which the app draws with its image picker.
-        Assert.True(Islands.Props(html, "index").TryGetProperty("composer", out _));
-        var config = Islands.Config(html);
+        Assert.True(Islands.Props(page, "index").TryGetProperty("composer", out _));
+        var config = Islands.Config(page);
         // The app checks the picked images against the same limits before they are sent.
         Assert.Equal(MediaRules.MaxImagesPerBeep, config.GetProperty("limits").GetProperty("imagesPerBeep").GetInt32());
         Assert.Equal(MediaRules.MaxBytes, config.GetProperty("limits").GetProperty("mediaBytes").GetInt64());
@@ -158,7 +158,7 @@ public sealed class MediaPagesTests : IDisposable
         factory.Media.When(m => m.AddUpload(Arg.Any<MediaUpload>())).Do(ci => upload = ci.Arg<MediaUpload>());
         using var client = await WebAuth.SignInAsync(factory, user);
 
-        var page = await client.GetStringAsync(new Uri("/settings", UriKind.Relative), TestSupport.Ct);
+        var page = await Islands.PageAsync(client, "/settings");
         // A strip of the bottom-right quadrant of a 400 × 200 image.
         using var response = await PostMultipartAsync(
             client, "/settings", "/settings?handler=Banner", [("BannerCrop.X", "210"), ("BannerCrop.Y", "120"), ("BannerCrop.Width", "150")], [TestImages.Quadrants(400, 200)], "Banner");
@@ -223,11 +223,13 @@ public sealed class MediaPagesTests : IDisposable
 
         var url = string.Format(System.Globalization.CultureInfo.InvariantCulture, path, agentId);
         var html = await client.GetStringAsync(new Uri(url, UriKind.Relative), TestSupport.Ct);
+        var page = await Islands.PageAsync(client, url);
 
-        // The cropper itself comes with the app, once a file is picked.
-        Assert.Matches("<link rel=\"stylesheet\" href=\"/dist/image-crop\\.[a-z0-9]+\\.css\"", html);
+        // The cropper itself comes with the app, once a file is picked; its stylesheet is fetched ahead, and linked as the page is shown.
+        Assert.Matches("<link rel=\"prefetch\" href=\"/dist/image-crop\\.[a-z0-9]+\\.css\" data-style=\"image-crop\"", html);
+        Assert.Contains("image-crop", Islands.Strings(Islands.Data(page).GetProperty("shell").GetProperty("styles")));
         // The avatar form (with the crop the cropper picks), posting back to the page.
-        Assert.Equal(url, Islands.Props(html, path == "/settings/profile" ? "settings" : "agent").GetProperty("avatar").GetProperty("action").GetString());
+        Assert.Equal(url, Islands.Props(page, path == "/settings/profile" ? "settings" : "agent").GetProperty("avatar").GetProperty("action").GetString());
         PageAssert.NoInlineScriptsOrStyles(html);
     }
 
@@ -252,14 +254,15 @@ public sealed class MediaPagesTests : IDisposable
         using var client = await WebAuth.SignInAsync(factory, user);
 
         var html = await client.GetStringAsync(new Uri("/settings", UriKind.Relative), TestSupport.Ct);
+        var page = await Islands.PageAsync(client, "/settings");
 
         // The avatar editor, which offers to remove it, and the account menus of the navigation rail and the narrow
         // screens' top bar, drawn from who is signed in.
-        var avatar = Islands.Props(html, "settings").GetProperty("avatar");
+        var avatar = Islands.Props(page, "settings").GetProperty("avatar");
         Assert.Equal("https://media.beeps.test/face/avatar.webp", avatar.GetProperty("avatarUrl").GetString());
         Assert.True(avatar.GetProperty("hasCustomAvatar").GetBoolean());
         Assert.Equal(2, Islands.Names(html).Count(name => name == "account-menu"));
-        Assert.Equal("https://media.beeps.test/face/avatar.webp", Islands.Config(html).GetProperty("viewer").GetProperty("avatar").GetString());
+        Assert.Equal("https://media.beeps.test/face/avatar.webp", Islands.Config(page).GetProperty("viewer").GetProperty("avatar").GetString());
         PageAssert.NoInlineScriptsOrStyles(html);
     }
 
@@ -269,9 +272,9 @@ public sealed class MediaPagesTests : IDisposable
         var user = WebAuth.ArrangeUser(factory);
         using var client = await WebAuth.SignInAsync(factory, user);
 
-        var html = await client.GetStringAsync(new Uri("/settings", UriKind.Relative), TestSupport.Ct);
+        var page = await Islands.PageAsync(client, "/settings");
 
-        var avatar = Islands.Props(html, "settings").GetProperty("avatar");
+        var avatar = Islands.Props(page, "settings").GetProperty("avatar");
         Assert.Equal($"https://beeps.test/avatars/{user.Id:D}.svg", avatar.GetProperty("avatarUrl").GetString());
         Assert.False(avatar.TryGetProperty("hasCustomAvatar", out _));
     }
@@ -301,7 +304,7 @@ public sealed class MediaPagesTests : IDisposable
         factory.Avatars.FindActorAsync(agentId, Arg.Any<CancellationToken>()).Returns(new AvatarTarget(agentId, ActorKind.Agent, user.Id));
         using var client = await WebAuth.SignInAsync(factory, user);
 
-        var page = await client.GetStringAsync(new Uri($"/agents/{agentId}", UriKind.Relative), TestSupport.Ct);
+        var page = await Islands.PageAsync(client, $"/agents/{agentId}");
         using var set = await PostMultipartAsync(client, $"/agents/{agentId}", $"/agents/{agentId}?handler=Avatar", [], [TestImages.Png()], "Avatar");
         using var removed = await WebAuth.PostFormAsync(client, $"/agents/{agentId}", $"/agents/{agentId}?handler=RemoveAvatar");
 
@@ -327,7 +330,7 @@ public sealed class MediaPagesTests : IDisposable
         factory.Avatars.FindBannerKeyAsync(agentId, Arg.Any<CancellationToken>()).Returns("wide");
         using var client = await WebAuth.SignInAsync(factory, user);
 
-        var page = await client.GetStringAsync(new Uri($"/agents/{agentId}", UriKind.Relative), TestSupport.Ct);
+        var page = await Islands.PageAsync(client, $"/agents/{agentId}");
         using var set = await PostMultipartAsync(client, $"/agents/{agentId}", $"/agents/{agentId}?handler=Banner", [], [TestImages.Png(300, 100)], "Banner");
         using var removed = await WebAuth.PostFormAsync(client, $"/agents/{agentId}", $"/agents/{agentId}?handler=RemoveBanner");
 
@@ -358,7 +361,7 @@ public sealed class MediaPagesTests : IDisposable
     private static async Task<HttpResponseMessage> PostMultipartAsync(
         HttpClient client, string pageUrl, string postUrl, (string Name, string Value)[] fields, byte[][] files, string fileField = MediaFields.Images)
     {
-        var html = await client.GetStringAsync(new Uri(pageUrl, UriKind.Relative), TestSupport.Ct);
+        var token = await WebAuth.TokenAsync(client, pageUrl);
         using var form = new MultipartFormDataContent();
         foreach (var (name, value) in fields)
         {
@@ -370,7 +373,7 @@ public sealed class MediaPagesTests : IDisposable
             form.Add(new ByteArrayContent(files[i]), fileField, $"image{i}.png");
         }
 
-        form.Add(new StringContent(TestSupport.AntiforgeryToken(html)), "__RequestVerificationToken");
+        form.Add(new StringContent(token), "__RequestVerificationToken");
         return await client.PostAsync(new Uri(postUrl, UriKind.Relative), form, TestSupport.Ct);
     }
 }

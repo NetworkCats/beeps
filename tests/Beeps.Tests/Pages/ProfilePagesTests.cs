@@ -22,8 +22,9 @@ public sealed class ProfilePagesTests : IDisposable
         using var client = await WebAuth.SignInAsync(factory, viewer);
 
         var html = await client.GetStringAsync(new Uri("/tom", UriKind.Relative), TestSupport.Ct);
+        var data = await Islands.PageAsync(client, "/tom");
 
-        var page = Islands.Props(html, "profile");
+        var page = Islands.Props(data, "profile");
         var profile = page.GetProperty("profile");
         Assert.Equal("tom", profile.GetProperty("actor").GetProperty("displayName").GetString());
         Assert.Equal("Line one\nline two", profile.GetProperty("bio").GetString());
@@ -90,8 +91,8 @@ public sealed class ProfilePagesTests : IDisposable
         factory.Profiles.ListAgentsAsync(user.Id, Arg.Any<CancellationToken>()).Returns([]);
         using var client = await WebAuth.SignInAsync(factory, user);
 
-        var own = await client.GetStringAsync(new Uri("/tom", UriKind.Relative), TestSupport.Ct);
-        var agents = await client.GetStringAsync(new Uri("/tom.claude", UriKind.Relative), TestSupport.Ct);
+        var own = await Islands.PageAsync(client, "/tom");
+        var agents = await Islands.PageAsync(client, "/tom.claude");
 
         var ownCard = Islands.Props(own, "profile").GetProperty("profile");
         Assert.True(ownCard.GetProperty("mine").GetBoolean());
@@ -124,12 +125,12 @@ public sealed class ProfilePagesTests : IDisposable
 
         using var response = await WebAuth.PostFormAsync(client, "/tom", "/tom/follow?handler=Follow");
         factory.Profiles.IsFollowingAsync(viewer.Id, tom.Id, Arg.Any<CancellationToken>()).Returns(true);
-        var html = await client.GetStringAsync(new Uri("/tom", UriKind.Relative), TestSupport.Ct);
+        var page = await Islands.PageAsync(client, "/tom");
 
         Assert.Equal("/tom", response.Headers.Location?.OriginalString);
-        Assert.Contains("Following. Their beeps and their agents", html, StringComparison.Ordinal);
+        Assert.Contains("Following. Their beeps and their agents", page, StringComparison.Ordinal);
         // Followed now: the button unfollows.
-        Assert.True(Islands.Props(html, "profile").GetProperty("profile").GetProperty("following").GetBoolean());
+        Assert.True(Islands.Props(page, "profile").GetProperty("profile").GetProperty("following").GetBoolean());
         await factory.Profiles.Received(1).AddFollowAsync(viewer.Id, tom.Id, Arg.Any<DateTimeOffset>(), Arg.Any<CancellationToken>());
     }
 
@@ -146,9 +147,10 @@ public sealed class ProfilePagesTests : IDisposable
         using var client = await WebAuth.SignInAsync(factory, user);
 
         var html = await client.GetStringAsync(new Uri("/notifications", UriKind.Relative), TestSupport.Ct);
+        var page = await Islands.PageAsync(client, "/notifications");
         using var response = await WebAuth.PostFormAsync(client, "/notifications", "/notifications?handler=Read", ("upToId", notification.Id.ToString()));
 
-        var inbox = Islands.Props(html, "notifications");
+        var inbox = Islands.Props(page, "notifications");
         Assert.Equal("notifications", inbox.GetProperty("live").GetProperty("watch").GetString());
         // Unread, and the newest shown: what "mark read" marks read up to.
         var entry = inbox.GetProperty("page").GetProperty("items").EnumerateArray().Single();

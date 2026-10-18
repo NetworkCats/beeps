@@ -1,6 +1,7 @@
-// What the layout tells the app about the signed-in person and the page language
-// (<script type="application/json" id="app-config">, Pages/Islands/ClientConfig.cs). Read again whenever a page is
-// shown, since the person may have changed meanwhile (a new avatar, another language).
+// What the app is told about the signed-in person and the page language (Pages/Islands/ClientConfig.cs), kept in the
+// layout's <script type="application/json" id="app-config">: drawn there by the server, or, for an app shell, put
+// there from the page's data (router.ts). Read again whenever a page is shown, since the person may have changed
+// meanwhile (a new avatar).
 import { signal } from '@preact/signals';
 
 /** Who is signed in; signed out, `human` is false and the rest empty. */

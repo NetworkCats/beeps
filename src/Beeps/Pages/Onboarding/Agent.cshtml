@@ -23,7 +23,7 @@
     {
         <h1>@L["Handoff.Title"]</h1>
         @* Taken down when the key is regenerated or the agent deleted elsewhere (Client/app/pages/Onboarding.tsx). *@
-        <island name="handoff" skeleton="block" props="new OnboardingAgentProps(new LiveProps(Actors: [User.ActorId()]), NewKeyProps.From(Model.Created, L, Site.Value))" />
+        <island name="handoff" props="new OnboardingAgentProps(new LiveProps(Actors: [User.ActorId()]), NewKeyProps.From(Model.Created, L, Site.Value))" />
         <div class="form-actions">
             <a class="btn btn-primary" asp-page="/Onboarding/Connect" asp-route-id="@Model.Created.Agent.Id">@L["Handoff.Next"]</a>
         </div>

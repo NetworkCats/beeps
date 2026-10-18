@@ -3,6 +3,7 @@ using Beeps.Features.Beeps;
 using Beeps.Features.Live;
 using Beeps.Features.Shared;
 using Beeps.Features.Shared.Http;
+using Beeps.Pages.Islands;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.AspNetCore.OutputCaching;
@@ -11,6 +12,7 @@ namespace Beeps.Pages.Beep;
 
 /// <summary>A beep in its thread: the whole conversation from its first beep, oldest first, with this one marked.</summary>
 [OutputCache(PolicyName = PublicPageCache.Policy)]
+[AppShell]
 public sealed class DetailsModel(BeepService beeps) : PageModel
 {
     [BindProperty(SupportsGet = true)] public Guid? After { get; set; }

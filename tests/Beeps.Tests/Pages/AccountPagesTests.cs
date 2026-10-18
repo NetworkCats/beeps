@@ -115,10 +115,10 @@ public sealed class AccountPagesTests : IDisposable
         var user = WebAuth.ArrangeUser(factory, verified: false);
         using var client = await WebAuth.SignInAsync(factory, user);
 
-        var before = Islands.Props(await client.GetStringAsync(new Uri("/onboarding/verify", UriKind.Relative), TestSupport.Ct), "verify");
+        var before = Islands.Props(await Islands.PageAsync(client, "/onboarding/verify"), "verify");
         using var changed = await WebAuth.PostFormAsync(client, "/onboarding/verify", "/onboarding/verify?handler=Email",
             ("NewEmail", "tom@example.org"), ("CurrentPassword", WebAuth.Password));
-        var after = await client.GetStringAsync(new Uri("/onboarding/verify", UriKind.Relative), TestSupport.Ct);
+        var after = await Islands.PageAsync(client, "/onboarding/verify");
 
         Assert.Equal("tom@example.com", before.GetProperty("email").GetString());
         Assert.Equal("/onboarding/verify", changed.Headers.Location?.OriginalString);
@@ -229,9 +229,11 @@ public sealed class AccountPagesTests : IDisposable
         client.DefaultRequestHeaders.AcceptLanguage.ParseAdd("en-US");
 
         var html = await client.GetStringAsync(new Uri("/agents", UriKind.Relative), TestSupport.Ct);
+        var page = await Islands.PageAsync(client, "/agents");
 
         Assert.Contains("<html lang=\"zh-Hans\">", html, StringComparison.Ordinal);
-        Assert.Contains("我的 agent", html, StringComparison.Ordinal);
+        Assert.Equal("zh-Hans", Islands.Data(page).GetProperty("lang").GetString());
+        Assert.Contains("我的 agent", page, StringComparison.Ordinal);
     }
 
     [Fact]

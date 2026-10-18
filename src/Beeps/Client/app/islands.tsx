@@ -1,8 +1,8 @@
 // The islands of a page (Pages/Islands/IslandTagHelper.cs): <div class="island" data-island="name"> with its props.
 // The Preact component registered under its name draws it from them and keeps it up to date from then on. Signed out
 // the server has drawn the markup inside as well (search engines read it), and the component draws the same over it;
-// signed in the island arrives empty. New props for an island (it
-// caught up, a form it holds was answered) go into its envelope signal, and the component draws itself again.
+// signed in a page's islands arrive empty in its data, their props beside them (router.ts). New props for an island
+// (it caught up, a form it holds was answered) go into its envelope signal, and the component draws itself again.
 //
 // The islands of the layout that every page has come with the app; each page's own component is a chunk of its own
 // (lazyIsland), loaded when a page first has it. The server names those chunks in the page (modulepreload), so they
@@ -142,12 +142,13 @@ export function mountIslands(root: ParentNode, saved?: ReadonlyMap<string, Envel
   return Promise.all(waiting).then(() => {});
 }
 
-/** Lets the islands go (their effects end); the page they were on is about to be replaced. */
-export function unmountIslands(): void {
-  for (const record of mounted) {
+/** Lets the islands (under `root`) go, their effects end: what they were on is about to be replaced. */
+export function unmountIslands(root?: Node): void {
+  const leaving = root ? mounted.filter((record) => root.contains(record.element)) : mounted;
+  for (const record of leaving) {
     if (record.drawn) render(null, record.element);
   }
-  mounted = [];
+  mounted = mounted.filter((record) => !leaving.includes(record));
 }
 
 /** New props for the islands the page names, from an islands request. */

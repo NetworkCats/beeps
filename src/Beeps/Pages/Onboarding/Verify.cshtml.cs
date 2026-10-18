@@ -1,6 +1,7 @@
 using Beeps.Features.Accounts;
 using Beeps.Features.Auth;
 using Beeps.Features.Shared;
+using Beeps.Pages.Islands;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.Extensions.Localization;
@@ -8,6 +9,7 @@ using Microsoft.Extensions.Localization;
 namespace Beeps.Pages.Onboarding;
 
 /// <summary>Entering the code sent at sign-up; or asking for another one, or for it to go to another address.</summary>
+[AppShell]
 public sealed class VerifyModel(AccountService accounts, IStringLocalizer<SharedResource> localizer) : PageModel
 {
     public Verification Verification { get; private set; } = null!;

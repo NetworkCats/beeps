@@ -4,50 +4,87 @@ using Beeps.Pages.Islands;
 
 namespace Beeps.Tests.Support;
 
-/// <summary>Reads the islands of a signed-in page (Pages/Islands): the props each one is drawn from, as the browser gets them.</summary>
+/// <summary>
+/// Reads the islands of a page (Pages/Islands): the props each one is drawn from, as the browser gets them. Either from
+/// a page's HTML (signed out, a form posted without the app, the layout's islands) or from its data (<see cref="PageAsync"/>).
+/// </summary>
 internal static partial class Islands
 {
     /// <summary>The envelope (<c>{"props": …, "errors": …}</c>) of the page's first island of that name.</summary>
-    public static JsonElement Envelope(string html, string name)
+    public static JsonElement Envelope(string page, string name)
     {
-        var match = IslandPattern().Matches(html).FirstOrDefault(m => m.Groups["name"].Value == name)
+        if (IsData(page))
+        {
+            using var data = JsonDocument.Parse(page);
+            return data.RootElement.GetProperty("islands").TryGetProperty(name, out var island)
+                ? island.Clone()
+                : throw new Xunit.Sdk.XunitException($"No island \"{name}\" on the page.");
+        }
+
+        var match = IslandPattern().Matches(page).FirstOrDefault(m => m.Groups["name"].Value == name)
             ?? throw new Xunit.Sdk.XunitException($"No island \"{name}\" on the page.");
         using var document = JsonDocument.Parse(match.Groups["json"].Value);
         return document.RootElement.Clone();
     }
 
-    public static JsonElement Props(string html, string name) => Envelope(html, name).GetProperty("props");
+    public static JsonElement Props(string page, string name) => Envelope(page, name).GetProperty("props");
 
-    /// <summary>The layout's app config (Client/app/config.ts): where the interface text is, the antiforgery token, who is signed in.</summary>
-    public static JsonElement Config(string html)
+    /// <summary>The app config (Client/app/config.ts): where the interface text is, the antiforgery token, who is signed in.</summary>
+    public static JsonElement Config(string page)
     {
-        var match = AppConfigPattern().Match(html);
+        if (IsData(page))
+        {
+            return Data(page).GetProperty("config");
+        }
+
+        var match = AppConfigPattern().Match(page);
         Assert.True(match.Success, "The page has no app config.");
         using var document = JsonDocument.Parse(match.Groups[1].Value);
         return document.RootElement.Clone();
     }
 
-    public static IReadOnlyList<string> Names(string html) => [.. IslandPattern().Matches(html).Select(m => m.Groups["name"].Value)];
-
-    /// <summary>An islands request: the page's props alone, as JSON.</summary>
-    public static async Task<HttpResponseMessage> GetAsync(HttpClient client, string url)
+    public static IReadOnlyList<string> Names(string page)
     {
-        using var request = new HttpRequestMessage(HttpMethod.Get, new Uri(url, UriKind.Relative));
-        request.Headers.Add(IslandRequests.Header, "1");
-        return await client.SendAsync(request, TestSupport.Ct);
+        if (!IsData(page))
+        {
+            return [.. IslandPattern().Matches(page).Select(m => m.Groups["name"].Value)];
+        }
+
+        using var data = JsonDocument.Parse(page);
+        return [.. data.RootElement.GetProperty("islands").EnumerateObject().Select(p => p.Name)];
     }
 
-    /// <summary>A form sent as the app sends it: the answer is the props of the page it leads to.</summary>
+    /// <summary>What a page's data says of it besides its islands (<c>page</c>: its content column, layout state, config).</summary>
+    public static JsonElement Data(string page)
+    {
+        using var data = JsonDocument.Parse(page);
+        return data.RootElement.GetProperty("page").Clone();
+    }
+
+    /// <summary>The data of the page at <paramref name="url"/>, which answered with a success, as the app reads it.</summary>
+    public static async Task<string> PageAsync(HttpClient client, string url)
+    {
+        using var response = await GetAsync(client, url);
+        Assert.True(response.IsSuccessStatusCode, $"{url} answered {(int)response.StatusCode}.");
+        Assert.Equal("application/json", response.Content.Headers.ContentType?.MediaType);
+        return await response.Content.ReadAsStringAsync(TestSupport.Ct);
+    }
+
+    private static bool IsData(string page) => page.StartsWith('{');
+
+    /// <summary>Where the app asks for the data of the page at <paramref name="url"/> (PageDataMiddleware).</summary>
+    public static Uri DataUrl(string url) => new(PageDataMiddleware.Prefix + url, UriKind.Relative);
+
+    /// <summary>A page's data, as the app gets it: its islands' props, content column and layout state, as JSON.</summary>
+    public static Task<HttpResponseMessage> GetAsync(HttpClient client, string url) => client.GetAsync(DataUrl(url), TestSupport.Ct);
+
+    /// <summary>A form sent as the app sends it: the answer is the data of the page it leads to.</summary>
     public static async Task<HttpResponseMessage> PostFormAsync(HttpClient client, string pageUrl, string postUrl, params (string Name, string Value)[] fields)
     {
-        var html = await client.GetStringAsync(new Uri(pageUrl, UriKind.Relative), TestSupport.Ct);
-        using var request = new HttpRequestMessage(HttpMethod.Post, new Uri(postUrl, UriKind.Relative))
-        {
-            Content = new FormUrlEncodedContent(
-                [.. fields.Select(f => KeyValuePair.Create(f.Name, f.Value)), KeyValuePair.Create("__RequestVerificationToken", TestSupport.AntiforgeryToken(html))]),
-        };
-        request.Headers.Add(IslandRequests.Header, "1");
-        return await client.SendAsync(request, TestSupport.Ct);
+        var page = await client.GetStringAsync(DataUrl(pageUrl), TestSupport.Ct);
+        using var content = new FormUrlEncodedContent(
+            [.. fields.Select(f => KeyValuePair.Create(f.Name, f.Value)), KeyValuePair.Create("__RequestVerificationToken", TestSupport.AntiforgeryToken(page))]);
+        return await client.PostAsync(DataUrl(postUrl), content, TestSupport.Ct);
     }
 
     public static async Task<JsonElement> JsonAsync(HttpResponseMessage response)

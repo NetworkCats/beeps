@@ -1,6 +1,6 @@
 @{
-    Layout = "_Layout";
-    ViewData["Wide"] = true;
+    // A page's data has the navigation below in it too.
+    Layout = Beeps.Pages.Islands.IslandRequests.IsIslandRequest(Context) ? "_Islands" : "_Layout";
     var page = ViewContext.RouteData.Values["page"] as string ?? "";
     string? Current(string prefix) => page.StartsWith(prefix, StringComparison.Ordinal) ? "page" : null;
 }

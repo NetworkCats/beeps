@@ -27,16 +27,18 @@ public sealed record ClientConfigProps(string StringsUrl, ClientAntiforgery Anti
 /// </summary>
 public sealed class ClientConfig(ClientStrings strings, IAntiforgery antiforgery, AvatarUrls avatars)
 {
-    public string For(HttpContext context)
+    public string For(HttpContext context) => IslandJson.Serialize(Props(context));
+
+    public ClientConfigProps Props(HttpContext context)
     {
         ArgumentNullException.ThrowIfNull(context);
         var user = context.User;
         var tokens = user.IsHuman() ? antiforgery.GetAndStoreTokens(context) : null;
-        return IslandJson.Serialize(new ClientConfigProps(
+        return new ClientConfigProps(
             strings.UrlFor(context),
             new ClientAntiforgery(tokens?.FormFieldName ?? "", tokens?.RequestToken ?? ""),
             Viewer(user),
-            new ClientLimits(BeepText.MaxLength, MediaRules.MaxImagesPerBeep, MediaRules.MaxBytes)));
+            new ClientLimits(BeepText.MaxLength, MediaRules.MaxImagesPerBeep, MediaRules.MaxBytes));
     }
 
     public ClientViewer Viewer(ClaimsPrincipal user)

@@ -58,12 +58,12 @@ public sealed class OutputCacheTests : IDisposable
         Show("first");
         using var client = cached.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
         await SignInAsync(client, user);
-        await client.GetStringAsync(new Uri("/public", UriKind.Relative), TestSupport.Ct);
+        await client.GetStringAsync(Islands.DataUrl("/public"), TestSupport.Ct);
 
         Show("second");
-        var html = await client.GetStringAsync(new Uri("/public", UriKind.Relative), TestSupport.Ct);
+        var page = await client.GetStringAsync(Islands.DataUrl("/public"), TestSupport.Ct);
 
-        Assert.Contains("second", html, StringComparison.Ordinal);
+        Assert.Contains("second", page, StringComparison.Ordinal);
     }
 
     [Fact]

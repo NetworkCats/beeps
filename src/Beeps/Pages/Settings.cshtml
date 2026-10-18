@@ -6,6 +6,7 @@
 @model SettingsModel
 @inject AvatarUrls Avatars
 @{
+    ViewData[PageShell.ImageCrop] = true;
     ViewData["Title"] = L["Settings.Title"];
     var theme = Themes.For(User, ViewContext.HttpContext.Request);
     // Shows the saved name, bio, avatar and banner, also when changed in another tab, unless they are being edited here.
@@ -32,8 +33,5 @@
         AccountRules.CodeLength,
         (int)AccountService.CodeLifetime.TotalMinutes);
 }
-@section Head {
-    <link rel="stylesheet" href="~/dist/image-crop.css" asp-append-version="true">
-}
 @* Members only, so signed in: Client/app/pages/Settings.tsx draws the page from these props. *@
-<island name="settings" skeleton="@(Model.Section is null ? "list" : "form")" props="props" />
+<island name="settings" props="props" />

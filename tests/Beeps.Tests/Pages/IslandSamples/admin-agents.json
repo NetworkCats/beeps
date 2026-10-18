@@ -429,8 +429,7 @@
         "returnUrl": "/admin/agents"
       },
       "errors": null,
-      "html": "",
-      "skeleton": "table"
+      "html": ""
     },
     {
       "name": "site-options",

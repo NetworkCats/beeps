@@ -459,8 +459,7 @@
         "codeLifetimeMinutes": 10
       },
       "errors": null,
-      "html": "",
-      "skeleton": "form"
+      "html": ""
     },
     {
       "name": "site-options",

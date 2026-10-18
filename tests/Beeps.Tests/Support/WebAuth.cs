@@ -47,11 +47,23 @@ internal static class WebAuth
         return client;
     }
 
+    /// <summary>A form posted the plain way, without the app, with the antiforgery token of the page it is on.</summary>
     public static async Task<HttpResponseMessage> PostFormAsync(HttpClient client, string pageUrl, string postUrl, params (string Name, string Value)[] fields)
     {
-        var html = await client.GetStringAsync(new Uri(pageUrl, UriKind.Relative), TestSupport.Ct);
         using var form = new FormUrlEncodedContent(
-            [.. fields.Select(f => KeyValuePair.Create(f.Name, f.Value)), KeyValuePair.Create("__RequestVerificationToken", TestSupport.AntiforgeryToken(html))]);
+            [.. fields.Select(f => KeyValuePair.Create(f.Name, f.Value)), KeyValuePair.Create("__RequestVerificationToken", await TokenAsync(client, pageUrl))]);
         return await client.PostAsync(new Uri(postUrl, UriKind.Relative), form, TestSupport.Ct);
+    }
+
+    /// <summary>
+    /// The antiforgery token of the page at <paramref name="pageUrl"/>: in its HTML, or, for an app page signed in (an
+    /// app shell), in its data.
+    /// </summary>
+    public static async Task<string> TokenAsync(HttpClient client, string pageUrl)
+    {
+        var html = await client.GetStringAsync(new Uri(pageUrl, UriKind.Relative), TestSupport.Ct);
+        return html.Contains("data-app-shell", StringComparison.Ordinal)
+            ? TestSupport.AntiforgeryToken(await client.GetStringAsync(Islands.DataUrl(pageUrl), TestSupport.Ct))
+            : TestSupport.AntiforgeryToken(html);
     }
 }

@@ -1,9 +1,24 @@
-// Requests the app makes of the site: islands requests (a page's props as JSON, Pages/Islands/IslandRequests.cs), the
+// Requests the app makes of the site: a page's data (JSON from /page-data, Pages/Islands/PageDataMiddleware.cs), the
 // /live fetches, and forms sent in the background.
 import { config } from './config.ts';
 import type { IslandsPage } from './props.ts';
 
-export const ISLANDS_HEADER = 'X-Beeps-Islands';
+const PAGE_DATA = '/page-data';
+
+/** Where the data of the page at `url` is: the page's address under /page-data. */
+export function pageDataUrl(url: string): string {
+  const target = new URL(url, window.location.href);
+  return `${target.origin}${PAGE_DATA}${target.pathname}${target.search}`;
+}
+
+/** The page whose data is at `url` (a redirect stays under /page-data); any other address as it is. */
+export function pageOf(url: string): string {
+  const target = new URL(url, window.location.href);
+  if (target.pathname === PAGE_DATA || target.pathname.startsWith(`${PAGE_DATA}/`)) {
+    target.pathname = target.pathname.slice(PAGE_DATA.length) || '/';
+  }
+  return target.href;
+}
 
 /** A fetch the server answered with an error. */
 export class HttpError extends Error {
@@ -23,7 +38,7 @@ export function retryable(error: unknown): boolean {
   return error instanceof TypeError || (error instanceof HttpError && (error.status >= 500 || error.status === 429));
 }
 
-/** What an islands request came back with: where it ended up (after redirects), and the page's props when it has islands. */
+/** What a page's data came back as: the page it ended up on (after redirects), and its data when it is a page. */
 export interface IslandsAnswer {
   url: string;
   status: number;
@@ -32,22 +47,22 @@ export interface IslandsAnswer {
 
 async function islandsAnswer(response: Response): Promise<IslandsAnswer> {
   const json = response.headers.get('Content-Type')?.includes('application/json');
-  return { url: response.url, status: response.status, page: json ? ((await response.json()) as IslandsPage) : null };
+  return { url: pageOf(response.url), status: response.status, page: json ? ((await response.json()) as IslandsPage) : null };
 }
 
-/** The props of the page at `url`, for this viewer, as a reload would draw them. */
+/** The data of the page at `url`, for this viewer, as a reload would draw it. */
 export async function getIslands(url: string): Promise<IslandsAnswer> {
-  const response = await fetch(url, { credentials: 'same-origin', cache: 'no-store', headers: { [ISLANDS_HEADER]: '1' } });
+  const response = await fetch(pageDataUrl(url), { credentials: 'same-origin', cache: 'no-store', headers: { Accept: 'application/json' } });
   if (response.status >= 500 || response.status === 429) throw new HttpError(response.status);
   return islandsAnswer(response);
 }
 
 /**
- * Sends a form the way the browser would, and gets the props of the page it leads to (after its redirect), or of the
+ * Sends a form the way the browser would, and gets the data of the page it leads to (after its redirect), or of the
  * form's own page drawn again with what was wrong.
  */
 export async function postIslands(action: string, body: FormData): Promise<IslandsAnswer> {
-  const response = await fetch(action, { method: 'POST', body, credentials: 'same-origin', headers: { [ISLANDS_HEADER]: '1' } });
+  const response = await fetch(pageDataUrl(action), { method: 'POST', body, credentials: 'same-origin', headers: { Accept: 'application/json' } });
   return islandsAnswer(response);
 }
 

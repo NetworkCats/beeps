@@ -1,20 +1,29 @@
 // Moving between pages without loading them in full, as a single-page app would. Links and forms of this site are
-// followed in the background: the page they lead to is fetched (as HTML, so it is exactly what a reload shows), its
-// content is put in place of this one's, and its islands are taken over. The script, the live connection and what
-// the app knows of each beep stay. Going back shows the page as it was left (more pages loaded, where it was
-// scrolled), then lets it catch up. The answer to a form takes the form's place in the tab's history, as the page
-// already shown does when it is visited again: going back never lands on a form already sent, or on the same page.
+// followed in the background. Signed in, what comes back is the page's data (JSON from /page-data,
+// Pages/Islands/PageDataMiddleware.cs): its islands' props, its content column with the islands empty, and what of the
+// layout is its own (PageShell.cs). The content column is put in place of this one's and the components draw the
+// islands from their props; the rest of the layout and its islands stay. The first page of a tab is shown the same way:
+// the server sends an app shell, the layout with a skeleton for the content (AppShellAttribute.cs). Signed out, the
+// page comes as HTML (exactly what a reload shows, the server draws the islands too, for search engines) and its body
+// is put in place of this one's. The script, the live connection and what the app knows of each beep stay. Going back
+// shows the page as it was left (more pages loaded, where it was scrolled), then lets it catch up. The answer to a form
+// takes the form's place in the tab's history, as the page already shown does when it is visited again: going back
+// never lands on a form already sent, or on the same page.
 //
-// A page signed in as someone else, or signed out, is loaded in full instead: it needs other scripts.
+// A page signed in as someone else, signed out, or in another language is loaded in full instead: it needs other
+// scripts, or its layout reads differently.
 //
-// Signed in, a link the mouse rests on is fetched at once (the page of a beep too, which opens when clicked anywhere on
-// it), so following it shows the page without waiting.
+// Signed in, a link the mouse rests on is fetched at once, as JSON (the page of a beep too, which opens when clicked
+// anywhere on it), so following it shows the page without waiting.
+import { signal } from '@preact/signals';
 import { markSending } from './busy.ts';
-import { readConfig, viewer } from './config.ts';
+import { readConfig } from './config.ts';
 import { confirmAction } from './dialogs.ts';
+import { pageDataUrl, pageOf } from './http.ts';
 import { loadStrings } from './i18n.ts';
-import { mountIslands, snapshotIslands, unmountIslands } from './islands.tsx';
-import type { Envelope } from './props.ts';
+import { loadComponent, mountIslands, snapshotIslands, unmountIslands } from './islands.tsx';
+import type { Envelope, IslandsPage, PageShell, PageView } from './props.ts';
+import { showToast } from './toasts.ts';
 
 /**
  * Dispatched on the document once another page is shown; `detail.restored` when gone back to as it was left,
@@ -26,6 +35,12 @@ export interface PageShown {
   restored: boolean;
   ahead: boolean;
 }
+
+/**
+ * The page's address (path and query) once one has been shown in place, for what the layout's islands send along (the
+ * language switch comes back to it); until then the one the server drew them with.
+ */
+export const pagePath = signal<string | undefined>(undefined);
 
 interface Entry {
   key: string;
@@ -61,6 +76,26 @@ function entryOf(state: unknown): Entry | undefined {
   return (state as { beeps: Entry }).beeps;
 }
 
+/** Signed in (data-auth): the components draw all there is to see, from the pages' data. */
+function signedIn(): boolean {
+  return Boolean(document.body.dataset.auth);
+}
+
+/** Signed in, a page is fetched as its data, for the components to draw; signed out as HTML, which the server draws. */
+function fetchPage(url: string, init: RequestInit = {}): Promise<Response> {
+  return signedIn()
+    ? fetch(pageDataUrl(url), { ...init, credentials: 'same-origin', headers: { Accept: 'application/json' } })
+    : fetch(url, { ...init, credentials: 'same-origin', headers: { Accept: 'text/html' } });
+}
+
+function isJson(response: Response): boolean {
+  return response.headers.get('Content-Type')?.includes('application/json') ?? false;
+}
+
+function isHtml(response: Response): boolean {
+  return response.headers.get('Content-Type')?.includes('text/html') ?? false;
+}
+
 /** This page's address without a form handler: a page shown after a post would otherwise post again or fail. */
 export function pageUrl(): string {
   const url = new URL(window.location.href);
@@ -93,12 +128,16 @@ function setBodyAttributes(attributes: Iterable<[string, string]>): void {
  * Stylesheets the new page uses that this one never loaded (the admin pages', the avatar cropper's); settles once they
  * have loaded (or failed to), so the page is never shown without them. They were fetched ahead, so this is quick.
  */
-function addMissingStyles(fresh: Document): Promise<void> {
+function addMissingStyles(hrefs: Iterable<string>): Promise<void> {
   const loaded = new Set([...document.querySelectorAll<HTMLLinkElement>('link[rel="stylesheet"]')].map((l) => l.href));
   const adding: Array<Promise<void>> = [];
-  for (const link of fresh.querySelectorAll<HTMLLinkElement>('link[rel="stylesheet"]')) {
-    if (loaded.has(link.href)) continue;
-    const added = document.importNode(link, true);
+  for (const href of hrefs) {
+    const url = new URL(href, window.location.href).href;
+    if (loaded.has(url)) continue;
+    loaded.add(url);
+    const added = document.createElement('link');
+    added.rel = 'stylesheet';
+    added.href = url;
     adding.push(new Promise((resolve) => {
       added.addEventListener('load', () => resolve(), { once: true });
       added.addEventListener('error', () => resolve(), { once: true });
@@ -108,8 +147,26 @@ function addMissingStyles(fresh: Document): Promise<void> {
   return Promise.all(adding).then(() => {});
 }
 
+/**
+ * The stylesheets a page sent as JSON names (PageShell.cs), by the addresses the layout links them under or fetched
+ * them ahead under (data-style): fingerprinted, which only the server knows how to do.
+ */
+function stylesNamed(names: string[]): string[] {
+  return names.flatMap((name) => {
+    const link = document.querySelector<HTMLLinkElement>(`link[data-style="${name}"]`);
+    return link ? [link.href] : [];
+  });
+}
+
+function stylesOf(fresh: Document): string[] {
+  return [...fresh.querySelectorAll<HTMLLinkElement>('link[rel="stylesheet"]')].map((link) => link.getAttribute('href') ?? '');
+}
+
 function shown(detail: PageShown): void {
   readConfig();
+  // Called once the page is drawn, so after its address is in the history.
+  const url = new URL(pageUrl());
+  pagePath.value = url.pathname + url.search;
   document.dispatchEvent(new CustomEvent<PageShown>(PAGE_SHOWN, { detail }));
 }
 
@@ -122,12 +179,49 @@ function focusContent(): void {
 }
 
 /**
- * Takes over the islands of the page now in the body; settles once they are drawn (a page's component is loaded the
- * first time a page has it, the text when the page is in another language). One whose code or text cannot be loaded
- * (offline, or the site was updated and the old chunk is gone) has the page loaded in full instead.
+ * Takes over the islands under `root` (the body, or the content column); settles once they are drawn (a page's
+ * component is loaded the first time a page has it, the text when the page is in another language). One whose code or
+ * text cannot be loaded (offline, or the site was updated and the old chunk is gone) has the page loaded in full instead.
  */
-function mount(saved?: ReadonlyMap<string, Envelope>): Promise<void> {
-  return loadStrings().then(() => mountIslands(document.body, saved)).catch(() => window.location.assign(pageUrl()));
+function mount(root: ParentNode, saved?: ReadonlyMap<string, Envelope>): Promise<void> {
+  return loadStrings().then(() => mountIslands(root, saved)).catch(() => window.location.assign(pageUrl()));
+}
+
+/** The layout as the page has it (PageShell.cs): its item in the navigation, the parts it leaves out, how wide. */
+function showShell(shell: PageShell): void {
+  for (const item of document.querySelectorAll<HTMLElement>('[data-nav]')) {
+    if (item.dataset.nav === shell.nav) item.setAttribute('aria-current', 'page');
+    else item.removeAttribute('aria-current');
+  }
+  for (const part of document.querySelectorAll<HTMLElement>('[data-part]')) part.hidden = shell.hidden.includes(part.dataset.part ?? '');
+  document.querySelector('.shell')?.classList.toggle('shell-wide', shell.wide ?? false);
+}
+
+/** The app's config as the page's data says it, where the layout of a page the server drew keeps it (config.ts). */
+function setAppConfig(view: PageView): void {
+  let script = document.getElementById('app-config');
+  if (!script) {
+    script = document.createElement('script');
+    script.id = 'app-config';
+    script.setAttribute('type', 'application/json');
+    document.body.append(script);
+  }
+  script.textContent = JSON.stringify(view.config);
+  readConfig();
+}
+
+/** A page's data: the content column is put in place, its islands drawn from their props; the layout's stay as they are. */
+function swapView(main: HTMLElement, answer: IslandsPage, view: PageView, ahead: boolean): Promise<void> {
+  unmountIslands(main);
+  document.title = answer.title;
+  document.body.dataset.liveFrom = String(view.liveFrom);
+  // Who is signed in now, the token, where the text is: before the islands are drawn.
+  setAppConfig(view);
+  showShell(view.shell);
+  main.innerHTML = view.main;
+  if (answer.notice) showToast(answer.notice);
+  if (answer.alert) showToast(answer.alert, true);
+  return mount(main, new Map(Object.entries(answer.islands))).then(() => shown({ restored: false, ahead }));
 }
 
 function swapIn(fresh: Document, ahead: boolean): Promise<void> {
@@ -137,7 +231,7 @@ function swapIn(fresh: Document, ahead: boolean): Promise<void> {
   setBodyAttributes([...fresh.body.attributes].map((a) => [a.name, a.value]));
   document.body.replaceChildren(...[...fresh.body.childNodes].map((node) => document.importNode(node, true)));
   readConfig();
-  return mount().then(() => shown({ restored: false, ahead }));
+  return mount(document.body).then(() => shown({ restored: false, ahead }));
 }
 
 function restore(snapshot: Snapshot): Promise<void> {
@@ -146,7 +240,7 @@ function restore(snapshot: Snapshot): Promise<void> {
   setBodyAttributes(snapshot.bodyAttributes);
   document.body.innerHTML = snapshot.body;
   readConfig();
-  return mount(snapshot.islands).then(() => {
+  return mount(document.body, snapshot.islands).then(() => {
     window.scrollTo(0, snapshot.scroll);
     shown({ restored: true, ahead: false });
   });
@@ -165,23 +259,47 @@ interface ShowOptions {
   keepScroll?: boolean;
   /** Fetched ahead, when the link was hovered. */
   ahead?: boolean;
+  /** The first page of the tab, in place of an app shell's skeleton: nothing to move the focus from. */
+  first?: boolean;
   hash?: string;
+}
+
+/** Puts what came back in place of this page, given whether it was fetched ahead. */
+type Swap = (ahead: boolean) => Promise<void>;
+
+/**
+ * What came back for a link or a form, made ready to be shown: the stylesheets it needs loaded, and the components of
+ * its islands. Null when it is to be loaded in full instead: not a page of this site, or one for someone else.
+ */
+async function prepare(response: Response): Promise<Swap | null> {
+  const auth = document.body.dataset.auth ?? '';
+  if (isJson(response)) {
+    const answer = (await response.json()) as IslandsPage;
+    const view = answer.page;
+    const main = document.getElementById('main');
+    if (!main || (view.auth ?? '') !== auth || view.lang !== document.documentElement.lang) return null;
+    // One that cannot be loaded has the page loaded in full once it is shown (mount).
+    const components = Object.keys(answer.islands).map((name) => loadComponent(name).catch(() => undefined));
+    await Promise.all([addMissingStyles(stylesNamed(view.shell.styles)), ...components]);
+    return (ahead) => swapView(main, answer, view, ahead);
+  }
+  if (!isHtml(response)) return null;
+  const fresh = new DOMParser().parseFromString(await response.text(), 'text/html');
+  if ((fresh.body.dataset.auth ?? '') !== auth) return null;
+  await addMissingStyles(stylesOf(fresh));
+  return (ahead) => swapIn(fresh, ahead);
 }
 
 /** Shows what came back for a link or a form; anything that is not a page of this site for the same person is loaded in full. */
 async function show(response: Response, options: ShowOptions, signal: AbortSignal): Promise<void> {
-  if (!response.headers.get('Content-Type')?.includes('text/html')) {
-    window.location.assign(response.url);
-    return;
-  }
-  const fresh = new DOMParser().parseFromString(await response.text(), 'text/html');
-  if ((fresh.body.dataset.auth ?? '') !== (document.body.dataset.auth ?? '')) {
-    window.location.assign(response.url);
-    return;
-  }
-  await addMissingStyles(fresh);
+  const swap = await prepare(response);
   if (signal.aborted) return;
-  const url = response.url + (options.hash ?? '');
+  const address = pageOf(response.url);
+  if (!swap) {
+    window.location.assign(address);
+    return;
+  }
+  const url = address + (options.hash ?? '');
   const scroll = window.scrollY;
   manual();
   // An error page (not found, forbidden) may turn into the page again when what it is about comes back.
@@ -189,12 +307,12 @@ async function show(response: Response, options: ShowOptions, signal: AbortSigna
   else document.documentElement.dataset.liveStatus = String(response.status);
   let drawn: Promise<void>;
   if (options.replace) {
-    drawn = swapIn(fresh, options.ahead ?? false);
+    drawn = swap(options.ahead ?? false);
     window.history.replaceState({ beeps: current }, '', url);
   } else {
     save();
     current = { key: newKey(), index: current.index + 1 };
-    drawn = swapIn(fresh, options.ahead ?? false);
+    drawn = swap(options.ahead ?? false);
     window.history.pushState({ beeps: current }, '', url);
   }
   // Scrolled once the islands are drawn: what is scrolled to may be in one.
@@ -203,7 +321,7 @@ async function show(response: Response, options: ShowOptions, signal: AbortSigna
   if (options.keepScroll) {
     window.scrollTo(0, scroll);
   } else {
-    focusContent();
+    if (!options.first) focusContent();
     scrollToTarget(options.hash ?? '');
   }
 }
@@ -216,7 +334,7 @@ async function request(url: string, init: RequestInit, options: ShowOptions): Pr
   try {
     const ahead = init.method === undefined && !options.replace ? await takeFetchedAhead(url) : null;
     if (controller.signal.aborted) return;
-    const response = ahead ?? await fetch(url, { ...init, credentials: 'same-origin', signal: controller.signal, headers: { Accept: 'text/html' } });
+    const response = ahead ?? await fetchPage(url, { ...init, signal: controller.signal });
     if (controller.signal.aborted) return;
     await show(response, { ...options, ahead: ahead !== null }, controller.signal);
   } catch (error) {
@@ -230,6 +348,14 @@ async function request(url: string, init: RequestInit, options: ShowOptions): Pr
       delete document.documentElement.dataset.loading;
     }
   }
+}
+
+/**
+ * The page of an app shell (signed in, AppShellAttribute.cs): its data comes, and the page is shown in place of the
+ * skeleton; then the layout's islands are drawn too, now the app's config has come with it.
+ */
+export function showFirstPage(): Promise<void> {
+  return request(pageUrl(), {}, { replace: true, first: true, hash: window.location.hash }).then(() => mount(document.body));
 }
 
 /** Goes to another page of the site; `replace`, in place of this one (it showed a form, and this is its answer). */
@@ -289,8 +415,8 @@ function fetchAhead(url: string): void {
   const entry = fetchedAhead.get(key);
   if (entry && Date.now() - entry.at <= AHEAD_TTL) return;
   // A page that did not come back as one (an error, a redirect off the site) is fetched again when followed.
-  const response = fetch(key, { credentials: 'same-origin', headers: { Accept: 'text/html' } })
-    .then((r) => (r.ok && r.headers.get('Content-Type')?.includes('text/html') ? r : null), () => null);
+  const response = fetchPage(key)
+    .then((r) => (r.ok && (isJson(r) || isHtml(r)) ? r : null), () => null);
   fetchedAhead.set(key, { at: Date.now(), response });
   while (fetchedAhead.size > MAX_AHEAD) fetchedAhead.delete(fetchedAhead.keys().next().value as string);
 }
@@ -323,7 +449,7 @@ function onPointerOver(event: PointerEvent): void {
 function isPage(url: URL): boolean {
   return url.origin === window.location.origin
     && !/\.[a-z0-9]+$/i.test(url.pathname)
-    && !['/api/', '/stream', '/live/'].some((prefix) => url.pathname.startsWith(prefix));
+    && !['/api/', '/stream', '/live/', '/page-data'].some((prefix) => url.pathname.startsWith(prefix));
 }
 
 /** A column header's back arrow goes back as the browser would, to where that page was left, when there is one to go to. */
@@ -340,6 +466,8 @@ function onClick(event: MouseEvent): void {
   // A link within this page (to the reply box, say) is the browser's to follow.
   if (url.pathname === window.location.pathname && url.search === window.location.search && url.hash) return;
   event.preventDefault();
+  // Followed now: what the mouse rested on need not be fetched ahead as well.
+  window.clearTimeout(hoverTimer);
   if (goesBack(link)) window.history.back();
   else void visit(url.href).catch(() => {});
 }
@@ -395,6 +523,6 @@ export function startRouter(): void {
   document.addEventListener('click', onClick);
   document.addEventListener('submit', (event) => void onSubmit(event));
   // A page signed in as someone else is loaded in full, so this holds for as long as the app runs.
-  if (viewer.value.human) document.addEventListener('pointerover', onPointerOver);
+  if (signedIn()) document.addEventListener('pointerover', onPointerOver);
   window.addEventListener('popstate', onPop);
 }

@@ -1938,8 +1938,8 @@ span.beep-action {
 
 // ---- Loading: skeletons -------------------------------------------------------------------------
 
-// A page island's skeleton (Pages/Shared/_Skeleton.cshtml), until its component draws it. It fades in after a moment:
-// a page whose code is already here (most are, fetched ahead) shows no flash of it.
+// What stands in for a page's content (Pages/Shared/_Skeleton.cshtml) until the app draws it. It fades in after a
+// moment: a page that is quick to come shows no flash of it.
 .skeleton-page {
   animation: beeps-fade-in 0.2s ease-out 0.15s both;
 }
@@ -2010,8 +2010,7 @@ span.beep-action {
   border-radius: var(--cui-control-radius);
 }
 
-.skeleton-admin,
-.skeleton-block {
+.skeleton-admin {
   display: flex;
   flex-direction: column;
   gap: var(--cui-space-2);
@@ -2019,10 +2018,6 @@ span.beep-action {
 
 .skeleton-admin > .skeleton-title {
   margin-block-end: var(--cui-space-4);
-}
-
-.skeleton-block {
-  margin-block: var(--cui-space-4);
 }
 
 // Turnstile's widget, until its script has drawn it (shell/Captcha.tsx): a block of its size, so the form does not move.

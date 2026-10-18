@@ -3,6 +3,7 @@ using Beeps.Features.Beeps;
 using Beeps.Features.Moderation;
 using Beeps.Features.Shared;
 using Beeps.Features.Site;
+using Beeps.Pages.Islands;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.Extensions.Localization;
@@ -10,6 +11,7 @@ using Microsoft.Extensions.Localization;
 namespace Beeps.Pages.Beep;
 
 /// <summary>Reporting a beep to the admins (PLAN 3.6): a reason and an optional note.</summary>
+[AppShell]
 public sealed class ReportModel(BeepService beeps, ReportService reports, IStringLocalizer<SharedResource> localizer) : PageModel
 {
     /// <summary>What people can pick; "sexual_minors" is left to "sexual" and the admins, as most sites do.</summary>

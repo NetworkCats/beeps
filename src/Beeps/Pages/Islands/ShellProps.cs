@@ -30,3 +30,19 @@ public sealed record ToastsProps(
 /// <summary>Turnstile's widget on the forms that need it (<c>_Captcha.cshtml</c>).</summary>
 /// <param name="Language">Turnstile's name for the page language.</param>
 public sealed record CaptchaProps(string SiteKey, string Language);
+
+/// <summary>
+/// What an islands request (<see cref="IslandRequests"/>) says of the page besides its islands' props: what the app
+/// needs to show it in place of the page shown (or of an app shell's skeleton), as a reload would.
+/// </summary>
+/// <param name="Lang">The page's language: in another one the layout's text is different too, and the page is loaded in full.</param>
+/// <param name="Auth">How the request is signed in, as the layout's <c>data-auth</c> says it; null signed out.</param>
+/// <param name="LiveFrom">When the page was drawn (<c>data-live-from</c>): a page fetched ahead is followed live from then.</param>
+/// <param name="Main">The content column: the page's own markup around its islands, which come empty.</param>
+public sealed record IslandPageProps(
+    string Lang,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Auth,
+    long LiveFrom,
+    ClientConfigProps Config,
+    PageShellProps Shell,
+    string Main);

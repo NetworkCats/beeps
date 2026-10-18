@@ -22,7 +22,11 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddRazorPages(options => options.Conventions
     .AddBeepsAuthorization()
-    .AddFolderApplicationModelConvention("/Admin", page => page.Filters.Add(new AdminChangedFilter())));
+    .AddFolderApplicationModelConvention("/Admin", page =>
+    {
+        page.Filters.Add(new AdminChangedFilter());
+        page.Filters.Add(new AppShellAttribute());
+    }));
 builder.Services.AddScoped<ClientConfig>();
 builder.Services.AddSingleton<ClientStrings>();
 builder.Services.AddSingleton<ClientChunks>();
@@ -46,6 +50,8 @@ if (SearchCommand.Matches(args))
 
 // First, so everything after it (logs, rate limits, audit) sees the visitor's real IP.
 app.UseForwardedHeaders();
+// A page's data is asked for as the page itself, before the error pages, so a page not found answers as JSON too.
+app.UseMiddleware<PageDataMiddleware>();
 
 // API callers get ProblemDetails; browsers get the error page.
 app.UseWhen(context => context.Request.Path.StartsWithSegments("/api"), api =>

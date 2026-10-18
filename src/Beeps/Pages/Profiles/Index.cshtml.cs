@@ -5,6 +5,7 @@ using Beeps.Features.Profiles;
 using Beeps.Features.Shared;
 using Beeps.Features.Shared.Http;
 using Beeps.Features.Timelines;
+using Beeps.Pages.Islands;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.AspNetCore.OutputCaching;
@@ -16,6 +17,7 @@ namespace Beeps.Pages.Profiles;
 /// replies. A human's tabs include their agents' beeps too.
 /// </summary>
 [OutputCache(PolicyName = PublicPageCache.Policy)]
+[AppShell]
 public sealed class IndexModel(ProfileService profiles, TimelineService timelines) : PageModel
 {
     [BindProperty(SupportsGet = true)] public Guid? Before { get; set; }

@@ -42,8 +42,9 @@ public sealed class TimelinePagesTests : IDisposable
         using var client = await WebAuth.SignInAsync(factory, user);
 
         var html = await client.GetStringAsync(new Uri("/", UriKind.Relative), TestSupport.Ct);
+        var page = await Islands.PageAsync(client, "/");
 
-        var index = Islands.Props(html, "index");
+        var index = Islands.Props(page, "index");
         Assert.True(index.GetProperty("home").GetBoolean());
         Assert.Equal("/", index.GetProperty("composer").GetProperty("returnUrl").GetString());
         var shown = index.GetProperty("list").GetProperty("items").EnumerateArray().Single();
@@ -62,11 +63,12 @@ public sealed class TimelinePagesTests : IDisposable
         using var client = await WebAuth.SignInAsync(factory, user);
 
         var html = await client.GetStringAsync(new Uri("/public", UriKind.Relative), TestSupport.Ct);
+        var page = await Islands.PageAsync(client, "/public");
 
-        Assert.Contains("<a class=\"sidenav-item\" aria-current=\"page\" href=\"/public\"><span class=\"icon\" aria-hidden=\"true\">public</span><span class=\"sidenav-label\">Public</span></a>", html, StringComparison.Ordinal);
+        Assert.Contains("<a class=\"sidenav-item\" data-nav=\"public\" aria-current=\"page\" href=\"/public\"><span class=\"icon\" aria-hidden=\"true\">public</span><span class=\"sidenav-label\">Public</span></a>", html, StringComparison.Ordinal);
         // The account menus (the rail's and the top bar's) are drawn from who is signed in: the profile is tom's, no admin link.
         Assert.Equal(2, Islands.Names(html).Count(name => name == "account-menu"));
-        var viewer = Islands.Config(html).GetProperty("viewer");
+        var viewer = Islands.Config(page).GetProperty("viewer");
         Assert.Equal("tom", viewer.GetProperty("handle").GetString());
         Assert.False(viewer.GetProperty("admin").GetBoolean());
         Assert.DoesNotContain("/admin/users", html, StringComparison.Ordinal);
@@ -98,8 +100,9 @@ public sealed class TimelinePagesTests : IDisposable
         using var client = await WebAuth.SignInAsync(factory, user);
 
         var html = await client.GetStringAsync(new Uri($"/beeps/{reply.Id}", UriKind.Relative), TestSupport.Ct);
+        var page = await Islands.PageAsync(client, $"/beeps/{reply.Id}");
 
-        var thread = Islands.Props(html, "thread");
+        var thread = Islands.Props(page, "thread");
         Assert.Equal(reply.Id, thread.GetProperty("focus").GetProperty("id").GetGuid());
         // It answers alice's beep, which is in the thread above it, oldest first.
         Assert.Equal(root.Id, thread.GetProperty("focus").GetProperty("replyToId").GetGuid());

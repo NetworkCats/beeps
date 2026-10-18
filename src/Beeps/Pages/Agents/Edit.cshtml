@@ -5,6 +5,7 @@
 @model Beeps.Pages.Agents.EditModel
 @{
     var agent = Model.Agent;
+    ViewData[PageShell.ImageCrop] = true;
     ViewData["Title"] = agent.DisplayName ?? L["Agents.Unnamed"];
     // Drawn again when the agent changes (its own avatar or banner, connected, a rename in another tab); gone, the page is shown anew.
     var props = new AgentEditProps(
@@ -19,8 +20,5 @@
         new ProfileLimits(Actor.DisplayNameMaxLength, Actor.BioMaxLength),
         AgentNames.CustomHandleNameMaxLength);
 }
-@section Head {
-    <link rel="stylesheet" href="~/dist/image-crop.css" asp-append-version="true">
-}
 @* Members only, so signed in: Client/app/pages/AgentEdit.tsx draws the page from these props. *@
-<island name="agent" skeleton="form" props="props" />
+<island name="agent" props="props" />

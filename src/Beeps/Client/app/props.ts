@@ -1,5 +1,6 @@
 // What the islands are drawn from, as the server writes it (Pages/Islands/*Props.cs). Flags that are false and values
 // that are null are left out of the JSON, so they are optional here.
+import type { AppConfig } from './config.ts';
 
 /** How an island follows the site live (LiveProps). */
 export interface LiveProps {
@@ -81,10 +82,30 @@ export interface Envelope<P = unknown> {
   errors?: Errors;
 }
 
-/** What an islands request answers (_Islands.cshtml). */
+/** What of the layout is the page's own (PageShell.cs): the navigation's item for it, the parts it leaves out. */
+export interface PageShell {
+  nav?: string;
+  wide?: boolean;
+  hidden: string[];
+  styles: string[];
+}
+
+/** What a page's data says of it besides its islands' props (IslandPageProps): enough to show it in place of another. */
+export interface PageView {
+  lang: string;
+  auth?: string;
+  liveFrom: number;
+  config: AppConfig;
+  shell: PageShell;
+  /** The content column, its islands empty: they are drawn from `islands`. */
+  main: string;
+}
+
+/** A page's data (_Islands.cshtml). */
 export interface IslandsPage {
   title: string;
   notice?: string;
   alert?: string;
   islands: Record<string, Envelope>;
+  page: PageView;
 }

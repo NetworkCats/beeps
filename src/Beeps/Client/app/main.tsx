@@ -1,7 +1,8 @@
-// The site's script (PLAN 6.9, 6.10). Pages are drawn by the server, and each island on them (Pages/Islands) is then
-// taken over by the Preact component registered here. Signed in, the islands follow the site over the live
-// connection; signed out, the pages stay static. Moving between pages happens in place (router.ts), so the app and its
-// connection stay.
+// The site's script (PLAN 6.9, 6.10). Each island of a page (Pages/Islands) is drawn by the Preact component
+// registered here. Signed out, the server draws the pages, islands too, and the components take them over; they stay
+// static. Signed in, the server sends the layout alone (an app shell), and the app draws each page from its data
+// (JSON from /page-data); its islands follow the site over the live connection. Moving between pages happens in place
+// (router.ts), so the app and its connection stay.
 //
 // The app itself holds only what every page needs. Each page's component, the live connection and what only signed-in
 // people or admins see are chunks, loaded when a page first needs them. Once the page has loaded, all the others are
@@ -10,7 +11,7 @@
 import { readConfig, viewer } from './config.ts';
 import { loadStrings } from './i18n.ts';
 import { mountIslands, preloadIslands } from './islands.tsx';
-import { startRouter } from './router.ts';
+import { showFirstPage, startRouter } from './router.ts';
 import { startTheme } from './state.ts';
 import { startClock } from './components/Time.tsx';
 import { registerShell } from './shell/index.ts';
@@ -46,17 +47,20 @@ function fetchAhead(): void {
 
 // Beeps open when clicked anywhere on them, so they react to the pointer like a link.
 document.documentElement.dataset.beepLinks = '';
+// An app shell has none: it comes with the page's data.
 readConfig();
-// The islands are drawn once the text is there: kept in the browser, or fetched first.
-const text = loadStrings();
 startTheme();
 startClock();
 startRouter();
-const drawn = text.then(() => mountIslands(document.body));
+// The islands are drawn once the text is there: kept in the browser, or fetched first.
+const drawn = document.querySelector('#main[data-app-shell]')
+  ? showFirstPage()
+  : loadStrings().then(() => mountIslands(document.body));
 // Signed in, the page follows the site live, from when its islands have said which beeps they show.
 if (document.body.dataset.liveStream) {
   void drawn.catch(() => {}).then(() => loadLive()).then((live) => live.startLive());
 }
 // Signed out, or in as someone else, in another tab: this page is shown again as it now is.
 initAuthSync(() => void showAnew());
-fetchAhead();
+// Once the page is drawn: until then its own data and code come first, and an app shell's config says who is in.
+void drawn.catch(() => {}).then(fetchAhead);

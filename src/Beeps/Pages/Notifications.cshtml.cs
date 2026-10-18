@@ -2,12 +2,14 @@ using Beeps.Features.Auth;
 using Beeps.Features.Live;
 using Beeps.Features.Notifications;
 using Beeps.Features.Shared;
+using Beeps.Pages.Islands;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 
 namespace Beeps.Pages;
 
 /// <summary>The inbox (PLAN 4.3): mentions, replies and likes, newest first.</summary>
+[AppShell]
 public sealed class NotificationsModel(NotificationService notifications) : PageModel
 {
     [BindProperty(SupportsGet = true)] public Guid? Before { get; set; }
