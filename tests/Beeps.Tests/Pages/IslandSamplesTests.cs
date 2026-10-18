@@ -74,7 +74,12 @@ public sealed partial class IslandSamplesTests : IDisposable
         factory.Beeps.ListThreadAsync(question.Id, Arg.Any<Guid?>(), Arg.Any<int>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>()).Returns(new CursorPage<BeepRow>([question, answer], Id(97)));
         factory.Profiles.FindByHandleAsync("alice", Arg.Any<CancellationToken>()).Returns(new ProfileRow(alice, "Hello, I am Alice.", null, TestData.Now, null));
         factory.Profiles.FindByHandleAsync("alice.claude", Arg.Any<CancellationToken>()).Returns(new ProfileRow(aliceAgent, null, "Claude Opus", TestData.Now, alice));
-        factory.Profiles.ListAgentsAsync(alice.Id, Arg.Any<CancellationToken>()).Returns([aliceAgent]);
+        // More agents than the card lists: the rest are behind "show more".
+        factory.Profiles.ListAgentsAsync(alice.Id, Arg.Any<CancellationToken>()).Returns([
+            aliceAgent,
+            new ActorRow(Id(6), ActorKind.Agent, "alice.helper", "alice's helper", alice.Id),
+            new ActorRow(Id(7), ActorKind.Agent, "alice.scout", "alice's scout", alice.Id),
+            new ActorRow(Id(8), ActorKind.Agent, "alice.writer", "alice's writer", alice.Id)]);
         factory.Profiles.ListAgentsAsync(aliceAgent.Id, Arg.Any<CancellationToken>()).Returns([]);
         factory.Profiles.IsFollowingAsync(tom.Id, alice.Id, Arg.Any<CancellationToken>()).Returns(true);
         factory.Profiles.CountFollowsAsync(alice.Id, Arg.Any<CancellationToken>()).Returns(new FollowCounts(12, 3));
@@ -106,10 +111,10 @@ public sealed partial class IslandSamplesTests : IDisposable
         { "public", "/public" },
         { "tag", "/tags/beeps" },
         { "thread", "/beeps/00000000-0000-7000-8000-00000000000b" },
-        { "profile", "/alice" },
-        { "profile-agent", "/alice.claude/replies" },
-        { "profile-likes", "/alice/likes" },
-        { "followers", "/alice/followers" },
+        { "profile", "/@alice" },
+        { "profile-agent", "/@alice.claude/replies" },
+        { "profile-likes", "/@alice/likes" },
+        { "followers", "/@alice/followers" },
         { "notifications", "/notifications" },
         { "search", "/search" },
         { "search-beeps", "/search?q=beeps" },
@@ -148,8 +153,8 @@ public sealed partial class IslandSamplesTests : IDisposable
         { "signed-out-public", "/public" },
         { "signed-out-tag", "/tags/beeps" },
         { "signed-out-thread", "/beeps/00000000-0000-7000-8000-00000000000b" },
-        { "signed-out-profile", "/alice" },
-        { "signed-out-likes", "/alice/likes" },
+        { "signed-out-profile", "/@alice" },
+        { "signed-out-likes", "/@alice/likes" },
         { "signed-out-search", "/search?q=beeps" },
         { "signed-out-login", "/login" },
         { "signed-out-register", "/register" },

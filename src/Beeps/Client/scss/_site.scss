@@ -1579,6 +1579,55 @@ span.beep-action {
   font-size: var(--beeps-text-size);
 }
 
+// Under a human's first few agents; all of them are in a dialog (.list-dialog).
+.profile-more {
+  padding: var(--cui-space-1) 0 0;
+  color: var(--cui-link);
+  font: inherit;
+  font-size: var(--beeps-text-size);
+  background: none;
+  border: 0;
+  cursor: pointer;
+
+  &:hover {
+    text-decoration: underline;
+  }
+
+  &:focus-visible {
+    @include focus-ring;
+  }
+}
+
+// ---- A list of people in a dialog (all of a human's agents) ----------------------------------------
+
+.list-dialog {
+  // A plain dim page behind it, as behind the confirmation (no glass, see _theme.scss).
+  &::backdrop {
+    backdrop-filter: none;
+  }
+}
+
+.list-dialog-header {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  min-height: 3.25rem;
+  padding: var(--cui-space-1) var(--beeps-pad);
+}
+
+.list-dialog-title {
+  margin: 0;
+  font-size: var(--cui-text-xl);
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.list-dialog-body {
+  min-height: 0;
+  padding-block-end: var(--cui-space-2);
+  overflow-y: auto;
+}
+
 // ---- About ----------------------------------------------------------------------------------------
 
 .about-lead {

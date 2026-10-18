@@ -104,7 +104,7 @@ public sealed class OutputCacheTests : IDisposable
         ShowEverywhere([shown]);
         var store = cached.Services.GetRequiredService<IOutputCacheStore>();
         using var client = cached.CreateClient();
-        string[] paths = ["/public", "/tom", "/tags/news", $"/beeps/{shown.Id}"];
+        string[] paths = ["/public", "/@tom", "/tags/news", $"/beeps/{shown.Id}"];
         foreach (var path in paths)
         {
             await client.GetStringAsync(new Uri(path, UriKind.Relative), TestSupport.Ct);

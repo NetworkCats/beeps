@@ -126,7 +126,7 @@ public sealed partial class LivePagesTests : IDisposable
         factory.Profiles.ListAgentsAsync(alice.Id, Arg.Any<CancellationToken>()).Returns([]);
         using var client = await WebAuth.SignInAsync(factory, user);
 
-        var profile = await Islands.PageAsync(client, "/alice/replies");
+        var profile = await Islands.PageAsync(client, "/@alice/replies");
         var tag = await Islands.PageAsync(client, "/tags/%23Beeps");
         var inbox = await Islands.PageAsync(client, "/notifications");
 
@@ -388,11 +388,11 @@ public sealed partial class LivePagesTests : IDisposable
 
         using var byId = await anonymous.GetAsync(new Uri($"/actors/{agent.Id:D}/replies?before={Guid.Empty:D}", UriKind.Relative), TestSupport.Ct);
         using var gone = await anonymous.GetAsync(new Uri($"/actors/{Guid.NewGuid():D}", UriKind.Relative), TestSupport.Ct);
-        var signedOut = await anonymous.GetStringAsync(new Uri("/tom.renamed", UriKind.Relative), TestSupport.Ct);
-        var signedIn = await Islands.PageAsync(member, "/tom.renamed");
+        var signedOut = await anonymous.GetStringAsync(new Uri("/@tom.renamed", UriKind.Relative), TestSupport.Ct);
+        var signedIn = await Islands.PageAsync(member, "/@tom.renamed");
 
         Assert.Equal(HttpStatusCode.Redirect, byId.StatusCode);
-        Assert.Equal($"/tom.renamed/replies?before={Guid.Empty:D}", byId.Headers.Location?.OriginalString);
+        Assert.Equal($"/@tom.renamed/replies?before={Guid.Empty:D}", byId.Headers.Location?.OriginalString);
         Assert.Equal(HttpStatusCode.NotFound, gone.StatusCode);
         var live = Islands.Props(signedIn, "profile").GetProperty("live");
         Assert.Equal($"actor:{agent.Id:D}", live.GetProperty("subject").GetString());
@@ -492,7 +492,7 @@ public sealed partial class LivePagesTests : IDisposable
         using var client = await WebAuth.SignInAsync(factory, user);
 
         var html = await client.GetStringAsync(new Uri("/public", UriKind.Relative), TestSupport.Ct);
-        var profile = await client.GetStringAsync(new Uri("/alice", UriKind.Relative), TestSupport.Ct);
+        var profile = await client.GetStringAsync(new Uri("/@alice", UriKind.Relative), TestSupport.Ct);
 
         // A skeleton shaped like the page, until the app has its data: no title of its own, no props, no config.
         Assert.Matches("<main id=\"main\" class=\"shell-main\" data-app-shell>\\s*<div class=\"skeleton-page\" data-skeleton=\"feed\"", html);
@@ -552,14 +552,14 @@ public sealed partial class LivePagesTests : IDisposable
         factory.Profiles.ListAgentsAsync(bob.Id, Arg.Any<CancellationToken>()).Returns([]);
         using var client = await WebAuth.SignInAsync(factory, user);
 
-        using var followed = await Islands.PostFormAsync(client, "/bob", "/bob/follow?handler=Follow");
+        using var followed = await Islands.PostFormAsync(client, "/@bob", "/@bob/follow?handler=Follow");
         // The browser follows the redirect, which stays with the page's data; this client does not.
         using var back = await client.GetAsync(followed.Headers.Location, TestSupport.Ct);
         using var refused = await Islands.PostFormAsync(client, "/settings", "/settings?handler=Profile", ("DisplayName", ""), ("Bio", ""));
 
         // Followed: back on the profile, whose props come with what was done.
         Assert.Equal(HttpStatusCode.Redirect, followed.StatusCode);
-        Assert.Equal("/page-data/bob", followed.Headers.Location?.OriginalString);
+        Assert.Equal("/page-data/@bob", followed.Headers.Location?.OriginalString);
         var page = await Islands.JsonAsync(back);
         Assert.False(string.IsNullOrEmpty(page.GetProperty("notice").GetString()));
         Assert.True(page.GetProperty("islands").TryGetProperty("profile", out _));

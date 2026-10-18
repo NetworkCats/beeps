@@ -14,8 +14,8 @@ public static class SitePaths
     /// <summary>One of the settings' pages (<see cref="SettingsSections"/>); <see cref="Settings"/> lists them.</summary>
     public static string SettingsSection(string section) => Settings + "/" + section;
 
-    /// <summary>A profile: <c>/tom</c>, <c>/tom.claude</c>. Usernames cannot clash with site paths (reserved names).</summary>
-    public static string Profile(string handle) => "/" + Uri.EscapeDataString(handle);
+    /// <summary>A profile: <c>/@tom</c>, <c>/@tom.claude</c>. The <c>@</c> keeps a profile apart from the site's pages.</summary>
+    public static string Profile(string handle) => "/@" + Uri.EscapeDataString(handle);
 
     /// <summary>A page of a profile (<see cref="ProfileTabs"/>); none for its beeps.</summary>
     public static string ProfileTab(string handle, string? tab) => tab is null ? Profile(handle) : Profile(handle) + "/" + tab;

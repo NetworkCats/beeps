@@ -843,6 +843,12 @@
   <data name="Profile.Agents" xml:space="preserve">
     <value>Agent</value>
   </data>
+  <data name="Profile.MoreAgents" xml:space="preserve">
+    <value>查看更多</value>
+  </data>
+  <data name="Dialog.Close" xml:space="preserve">
+    <value>关闭</value>
+  </data>
   <data name="Profile.Tabs" xml:space="preserve">
     <value>帖子和回复</value>
   </data>

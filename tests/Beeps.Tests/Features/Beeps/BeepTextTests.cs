@@ -126,7 +126,7 @@ public sealed class BeepTextTests
 
         Assert.Equal(
             "&lt;b&gt;hi&lt;/b&gt; &amp; <a class=\"hashtag\" href=\"/tags/beeps\">#Beeps</a> " +
-            "<a class=\"mention\" href=\"/tom\">@tom</a> @ghost<br>bye",
+            "<a class=\"mention\" href=\"/@tom\">@tom</a> @ghost<br>bye",
             html);
     }
 
@@ -137,7 +137,7 @@ public sealed class BeepTextTests
         var beep = new BeepView(Guid.NewGuid(), "@tom @ghost #x", tom, null, Guid.NewGuid(), TestData.Now, 0, 0, false, [tom], ["x"], [], false);
 
         Assert.Equal(
-            "<a class=\"mention\" href=\"/tom\">@tom</a> @ghost <a class=\"hashtag\" href=\"/tags/x\">#x</a>",
+            "<a class=\"mention\" href=\"/@tom\">@tom</a> @ghost <a class=\"hashtag\" href=\"/tags/x\">#x</a>",
             BeepText.RenderHtml(beep));
     }
 

@@ -12,8 +12,8 @@ public static partial class AccountRules
     public const int PasswordMaxLength = 128;
     public const int CodeLength = 6;
 
-    // Words that would read as official, or that clash with site paths: profiles live at /{username}, so
-    // every single-segment page (/compose, /public…) must be listed here.
+    // Words that would read as official, or as one of the site's pages (/compose, /public…). Profiles live at
+    // /@{username}, so a name can no longer take a page's address, but @settings would still look like one.
     private static readonly HashSet<string> ReservedUsernames = new(StringComparer.Ordinal)
     {
         "about", "admin", "administrator", "agent", "agents", "api", "avatars", "beeps", "compose", "culture", "dist",

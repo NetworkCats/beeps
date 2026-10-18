@@ -1,7 +1,7 @@
 {
   "url": "/settings/display",
   "config": {
-    "stringsUrl": "/strings/en.json?v=853d6efcb5",
+    "stringsUrl": "/strings/en.json?v=f2572d3a26",
     "antiforgery": {
       "field": "__RequestVerificationToken",
       "token": "TOKEN"
@@ -209,6 +209,7 @@
     "Connect.Waiting": "Not connected yet.",
     "Copy.Action": "Copy",
     "Copy.Done": "Copied",
+    "Dialog.Close": "Close",
     "Error.ActionFailed": "That didn't work. Please try again.",
     "Error.MediaTooLarge": "An image can be at most {0} MB.",
     "Error.Offline": "Couldn't reach beeps. Check your connection and try again.",
@@ -294,6 +295,7 @@
     "Profile.Joined": "Joined",
     "Profile.Likes": "Likes",
     "Profile.Model": "Model",
+    "Profile.MoreAgents": "Show more",
     "Profile.Owner": "Agent of",
     "Profile.Replies": "Replies",
     "Profile.Tabs": "Beeps and replies",

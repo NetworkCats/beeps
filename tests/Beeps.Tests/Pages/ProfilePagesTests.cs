@@ -1,4 +1,5 @@
 using System.Net;
+using System.Text.RegularExpressions;
 using Beeps.Features.Beeps;
 using Beeps.Features.Notifications;
 using Beeps.Features.Profiles;
@@ -21,8 +22,8 @@ public sealed class ProfilePagesTests : IDisposable
         factory.Profiles.ListAgentsAsync(tom.Id, Arg.Any<CancellationToken>()).Returns([agent]);
         using var client = await WebAuth.SignInAsync(factory, viewer);
 
-        var html = await client.GetStringAsync(new Uri("/tom", UriKind.Relative), TestSupport.Ct);
-        var data = await Islands.PageAsync(client, "/tom");
+        var html = await client.GetStringAsync(new Uri("/@tom", UriKind.Relative), TestSupport.Ct);
+        var data = await Islands.PageAsync(client, "/@tom");
 
         var page = Islands.Props(data, "profile");
         var profile = page.GetProperty("profile");
@@ -44,9 +45,9 @@ public sealed class ProfilePagesTests : IDisposable
         var tom = ArrangeProfile("tom");
         using var client = WebAuth.NewClient(factory);
 
-        var html = await client.GetStringAsync(new Uri("/tom/replies", UriKind.Relative), TestSupport.Ct);
+        var html = await client.GetStringAsync(new Uri("/@tom/replies", UriKind.Relative), TestSupport.Ct);
 
-        Assert.Contains("<a class=\"tab\" href=\"/tom/replies\" aria-current=\"page\">Replies</a>", html, StringComparison.Ordinal);
+        Assert.Contains("<a class=\"tab\" href=\"/@tom/replies\" aria-current=\"page\">Replies</a>", html, StringComparison.Ordinal);
         Assert.Contains("No replies yet", html, StringComparison.Ordinal);
         await factory.Timelines.Received(1).ProfileAsync(tom.Id, ProfileTimeline.Replies, Arg.Any<PageRequest>(), null, Arg.Any<CancellationToken>());
     }
@@ -60,9 +61,9 @@ public sealed class ProfilePagesTests : IDisposable
         factory.Timelines.LikesAsync(tom.Id, Arg.Any<PageRequest>(), null, Arg.Any<CancellationToken>()).Returns(new CursorPage<BeepRow>([liked], liked.Id));
         using var client = WebAuth.NewClient(factory);
 
-        var html = await client.GetStringAsync(new Uri("/tom/likes", UriKind.Relative), TestSupport.Ct);
+        var html = await client.GetStringAsync(new Uri("/@tom/likes", UriKind.Relative), TestSupport.Ct);
 
-        Assert.Contains("<a class=\"tab\" href=\"/tom/likes\" aria-current=\"page\">Likes</a>", html, StringComparison.Ordinal);
+        Assert.Contains("<a class=\"tab\" href=\"/@tom/likes\" aria-current=\"page\">Likes</a>", html, StringComparison.Ordinal);
         Assert.Contains("liked", html, StringComparison.Ordinal);
         // Older pages by id, so a rename does not lose them; no live topic, as likes are not in the order beeps come.
         Assert.Contains($"href=\"/actors/{tom.Id:D}/likes?before={liked.Id:D}\"", html, StringComparison.Ordinal);
@@ -76,10 +77,10 @@ public sealed class ProfilePagesTests : IDisposable
         factory.Profiles.GetPrivacyAsync(tom.Id, Arg.Any<CancellationToken>()).Returns(new ProfilePrivacy(true, false, false));
         using var client = WebAuth.NewClient(factory);
 
-        var profile = await client.GetStringAsync(new Uri("/tom", UriKind.Relative), TestSupport.Ct);
-        var likes = await client.GetStringAsync(new Uri("/tom/likes", UriKind.Relative), TestSupport.Ct);
+        var profile = await client.GetStringAsync(new Uri("/@tom", UriKind.Relative), TestSupport.Ct);
+        var likes = await client.GetStringAsync(new Uri("/@tom/likes", UriKind.Relative), TestSupport.Ct);
 
-        Assert.DoesNotContain("/tom/likes", profile, StringComparison.Ordinal);
+        Assert.DoesNotContain("/@tom/likes", profile, StringComparison.Ordinal);
         Assert.Contains("These likes are private", likes, StringComparison.Ordinal);
         await factory.Timelines.DidNotReceiveWithAnyArgs().LikesAsync(default, default!, default, TestSupport.Ct);
     }
@@ -93,7 +94,7 @@ public sealed class ProfilePagesTests : IDisposable
         factory.Profiles.GetPrivacyAsync(user.Id, Arg.Any<CancellationToken>()).Returns(new ProfilePrivacy(true, true, true));
         using var client = await WebAuth.SignInAsync(factory, user);
 
-        var page = Islands.Props(await Islands.PageAsync(client, "/tom/likes"), "profile");
+        var page = Islands.Props(await Islands.PageAsync(client, "/@tom/likes"), "profile");
 
         Assert.Equal("likes", page.GetProperty("tab").GetString());
         Assert.True(page.GetProperty("likes").GetBoolean());
@@ -109,10 +110,10 @@ public sealed class ProfilePagesTests : IDisposable
         factory.Profiles.CountFollowsAsync(tom.Id, Arg.Any<CancellationToken>()).Returns(new FollowCounts(12, 3));
         using var client = WebAuth.NewClient(factory);
 
-        var html = await client.GetStringAsync(new Uri("/tom", UriKind.Relative), TestSupport.Ct);
+        var html = await client.GetStringAsync(new Uri("/@tom", UriKind.Relative), TestSupport.Ct);
 
-        Assert.Matches("<a href=\"/tom/following\">\\s*<strong>12</strong>\\s*Following\\s*</a>", html);
-        Assert.Matches("<a href=\"/tom/followers\">\\s*<strong>3</strong>\\s*Followers\\s*</a>", html);
+        Assert.Matches("<a href=\"/@tom/following\">\\s*<strong>12</strong>\\s*Following\\s*</a>", html);
+        Assert.Matches("<a href=\"/@tom/followers\">\\s*<strong>3</strong>\\s*Followers\\s*</a>", html);
     }
 
     [Fact]
@@ -126,13 +127,13 @@ public sealed class ProfilePagesTests : IDisposable
         factory.Profiles.GetPrivacyAsync(bob.Id, Arg.Any<CancellationToken>()).Returns(new ProfilePrivacy(false, true, true));
         using var client = WebAuth.NewClient(factory);
 
-        var noCounts = await client.GetStringAsync(new Uri("/tom", UriKind.Relative), TestSupport.Ct);
-        var noLists = await client.GetStringAsync(new Uri("/alice", UriKind.Relative), TestSupport.Ct);
-        var neither = await client.GetStringAsync(new Uri("/bob", UriKind.Relative), TestSupport.Ct);
+        var noCounts = await client.GetStringAsync(new Uri("/@tom", UriKind.Relative), TestSupport.Ct);
+        var noLists = await client.GetStringAsync(new Uri("/@alice", UriKind.Relative), TestSupport.Ct);
+        var neither = await client.GetStringAsync(new Uri("/@bob", UriKind.Relative), TestSupport.Ct);
 
-        Assert.Matches("<a href=\"/tom/following\">\\s*Following\\s*</a>", noCounts);
+        Assert.Matches("<a href=\"/@tom/following\">\\s*Following\\s*</a>", noCounts);
         Assert.Contains("<span><strong>0</strong> Following</span>", noLists, StringComparison.Ordinal);
-        Assert.DoesNotContain("/alice/following", noLists, StringComparison.Ordinal);
+        Assert.DoesNotContain("/@alice/following", noLists, StringComparison.Ordinal);
         Assert.DoesNotContain("profile-follows", neither, StringComparison.Ordinal);
         await factory.Profiles.DidNotReceive().CountFollowsAsync(tom.Id, Arg.Any<CancellationToken>());
     }
@@ -146,8 +147,8 @@ public sealed class ProfilePagesTests : IDisposable
             .Returns(new CursorPage<PersonRow>([new PersonRow(alice, "hi")], alice.Id));
         using var client = WebAuth.NewClient(factory);
 
-        var followers = Islands.Props(await client.GetStringAsync(new Uri("/tom/followers", UriKind.Relative), TestSupport.Ct), "follows");
-        var following = Islands.Props(await client.GetStringAsync(new Uri("/tom/following", UriKind.Relative), TestSupport.Ct), "follows");
+        var followers = Islands.Props(await client.GetStringAsync(new Uri("/@tom/followers", UriKind.Relative), TestSupport.Ct), "follows");
+        var following = Islands.Props(await client.GetStringAsync(new Uri("/@tom/following", UriKind.Relative), TestSupport.Ct), "follows");
 
         Assert.True(followers.GetProperty("followers").GetBoolean());
         var person = Assert.Single(followers.GetProperty("page").GetProperty("items").EnumerateArray());
@@ -165,8 +166,8 @@ public sealed class ProfilePagesTests : IDisposable
         factory.Profiles.FindByHandleAsync("tom.claude", Arg.Any<CancellationToken>()).Returns(new ProfileRow(TestBeeps.Agent(tom.Id), null, "Claude", TestData.Now, tom));
         using var client = WebAuth.NewClient(factory);
 
-        var page = Islands.Props(await client.GetStringAsync(new Uri("/tom/following", UriKind.Relative), TestSupport.Ct), "follows");
-        using var agents = await client.GetAsync(new Uri("/tom.claude/followers", UriKind.Relative), TestSupport.Ct);
+        var page = Islands.Props(await client.GetStringAsync(new Uri("/@tom/following", UriKind.Relative), TestSupport.Ct), "follows");
+        using var agents = await client.GetAsync(new Uri("/@tom.claude/followers", UriKind.Relative), TestSupport.Ct);
 
         Assert.True(page.GetProperty("hidden").GetBoolean());
         Assert.Empty(page.GetProperty("page").GetProperty("items").EnumerateArray());
@@ -175,8 +176,8 @@ public sealed class ProfilePagesTests : IDisposable
     }
 
     [Theory]
-    [InlineData("likes", "/tom/likes")]
-    [InlineData("followers", "/tom/followers")]
+    [InlineData("likes", "/@tom/likes")]
+    [InlineData("followers", "/@tom/followers")]
     public async Task APageByIdGoesOnToItsAddress(string tab, string address)
     {
         var tom = TestBeeps.Human("tom");
@@ -190,6 +191,37 @@ public sealed class ProfilePagesTests : IDisposable
     }
 
     [Fact]
+    public async Task AHumanWithMoreThanThreeAgentsListsThreeAndTheRestInADialog()
+    {
+        var tom = ArrangeProfile("tom");
+        var agents = Enumerable.Range(1, 5).Select(n => TestBeeps.Agent(tom.Id, $"tom.bot{n}")).ToList();
+        factory.Profiles.ListAgentsAsync(tom.Id, Arg.Any<CancellationToken>()).Returns(agents);
+        using var client = WebAuth.NewClient(factory);
+
+        var html = await client.GetStringAsync(new Uri("/@tom", UriKind.Relative), TestSupport.Ct);
+
+        var dialog = html.IndexOf("<dialog", StringComparison.Ordinal);
+        Assert.True(dialog > 0);
+        Assert.Equal(3, Regex.Count(html[..dialog], "class=\"actor-row\""));
+        Assert.Equal(5, Regex.Count(html[dialog..], "class=\"actor-row\""));
+        Assert.Contains("commandfor=\"agents-dialog\" command=\"show-modal\">Show more</button>", html, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task AHumanWithThreeAgentsListsThemAll()
+    {
+        var tom = ArrangeProfile("tom");
+        factory.Profiles.ListAgentsAsync(tom.Id, Arg.Any<CancellationToken>()).Returns(
+            Enumerable.Range(1, 3).Select(n => TestBeeps.Agent(tom.Id, $"tom.bot{n}")).ToList());
+        using var client = WebAuth.NewClient(factory);
+
+        var html = await client.GetStringAsync(new Uri("/@tom", UriKind.Relative), TestSupport.Ct);
+
+        Assert.Equal(3, Regex.Count(html, "class=\"actor-row\""));
+        Assert.DoesNotContain("<dialog", html, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task AnAgentsProfileNamesItsOwnerAndModel()
     {
         var owner = TestBeeps.Human("tom");
@@ -197,9 +229,9 @@ public sealed class ProfilePagesTests : IDisposable
         factory.Profiles.FindByHandleAsync("tom.claude", Arg.Any<CancellationToken>()).Returns(new ProfileRow(agent, null, "Claude Opus 4.5", TestData.Now, owner));
         using var client = WebAuth.NewClient(factory);
 
-        var html = await client.GetStringAsync(new Uri("/tom.claude", UriKind.Relative), TestSupport.Ct);
+        var html = await client.GetStringAsync(new Uri("/@tom.claude", UriKind.Relative), TestSupport.Ct);
 
-        Assert.Contains("<a href=\"/tom\">tom (@tom)</a>", html, StringComparison.Ordinal);
+        Assert.Contains("<a href=\"/@tom\">tom (@tom)</a>", html, StringComparison.Ordinal);
         Assert.Contains("<dd>Claude Opus 4.5</dd>", html, StringComparison.Ordinal);
         Assert.Contains("<span class=\"badge\">Agent</span>", html, StringComparison.Ordinal);
         // Agents cannot be followed on their own.
@@ -212,9 +244,9 @@ public sealed class ProfilePagesTests : IDisposable
         ArrangeProfile("tom");
         using var client = WebAuth.NewClient(factory);
 
-        var html = await client.GetStringAsync(new Uri("/tom", UriKind.Relative), TestSupport.Ct);
+        var html = await client.GetStringAsync(new Uri("/@tom", UriKind.Relative), TestSupport.Ct);
 
-        Assert.Contains("href=\"/login?returnUrl=%2Ftom\">Follow</a>", html, StringComparison.Ordinal);
+        Assert.Contains("href=\"/login?returnUrl=%2F%40tom\">Follow</a>", html, StringComparison.Ordinal);
         Assert.DoesNotContain("__RequestVerificationToken", html, StringComparison.Ordinal);
     }
 
@@ -229,8 +261,8 @@ public sealed class ProfilePagesTests : IDisposable
         factory.Profiles.ListAgentsAsync(user.Id, Arg.Any<CancellationToken>()).Returns([]);
         using var client = await WebAuth.SignInAsync(factory, user);
 
-        var own = await Islands.PageAsync(client, "/tom");
-        var agents = await Islands.PageAsync(client, "/tom.claude");
+        var own = await Islands.PageAsync(client, "/@tom");
+        var agents = await Islands.PageAsync(client, "/@tom.claude");
 
         var ownCard = Islands.Props(own, "profile").GetProperty("profile");
         Assert.True(ownCard.GetProperty("mine").GetBoolean());
@@ -245,8 +277,8 @@ public sealed class ProfilePagesTests : IDisposable
     {
         using var client = WebAuth.NewClient(factory);
 
-        using var unknown = await client.GetAsync(new Uri("/nobody", UriKind.Relative), TestSupport.Ct);
-        using var junk = await client.GetAsync(new Uri("/wp-login.php", UriKind.Relative), TestSupport.Ct);
+        using var unknown = await client.GetAsync(new Uri("/@nobody", UriKind.Relative), TestSupport.Ct);
+        using var junk = await client.GetAsync(new Uri("/@wp-login.php", UriKind.Relative), TestSupport.Ct);
 
         Assert.Equal(HttpStatusCode.NotFound, unknown.StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, junk.StatusCode);
@@ -261,11 +293,11 @@ public sealed class ProfilePagesTests : IDisposable
         factory.Profiles.AddFollowAsync(viewer.Id, tom.Id, Arg.Any<DateTimeOffset>(), Arg.Any<CancellationToken>()).Returns(true);
         using var client = await WebAuth.SignInAsync(factory, viewer);
 
-        using var response = await WebAuth.PostFormAsync(client, "/tom", "/tom/follow?handler=Follow");
+        using var response = await WebAuth.PostFormAsync(client, "/@tom", "/@tom/follow?handler=Follow");
         factory.Profiles.IsFollowingAsync(viewer.Id, tom.Id, Arg.Any<CancellationToken>()).Returns(true);
-        var page = await Islands.PageAsync(client, "/tom");
+        var page = await Islands.PageAsync(client, "/@tom");
 
-        Assert.Equal("/tom", response.Headers.Location?.OriginalString);
+        Assert.Equal("/@tom", response.Headers.Location?.OriginalString);
         Assert.Contains("Following. Their beeps and their agents", page, StringComparison.Ordinal);
         // Followed now: the button unfollows.
         Assert.True(Islands.Props(page, "profile").GetProperty("profile").GetProperty("following").GetBoolean());

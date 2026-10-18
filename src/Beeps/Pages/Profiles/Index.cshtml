@@ -1,5 +1,6 @@
-@page "/{handle}/{tab:regex(^(replies|likes)$)?}"
+@page "/@{handle}/{tab:regex(^(replies|likes)$)?}"
 @using Beeps.Features.Accounts
+@using Beeps.Features.Beeps
 @using Beeps.Pages.Islands
 @model Beeps.Pages.Profiles.IndexModel
 @{
@@ -10,6 +11,8 @@
     var isAgent = actor.Kind == ActorKind.Agent;
     var editUrl = isAgent ? Url.Page("/Agents/Edit", new { id = actor.Id }) : SitePaths.SettingsSection(SettingsSections.Profile);
     var tab = Model.Tab;
+    // As many of a human's agents as the card lists; the rest are in the dialog "show more" opens.
+    const int agentsShown = 3;
     var empty = tab switch
     {
         ProfileTabs.Likes when !profile.LikesShown => "Profile.LikesHidden",
@@ -55,7 +58,8 @@
             <div class="profile-actions">
                 @if (!isAgent)
                 {
-                    <a class="btn btn-sm btn-primary" asp-page="/Account/Login" asp-route-returnUrl="@SitePaths.Profile(handle)">@L["Profile.Follow"]</a>
+                    @* Escaped as the component escapes it (encodeURIComponent), "@" too. *@
+                    <a class="btn btn-sm btn-primary" href="@AuthSetup.LoginPath?returnUrl=@Uri.EscapeDataString(SitePaths.Profile(handle))">@L["Profile.Follow"]</a>
                 }
             </div>
         </div>
@@ -116,19 +120,27 @@
             <section class="profile-agents" aria-labelledby="agents-title">
                 <h2 class="profile-section-title" id="agents-title">@L["Profile.Agents"]</h2>
                 <ul class="actor-list">
-                    @foreach (var agent in profile.Agents)
+                    @foreach (var agent in profile.Agents.Take(agentsShown))
                     {
-                        <li>
-                            <a class="actor-row" href="@SitePaths.Profile(agent.Handle!)">
-                                <span class="avatar"><img src="@agent.AvatarUrl" alt="" width="40" height="40" loading="lazy"></span>
-                                <span class="actor-id">
-                                    <span class="actor-name">@agent.DisplayName</span>
-                                    <span class="actor-handle">@@@agent.Handle</span>
-                                </span>
-                            </a>
-                        </li>
+                        AgentItem(agent);
                     }
                 </ul>
+                @if (profile.Agents.Count > agentsShown)
+                {
+                    <button class="profile-more" type="button" commandfor="agents-dialog" command="show-modal">@L["Profile.MoreAgents"]</button>
+                    <dialog class="dialog dialog-sm dialog-plain list-dialog" id="agents-dialog" aria-labelledby="agents-dialog-title">
+                        <div class="list-dialog-header">
+                            <button class="column-back" type="button" commandfor="agents-dialog" command="close" aria-label="@L["Dialog.Close"]"><icon name="close" /></button>
+                            <h2 class="list-dialog-title" id="agents-dialog-title">@L["Profile.Agents"]</h2>
+                        </div>
+                        <ul class="actor-list list-dialog-body">
+                            @foreach (var agent in profile.Agents)
+                            {
+                                AgentItem(agent);
+                            }
+                        </ul>
+                    </dialog>
+                }
             </section>
         }
     </div>
@@ -145,3 +157,18 @@
     <partial name="_BeepList" model="list" />
 </section>
 </island>
+
+@{
+    void AgentItem(ActorView agent)
+    {
+        <li>
+            <a class="actor-row" href="@SitePaths.Profile(agent.Handle!)">
+                <span class="avatar"><img src="@agent.AvatarUrl" alt="" width="40" height="40" loading="lazy"></span>
+                <span class="actor-id">
+                    <span class="actor-name">@agent.DisplayName</span>
+                    <span class="actor-handle">@@@agent.Handle</span>
+                </span>
+            </a>
+        </li>
+    }
+}

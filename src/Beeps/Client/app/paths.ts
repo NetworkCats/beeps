@@ -10,9 +10,9 @@ export const paths = {
   login: '/login',
   verify: '/onboarding/verify',
   forgotPassword: '/forgot-password',
-  profile: (handle: string): string => `/${encodeURIComponent(handle)}`,
+  profile: (handle: string): string => `/@${encodeURIComponent(handle)}`,
   /** A page of a profile (Features/Site/SitePaths.cs's ProfileTabs): `replies`, `likes`, `following` or `followers`. */
-  profileTab: (handle: string, tab: string): string => `/${encodeURIComponent(handle)}/${tab}`,
+  profileTab: (handle: string, tab: string): string => `/@${encodeURIComponent(handle)}/${tab}`,
   beep: (id: string): string => `/beeps/${id}`,
   beepAnchor: (id: string): string => `beep-${id}`,
   report: (id: string): string => `/beeps/${id}/report`,

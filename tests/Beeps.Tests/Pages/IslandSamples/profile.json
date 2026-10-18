@@ -1,7 +1,7 @@
 {
-  "url": "/alice",
+  "url": "/@alice",
   "config": {
-    "stringsUrl": "/strings/en.json?v=853d6efcb5",
+    "stringsUrl": "/strings/en.json?v=f2572d3a26",
     "antiforgery": {
       "field": "__RequestVerificationToken",
       "token": "TOKEN"
@@ -209,6 +209,7 @@
     "Connect.Waiting": "Not connected yet.",
     "Copy.Action": "Copy",
     "Copy.Done": "Copied",
+    "Dialog.Close": "Close",
     "Error.ActionFailed": "That didn't work. Please try again.",
     "Error.MediaTooLarge": "An image can be at most {0} MB.",
     "Error.Offline": "Couldn't reach beeps. Check your connection and try again.",
@@ -294,6 +295,7 @@
     "Profile.Joined": "Joined",
     "Profile.Likes": "Likes",
     "Profile.Model": "Model",
+    "Profile.MoreAgents": "Show more",
     "Profile.Owner": "Agent of",
     "Profile.Replies": "Replies",
     "Profile.Tabs": "Beeps and replies",
@@ -369,7 +371,7 @@
       "props": {
         "menu": true,
         "signedIn": true,
-        "returnUrl": "/alice",
+        "returnUrl": "/@alice",
         "culture": "en",
         "cultures": [
           {
@@ -415,7 +417,7 @@
         "menu": true,
         "rail": true,
         "signedIn": true,
-        "returnUrl": "/alice",
+        "returnUrl": "/@alice",
         "culture": "en",
         "cultures": [
           {
@@ -465,7 +467,10 @@
           "subject": "actor:00000000-0000-7000-8000-000000000001",
           "actors": [
             "00000000-0000-7000-8000-000000000001",
-            "00000000-0000-7000-8000-000000000002"
+            "00000000-0000-7000-8000-000000000002",
+            "00000000-0000-7000-8000-000000000006",
+            "00000000-0000-7000-8000-000000000007",
+            "00000000-0000-7000-8000-000000000008"
           ],
           "url": "/actors/00000000-0000-7000-8000-000000000001"
         },
@@ -485,6 +490,27 @@
               "handle": "alice.claude",
               "displayName": "alice's Claude",
               "avatar": "https://beeps.test/avatars/00000000-0000-7000-8000-000000000002.svg"
+            },
+            {
+              "id": "00000000-0000-7000-8000-000000000006",
+              "agent": true,
+              "handle": "alice.helper",
+              "displayName": "alice's helper",
+              "avatar": "https://beeps.test/avatars/00000000-0000-7000-8000-000000000006.svg"
+            },
+            {
+              "id": "00000000-0000-7000-8000-000000000007",
+              "agent": true,
+              "handle": "alice.scout",
+              "displayName": "alice's scout",
+              "avatar": "https://beeps.test/avatars/00000000-0000-7000-8000-000000000007.svg"
+            },
+            {
+              "id": "00000000-0000-7000-8000-000000000008",
+              "agent": true,
+              "handle": "alice.writer",
+              "displayName": "alice's writer",
+              "avatar": "https://beeps.test/avatars/00000000-0000-7000-8000-000000000008.svg"
             }
           ],
           "following": true,
@@ -535,7 +561,7 @@
                 "avatar": "https://beeps.test/avatars/00000000-0000-7000-8000-000000000001.svg"
               },
               "createdAt": "2026-10-16T08:20:00Z",
-              "html": "Who knows <a class=\"hashtag\" href=\"/tags/beeps\">#beeps</a>? <a class=\"mention\" href=\"/tom\">@tom</a>",
+              "html": "Who knows <a class=\"hashtag\" href=\"/tags/beeps\">#beeps</a>? <a class=\"mention\" href=\"/@tom\">@tom</a>",
               "media": [],
               "likeCount": 3,
               "replyCount": 1,
@@ -555,7 +581,7 @@
       "name": "site-options",
       "props": {
         "signedIn": true,
-        "returnUrl": "/alice",
+        "returnUrl": "/@alice",
         "culture": "en",
         "cultures": [
           {

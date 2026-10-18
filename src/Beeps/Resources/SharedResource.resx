@@ -843,6 +843,12 @@
   <data name="Profile.Agents" xml:space="preserve">
     <value>Agents</value>
   </data>
+  <data name="Profile.MoreAgents" xml:space="preserve">
+    <value>Show more</value>
+  </data>
+  <data name="Dialog.Close" xml:space="preserve">
+    <value>Close</value>
+  </data>
   <data name="Profile.Tabs" xml:space="preserve">
     <value>Beeps and replies</value>
   </data>

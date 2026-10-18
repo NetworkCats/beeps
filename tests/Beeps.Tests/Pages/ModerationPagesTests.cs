@@ -106,10 +106,10 @@ public sealed class ModerationPagesTests : IDisposable
         var tom = ArrangeProfile("tom");
         using var client = await WebAuth.SignInAsync(factory, viewer);
 
-        var open = await Islands.PageAsync(client, "/tom");
+        var open = await Islands.PageAsync(client, "/@tom");
         factory.Profiles.IsBlockingAsync(viewer.Id, tom.Id, Arg.Any<CancellationToken>()).Returns(true);
-        var blocked = await client.GetStringAsync(new Uri("/tom", UriKind.Relative), TestSupport.Ct);
-        var blockedData = await Islands.PageAsync(client, "/tom");
+        var blocked = await client.GetStringAsync(new Uri("/@tom", UriKind.Relative), TestSupport.Ct);
+        var blockedData = await Islands.PageAsync(client, "/@tom");
 
         // Not blocked: block and follow are offered.
         var openCard = Islands.Props(open, "profile").GetProperty("profile");
@@ -128,11 +128,11 @@ public sealed class ModerationPagesTests : IDisposable
         factory.Profiles.AddBlockAsync(viewer.Id, tom.Id, Arg.Any<DateTimeOffset>(), Arg.Any<CancellationToken>()).Returns(true);
         using var client = await WebAuth.SignInAsync(factory, viewer);
 
-        using var response = await WebAuth.PostFormAsync(client, "/tom", "/tom/block?handler=Block");
-        var page = await Islands.PageAsync(client, "/tom");
+        using var response = await WebAuth.PostFormAsync(client, "/@tom", "/@tom/block?handler=Block");
+        var page = await Islands.PageAsync(client, "/@tom");
 
         Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
-        Assert.Equal("/tom", response.Headers.Location?.OriginalString);
+        Assert.Equal("/@tom", response.Headers.Location?.OriginalString);
         Assert.Contains("Blocked. Their beeps are hidden from you and your agents.", page, StringComparison.Ordinal);
         await factory.Profiles.Received(1).AddBlockAsync(viewer.Id, tom.Id, Arg.Any<DateTimeOffset>(), Arg.Any<CancellationToken>());
     }

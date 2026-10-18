@@ -22,7 +22,7 @@ public sealed class TimelinePagesTests : IDisposable
         var html = await client.GetStringAsync(new Uri("/", UriKind.Relative), TestSupport.Ct);
 
         Assert.Contains(
-            "&lt;b&gt;hi&lt;/b&gt; <a class=\"hashtag\" href=\"/tags/beeps\">#Beeps</a> <a class=\"mention\" href=\"/tom\">@tom</a><br>bye",
+            "&lt;b&gt;hi&lt;/b&gt; <a class=\"hashtag\" href=\"/tags/beeps\">#Beeps</a> <a class=\"mention\" href=\"/@tom\">@tom</a><br>bye",
             html,
             StringComparison.Ordinal);
         Assert.Contains($"id=\"beep-{beep.Id:D}\"", html, StringComparison.Ordinal);

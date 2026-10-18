@@ -66,24 +66,36 @@ test('one\'s own beep can be deleted, after asking, and someone else\'s reported
 test('a profile has a follow button that follows the state', async () => {
   const followed = await draw('profile.json', 'profile');
   // tom follows alice in the sample.
-  assert.match(followed, /<form method="post" action="\/alice\/follow\?handler=Unfollow">/);
+  assert.match(followed, /<form method="post" action="\/@alice\/follow\?handler=Unfollow">/);
   const notFollowed = await draw('profile.json', 'profile', (props) => {
     props.profile.following = false;
   });
-  assert.match(notFollowed, /action="\/alice\/follow\?handler=Follow">\s*<button class="btn btn-sm btn-primary"/);
+  assert.match(notFollowed, /action="\/@alice\/follow\?handler=Follow">\s*<button class="btn btn-sm btn-primary"/);
+});
+
+test('a human with more than three agents lists three, and all of them in the dialog "show more" opens', async () => {
+  const html = await draw('profile.json', 'profile');
+  const [card = '', dialog = ''] = html.split('<dialog');
+  assert.equal(card.match(/class="actor-row"/g)?.length, 3);
+  assert.equal(dialog.match(/class="actor-row"/g)?.length, 4);
+  assert.match(card, /<button class="profile-more" type="button" commandfor="agents-dialog" command="show-modal">Show more<\/button>/);
+  const few = await draw('profile.json', 'profile', (props) => {
+    props.profile.agents = props.profile.agents.slice(0, 3);
+  });
+  assert.doesNotMatch(few, /<dialog|profile-more/);
 });
 
 test('a blocked profile offers unblocking and no following', async () => {
   const html = await draw('profile.json', 'profile', (props) => {
     props.profile.blocked = true;
   });
-  assert.match(html, /<form method="post" action="\/alice\/block\?handler=Unblock">/);
+  assert.match(html, /<form method="post" action="\/@alice\/block\?handler=Unblock">/);
   assert.match(html, /You blocked @alice\./);
-  assert.doesNotMatch(html, /\/alice\/follow\?handler=/);
+  assert.doesNotMatch(html, /\/@alice\/follow\?handler=/);
   const open = await draw('profile.json', 'profile', (props) => {
     props.profile.blocked = false;
   });
-  assert.match(open, /action="\/alice\/block\?handler=Block" data-confirm="[^"]+"/);
+  assert.match(open, /action="\/@alice\/block\?handler=Block" data-confirm="[^"]+"/);
 });
 
 test('a reply in a thread says whom it answers, with a link to that beep on the page', async () => {

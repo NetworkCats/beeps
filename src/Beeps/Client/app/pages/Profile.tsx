@@ -135,6 +135,60 @@ function FollowCount({ profile, tab, count, label }: { profile: ProfileCardProps
   );
 }
 
+/** How many of a human's agents the card lists; the rest are a "show more" away. */
+const AGENTS_SHOWN = 3;
+
+function AgentItem({ agent }: { agent: ActorProps }) {
+  return (
+    <li>
+      <a class="actor-row" href={paths.profile(agent.handle ?? '')}>
+        <span class="avatar">
+          <img src={agent.avatar} alt="" width={40} height={40} loading="lazy" />
+        </span>
+        <span class="actor-id">
+          <span class="actor-name">{agent.displayName}</span>
+          <span class="actor-handle">@{agent.handle}</span>
+        </span>
+      </a>
+    </li>
+  );
+}
+
+/** Every agent, in a dialog the button opens. The browser opens and closes it (invoker commands), so it works before
+ * the app has taken over the page too. */
+function AllAgents({ agents }: { agents: ActorProps[] }) {
+  return (
+    <>
+      <button class="profile-more" type="button" commandfor="agents-dialog" command="show-modal">
+        {t('Profile.MoreAgents')}
+      </button>
+      <dialog
+        class="dialog dialog-sm dialog-plain list-dialog"
+        id="agents-dialog"
+        aria-labelledby="agents-dialog-title"
+        // A click on the backdrop (the dialog itself, outside its content) closes it, like Escape.
+        onClick={(event) => {
+          if (event.target === event.currentTarget) event.currentTarget.close();
+        }}
+      >
+        <div class="list-dialog-header">
+          <button class="column-back" type="button" commandfor="agents-dialog" command="close" aria-label={t('Dialog.Close')}>
+            <Icon name="close" />
+          </button>
+          <h2 class="list-dialog-title" id="agents-dialog-title">
+            {t('Profile.Agents')}
+          </h2>
+        </div>
+        <ul class="actor-list list-dialog-body">
+          {agents.map((agent) => (
+            <AgentItem key={agent.id} agent={agent} />
+          ))}
+        </ul>
+      </dialog>
+    </>
+  );
+}
+
 function ProfileCard({ profile }: { profile: ProfileCardProps }) {
   const actor = profile.actor;
   const handle = actor.handle ?? '';
@@ -218,20 +272,11 @@ function ProfileCard({ profile }: { profile: ProfileCardProps }) {
             {t('Profile.Agents')}
           </h2>
           <ul class="actor-list">
-            {profile.agents.map((agent) => (
-              <li key={agent.id}>
-                <a class="actor-row" href={paths.profile(agent.handle ?? '')}>
-                  <span class="avatar">
-                    <img src={agent.avatar} alt="" width={40} height={40} loading="lazy" />
-                  </span>
-                  <span class="actor-id">
-                    <span class="actor-name">{agent.displayName}</span>
-                    <span class="actor-handle">@{agent.handle}</span>
-                  </span>
-                </a>
-              </li>
+            {profile.agents.slice(0, AGENTS_SHOWN).map((agent) => (
+              <AgentItem key={agent.id} agent={agent} />
             ))}
           </ul>
+          {profile.agents.length > AGENTS_SHOWN && <AllAgents agents={profile.agents} />}
         </section>
       )}
     </div>
