@@ -409,7 +409,7 @@ tests/Beeps.Tests/
 - 不使用 ImageSharp（授权协议不符合项目要求）。
 
 ### 6.12 多语言
-- 界面支持简体中文和英文。
+- 界面支持简体中文和英文。中文界面把 beep 叫“帖子”，发 beep 叫“发帖”；站名 beeps 和 API 参数名不翻译。
 - 使用 ASP.NET Core 本地化（`.resx` 资源文件）。
 - 语言选择顺序：用户设置 → Cookie → `Accept-Language` → 默认英文。`Accept-Language` 首选任何中文（含繁体和单独的 `zh`）时显示简体中文。
 - 邮件模板中英双语。

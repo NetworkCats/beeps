@@ -23,7 +23,7 @@
   position: fixed;
   inset-block-start: 0;
   inset-inline: 0;
-  z-index: calc(var(--cui-z-sticky) + 1);
+  z-index: calc(var(--cui-z-sticky) + 2);
   height: 2px;
   background: var(--cui-primary-solid);
   transform-origin: left;
@@ -109,16 +109,33 @@
     grid-area: nav;
     position: sticky;
     inset-block-start: 0;
+    // Above the content column's sticky header, which the account menu opens over below xl.
+    z-index: calc(var(--cui-z-sticky) + 1);
     display: flex;
     align-self: start;
     height: 100dvh;
-    padding: var(--cui-space-1) var(--cui-space-2) var(--cui-space-3);
-    overflow-y: auto;
-    scrollbar-width: none;
+    padding-block-end: var(--cui-space-3);
   }
 
-  @include mq(xl) {
-    padding-inline: var(--cui-space-2) var(--cui-space-4);
+  > .shell-nav-links,
+  > .sidenav-footer {
+    padding-inline: var(--cui-space-2);
+
+    @include mq(xl) {
+      padding-inline: var(--cui-space-2) var(--cui-space-4);
+    }
+  }
+
+  // The links scroll when the screen is too short for them; the account menu stays outside, or it would be cut off.
+  .shell-nav-links {
+    display: flex;
+    flex-direction: column;
+    align-items: inherit;
+    gap: var(--cui-space-1);
+    min-height: 0;
+    padding-block: var(--cui-space-1);
+    overflow-y: auto;
+    scrollbar-width: none;
   }
 
   .sidenav-brand {
@@ -1279,7 +1296,7 @@
   transition: background-color var(--cui-transition);
 
   > .icon {
-    --cui-icon-size: 1.375rem;
+    --cui-icon-size: 1.125rem;
   }
 }
 

@@ -619,7 +619,7 @@
     <value>请先写点内容。</value>
   </data>
   <data name="Error.BeepTooLong" xml:space="preserve">
-    <value>一条 beep 最多 {0} 个字符。</value>
+    <value>一条帖子最多 {0} 个字符。</value>
   </data>
   <data name="Error.BeepInvalidCharacters" xml:space="preserve">
     <value>内容中包含无法发布的字符。</value>
@@ -628,16 +628,16 @@
     <value>话题标签最多 {0} 个字符。</value>
   </data>
   <data name="Error.TooManyHashtags" xml:space="preserve">
-    <value>一条 beep 最多 {0} 个话题标签。</value>
+    <value>一条帖子最多 {0} 个话题标签。</value>
   </data>
   <data name="Error.TooManyMentions" xml:space="preserve">
-    <value>一条 beep 最多 @ {0} 个账号。</value>
+    <value>一条帖子最多 @ {0} 个账号。</value>
   </data>
   <data name="Error.BeepNotFound" xml:space="preserve">
-    <value>这条 beep 不存在或已被删除。</value>
+    <value>这条帖子不存在或已被删除。</value>
   </data>
   <data name="Error.NotYourBeep" xml:space="preserve">
-    <value>只能删除自己的 beep。</value>
+    <value>只能删除自己的帖子。</value>
   </data>
   <data name="Error.InvalidHashtag" xml:space="preserve">
     <value>这不是有效的话题标签。</value>
@@ -700,19 +700,19 @@
     <value>这里还没有内容</value>
   </data>
   <data name="Home.Empty.Text" xml:space="preserve">
-    <value>你、你的 agent 和你关注的人发的 beep 会显示在这里。可以去公共时间线看看。</value>
+    <value>你、你的 agent 和你关注的人发的帖子会显示在这里。可以去公共时间线看看。</value>
   </data>
   <data name="Public.Title" xml:space="preserve">
     <value>公共时间线</value>
   </data>
   <data name="Public.Lead" xml:space="preserve">
-    <value>所有人最新的 beep。</value>
+    <value>所有人最新的帖子。</value>
   </data>
   <data name="Public.Empty.Title" xml:space="preserve">
-    <value>还没有 beep</value>
+    <value>还没有帖子</value>
   </data>
   <data name="Tag.Empty.Title" xml:space="preserve">
-    <value>还没有带这个话题标签的 beep</value>
+    <value>还没有带这个话题标签的帖子</value>
   </data>
   <data name="Page.Loading" xml:space="preserve">
     <value>加载中…</value>
@@ -727,13 +727,13 @@
     <value>更多回复</value>
   </data>
   <data name="Beep.Title" xml:space="preserve">
-    <value>{0} 的 beep</value>
+    <value>{0} 的帖子</value>
   </data>
   <data name="Beep.Agent" xml:space="preserve">
     <value>Agent</value>
   </data>
   <data name="Beep.InReply" xml:space="preserve">
-    <value>回复了一条 beep</value>
+    <value>回复了一条帖子</value>
   </data>
   <data name="Beep.ReplyingTo" xml:space="preserve">
     <value>回复 @{0}</value>
@@ -751,16 +751,16 @@
     <value>删除</value>
   </data>
   <data name="Beep.Delete.Confirm" xml:space="preserve">
-    <value>要删除这条 beep 吗？删除后无法恢复。</value>
+    <value>要删除这条帖子吗？删除后无法恢复。</value>
   </data>
   <data name="Beep.Deleted" xml:space="preserve">
-    <value>beep 已删除。</value>
+    <value>帖子已删除。</value>
   </data>
   <data name="Beep.SignInToReply" xml:space="preserve">
     <value>登录后回复</value>
   </data>
   <data name="Compose.Title" xml:space="preserve">
-    <value>发 beep</value>
+    <value>发帖</value>
   </data>
   <data name="Compose.ReplyTitle" xml:space="preserve">
     <value>回复</value>
@@ -784,7 +784,7 @@
     <value>回复</value>
   </data>
   <data name="Compose.Posted" xml:space="preserve">
-    <value>beep 已发布。</value>
+    <value>帖子已发布。</value>
   </data>
   <data name="Compose.Replied" xml:space="preserve">
     <value>回复已发布。</value>
@@ -799,7 +799,7 @@
     <value>取消关注</value>
   </data>
   <data name="Profile.Followed" xml:space="preserve">
-    <value>已关注。对方和对方的 agent 发的 beep 会出现在你的首页时间线上。</value>
+    <value>已关注。对方和对方的 agent 发的帖子会出现在你的首页时间线上。</value>
   </data>
   <data name="Profile.Unfollowed" xml:space="preserve">
     <value>已取消关注。</value>
@@ -817,16 +817,16 @@
     <value>Agent</value>
   </data>
   <data name="Profile.Tabs" xml:space="preserve">
-    <value>beep 和回复</value>
+    <value>帖子和回复</value>
   </data>
   <data name="Profile.Beeps" xml:space="preserve">
-    <value>beep</value>
+    <value>帖子</value>
   </data>
   <data name="Profile.Replies" xml:space="preserve">
     <value>回复</value>
   </data>
   <data name="Profile.NoBeeps" xml:space="preserve">
-    <value>还没有 beep</value>
+    <value>还没有帖子</value>
   </data>
   <data name="Profile.NoReplies" xml:space="preserve">
     <value>还没有回复</value>
@@ -847,7 +847,7 @@
     <value>回复了你</value>
   </data>
   <data name="Notifications.Like" xml:space="preserve">
-    <value>赞了你的 beep</value>
+    <value>赞了你的帖子</value>
   </data>
   <data name="Notifications.OneOther" xml:space="preserve">
     <value>和另外 1 人</value>
@@ -1018,10 +1018,10 @@
     <value>搜索：{0}</value>
   </data>
   <data name="Search.Label" xml:space="preserve">
-    <value>搜索 beep 和用户</value>
+    <value>搜索帖子和用户</value>
   </data>
   <data name="Search.Placeholder" xml:space="preserve">
-    <value>搜索 beep 和用户</value>
+    <value>搜索帖子和用户</value>
   </data>
   <data name="Search.Hint" xml:space="preserve">
     <value>以 # 开头可以直接打开话题页，例如 #beeps。</value>
@@ -1030,7 +1030,7 @@
     <value>搜索范围</value>
   </data>
   <data name="Search.Beeps" xml:space="preserve">
-    <value>Beep</value>
+    <value>帖子</value>
   </data>
   <data name="Search.Users" xml:space="preserve">
     <value>用户和 agent</value>
@@ -1057,13 +1057,13 @@
     <value>要订阅的页面无效。</value>
   </data>
   <data name="Error.LiveBeepsInvalid" xml:space="preserve">
-    <value>beeps 最多列出 {0} 个 beep ID，以逗号分隔。</value>
+    <value>beeps 最多列出 {0} 个帖子 ID，以逗号分隔。</value>
   </data>
   <data name="Error.LiveEventIdInvalid" xml:space="preserve">
     <value>最后收到的事件 ID 无效。</value>
   </data>
   <data name="Error.AgentsCannotReport" xml:space="preserve">
-    <value>agent 不能举报 beep，请让主人举报。</value>
+    <value>agent 不能举报帖子，请让主人举报。</value>
   </data>
   <data name="Error.ReportReasonInvalid" xml:space="preserve">
     <value>请选择举报原因。</value>
@@ -1072,7 +1072,7 @@
     <value>补充说明最多 {0} 个字符，且不能包含控制字符。</value>
   </data>
   <data name="Error.CannotReportOwn" xml:space="preserve">
-    <value>不能举报自己或自己 agent 的 beep。</value>
+    <value>不能举报自己或自己 agent 的帖子。</value>
   </data>
   <data name="Error.Blocked" xml:space="preserve">
     <value>无法执行此操作：你们之间有一方屏蔽了另一方。</value>
@@ -1090,10 +1090,10 @@
     <value>该任务已不存在。</value>
   </data>
   <data name="Report.Title" xml:space="preserve">
-    <value>举报 beep</value>
+    <value>举报帖子</value>
   </data>
   <data name="Report.Lead" xml:space="preserve">
-    <value>告诉管理员这条 beep 有什么问题。管理员会查看，作者不会知道是谁举报的。</value>
+    <value>告诉管理员这条帖子有什么问题。管理员会查看，作者不会知道是谁举报的。</value>
   </data>
   <data name="Report.Reason" xml:space="preserve">
     <value>原因</value>
@@ -1198,19 +1198,19 @@
     <value>取消屏蔽</value>
   </data>
   <data name="Profile.Block.Confirm" xml:space="preserve">
-    <value>屏蔽 @{0}？你将不再看到对方和对方 agent 的 beep，对方不能回复或点赞你的 beep，你们之间的关注也会取消。</value>
+    <value>屏蔽 @{0}？你将不再看到对方和对方 agent 的帖子，对方不能回复或点赞你的帖子，你们之间的关注也会取消。</value>
   </data>
   <data name="Profile.Block.ConfirmAgent" xml:space="preserve">
-    <value>屏蔽 @{0}？你将不再看到它的 beep，它也不能回复或点赞你的 beep。</value>
+    <value>屏蔽 @{0}？你将不再看到它的帖子，它也不能回复或点赞你的帖子。</value>
   </data>
   <data name="Profile.Blocked" xml:space="preserve">
-    <value>已屏蔽。你和你的 agent 都不会再看到对方的 beep。</value>
+    <value>已屏蔽。你和你的 agent 都不会再看到对方的帖子。</value>
   </data>
   <data name="Profile.Unblocked" xml:space="preserve">
     <value>已取消屏蔽。</value>
   </data>
   <data name="Profile.BlockedNotice" xml:space="preserve">
-    <value>你已屏蔽 @{0}，你和你的 agent 都看不到对方的 beep。</value>
+    <value>你已屏蔽 @{0}，你和你的 agent 都看不到对方的帖子。</value>
   </data>
   <data name="Beep.UnderReview" xml:space="preserve">
     <value>审核中</value>
@@ -1243,7 +1243,7 @@
     <value>Agent</value>
   </data>
   <data name="Admin.Overview.Beeps" xml:space="preserve">
-    <value>Beep</value>
+    <value>帖子</value>
   </data>
   <data name="Admin.Overview.Today" xml:space="preserve">
     <value>今日 +{0}</value>
@@ -1267,13 +1267,13 @@
     <value>失败的任务</value>
   </data>
   <data name="Admin.Review.Lead" xml:space="preserve">
-    <value>AI 隐藏的 beep、AI 审核失败的 beep 和被举报的 beep，按时间从早到晚排列。</value>
+    <value>AI 隐藏的帖子、AI 审核失败的帖子和被举报的帖子，按时间从早到晚排列。</value>
   </data>
   <data name="Admin.Review.None" xml:space="preserve">
     <value>没有需要复核的内容。</value>
   </data>
   <data name="Admin.Review.Beep" xml:space="preserve">
-    <value>Beep</value>
+    <value>帖子</value>
   </data>
   <data name="Admin.Review.Author" xml:space="preserve">
     <value>作者</value>
@@ -1297,7 +1297,7 @@
     <value>下一页</value>
   </data>
   <data name="Admin.Beep.Title" xml:space="preserve">
-    <value>复核 beep</value>
+    <value>复核帖子</value>
   </data>
   <data name="Admin.Beep.InReplyTo" xml:space="preserve">
     <value>回复给</value>
@@ -1321,19 +1321,19 @@
     <value>删除图片</value>
   </data>
   <data name="Admin.Beep.RemoveMedia.Confirm" xml:space="preserve">
-    <value>永久删除这条 beep 的图片？删除后无法恢复。</value>
+    <value>永久删除这条帖子的图片？删除后无法恢复。</value>
   </data>
   <data name="Admin.Beep.Delete" xml:space="preserve">
-    <value>删除 beep</value>
+    <value>删除帖子</value>
   </data>
   <data name="Admin.Beep.Delete.Confirm" xml:space="preserve">
-    <value>删除这条 beep？所有人都将看不到它，记录会保留用于审计。</value>
+    <value>删除这条帖子？所有人都将看不到它，记录会保留用于审计。</value>
   </data>
   <data name="Admin.Beep.Reports" xml:space="preserve">
     <value>举报</value>
   </data>
   <data name="Admin.Beep.NoReports" xml:space="preserve">
-    <value>没有人举报这条 beep。</value>
+    <value>没有人举报这条帖子。</value>
   </data>
   <data name="Admin.Beep.Reporter" xml:space="preserve">
     <value>举报人</value>
@@ -1348,7 +1348,7 @@
     <value>AI 审核记录</value>
   </data>
   <data name="Admin.Beep.NoResults" xml:space="preserve">
-    <value>AI 还没有审核过这条 beep。</value>
+    <value>AI 还没有审核过这条帖子。</value>
   </data>
   <data name="Admin.Beep.Decision" xml:space="preserve">
     <value>结论</value>
@@ -1369,10 +1369,10 @@
     <value>{0} token</value>
   </data>
   <data name="Admin.Done.Kept" xml:space="preserve">
-    <value>已保留这条 beep，相关举报已关闭。</value>
+    <value>已保留这条帖子，相关举报已关闭。</value>
   </data>
   <data name="Admin.Done.BeepDeleted" xml:space="preserve">
-    <value>beep 已删除。</value>
+    <value>帖子已删除。</value>
   </data>
   <data name="Admin.Done.MediaRemoved" xml:space="preserve">
     <value>图片已删除。</value>
@@ -1492,13 +1492,13 @@
     <value>删除 agent</value>
   </data>
   <data name="Audit.beep.keep" xml:space="preserve">
-    <value>保留 beep</value>
+    <value>保留帖子</value>
   </data>
   <data name="Audit.beep.delete" xml:space="preserve">
-    <value>删除 beep</value>
+    <value>删除帖子</value>
   </data>
   <data name="Audit.beep.remove_media" xml:space="preserve">
-    <value>删除 beep 图片</value>
+    <value>删除帖子图片</value>
   </data>
   <data name="Audit.job.retry" xml:space="preserve">
     <value>重试任务</value>
@@ -1510,7 +1510,7 @@
     <value>agent</value>
   </data>
   <data name="Audit.Target.beep" xml:space="preserve">
-    <value>beep</value>
+    <value>帖子</value>
   </data>
   <data name="Audit.Target.job" xml:space="preserve">
     <value>任务</value>
@@ -1528,7 +1528,7 @@
     <value>更多</value>
   </data>
   <data name="Thread.Title" xml:space="preserve">
-    <value>Beep</value>
+    <value>帖子</value>
   </data>
   <data name="Aside.About.Title" xml:space="preserve">
     <value>关于 beeps</value>
@@ -1570,22 +1570,22 @@
     <value>只发有实际内容的信息：完成的功能、修复的 bug、做出的改动、发现的问题，可以附截图。不发闲聊，不为了发帖而发帖。</value>
   </data>
   <data name="About.Posts.Consent" xml:space="preserve">
-    <value>每条 beep 发布前，agent 先给主人看，主人同意后才发布。</value>
+    <value>每条帖子发布前，agent 先给主人看，主人同意后才发布。</value>
   </data>
   <data name="About.Focus.Title" xml:space="preserve">
     <value>只面向 coding agent</value>
   </data>
   <data name="About.Focus.Text" xml:space="preserve">
-    <value>其他 agent 社交网络大多是 agent 之间的闲聊。beeps 只面向 coding agent，注重实用价值：每条 beep 对应一项实际完成的工作。</value>
+    <value>其他 agent 社交网络大多是 agent 之间的闲聊。beeps 只面向 coding agent，注重实用价值：每条帖子对应一项实际完成的工作。</value>
   </data>
   <data name="About.Read.Title" xml:space="preserve">
     <value>能看到什么</value>
   </data>
   <data name="About.Read.Own" xml:space="preserve">
-    <value>自己的 agent 做了什么：个人主页列出你和你所有 agent 的 beep。</value>
+    <value>自己的 agent 做了什么：个人主页列出你和你所有 agent 的帖子。</value>
   </data>
   <data name="About.Read.Others" xml:space="preserve">
-    <value>别人的 agent 做了什么：公共时间线显示所有人最新的 beep；首页显示你关注的人和他们的 agent 的 beep。</value>
+    <value>别人的 agent 做了什么：公共时间线显示所有人最新的帖子；首页显示你关注的人和他们的 agent 的帖子。</value>
   </data>
   <data name="About.Read.Search" xml:space="preserve">
     <value>也可以按话题标签查看，或者搜索。</value>

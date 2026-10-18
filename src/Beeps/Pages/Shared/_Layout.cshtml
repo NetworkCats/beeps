@@ -92,39 +92,45 @@
         </header>
 
         <nav class="sidenav shell-nav" aria-label="@L["Nav.Main"]">
-            <a class="sidenav-brand site-brand" href="~/">
-                <img src="~/images/logo.png" asp-append-version="true" alt="" width="32" height="32">
-                <span class="sidenav-label">@L["Site.Name"]</span>
-            </a>
+            @* Only the links scroll on short screens, so the account menu below can open over the page. *@
+            <div class="shell-nav-links">
+                <a class="sidenav-brand site-brand" href="~/">
+                    <img src="~/images/logo.png" asp-append-version="true" alt="" width="32" height="32">
+                    <span class="sidenav-label">@L["Site.Name"]</span>
+                </a>
+                @if (signedIn)
+                {
+                    <a class="sidenav-item" href="~/" aria-current="@Current("/Index")"><icon name="home" /><span class="sidenav-label">@L["Nav.Home"]</span></a>
+                    <a class="sidenav-item" asp-page="/Public" aria-current="@Current("/Public")"><icon name="public" /><span class="sidenav-label">@L["Nav.Public"]</span></a>
+                    <a class="sidenav-item" asp-page="/Search" aria-current="@Current("/Search")"><icon name="search" /><span class="sidenav-label">@L["Nav.Search"]</span></a>
+                    <a class="sidenav-item" asp-page="/Notifications" aria-current="@Current("/Notifications")">
+                        <icon name="notifications" /><span class="sidenav-label">@L["Nav.Notifications"]</span>
+                        @* The unread count, once the live connection says it. *@
+                        <island name="inbox-count" tag="span" />
+                    </a>
+                    <a class="sidenav-item" asp-page="/Agents/Index" aria-current="@Current("/Agents/Index", "/Agents/Edit")"><icon name="smart_toy" /><span class="sidenav-label">@L["Nav.Agents"]</span></a>
+                    <a class="sidenav-item" href="@profilePath" aria-current="@(onOwnProfile ? "page" : null)"><icon name="person" /><span class="sidenav-label">@L["Nav.Profile"]</span></a>
+                    <a class="sidenav-item" asp-page="/Settings" aria-current="@Current("/Settings")"><icon name="settings" /><span class="sidenav-label">@L["Nav.Settings"]</span></a>
+                    @if (User.IsMember())
+                    {
+                        <a class="btn btn-primary sidenav-cta" asp-page="/Compose" aria-label="@L["Compose.Title"]"><icon name="edit_square" /><span class="sidenav-label">@L["Compose.Title"]</span></a>
+                    }
+                }
+                else
+                {
+                    <a class="sidenav-item" asp-page="/Public" aria-current="@Current("/Public", "/Index")"><icon name="public" /><span class="sidenav-label">@L["Nav.Public"]</span></a>
+                    <a class="sidenav-item" asp-page="/Search" aria-current="@Current("/Search")"><icon name="search" /><span class="sidenav-label">@L["Nav.Search"]</span></a>
+                    @if (offerSignIn)
+                    {
+                        <a class="sidenav-item" asp-page="/Account/Login"><icon name="login" /><span class="sidenav-label">@L["Nav.Login"]</span></a>
+                    }
+                }
+            </div>
             @if (signedIn)
             {
-                <a class="sidenav-item" href="~/" aria-current="@Current("/Index")"><icon name="home" /><span class="sidenav-label">@L["Nav.Home"]</span></a>
-                <a class="sidenav-item" asp-page="/Public" aria-current="@Current("/Public")"><icon name="public" /><span class="sidenav-label">@L["Nav.Public"]</span></a>
-                <a class="sidenav-item" asp-page="/Search" aria-current="@Current("/Search")"><icon name="search" /><span class="sidenav-label">@L["Nav.Search"]</span></a>
-                <a class="sidenav-item" asp-page="/Notifications" aria-current="@Current("/Notifications")">
-                    <icon name="notifications" /><span class="sidenav-label">@L["Nav.Notifications"]</span>
-                    @* The unread count, once the live connection says it. *@
-                    <island name="inbox-count" tag="span" />
-                </a>
-                <a class="sidenav-item" asp-page="/Agents/Index" aria-current="@Current("/Agents/Index", "/Agents/Edit")"><icon name="smart_toy" /><span class="sidenav-label">@L["Nav.Agents"]</span></a>
-                <a class="sidenav-item" href="@profilePath" aria-current="@(onOwnProfile ? "page" : null)"><icon name="person" /><span class="sidenav-label">@L["Nav.Profile"]</span></a>
-                <a class="sidenav-item" asp-page="/Settings" aria-current="@Current("/Settings")"><icon name="settings" /><span class="sidenav-label">@L["Nav.Settings"]</span></a>
-                @if (User.IsMember())
-                {
-                    <a class="btn btn-primary sidenav-cta" asp-page="/Compose" aria-label="@L["Compose.Title"]"><icon name="edit_square" /><span class="sidenav-label">@L["Compose.Title"]</span></a>
-                }
                 <div class="sidenav-footer">
                     <island name="account-menu" props="new AccountMenuProps(Rail: true)" />
                 </div>
-            }
-            else
-            {
-                <a class="sidenav-item" asp-page="/Public" aria-current="@Current("/Public", "/Index")"><icon name="public" /><span class="sidenav-label">@L["Nav.Public"]</span></a>
-                <a class="sidenav-item" asp-page="/Search" aria-current="@Current("/Search")"><icon name="search" /><span class="sidenav-label">@L["Nav.Search"]</span></a>
-                @if (offerSignIn)
-                {
-                    <a class="sidenav-item" asp-page="/Account/Login"><icon name="login" /><span class="sidenav-label">@L["Nav.Login"]</span></a>
-                }
             }
         </nav>
 
