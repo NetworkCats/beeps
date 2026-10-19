@@ -1902,4 +1902,10 @@
   <data name="Settings.Email.Help.NoPassword" xml:space="preserve">
     <value>Your email is {0}. Enter the new one, and we will send a code to the new address.</value>
   </data>
+  <data name="Feed.ShowNew" xml:space="preserve">
+    <value>Show {0} new beeps</value>
+  </data>
+  <data name="Feed.ShowNew.One" xml:space="preserve">
+    <value>Show 1 new beep</value>
+  </data>
 </root>

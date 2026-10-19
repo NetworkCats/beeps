@@ -1,14 +1,20 @@
 // A list of beeps that follows the site live: a timeline (newest first) or a thread (oldest first). New beeps for its
 // topic come in as they are posted, beeps that go leave it, a fresh copy of its first page (the page's props fetched
-// again) is taken in without losing what was loaded past it, and its next pages load as it is scrolled.
+// again) is taken in without losing what was loaded past it, and its next pages load as it is scrolled. As on Twitter,
+// a timeline does not put new beeps in above what is being read: they wait behind "Show 3 new beeps", at the top of
+// the list or, scrolled away from it, in a pill under the header. The viewer's own come in at once, and a thread's
+// replies, which come in below.
 import { signal, type Signal } from '@preact/signals';
-import { useRef } from 'preact/hooks';
+import { useEffect, useRef, useState } from 'preact/hooks';
 import { beepSignal, fetchNew, putBeeps } from '../beeps.ts';
+import { viewer } from '../config.ts';
 import { getIslands } from '../http.ts';
 import { t } from '../i18n.ts';
 import { useSnapshot } from '../islands.tsx';
 import { compareIds, NO_ID, previousId } from '../live-url.ts';
-import { appendPage, insertOrdered, mergeFresh } from '../lists.ts';
+import { appendPage, holdNewer, insertOrdered, mergeFresh } from '../lists.ts';
+import type { ActorProps } from '../props.ts';
+import { Icon } from './Icon.tsx';
 import { refreshPage, useLiveEvent } from '../page.ts';
 import type { BeepProps, IslandsPage } from '../props.ts';
 import { schedule } from '../schedule.ts';
@@ -46,12 +52,18 @@ export interface Feed {
   entering: (id: string) => boolean;
   /** It has played it. */
   entered: (id: string) => void;
+  /** New beeps waiting above a timeline, newest first. */
+  waiting: string[];
+  /** Puts them in. */
+  showWaiting: () => void;
 }
 
 interface FeedState {
   ids: Signal<string[]>;
   /** Beeps that came in after the list was first drawn, other than its next pages: new ones, and ones that came back. */
   entering: Set<string>;
+  /** New beeps held above a timeline (holdNewer), newest first. */
+  waiting: Signal<string[]>;
   next: Signal<string | undefined>;
   watch: Signal<string | undefined>;
   source: FeedSource;
@@ -64,11 +76,18 @@ function visibleOf(ids: readonly string[]): string[] {
   return ids.filter((id) => beepSignal(id).value);
 }
 
-/** The list's new ids; those it did not have before come in. */
+function mine(id: string): boolean {
+  return beepSignal(id).value?.author.id === viewer.value.id;
+}
+
+/** The list's new ids; those it did not have before come in, or, above a timeline's top, wait to be shown. */
 function arrive(state: FeedState, ids: string[]): void {
   const had = new Set(state.ids.value);
-  for (const id of ids) if (!had.has(id)) state.entering.add(id);
-  state.ids.value = ids;
+  const top = state.options.thread ? undefined : visibleOf(state.ids.value)[0];
+  const { ids: shown, held } = holdNewer(ids, had, top, mine);
+  for (const id of shown) if (!had.has(id)) state.entering.add(id);
+  state.ids.value = shown;
+  if (held.length > 0) state.waiting.value = insertOrdered(state.waiting.value, held, false);
 }
 
 function create(options: FeedOptions): FeedState {
@@ -76,6 +95,7 @@ function create(options: FeedOptions): FeedState {
   const state: FeedState = {
     ids: signal(options.items.map((beep) => beep.id)),
     entering: new Set(),
+    waiting: signal([]),
     next: signal(options.next),
     watch: signal(options.watch),
     source: options,
@@ -97,8 +117,10 @@ function create(options: FeedOptions): FeedState {
         return;
       }
       // A timeline grows at the top, newest first. An answer holds the newest ones; a full answer may leave some out
-      // between them and what the page showed, so the rest are asked for below the oldest that came.
-      const after = shown[0] ?? NO_ID;
+      // between them and what the page showed, so the rest are asked for below the oldest that came. Those waiting to
+      // be shown came already.
+      const waiting = visibleOf(state.waiting.value)[0];
+      const after = waiting && (!shown[0] || compareIds(waiting, shown[0]) > 0) ? waiting : shown[0] ?? NO_ID;
       let before: string | undefined;
       for (let round = 0; round < MAX_FETCH_ROUNDS; round++) {
         const fresh = await fetchNew(watch, after, before);
@@ -124,6 +146,7 @@ function create(options: FeedOptions): FeedState {
       const inRange = (id: string): boolean =>
         compareIds(id, after) > 0 && (!edge || (thread ? compareIds(id, edge) <= 0 : compareIds(id, edge) >= 0));
       const kept = state.ids.value.filter((id) => !inRange(id) || freshIds.has(id));
+      state.waiting.value = state.waiting.value.filter((id) => !inRange(id) || freshIds.has(id));
       arrive(state, insertOrdered(kept, fresh.map((beep) => beep.id), thread));
     },
   };
@@ -188,7 +211,72 @@ export function useBeepFeed(options: FeedOptions): Feed {
     state.entering.delete(id);
   };
 
-  return { visible, next: state.next.value, loadMore, snapshot, entering, entered };
+  // Shown where the button was: nothing moves in, so nothing plays an arrival.
+  const showWaiting = (): void => {
+    state.ids.value = insertOrdered(state.ids.value, visibleOf(state.waiting.value), false);
+    state.waiting.value = [];
+  };
+
+  return { visible, next: state.next.value, loadMore, snapshot, entering, entered, waiting: visibleOf(state.waiting.value), showWaiting };
+}
+
+/** Up to three of the waiting beeps' authors, newest first, for the pill. */
+function authorsOf(ids: readonly string[]): ActorProps[] {
+  const authors = new Map<string, ActorProps>();
+  for (const id of ids) {
+    const author = beepSignal(id).value?.author;
+    if (author && !authors.has(author.id)) authors.set(author.id, author);
+    if (authors.size === 3) break;
+  }
+  return [...authors.values()];
+}
+
+/**
+ * "Show 3 new beeps": a row at the top of the list, and, once that is scrolled out of sight, a pill under the header
+ * that goes back up to it. Either shows them.
+ */
+function WaitingBeeps({ feed }: { feed: Feed }) {
+  const row = useRef<HTMLButtonElement>(null);
+  const [away, setAway] = useState(false);
+  const count = feed.waiting.length;
+  useEffect(() => {
+    const element = row.current;
+    if (!element) {
+      setAway(false);
+      return undefined;
+    }
+    // Under the sticky header counts as out of sight.
+    const header = document.querySelector('.column-header')?.getBoundingClientRect().height ?? 0;
+    const observer = new IntersectionObserver(([entry]) => setAway(!entry?.isIntersecting), { rootMargin: `-${Math.round(header)}px 0px 0px 0px` });
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [count > 0]);
+  if (count === 0) return null;
+  const label = count === 1 ? t('Feed.ShowNew.One') : t('Feed.ShowNew', count);
+  const backUp = (): void => {
+    row.current?.scrollIntoView({ block: 'start', behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+    feed.showWaiting();
+  };
+  return (
+    <>
+      {away && (
+        <div class="feed-new-float">
+          <button class="feed-new-pill" type="button" onClick={backUp}>
+            <Icon name="arrow_upward" />
+            <span class="feed-new-avatars" aria-hidden="true">
+              {authorsOf(feed.waiting).map((author) => (
+                <img key={author.id} src={author.avatar} alt="" width={24} height={24} />
+              ))}
+            </span>
+            <span>{label}</span>
+          </button>
+        </div>
+      )}
+      <button ref={row} class="feed-new" type="button" onClick={feed.showWaiting}>
+        {label}
+      </button>
+    </>
+  );
 }
 
 export interface BeepListViewProps {
@@ -202,6 +290,7 @@ export function BeepListView({ feed, emptyTitle, emptyText }: BeepListViewProps)
   const { visible } = feed;
   return (
     <>
+      <WaitingBeeps feed={feed} />
       <div class="empty" hidden={visible.length > 0}>
         <h2 class="empty-title">{emptyTitle}</h2>
         {emptyText && <p class="empty-text">{emptyText}</p>}

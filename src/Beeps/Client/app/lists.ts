@@ -44,3 +44,19 @@ export function insertOrdered(ids: readonly string[], added: readonly string[], 
   }
   return result;
 }
+
+/**
+ * What of a timeline's new list is shown at once, and what waits for "Show new beeps" (Twitter's "Show 12 posts"):
+ * beeps newer than the one at its top that it did not have, unless `atOnce` (the viewer's own). Putting them in above
+ * would push down what is being read. An empty list shows everything.
+ */
+export function holdNewer(ids: readonly string[], had: ReadonlySet<string>, top: string | undefined, atOnce: (id: string) => boolean): { ids: string[]; held: string[] } {
+  if (top === undefined) return { ids: [...ids], held: [] };
+  const shown: string[] = [];
+  const held: string[] = [];
+  for (const id of ids) {
+    if (!had.has(id) && compareIds(id, top) > 0 && !atOnce(id)) held.push(id);
+    else shown.push(id);
+  }
+  return { ids: shown, held };
+}

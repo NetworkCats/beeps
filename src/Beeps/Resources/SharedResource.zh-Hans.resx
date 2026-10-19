@@ -1902,4 +1902,10 @@
   <data name="Settings.Email.Help.NoPassword" xml:space="preserve">
     <value>你的邮箱是 {0}。填写新邮箱，我们会向新邮箱发送验证码。</value>
   </data>
+  <data name="Feed.ShowNew" xml:space="preserve">
+    <value>显示 {0} 条新 beeps</value>
+  </data>
+  <data name="Feed.ShowNew.One" xml:space="preserve">
+    <value>显示 1 条新 beep</value>
+  </data>
 </root>

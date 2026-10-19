@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { appendPage, insertOrdered, mergeFresh } from './lists.ts';
+import { appendPage, holdNewer, insertOrdered, mergeFresh } from './lists.ts';
 
 test('the beeps past the fresh first page stay after it, with the next page from where they end', () => {
   // Two new beeps pushed c and d off the first page: they stay, before what was loaded below.
@@ -47,4 +47,16 @@ test('new replies go where they belong: oldest first in a thread', () => {
   const b = '01900000-0000-7000-8000-000000000002';
   const c = '01900000-0000-7000-8000-000000000003';
   assert.deepEqual(insertOrdered([b], [c, a], true), [a, b, c]);
+});
+
+test('new beeps above the top of a timeline wait to be shown; the viewer\'s own, and ones that came back, do not', () => {
+  const id = (n: number): string => `01900000-0000-7000-8000-00000000000${n}`;
+  // 1 to 3 shown, 3 at the top; 5 and 6 are new, 6 the viewer's own; 2 came back below the top.
+  const had = new Set([id(1), id(3)]);
+  const result = holdNewer([id(6), id(5), id(3), id(2), id(1)], had, id(3), (beep) => beep === id(6));
+  assert.deepEqual(result, { ids: [id(6), id(3), id(2), id(1)], held: [id(5)] });
+});
+
+test('an empty timeline shows its new beeps at once', () => {
+  assert.deepEqual(holdNewer(['b', 'a'], new Set(), undefined, () => false), { ids: ['b', 'a'], held: [] });
 });

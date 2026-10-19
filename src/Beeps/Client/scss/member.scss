@@ -388,6 +388,97 @@
   }
 }
 
+// ---- New beeps waiting above a timeline, as Twitter's "Show 12 posts" ----------------------------------------
+
+// At the top of the list: a row in the brand's colour, with the list's hairline under it.
+.feed-new {
+  display: block;
+  inline-size: 100%;
+  padding: var(--cui-space-4) var(--beeps-pad);
+  color: var(--cui-primary-text);
+  font-size: var(--beeps-text-size);
+  background: none;
+  border: 0;
+  border-block-end: var(--cui-border-width) solid var(--cui-border);
+  cursor: pointer;
+  transition: background-color var(--cui-transition);
+  scroll-margin-block-start: var(--beeps-column-header-height);
+
+  &:hover {
+    background: var(--cui-surface-hover);
+  }
+
+  &:focus-visible {
+    @include focus-ring($inset: true);
+  }
+}
+
+// Scrolled away from it: a pill held under the header, over the beeps, taking no room of its own.
+.feed-new-float {
+  position: sticky;
+  inset-block-start: calc(var(--beeps-column-header-height) + var(--cui-space-3));
+  z-index: var(--cui-z-sticky);
+  display: flex;
+  justify-content: center;
+  block-size: 0;
+  pointer-events: none;
+}
+
+.feed-new-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--cui-space-2);
+  block-size: 2.5rem;
+  padding: 0 var(--cui-space-4) 0 var(--cui-space-3);
+  color: var(--cui-primary-contrast);
+  font-size: var(--beeps-text-size);
+  font-weight: var(--cui-weight-bold);
+  white-space: nowrap;
+  background: var(--cui-primary-solid);
+  border: 0;
+  border-radius: var(--cui-radius-full);
+  box-shadow: 0 2px 8px oklch(0% 0 0 / 0.2);
+  cursor: pointer;
+  pointer-events: auto;
+  animation: feed-new-in var(--cui-duration-slow) var(--cui-ease);
+
+  &:hover {
+    background: var(--cui-primary-solid-hover);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--cui-primary-contrast);
+    outline-offset: -4px;
+  }
+
+  > .icon {
+    --cui-icon-size: 1.25rem;
+  }
+}
+
+.feed-new-avatars {
+  display: flex;
+
+  > img {
+    inline-size: 1.5rem;
+    block-size: 1.5rem;
+    border: 2px solid var(--cui-primary-solid);
+    border-radius: 50%;
+    background: var(--cui-bg);
+
+    & + img {
+      margin-inline-start: -0.5rem;
+    }
+  }
+}
+
+@keyframes feed-new-in {
+  from {
+    opacity: 0;
+    translate: 0 -0.5rem;
+  }
+}
+
 // ---- Settings, as Twitter's ------------------------------------------------------------------------
 
 // A row per page: its icon, title and what it holds, and a chevron for the page it opens. No lines between them.
