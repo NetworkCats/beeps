@@ -41,6 +41,16 @@ public interface IAccountStore
 
     void RemoveLogin(ExternalLogin login);
 
+    /// <summary>The passkey with this credential id, whoever it belongs to; tracked.</summary>
+    Task<Passkey?> FindPasskeyAsync(byte[] credentialId, CancellationToken cancellationToken);
+
+    /// <summary>The account's passkeys, oldest first; tracked.</summary>
+    Task<IReadOnlyList<Passkey>> ListPasskeysAsync(Guid userId, CancellationToken cancellationToken);
+
+    void AddPasskey(Passkey passkey);
+
+    void RemovePasskey(Passkey passkey);
+
     /// <summary>
     /// What a signed-in request needs to know about its account; null if it is gone, deleted or banned.
     /// Served from a shared Valkey cache; <see cref="ForgetAccountAsync"/> drops it after a change.
@@ -103,7 +113,8 @@ public sealed record AccountState(
 
 /// <summary>The account as its owner edits it on the settings page.</summary>
 /// <param name="PendingEmail">The address it is moving to while the code sent there is still good.</param>
-/// <param name="HasPassword">False for an account that signs in only with the providers in <paramref name="Logins"/>.</param>
+/// <param name="HasPassword">False for an account that signs in only with the providers in <paramref name="Logins"/> (or passkeys).</param>
+/// <param name="PasskeyTwoFactor">Its passkeys are the second step after the password, not a way to sign in by themselves.</param>
 public sealed record AccountSettings(
     string Handle,
     string DisplayName,
@@ -113,7 +124,8 @@ public sealed record AccountSettings(
     string Locale,
     ProfilePrivacy Privacy,
     bool HasPassword,
-    IReadOnlyList<LinkedLogin> Logins);
+    IReadOnlyList<LinkedLogin> Logins,
+    bool PasskeyTwoFactor);
 
 /// <summary>An address a code was sent to, and when another may be sent (<see cref="AccountService.ResendInterval"/>).</summary>
 public sealed record CodeSent(string To, DateTimeOffset ResendAt);

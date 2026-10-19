@@ -13,7 +13,7 @@ using Microsoft.Extensions.Localization;
 
 namespace Beeps.Features.Accounts;
 
-/// <summary>Human accounts: registration, email codes, sign-in, password reset and email changes (PLAN 3.1, 6.13–6.15).</summary>
+/// <summary>Human accounts: registration, email codes, sign-in, password reset, email changes and passkeys (PLAN 3.1, 6.13–6.15).</summary>
 public sealed partial class AccountService(
     IAccountStore store,
     ISessionStore sessions,
@@ -21,6 +21,7 @@ public sealed partial class AccountService(
     IOutbox outbox,
     ICaptchaVerifier captcha,
     IPasswordHasher<User> passwordHasher,
+    IPasskeyCeremonies passkeyCeremonies,
     RateLimitService rateLimits,
     LiveUpdates live,
     IDataProtectionProvider dataProtection,
@@ -599,7 +600,8 @@ public sealed partial class AccountService(
             user.Locale,
             new ProfilePrivacy(user.HideLikes, user.HideFollows, user.HideFollowCounts),
             user.PasswordHash is not null,
-            [.. (await store.ListLoginsAsync(user.Id, cancellationToken)).Select(l => new LinkedLogin(l.Provider, l.Name))]);
+            [.. (await store.ListLoginsAsync(user.Id, cancellationToken)).Select(l => new LinkedLogin(l.Provider, l.Name))],
+            user.PasskeyTwoFactor);
     }
 
     /// <summary>What the human's profile shows others of their likes and follows (PLAN 5.1).</summary>

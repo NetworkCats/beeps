@@ -25,6 +25,18 @@ public static class AccountErrorCodes
 
     /// <summary>The last way left to sign in, which cannot be unlinked before a password is set.</summary>
     public const string LastSignInMethod = "last_sign_in_method";
+
+    /// <summary>What the authenticator answered did not hold up, came too late, or is for a passkey nobody has here.</summary>
+    public const string PasskeyFailed = "passkey_failed";
+
+    /// <summary>The account's passkeys are a second step after the password, not a way to sign in by themselves.</summary>
+    public const string PasskeyTwoFactor = "passkey_two_factor";
+
+    /// <summary>The account has as many passkeys as it may (<see cref="AccountService.MaxPasskeys"/>).</summary>
+    public const string PasskeysFull = "passkeys_full";
+
+    /// <summary>Two-step sign-in with passkeys needs a passkey first.</summary>
+    public const string NoPasskeys = "no_passkeys";
 }
 
 /// <summary>Names of unique indexes whose violations the account services translate into errors.</summary>
@@ -34,6 +46,7 @@ public static class AccountIndexes
     public const string UniqueEmail = "ux_users_normalized_email";
     public const string UniqueLogin = "pk_user_logins";
     public const string UniqueLoginProvider = "ux_user_logins_user_id_provider";
+    public const string UniquePasskey = "ux_user_passkeys_credential_id";
 }
 
 /// <summary>Form field names used in validation errors; the pages bind inputs with the same names.</summary>

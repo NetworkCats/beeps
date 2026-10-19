@@ -171,7 +171,10 @@ public sealed partial class AccountService
         return await LinkAsync(user, identity, cancellationToken);
     }
 
-    /// <summary>Stops signing in with the provider. Refused for the last way left to sign in, until a password is set.</summary>
+    /// <summary>
+    /// Stops signing in with the provider. Refused for the last way left to sign in, until a password is set (or a
+    /// passkey added that signs in by itself).
+    /// </summary>
     public async Task<Result> UnlinkExternalAsync(Guid userId, string? provider, CancellationToken cancellationToken)
     {
         var user = await store.FindUserAsync(userId, cancellationToken);
@@ -186,7 +189,9 @@ public sealed partial class AccountService
             return Result.Success;
         }
 
-        if (user.PasswordHash is null && logins.Count == 1)
+        // Passkeys sign in by themselves unless they are only the second step.
+        if (user.PasswordHash is null && logins.Count == 1
+            && (user.PasskeyTwoFactor || (await store.ListPasskeysAsync(userId, cancellationToken)).Count == 0))
         {
             return Error.Conflict(AccountErrorCodes.LastSignInMethod, localizer["Error.LastSignInMethod", ExternalProviders.DisplayName(login.Provider)]);
         }

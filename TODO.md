@@ -424,6 +424,10 @@ PLAN 6.10 要求登录用户看到的所有数据都实时刷新。逐页检查�
   - 已知限制：所在地是登录时的 IP，之后换了网络不会更新；数据库里有的地方只有中文名（纯真库），英文界面也会显示中文城市名。
   - [ ] 上线前：确认 Merged-IP-Data 合并的数据源（GeoLite2、IPinfo Lite 为 CC BY-SA 4.0，DB-IP 为 CC BY 4.0）是否要求在站内署名，需要的话加到关于页；容器的临时目录要可写（只读根文件系统时把 `IpLocation__Directory` 指到一个卷）。
 
+- [x] **通行密钥（passkey）登录（按要求追加，PLAN 5.1、6.1、6.9、6.14、6.16、8、12 已同步）**：设置的"你的账号"下新增"通行密钥"页（`/settings/passkeys`）：列出账号的通行密钥（按添加时的 User-Agent 显示设备和浏览器，添加和上次使用的时间），可以添加、移除（先确认）。登录页在 Google、GitHub 下面加了"使用通行密钥登录"：浏览器列出用户在本站的通行密钥，不用输入用户名和密码，直接登录。默认就是这样的无密码登录；设置里可以打开"用作两步验证"，之后用密码（包括失败过多后的邮箱验证码）或 Google、GitHub 登录，第一步通过后转到 `/login/passkey` 再用账号自己的通行密钥确认，开着时通行密钥不能单独登录。WebAuthn 的校验用共享框架里的 `PasskeyHandler`（ASP.NET Core Identity 的一部分，不加依赖，不用 Identity 的其余部分；`FrameworkPasskeyCeremonies` 每次只把调用方查好的账号和通行密钥交给它）；RP ID 和 origin 来自 `Site:BaseUrl`；仪式的状态放在加密、限时、按仪式和账号分开的 ticket 里，服务端不存。新表 `user_passkeys`、新列 `users.passkey_two_factor`（迁移 `Passkeys`）；图标字体加了 `passkey`。测试里写了一个软件认证器（`TestAuthenticator`，ES256，自己编 CBOR），对真实的 `PasskeyHandler` 跑注册和登录，覆盖 origin、challenge、用户验证、签名、user handle、签名计数各自出错的情况，和从设置添加到登录、两步验证的整页流程；另外用 headless Chrome 和 DevTools 的虚拟认证器在本地实例上走了一遍：添加、无密码登录、打开两步验证后单独用通行密钥被拒、密码加通行密钥登录，截图检查了登录页、第二步页面和设置页。
+  - 已知限制：开着两步验证时丢了全部通行密钥就登录不了（没有恢复码，也不能改用邮箱验证码；设置里的说明建议多加一个备用）。没有做登录框的自动填充（conditional mediation，`autocomplete="username webauthn"`）。
+  - [ ] 上线前：用真实设备（iPhone、Android、Mac 的 Touch ID、Windows Hello、1Password 等）在 beeps.sh 上各走一遍添加和登录（本地只用过 Chrome 的虚拟认证器）。
+
 ## 阶段 7：可上线状态
 - [ ] Dockerfile（多阶段构建）
 - [ ] `compose.prod.yml`（应用、PostgreSQL、Valkey、Meilisearch、nginx host 网络，数据卷、健康检查）

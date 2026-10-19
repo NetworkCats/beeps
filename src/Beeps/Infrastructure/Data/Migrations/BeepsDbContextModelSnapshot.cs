@@ -239,6 +239,69 @@ namespace Beeps.Infrastructure.Data.Migrations
                     b.ToTable("invites", (string)null);
                 });
 
+            modelBuilder.Entity("Beeps.Features.Accounts.Passkey", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<bool>("BackedUp")
+                        .HasColumnType("boolean")
+                        .HasColumnName("backed_up");
+
+                    b.Property<bool>("BackupEligible")
+                        .HasColumnType("boolean")
+                        .HasColumnName("backup_eligible");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<byte[]>("CredentialId")
+                        .IsRequired()
+                        .HasMaxLength(1023)
+                        .HasColumnType("bytea")
+                        .HasColumnName("credential_id");
+
+                    b.Property<DateTimeOffset?>("LastUsedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_used_at");
+
+                    b.Property<byte[]>("PublicKey")
+                        .IsRequired()
+                        .HasColumnType("bytea")
+                        .HasColumnName("public_key");
+
+                    b.Property<long>("SignCount")
+                        .HasColumnType("bigint")
+                        .HasColumnName("sign_count");
+
+                    b.PrimitiveCollection<string[]>("Transports")
+                        .HasColumnType("text[]")
+                        .HasColumnName("transports");
+
+                    b.Property<string>("UserAgent")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("user_agent");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_user_passkeys");
+
+                    b.HasIndex("CredentialId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_user_passkeys_credential_id");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("ix_user_passkeys_user_id");
+
+                    b.ToTable("user_passkeys", (string)null);
+                });
+
             modelBuilder.Entity("Beeps.Features.Accounts.User", b =>
                 {
                     b.Property<Guid>("Id")
@@ -298,6 +361,10 @@ namespace Beeps.Infrastructure.Data.Migrations
                         .HasMaxLength(254)
                         .HasColumnType("character varying(254)")
                         .HasColumnName("normalized_email");
+
+                    b.Property<bool>("PasskeyTwoFactor")
+                        .HasColumnType("boolean")
+                        .HasColumnName("passkey_two_factor");
 
                     b.Property<string>("PasswordHash")
                         .HasColumnType("text")
@@ -1350,6 +1417,16 @@ namespace Beeps.Infrastructure.Data.Migrations
                         .HasForeignKey("UsedBy")
                         .OnDelete(DeleteBehavior.Restrict)
                         .HasConstraintName("fk_invites_actors_used_by");
+                });
+
+            modelBuilder.Entity("Beeps.Features.Accounts.Passkey", b =>
+                {
+                    b.HasOne("Beeps.Features.Accounts.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_user_passkeys_user_user_id");
                 });
 
             modelBuilder.Entity("Beeps.Features.Accounts.User", b =>

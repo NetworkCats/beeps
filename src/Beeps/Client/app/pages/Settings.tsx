@@ -1,30 +1,36 @@
 // The account's own settings (Settings.cshtml), split as Twitter splits them: /settings lists the sections, and each
 // has a page of its own, with a way back to the list. Profile is Twitter's "Edit profile" (the banner and avatar, the
 // name and bio, saved from the header); privacy holds a switch for each thing the profile can keep to the account, sent
-// as soon as it is flipped; account shows the username and leads to the email's and the password's pages,
+// as soon as it is flipped; account shows the username and leads to the email's, the password's and the passkeys' pages,
 // the email moving only once the code sent to the new address is entered, then lists Google and GitHub to link (out to
-// the provider and back, Pages/Account/External) or unlink; display holds the colour scheme, applied as
+// the provider and back, Pages/Account/External) or unlink; passkeys lists the account's, adds one (the server's options,
+// then the browser's dialog) or removes any, and switches them between signing in by themselves and being the second
+// step after the password; display holds the colour scheme, applied as
 // soon as one is picked, and the language; devices lists where the account is logged in, this device first, each
 // named from its User-Agent and placed where its IP address is, and logs out any other or all of them, following
 // log-ins and log-outs elsewhere as they happen. Each form is sent in the background and
 // answered in place; the saved name, bio, avatar and banner follow changes made in another tab, unless they are being
 // edited here. A new language shows the page anew in it.
 import type { ComponentChildren } from 'preact';
+import { useRef, useState } from 'preact/hooks';
 import { FloatField } from '../components/FloatField.tsx';
 import { Antiforgery, FormErrors, field } from '../components/Forms.tsx';
 import { Icon } from '../components/Icon.tsx';
 import { CodeResend } from '../components/CodeResend.tsx';
 import { Time } from '../components/Time.tsx';
 import { ProfileImages, type AvatarEditorProps, type BannerEditorProps } from '../components/ProfileImageEditor.tsx';
-import { sending } from '../forms.ts';
+import { sending, sendForm } from '../forms.ts';
+import { formData } from '../http.ts';
 import { t } from '../i18n.ts';
 import type { IslandProps } from '../islands.tsx';
 import { useLive } from '../page.ts';
+import { createPasskey, PasskeyError, passkeysSupported } from '../passkeys.ts';
 import { paths } from '../paths.ts';
 import type { Errors, LiveProps } from '../props.ts';
 import { theme } from '../state.ts';
+import { showToast } from '../toasts.ts';
 
-type Section = 'profile' | 'privacy' | 'account' | 'email' | 'password' | 'display' | 'sessions';
+type Section = 'profile' | 'privacy' | 'account' | 'email' | 'password' | 'passkeys' | 'display' | 'sessions';
 
 interface Option {
   value: string;
@@ -62,6 +68,17 @@ interface Device {
   current?: boolean;
 }
 
+/** A passkey of the account's, named after where it was added. */
+interface Passkey {
+  id: string;
+  /** The device or system it was added on, from its User-Agent; none when it does not say. */
+  name?: string;
+  browser?: string;
+  createdAt: string;
+  /** None if it never signed in. */
+  lastUsedAt?: string;
+}
+
 export interface ProfileLimits {
   displayNameMaxLength: number;
   bioMaxLength: number;
@@ -95,6 +112,10 @@ interface SettingsProps {
   connections: Connection[];
   /** The devices logged in, this one first; only on their page. */
   devices?: Device[];
+  /** The passkeys are the second step after the password, not a way to sign in by themselves. */
+  passkeyTwoFactor?: boolean;
+  /** The account's passkeys, oldest first; only on their page. */
+  passkeys?: Passkey[];
 }
 
 interface SectionProps {
@@ -109,6 +130,7 @@ const TITLES: Record<Section, { title: string; back: string }> = {
   account: { title: 'Settings.Account', back: paths.settings },
   email: { title: 'Settings.ChangeEmail', back: paths.settingsSection('account') },
   password: { title: 'Settings.ChangePassword', back: paths.settingsSection('account') },
+  passkeys: { title: 'Settings.Passkeys', back: paths.settingsSection('account') },
   display: { title: 'Settings.Display', back: paths.settings },
   sessions: { title: 'Settings.Sessions', back: paths.settings },
 };
@@ -174,6 +196,7 @@ export function SettingsPage({ props, errors }: IslandProps<SettingsProps>) {
       {section === 'account' && <AccountSection props={props} />}
       {section === 'email' && <EmailSection props={props} errors={errors} />}
       {section === 'password' && <PasswordSection props={props} errors={errors} />}
+      {section === 'passkeys' && <PasskeysSection props={props} />}
       {section === 'display' && <DisplaySection props={props} errors={errors} />}
       {section === 'sessions' && <SessionsSection props={props} />}
     </section>
@@ -235,8 +258,8 @@ function PrivacySection({ props }: { props: SettingsProps }) {
 }
 
 /**
- * Twitter's "Account information": the username, which never changes, then the ways to the email and the password, then
- * the providers the account signs in with.
+ * Twitter's "Account information": the username, which never changes, then the ways to the email, the password and the
+ * passkeys, then the providers the account signs in with.
  */
 function AccountSection({ props }: { props: SettingsProps }) {
   return (
@@ -256,6 +279,12 @@ function AccountSection({ props }: { props: SettingsProps }) {
         {props.hasPassword
           ? <LinkRow href={paths.settingsSection('password')} icon={<Icon name="key" />} title={t('Settings.ChangePassword')} help={t('Settings.ChangePassword.Help')} />
           : <LinkRow href={paths.settingsSection('password')} icon={<Icon name="key" />} title={t('Settings.SetPassword')} help={t('Settings.SetPassword.Help')} />}
+        <LinkRow
+          href={paths.settingsSection('passkeys')}
+          icon={<Icon name="passkey" />}
+          title={t('Settings.Passkeys')}
+          help={t(props.passkeyTwoFactor ? 'Settings.Passkeys.TwoFactorOn' : 'Settings.Passkeys.Help')}
+        />
       </nav>
       <section class="settings-connections" aria-labelledby="connections-title">
         <h2 class="settings-heading" id="connections-title">{t('Settings.Connections')}</h2>
@@ -389,6 +418,103 @@ function PasswordSection({ props, errors }: SectionProps) {
         </div>
         <Antiforgery />
       </form>
+    </>
+  );
+}
+
+/** A passkey in a row like the devices: its icon, where it was added, when, and when it last signed in; then "Remove". */
+function PasskeyRow({ passkey }: { passkey: Passkey }) {
+  const name = passkey.name ?? t('Passkeys.Unnamed');
+  return (
+    <div class="settings-link">
+      <Icon name="passkey" />
+      <span class="settings-link-text">
+        <span class="settings-link-title">{name}</span>
+        {passkey.browser && <span class="settings-link-help">{passkey.browser}</span>}
+        <span class="settings-link-help">
+          {t('Passkeys.AddedAt')} <Time value={passkey.createdAt} />
+          {' · '}
+          {passkey.lastUsedAt ? <>{t('Passkeys.LastUsed')} <Time value={passkey.lastUsedAt} /></> : t('Passkeys.NeverUsed')}
+        </span>
+      </span>
+      <form method="post" action={action('passkeys', 'RemovePasskey')} data-confirm={t('Passkeys.Remove.Confirm')} onSubmit={sending()}>
+        <input type="hidden" name="PasskeyId" value={passkey.id} />
+        <button class="btn btn-sm" type="submit">
+          {t('Passkeys.Remove')}
+        </button>
+        <Antiforgery />
+      </form>
+    </div>
+  );
+}
+
+/**
+ * The account's passkeys, oldest first, each of which can be removed, and a button that adds another: the server's
+ * options, the browser's dialog, then what the authenticator made, posted as the page's other forms are. Below them, a
+ * switch between signing in with a passkey alone (off, as a new account starts) and asking for one after the password.
+ */
+function PasskeysSection({ props }: { props: SettingsProps }) {
+  const passkeys = props.passkeys ?? [];
+  const form = useRef<HTMLFormElement>(null);
+  const credential = useRef<HTMLInputElement>(null);
+  const ticket = useRef<HTMLInputElement>(null);
+  const [busy, setBusy] = useState(false);
+
+  const add = async (): Promise<void> => {
+    if (!passkeysSupported()) {
+      showToast(t('Passkeys.Unsupported'), true);
+      return;
+    }
+    setBusy(true);
+    try {
+      const answer = await createPasskey(action('passkeys', 'PasskeyOptions'), formData());
+      if (answer && form.current && credential.current && ticket.current) {
+        credential.current.value = answer.credential;
+        ticket.current.value = answer.ticket;
+        await sendForm(form.current, null);
+      }
+    } catch (error) {
+      showToast(error instanceof PasskeyError ? error.message : t('Passkeys.Failed'), true);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <>
+      <p class="settings-intro">{t('Settings.Passkeys.Intro')}</p>
+      <section class="settings-devices" aria-labelledby="passkeys-title">
+        <h2 class="settings-heading" id="passkeys-title">{t('Passkeys.Yours')}</h2>
+        {passkeys.length === 0
+          ? <p class="settings-devices-empty">{t('Passkeys.None')}</p>
+          : passkeys.map((passkey) => <PasskeyRow key={passkey.id} passkey={passkey} />)}
+        <form class="settings-aside" ref={form} method="post" action={action('passkeys', 'AddPasskey')}>
+          <input type="hidden" name="Credential" ref={credential} />
+          <input type="hidden" name="Ticket" ref={ticket} />
+          <button class="btn btn-sm btn-primary" type="button" disabled={busy} onClick={() => void add()}>
+            {t('Passkeys.Add')}
+          </button>
+          <Antiforgery />
+        </form>
+      </section>
+      {passkeys.length > 0 && (
+        <form class="settings-switches" method="post" action={action('passkeys', 'PasskeyTwoFactor')} onSubmit={sending()}>
+          <label class="settings-link switch">
+            <span class="settings-link-text">
+              <span class="settings-link-title">{t('Passkeys.TwoFactor')}</span>
+              <span class="settings-link-help">{t('Passkeys.TwoFactor.Help')}</span>
+            </span>
+            <input
+              type="checkbox"
+              name="TwoFactor"
+              value="true"
+              checked={props.passkeyTwoFactor ?? false}
+              onChange={(event) => event.currentTarget.form?.requestSubmit()}
+            />
+          </label>
+          <Antiforgery />
+        </form>
+      )}
     </>
   );
 }

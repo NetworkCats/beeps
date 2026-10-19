@@ -40,7 +40,7 @@ public static class SettingsSections
     /// <summary>What the account keeps to itself: its likes, its follows and how many (PLAN 5.1).</summary>
     public const string Privacy = "privacy";
 
-    /// <summary>The username, and the ways to <see cref="Email"/> and <see cref="Password"/>.</summary>
+    /// <summary>The username, and the ways to <see cref="Email"/>, <see cref="Password"/> and <see cref="Passkeys"/>.</summary>
     public const string Account = "account";
 
     /// <summary>Moving the account to another address, a step below <see cref="Account"/>.</summary>
@@ -48,6 +48,9 @@ public static class SettingsSections
 
     /// <summary>Changing the password, a step below <see cref="Account"/>.</summary>
     public const string Password = "password";
+
+    /// <summary>The passkeys the account signs in with, a step below <see cref="Account"/> (PLAN 6.14).</summary>
+    public const string Passkeys = "passkeys";
 
     /// <summary>Colour scheme and language.</summary>
     public const string Display = "display";

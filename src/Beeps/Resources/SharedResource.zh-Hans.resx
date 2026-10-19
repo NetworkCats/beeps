@@ -952,7 +952,7 @@
     <value>你的账号</value>
   </data>
   <data name="Settings.Account.Help" xml:space="preserve">
-    <value>查看用户名，修改邮箱和密码，或关联 Google 和 GitHub</value>
+    <value>查看用户名，修改邮箱、密码和通行密钥，或关联 Google 和 GitHub</value>
   </data>
   <data name="Settings.Display" xml:space="preserve">
     <value>显示与语言</value>
@@ -1979,5 +1979,98 @@
   </data>
   <data name="Sessions.Error.Current" xml:space="preserve">
     <value>要退出当前设备，请使用“退出”。</value>
+  </data>
+  <data name="Passkey.SignIn" xml:space="preserve">
+    <value>使用通行密钥登录</value>
+  </data>
+  <data name="Passkey.Verify" xml:space="preserve">
+    <value>使用通行密钥验证</value>
+  </data>
+  <data name="LoginPasskey.Title" xml:space="preserve">
+    <value>验证身份</value>
+  </data>
+  <data name="LoginPasskey.Lead" xml:space="preserve">
+    <value>你的账号开启了通行密钥两步验证，请用你的通行密钥完成登录。</value>
+  </data>
+  <data name="Error.PasskeyFailed" xml:space="preserve">
+    <value>通行密钥验证没有通过，请再试一次。</value>
+  </data>
+  <data name="Error.PasskeyTwoFactor" xml:space="preserve">
+    <value>这个账号的通行密钥用于两步验证，请先用密码、Google 或 GitHub 登录。</value>
+  </data>
+  <data name="Error.PasskeysFull" xml:space="preserve">
+    <value>最多可以添加 {0} 个通行密钥。</value>
+  </data>
+  <data name="Error.NoPasskeys" xml:space="preserve">
+    <value>请先添加一个通行密钥。</value>
+  </data>
+  <data name="Error.LastPasskey" xml:space="preserve">
+    <value>这个通行密钥是你唯一的登录方式，请先设置密码再移除。</value>
+  </data>
+  <data name="Error.PasskeyTwoFactorFirstStep" xml:space="preserve">
+    <value>两步验证需要先有第一步：请先设置密码，或关联 Google、GitHub。</value>
+  </data>
+  <data name="Error.SecondStepExpired" xml:space="preserve">
+    <value>登录已超时，请重新登录。</value>
+  </data>
+  <data name="Passkeys.Added" xml:space="preserve">
+    <value>已添加通行密钥，现在可以用它登录了。</value>
+  </data>
+  <data name="Passkeys.Removed" xml:space="preserve">
+    <value>已移除通行密钥。</value>
+  </data>
+  <data name="Passkeys.Unsupported" xml:space="preserve">
+    <value>这个浏览器不支持通行密钥。</value>
+  </data>
+  <data name="Passkeys.Failed" xml:space="preserve">
+    <value>通行密钥没有成功，请再试一次。</value>
+  </data>
+  <data name="Passkeys.AlreadyAdded" xml:space="preserve">
+    <value>这台设备上已经有你账号的通行密钥了。</value>
+  </data>
+  <data name="Settings.Passkeys" xml:space="preserve">
+    <value>通行密钥</value>
+  </data>
+  <data name="Settings.Passkeys.Help" xml:space="preserve">
+    <value>用指纹、面容或屏幕锁登录</value>
+  </data>
+  <data name="Settings.Passkeys.TwoFactorOn" xml:space="preserve">
+    <value>在密码之后验证，作为两步验证</value>
+  </data>
+  <data name="Settings.Passkeys.Intro" xml:space="preserve">
+    <value>通行密钥让你用指纹、面容或屏幕锁代替密码登录。它保存在你的设备或密码管理器里，只能用于 beeps。</value>
+  </data>
+  <data name="Passkeys.Yours" xml:space="preserve">
+    <value>你的通行密钥</value>
+  </data>
+  <data name="Passkeys.None" xml:space="preserve">
+    <value>还没有添加通行密钥。</value>
+  </data>
+  <data name="Passkeys.Add" xml:space="preserve">
+    <value>添加通行密钥</value>
+  </data>
+  <data name="Passkeys.Unnamed" xml:space="preserve">
+    <value>通行密钥</value>
+  </data>
+  <data name="Passkeys.AddedAt" xml:space="preserve">
+    <value>添加于</value>
+  </data>
+  <data name="Passkeys.LastUsed" xml:space="preserve">
+    <value>上次使用</value>
+  </data>
+  <data name="Passkeys.NeverUsed" xml:space="preserve">
+    <value>尚未使用</value>
+  </data>
+  <data name="Passkeys.Remove" xml:space="preserve">
+    <value>移除</value>
+  </data>
+  <data name="Passkeys.Remove.Confirm" xml:space="preserve">
+    <value>移除这个通行密钥？之后就不能再用它登录了，记得也从设备或密码管理器里删除。</value>
+  </data>
+  <data name="Passkeys.TwoFactor" xml:space="preserve">
+    <value>用作两步验证</value>
+  </data>
+  <data name="Passkeys.TwoFactor.Help" xml:space="preserve">
+    <value>用密码、Google 或 GitHub 登录后，还要再用通行密钥验证；通行密钥不再能单独登录。没有通行密钥就无法登录，建议再添加一个备用。</value>
   </data>
 </root>

@@ -20,6 +20,7 @@ public sealed partial class AccountServiceTests
     private readonly ILiveEventStore liveEvents = Substitute.For<ILiveEventStore>();
     private readonly ICaptchaVerifier captcha = Substitute.For<ICaptchaVerifier>();
     private readonly IPasswordHasher<User> hasher = Substitute.For<IPasswordHasher<User>>();
+    private readonly IPasskeyCeremonies ceremonies = Substitute.For<IPasskeyCeremonies>();
     private readonly IRateLimitStore rateLimitStore = Substitute.For<IRateLimitStore>();
     private readonly EphemeralDataProtectionProvider dataProtection = new();
     private readonly List<AccountCodeEmail> sentCodes = [];
@@ -834,7 +835,7 @@ public sealed partial class AccountServiceTests
         var settings = await CreateService().GetSettingsAsync(user.Id, TestSupport.Ct);
         var missing = await CreateService().GetSettingsAsync(Guid.NewGuid(), TestSupport.Ct);
 
-        Assert.Equal(new AccountSettings("tom", "tom", "hello", "tom@example.com", null, "en", new ProfilePrivacy(false, false, true), true, settings.Value.Logins), settings.Value);
+        Assert.Equal(new AccountSettings("tom", "tom", "hello", "tom@example.com", null, "en", new ProfilePrivacy(false, false, true), true, settings.Value.Logins, false), settings.Value);
         Assert.Equal([new LinkedLogin(ExternalProviders.GitHub, "octocat")], settings.Value.Logins);
         Assert.Equal(ErrorKind.NotFound, missing.Error?.Kind);
     }
@@ -1326,17 +1327,18 @@ public sealed partial class AccountServiceTests
     private static ExternalLogin Login(Guid userId, string provider, string key, string name) =>
         new() { UserId = userId, Provider = provider, ProviderKey = key, Name = name, CreatedAt = TestData.Now };
 
-    private AccountService CreateService() => new(
+    private AccountService CreateService(TimeProvider? time = null) => new(
         store,
         sessions,
         unitOfWork,
         outbox,
         captcha,
         hasher,
+        ceremonies,
         TestData.RateLimits(rateLimitStore),
         TestData.Live(liveEvents),
         dataProtection,
-        TestData.Time(),
+        time ?? TestData.Time(),
         new TestLocalizer(),
         NullLogger<AccountService>.Instance);
 }

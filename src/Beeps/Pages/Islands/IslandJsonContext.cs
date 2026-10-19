@@ -17,6 +17,7 @@ namespace Beeps.Pages.Islands;
 [JsonSerializable(typeof(LiveItems<ActorProps>))]
 [JsonSerializable(typeof(AccountMenuProps))]
 [JsonSerializable(typeof(CaptchaProps))]
+[JsonSerializable(typeof(PasskeySignInProps))]
 [JsonSerializable(typeof(SiteOptionsProps))]
 [JsonSerializable(typeof(ToastsProps))]
 [JsonSerializable(typeof(IndexProps))]

@@ -45,6 +45,7 @@ public sealed class BeepsWebApplicationFactory : WebApplicationFactory<Program>
         Captcha.VerifyAsync(default, default!, CancellationToken.None).ReturnsForAnyArgs(true);
         Accounts.GetRegistrationModeAsync(CancellationToken.None).ReturnsForAnyArgs(RegistrationMode.Open);
         Accounts.ListLoginsAsync(default, CancellationToken.None).ReturnsForAnyArgs([]);
+        Accounts.ListPasskeysAsync(default, CancellationToken.None).ReturnsForAnyArgs([]);
         Agents.ListAgentsAsync(default, CancellationToken.None).ReturnsForAnyArgs([]);
         Counters.GetAsync(default!, CancellationToken.None).ReturnsForAnyArgs(new Dictionary<Guid, BeepCounts>());
         Beeps.GetMentionsAsync(default!, CancellationToken.None).ReturnsForAnyArgs(new Dictionary<Guid, IReadOnlyList<ActorRow>>());

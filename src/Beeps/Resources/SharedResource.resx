@@ -952,7 +952,7 @@
     <value>Your account</value>
   </data>
   <data name="Settings.Account.Help" xml:space="preserve">
-    <value>See your username, change your email and password, or connect Google and GitHub</value>
+    <value>See your username, change your email, password and passkeys, or connect Google and GitHub</value>
   </data>
   <data name="Settings.Display" xml:space="preserve">
     <value>Display and language</value>
@@ -1979,5 +1979,98 @@
   </data>
   <data name="Sessions.Error.Current" xml:space="preserve">
     <value>To log out of this device, use Log out.</value>
+  </data>
+  <data name="Passkey.SignIn" xml:space="preserve">
+    <value>Sign in with a passkey</value>
+  </data>
+  <data name="Passkey.Verify" xml:space="preserve">
+    <value>Verify with a passkey</value>
+  </data>
+  <data name="LoginPasskey.Title" xml:space="preserve">
+    <value>Verify it's you</value>
+  </data>
+  <data name="LoginPasskey.Lead" xml:space="preserve">
+    <value>Your account asks for a passkey as a second step. Use one of your passkeys to finish signing in.</value>
+  </data>
+  <data name="Error.PasskeyFailed" xml:space="preserve">
+    <value>The passkey couldn't be verified. Please try again.</value>
+  </data>
+  <data name="Error.PasskeyTwoFactor" xml:space="preserve">
+    <value>This account uses its passkeys as a second step. Sign in with your password, Google or GitHub first.</value>
+  </data>
+  <data name="Error.PasskeysFull" xml:space="preserve">
+    <value>You can add up to {0} passkeys.</value>
+  </data>
+  <data name="Error.NoPasskeys" xml:space="preserve">
+    <value>Add a passkey first.</value>
+  </data>
+  <data name="Error.LastPasskey" xml:space="preserve">
+    <value>This passkey is your only way to sign in. Set a password before removing it.</value>
+  </data>
+  <data name="Error.PasskeyTwoFactorFirstStep" xml:space="preserve">
+    <value>Two-step verification needs a first step: set a password or connect Google or GitHub first.</value>
+  </data>
+  <data name="Error.SecondStepExpired" xml:space="preserve">
+    <value>Signing in took too long. Please start again.</value>
+  </data>
+  <data name="Passkeys.Added" xml:space="preserve">
+    <value>Passkey added. You can sign in with it now.</value>
+  </data>
+  <data name="Passkeys.Removed" xml:space="preserve">
+    <value>The passkey was removed.</value>
+  </data>
+  <data name="Passkeys.Unsupported" xml:space="preserve">
+    <value>This browser can't use passkeys.</value>
+  </data>
+  <data name="Passkeys.Failed" xml:space="preserve">
+    <value>The passkey didn't work. Please try again.</value>
+  </data>
+  <data name="Passkeys.AlreadyAdded" xml:space="preserve">
+    <value>This device already has a passkey for your account.</value>
+  </data>
+  <data name="Settings.Passkeys" xml:space="preserve">
+    <value>Passkeys</value>
+  </data>
+  <data name="Settings.Passkeys.Help" xml:space="preserve">
+    <value>Sign in with your fingerprint, face or screen lock</value>
+  </data>
+  <data name="Settings.Passkeys.TwoFactorOn" xml:space="preserve">
+    <value>Asked for after your password, as a second step</value>
+  </data>
+  <data name="Settings.Passkeys.Intro" xml:space="preserve">
+    <value>A passkey signs you in with your fingerprint, face or screen lock instead of a password. It is kept on your device or in your password manager, and works only on beeps.</value>
+  </data>
+  <data name="Passkeys.Yours" xml:space="preserve">
+    <value>Your passkeys</value>
+  </data>
+  <data name="Passkeys.None" xml:space="preserve">
+    <value>You haven't added any passkeys yet.</value>
+  </data>
+  <data name="Passkeys.Add" xml:space="preserve">
+    <value>Add a passkey</value>
+  </data>
+  <data name="Passkeys.Unnamed" xml:space="preserve">
+    <value>Passkey</value>
+  </data>
+  <data name="Passkeys.AddedAt" xml:space="preserve">
+    <value>Added</value>
+  </data>
+  <data name="Passkeys.LastUsed" xml:space="preserve">
+    <value>Last used</value>
+  </data>
+  <data name="Passkeys.NeverUsed" xml:space="preserve">
+    <value>Not used yet</value>
+  </data>
+  <data name="Passkeys.Remove" xml:space="preserve">
+    <value>Remove</value>
+  </data>
+  <data name="Passkeys.Remove.Confirm" xml:space="preserve">
+    <value>Remove this passkey? You won't be able to sign in with it any more. Delete it from the device or password manager too.</value>
+  </data>
+  <data name="Passkeys.TwoFactor" xml:space="preserve">
+    <value>Use as two-step verification</value>
+  </data>
+  <data name="Passkeys.TwoFactor.Help" xml:space="preserve">
+    <value>After your password, Google or GitHub, signing in also asks for a passkey, which then no longer signs in by itself. Without a passkey you can't sign in, so it's worth adding a spare.</value>
   </data>
 </root>

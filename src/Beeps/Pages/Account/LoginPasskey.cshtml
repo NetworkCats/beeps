@@ -1,0 +1,22 @@
+@page "/login/passkey"
+@using Beeps.Pages.Islands
+@using Microsoft.AspNetCore.Antiforgery
+@model Beeps.Pages.Account.LoginPasskeyModel
+@inject IAntiforgery Antiforgery
+@{
+    ViewData["Title"] = L["LoginPasskey.Title"];
+    var passkey = PasskeySignInProps.For(HttpContext, Antiforgery, Url, "/Account/LoginPasskey", Model.ReturnUrl, secondStep: true);
+}
+<section class="auth">
+    <h1>@L["LoginPasskey.Title"]</h1>
+    <p class="auth-lead">@L["LoginPasskey.Lead"]</p>
+    <div class="auth-form">
+        <form-errors />
+        <div class="oauth-buttons">
+            <partial name="_PasskeySignIn" model="passkey" />
+        </div>
+        <div class="form-actions">
+            <a class="btn btn-ghost" asp-page="/Account/Login" asp-route-ReturnUrl="@Model.ReturnUrl">@L["LoginCode.Back"]</a>
+        </div>
+    </div>
+</section>

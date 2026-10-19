@@ -1,7 +1,8 @@
 @using Beeps.Features.Accounts
 @model ExternalLoginLinks
 @* The same buttons sign in and sign up: whoever the provider vouches for is signed in, or picks a username
-   (Pages/Account/External, ExternalComplete). Links, not forms, so the signed-out pages with them can be cached. *@
+   (Pages/Account/External, ExternalComplete). Links, not forms, so the signed-out pages with them can be cached. The
+   login page adds its passkey button after them. *@
 <div class="oauth-buttons">
     @foreach (var provider in ExternalProviders.All)
     {
@@ -9,5 +10,9 @@
             <span class="brand-logo brand-logo-@provider" aria-hidden="true"></span>
             @L["External.Continue", ExternalProviders.DisplayName(provider)]
         </a>
+    }
+    @if (Model.Passkey is not null)
+    {
+        <partial name="_PasskeySignIn" model="Model.Passkey" />
     }
 </div>

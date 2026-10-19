@@ -1,4 +1,4 @@
-@page "/settings/{section:regex(^(profile|privacy|account|email|password|display|sessions)$)?}"
+@page "/settings/{section:regex(^(profile|privacy|account|email|password|passkeys|display|sessions)$)?}"
 @using Beeps.Features.Accounts
 @using Beeps.Features.Avatars
 @using Beeps.Pages.Islands
@@ -33,7 +33,9 @@
         (int)AccountService.CodeLifetime.TotalMinutes,
         Model.Settings.HasPassword,
         [.. ExternalProviders.All.Select(p => new ConnectionProps(p, ExternalProviders.DisplayName(p), Model.Settings.Logins.FirstOrDefault(l => l.Provider == p)?.Name))],
-        Model.Devices?.Select(DeviceProps.From).ToList());
+        Model.Devices?.Select(DeviceProps.From).ToList(),
+        Model.Settings.PasskeyTwoFactor,
+        Model.Passkeys?.Select(PasskeyProps.From).ToList());
 }
 @* Members only, so signed in: Client/app/pages/Settings.tsx draws the page from these props. *@
 <island name="settings" props="props" />

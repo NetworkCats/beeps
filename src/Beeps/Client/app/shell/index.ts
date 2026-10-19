@@ -1,4 +1,5 @@
-// The islands of the layout, around every page's content (Pages/Shared/_Layout.cshtml), and the forms' Turnstile widget.
+// The islands of the layout, around every page's content (Pages/Shared/_Layout.cshtml), the forms' Turnstile widget and
+// the login page's passkey button.
 // What every page has comes with the app; what only signed-in people (or the sign-in forms) have is loaded when used,
 // except the confirmation dialog: it must be there before the first destructive button can be pressed, or the
 // browser's own confirm() would ask instead (dialogs.ts). The lightbox (lightbox.ts) comes with it too: pictures are on
@@ -17,4 +18,5 @@ export function registerShell(): void {
   lazyIsland('account-menu', () => import('./AccountMenu.tsx').then((m) => m.AccountMenu));
   lazyIsland('inbox-count', () => import('./InboxCount.tsx').then((m) => m.InboxCount));
   lazyIsland('captcha', () => import('./Captcha.tsx').then((m) => m.Captcha));
+  lazyIsland('passkey-sign-in', () => import('./PasskeySignIn.tsx').then((m) => m.PasskeySignIn));
 }

@@ -23,6 +23,7 @@ using Beeps.Infrastructure.Live;
 using Beeps.Infrastructure.Media;
 using Beeps.Infrastructure.Moderation;
 using Beeps.Infrastructure.Outbox;
+using Beeps.Infrastructure.Passkeys;
 using Beeps.Infrastructure.Redis;
 using Beeps.Infrastructure.Search;
 using Beeps.Infrastructure.Storage;
@@ -67,6 +68,7 @@ public static class InfrastructureSetup
         services.AddScoped<IMediaStore>(sp => sp.GetRequiredService<EfMediaStore>());
         services.AddScoped<IAvatarStore>(sp => sp.GetRequiredService<EfMediaStore>());
         services.AddHttpClient<ICaptchaVerifier, TurnstileCaptchaVerifier>(client => client.Timeout = TimeSpan.FromSeconds(10));
+        services.AddSingleton<IPasskeyCeremonies, FrameworkPasskeyCeremonies>();
 
         // Keys live in PostgreSQL, not Redis: Redis must stay rebuildable, and losing these keys
         // would sign everyone out and invalidate every antiforgery token.

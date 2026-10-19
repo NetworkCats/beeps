@@ -1,5 +1,7 @@
 using System.Text.Json.Serialization;
 using Beeps.Features.Localization;
+using Microsoft.AspNetCore.Antiforgery;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Localization;
 
 namespace Beeps.Pages.Islands;
@@ -62,6 +64,34 @@ public sealed record ToastsProps(
 /// <summary>Turnstile's widget on the forms that need it (<c>_Captcha.cshtml</c>).</summary>
 /// <param name="Language">Turnstile's name for the page language.</param>
 public sealed record CaptchaProps(string SiteKey, string Language);
+
+/// <summary>The passkey button on the login page and on a sign-in's second step (<c>_PasskeySignIn.cshtml</c>, PLAN 6.14).</summary>
+/// <param name="Options">Where the browser's options are asked for (posted, answered with JSON).</param>
+/// <param name="Action">Where what the authenticator signed is posted, as a form, to sign in.</param>
+/// <param name="Antiforgery">The token both carry: the page is not cached, so it may set its cookie.</param>
+/// <param name="ReturnUrl">Where signing in leads once done, as the login page was asked for it.</param>
+/// <param name="SecondStep">The second step after the password: one of the account's own passkeys, not any.</param>
+public sealed record PasskeySignInProps(
+    string Options,
+    string Action,
+    ClientAntiforgery Antiforgery,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? ReturnUrl,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] bool SecondStep)
+{
+    /// <param name="page">The page whose handlers answer: <c>PasskeyOptions</c> and <c>Passkey</c>.</param>
+    public static PasskeySignInProps For(HttpContext context, IAntiforgery antiforgery, IUrlHelper url, string page, string? returnUrl, bool secondStep)
+    {
+        ArgumentNullException.ThrowIfNull(antiforgery);
+        ArgumentNullException.ThrowIfNull(url);
+        var tokens = antiforgery.GetAndStoreTokens(context);
+        return new PasskeySignInProps(
+            url.Page(page, "PasskeyOptions")!,
+            url.Page(page, "Passkey")!,
+            new ClientAntiforgery(tokens.FormFieldName, tokens.RequestToken ?? ""),
+            returnUrl,
+            secondStep);
+    }
+}
 
 /// <summary>
 /// What an islands request (<see cref="IslandRequests"/>) says of the page besides its islands' props: what the app

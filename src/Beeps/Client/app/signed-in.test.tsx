@@ -123,6 +123,29 @@ test('a new invite\'s code is shown once, in an alert with a copy button', async
   assert.match(html, /<button class="btn-copy" type="button"/);
 });
 
+test('the passkeys page lists them, adds another, removes any after asking, and switches two-step sign-in', async () => {
+  const account = await draw('settings-account.json', 'settings');
+  assert.match(account, /<a class="settings-link" href="\/settings\/passkeys">/);
+  const html = await draw('settings-passkeys.json', 'settings');
+  assert.match(html, /<a class="column-back" href="\/settings\/account"/);
+  // Named after where each was added; one that did not say is a passkey all the same.
+  assert.match(html, /<span class="settings-link-title">Mac<\/span>/);
+  assert.match(html, /<span class="settings-link-help">Safari<\/span>/);
+  assert.match(html, /<span class="settings-link-title">Passkey<\/span>/);
+  assert.match(html, /Not used yet/);
+  assert.equal(html.match(/action="\/settings\/passkeys\?handler=RemovePasskey" data-confirm="[^"]+"/g)?.length, 2);
+  assert.match(html, /<input type="hidden" name="PasskeyId" value="00000000-0000-7000-8000-00000000001e"\/>/);
+  assert.match(html, /<form class="settings-aside" method="post" action="\/settings\/passkeys\?handler=AddPasskey">/);
+  assert.match(html, /<input type="checkbox" name="TwoFactor" value="true" checked\/>/);
+  // None yet: nothing to switch.
+  const none = await draw('settings-passkeys.json', 'settings', (props) => {
+    props.passkeys = [];
+    props.passkeyTwoFactor = false;
+  });
+  assert.match(none, /You haven&#39;t added any passkeys yet\.|You haven't added any passkeys yet\./);
+  assert.doesNotMatch(none, /name="TwoFactor"/);
+});
+
 test('the settings list the sections, each a page of its own with its forms', async () => {
   const list = await draw('settings.json', 'settings');
   assert.match(list, /<a class="settings-link" href="\/settings\/profile">/);

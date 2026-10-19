@@ -1,0 +1,8 @@
+@using Beeps.Pages.Islands
+@model PasskeySignInProps
+@* The passkey button (Client/app/shell/PasskeySignIn.tsx): asks the browser for a passkey, and posts what it signed to
+   sign in. It does nothing without the script, as a passkey needs one anyway; the component hides it where the browser
+   has no passkeys at all. *@
+<island name="passkey-sign-in" props="Model">
+<button class="btn btn-block btn-oauth" type="button"><icon name="passkey" />@L[Model.SecondStep ? "Passkey.Verify" : "Passkey.SignIn"]</button>
+</island>

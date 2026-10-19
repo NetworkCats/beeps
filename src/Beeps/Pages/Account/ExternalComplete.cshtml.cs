@@ -52,14 +52,8 @@ public sealed class ExternalCompleteModel(AccountService accounts, IStringLocali
         if (result.Value.Account is { } account)
         {
             await HttpContext.SignOutAsync(AuthSchemes.External);
-            await HttpContext.SignInHumanAsync(account);
-            if (!account.EmailVerified)
-            {
-                return RedirectToPage("/Onboarding/Verify");
-            }
-
             external.Properties.Items.TryGetValue(ExternalAuth.ReturnItem, out var returnUrl);
-            return LocalRedirect(Url.IsLocalUrl(returnUrl) ? returnUrl : "~/");
+            return await LoginModel.SignInAfterFirstStepAsync(this, accounts, account, returnUrl, cancellationToken);
         }
 
         (Identity, Username) = (identity, result.Value.SuggestedUsername);

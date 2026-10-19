@@ -1,4 +1,7 @@
+using System.Buffers;
 using System.Globalization;
+using System.Text.Json;
+using Beeps.Features.Accounts;
 using Beeps.Features.Media;
 using Beeps.Features.Shared;
 using Beeps.Features.Shared.Http;
@@ -85,5 +88,43 @@ public static class PageModelExtensions
         var result = page.Page();
         result.StatusCode = ErrorHttpResult.StatusCodeFor(error.Kind);
         return result;
+    }
+
+    /// <summary>
+    /// What the browser hands the authenticator to start a passkey ceremony, and the ticket to send back with its answer,
+    /// as JSON (<c>{ "options": …, "ticket": … }</c>); or why not (<c>{ "error": … }</c>, with the error's status code).
+    /// </summary>
+    public static ContentResult PasskeyOptions(this PageModel page, Result<PasskeyRequest> request)
+    {
+        ArgumentNullException.ThrowIfNull(page);
+        ArgumentNullException.ThrowIfNull(request);
+        var buffer = new ArrayBufferWriter<byte>();
+        using (var json = new Utf8JsonWriter(buffer))
+        {
+            json.WriteStartObject();
+            if (request.IsSuccess)
+            {
+                json.WritePropertyName("options");
+                json.WriteRawValue(request.Value.OptionsJson);
+                json.WriteString("ticket", request.Value.Ticket);
+            }
+            else
+            {
+                json.WriteString("error", request.Error.Detail ?? request.Error.Code);
+                if (request.Error.RetryAfter is { } retryAfter)
+                {
+                    page.Response.Headers.RetryAfter = ErrorHttpResult.RetryAfterHeaderValue(retryAfter);
+                }
+            }
+
+            json.WriteEndObject();
+        }
+
+        return new ContentResult
+        {
+            Content = System.Text.Encoding.UTF8.GetString(buffer.WrittenSpan),
+            ContentType = "application/json; charset=utf-8",
+            StatusCode = request.IsSuccess ? StatusCodes.Status200OK : ErrorHttpResult.StatusCodeFor(request.Error.Kind),
+        };
     }
 }

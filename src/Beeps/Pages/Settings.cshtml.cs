@@ -13,8 +13,8 @@ using Microsoft.Extensions.Localization;
 namespace Beeps.Pages;
 
 /// <summary>
-/// The account's own settings: avatar, banner, profile, privacy, language, colour scheme, email, password, the Google
-/// and GitHub accounts it signs in with and the devices signed in (PLAN 2.2, 3.4, 5.2, 6.12, 6.14). As on
+/// The account's own settings: avatar, banner, profile, privacy, language, colour scheme, email, password, passkeys, the
+/// Google and GitHub accounts it signs in with and the devices signed in (PLAN 2.2, 3.4, 5.2, 6.12, 6.14). As on
 /// Twitter, <c>/settings</c> lists the sections and each has a page of its own (<see cref="SettingsSections"/>); a form
 /// comes back to the section it belongs to, whichever address it was sent to.
 /// </summary>
@@ -32,6 +32,9 @@ public sealed class SettingsModel(
 
     /// <summary>The devices signed in; only on their page.</summary>
     public IReadOnlyList<SignedInDevice>? Devices { get; private set; }
+
+    /// <summary>The account's passkeys; only on their page.</summary>
+    public IReadOnlyList<PasskeySummary>? Passkeys { get; private set; }
 
     public Uri? BannerUrl { get; private set; }
 
@@ -59,6 +62,17 @@ public sealed class SettingsModel(
 
     /// <summary>The device to sign out.</summary>
     [BindProperty] public Guid SessionId { get; set; }
+
+    /// <summary>What the authenticator made, as the browser's JSON, and the ticket its options came with.</summary>
+    [BindProperty] public string? Credential { get; set; }
+
+    [BindProperty] public string? Ticket { get; set; }
+
+    /// <summary>The passkey to remove.</summary>
+    [BindProperty] public Guid PasskeyId { get; set; }
+
+    /// <summary>Passkeys as the second step after the password, instead of a way to sign in by themselves.</summary>
+    [BindProperty] public bool TwoFactor { get; set; }
 
     [BindProperty] public bool HideLikes { get; set; }
 
@@ -137,6 +151,24 @@ public sealed class SettingsModel(
         return await DoneAsync(result, SettingsSections.Account, notice: null, cancellationToken);
     }
 
+    // Adding a passkey is two requests: the options for the browser (JSON), then what the authenticator made.
+    public async Task<IActionResult> OnPostPasskeyOptionsAsync(CancellationToken cancellationToken) =>
+        this.PasskeyOptions(await accounts.BeginAddPasskeyAsync(User.ActorId(), cancellationToken));
+
+    public async Task<IActionResult> OnPostAddPasskeyAsync(CancellationToken cancellationToken) =>
+        await DoneAsync(
+            await accounts.AddPasskeyAsync(User.ActorId(), Credential, Ticket, Request.Headers.UserAgent.ToString(), cancellationToken),
+            SettingsSections.Passkeys,
+            "Passkeys.Added",
+            cancellationToken);
+
+    public async Task<IActionResult> OnPostRemovePasskeyAsync(CancellationToken cancellationToken) =>
+        await DoneAsync(await accounts.RemovePasskeyAsync(User.ActorId(), PasskeyId, cancellationToken), SettingsSections.Passkeys, "Passkeys.Removed", cancellationToken);
+
+    // A switch, sent as it is flipped, and staying as it was flipped: no notice needed.
+    public async Task<IActionResult> OnPostPasskeyTwoFactorAsync(CancellationToken cancellationToken) =>
+        await DoneAsync(await accounts.SetPasskeyTwoFactorAsync(User.ActorId(), TwoFactor, cancellationToken), SettingsSections.Passkeys, notice: null, cancellationToken);
+
     // The page then asks for the code sent to the new address.
     public async Task<IActionResult> OnPostEmailAsync(CancellationToken cancellationToken) =>
         await DoneAsync(
@@ -191,6 +223,11 @@ public sealed class SettingsModel(
             if (Section == SettingsSections.Sessions)
             {
                 Devices = await sessions.ListDevicesAsync(User.ActorId(), User.SessionId(), cancellationToken);
+            }
+
+            if (Section == SettingsSections.Passkeys)
+            {
+                Passkeys = await accounts.ListPasskeysAsync(User.ActorId(), cancellationToken);
             }
         }
 

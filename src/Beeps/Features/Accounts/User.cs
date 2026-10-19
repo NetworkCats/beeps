@@ -49,5 +49,11 @@ public sealed class User
     /// <summary>Only the account sees how many it follows and how many follow it.</summary>
     public bool HideFollowCounts { get; set; }
 
+    /// <summary>
+    /// The account's passkeys are the second step after the password, or after Google or GitHub, and do not sign in by
+    /// themselves (PLAN 6.14). Off by default: a passkey signs in without a password.
+    /// </summary>
+    public bool PasskeyTwoFactor { get; set; }
+
     public DateTimeOffset CreatedAt { get; init; }
 }

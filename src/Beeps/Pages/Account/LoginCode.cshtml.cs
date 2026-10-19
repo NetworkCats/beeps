@@ -38,6 +38,8 @@ public sealed class LoginCodeModel(AccountService accounts, IStringLocalizer<Sha
         }
 
         var result = await accounts.LoginWithCodeAsync(Login, Code, cancellationToken);
-        return result.IsSuccess ? await LoginModel.SignInAsync(this, result.Value, ReturnUrl) : this.ShowError(result.Error);
+        return result.IsSuccess
+            ? await LoginModel.SignInAfterFirstStepAsync(this, accounts, result.Value, ReturnUrl, cancellationToken)
+            : this.ShowError(result.Error);
     }
 }

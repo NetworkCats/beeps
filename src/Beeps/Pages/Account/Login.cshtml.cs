@@ -19,6 +19,12 @@ public sealed class LoginModel(AccountService accounts, IStringLocalizer<SharedR
 
     [BindProperty(SupportsGet = true)] public string? ReturnUrl { get; set; }
 
+    /// <summary>What the authenticator signed, as the browser's JSON (the passkey button).</summary>
+    [BindProperty] public string? Credential { get; set; }
+
+    /// <summary>What the passkey options came with, sent back with the answer.</summary>
+    [BindProperty] public string? Ticket { get; set; }
+
     /// <summary>The account is past its wrong passwords: the form takes Turnstile from now on.</summary>
     public bool NeedsCaptcha { get; private set; }
 
@@ -45,7 +51,38 @@ public sealed class LoginModel(AccountService accounts, IStringLocalizer<SharedR
             return RedirectToPage("/Account/LoginCode", new { ReturnUrl });
         }
 
-        return await SignInAsync(this, account, ReturnUrl);
+        return await SignInAfterFirstStepAsync(this, accounts, account, ReturnUrl, cancellationToken);
+    }
+
+    /// <summary>The passkey button, first: what the browser asks for, any passkey the person has here (JSON).</summary>
+    public async Task<IActionResult> OnPostPasskeyOptionsAsync() => this.PasskeyOptions(await accounts.BeginPasskeySignInAsync());
+
+    /// <summary>Then what the authenticator signed, which signs in to its account without a password.</summary>
+    public async Task<IActionResult> OnPostPasskeyAsync(CancellationToken cancellationToken)
+    {
+        if (User.IsHuman())
+        {
+            return this.AlreadySignedIn(localizer);
+        }
+
+        var result = await accounts.PasskeySignInAsync(Credential, Ticket, this.Origin(), cancellationToken);
+        return result.IsSuccess ? await SignInAsync(this, result.Value, ReturnUrl) : this.ShowError(result.Error);
+    }
+
+    /// <summary>
+    /// The first step of signing in is done (the password, a code, Google or GitHub): on to the account's passkey, if
+    /// it keeps them for the second step (PLAN 6.14), or signed in.
+    /// </summary>
+    internal static async Task<IActionResult> SignInAfterFirstStepAsync(
+        PageModel page, AccountService accounts, AccountState account, string? returnUrl, CancellationToken cancellationToken)
+    {
+        if (await accounts.StartSecondStepAsync(account.UserId, cancellationToken) is { } firstStep)
+        {
+            page.TempData[LoginPasskeyModel.FirstStepKey] = firstStep;
+            return page.RedirectToPage("/Account/LoginPasskey", new { returnUrl });
+        }
+
+        return await SignInAsync(page, account, returnUrl);
     }
 
     /// <summary>Signs in and goes on: to verifying the address first, if it is not yet.</summary>

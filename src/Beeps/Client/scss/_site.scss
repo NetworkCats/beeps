@@ -1578,7 +1578,9 @@ span.beep-action {
 
   .form-actions,
   .oauth-buttons {
-    > .btn {
+    // The passkey button is in its island's wrapper (display: contents).
+    > .btn,
+    > .island > .btn {
       --cui-btn-height: 2.75rem;
     }
   }

@@ -1,12 +1,14 @@
 using Beeps.Features.Beeps;
 using Beeps.Features.Media;
 using Beeps.Features.Shared;
+using Beeps.Pages.Islands;
 
 namespace Beeps.Pages;
 
 /// <summary>The buttons for signing in or up with Google and GitHub, for <c>_ExternalLogins.cshtml</c>.</summary>
 /// <param name="ReturnUrl">Where signing in leads once done, as the login page was asked for it.</param>
-public sealed record ExternalLoginLinks(string? ReturnUrl = null);
+/// <param name="Passkey">The login page's passkey button, after theirs.</param>
+public sealed record ExternalLoginLinks(string? ReturnUrl = null, PasskeySignInProps? Passkey = null);
 
 /// <summary>One beep for <c>_Beep.cshtml</c>.</summary>
 /// <param name="Focused">The beep the page is about, within its thread.</param>

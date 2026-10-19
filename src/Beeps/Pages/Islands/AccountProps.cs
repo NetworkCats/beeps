@@ -33,6 +33,8 @@ public sealed record ProfileLimits(int DisplayNameMaxLength, int BioMaxLength);
 /// <param name="HasPassword">False for an account that signs in only with Google or GitHub: it sets a password, with none to give first.</param>
 /// <param name="Connections">Google and GitHub, linked or not.</param>
 /// <param name="Devices">The devices signed in, this one first; only on the devices page.</param>
+/// <param name="PasskeyTwoFactor">The passkeys are the second step after the password, not a way to sign in by themselves.</param>
+/// <param name="Passkeys">The account's passkeys, oldest first; only on their page.</param>
 public sealed record SettingsProps(
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Section,
     LiveProps Live,
@@ -55,7 +57,9 @@ public sealed record SettingsProps(
     int CodeLifetimeMinutes,
     bool HasPassword,
     IReadOnlyList<ConnectionProps> Connections,
-    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] IReadOnlyList<DeviceProps>? Devices);
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] IReadOnlyList<DeviceProps>? Devices,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] bool PasskeyTwoFactor,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] IReadOnlyList<PasskeyProps>? Passkeys);
 
 /// <summary>A device signed in to the account (PLAN 6.14).</summary>
 /// <param name="Kind"><c>phone</c>, <c>tablet</c>, <c>computer</c> or <c>unknown</c>, which picks its icon.</param>
@@ -85,6 +89,23 @@ public sealed record DeviceProps(
         };
         return new DeviceProps(
             device.Id, kind, device.Device.Name, device.Device.Browser, device.Place?.Locality, device.Place?.Country, device.SignedInAt, device.LastSeenAt, device.IsCurrent);
+    }
+}
+
+/// <summary>A passkey of the account's (PLAN 6.14), named after the device and browser it was added on.</summary>
+/// <param name="Name">The device or system it was added on, from its User-Agent; none when it does not say.</param>
+/// <param name="LastUsedAt">When it last signed in; none if it never has.</param>
+public sealed record PasskeyProps(
+    Guid Id,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Name,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Browser,
+    DateTimeOffset CreatedAt,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] DateTimeOffset? LastUsedAt)
+{
+    public static PasskeyProps From(PasskeySummary passkey)
+    {
+        ArgumentNullException.ThrowIfNull(passkey);
+        return new PasskeyProps(passkey.Id, passkey.AddedOn.Name, passkey.AddedOn.Browser, passkey.CreatedAt, passkey.LastUsedAt);
     }
 }
 

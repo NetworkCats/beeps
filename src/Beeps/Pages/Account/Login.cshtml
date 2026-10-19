@@ -1,11 +1,15 @@
 @page "/login"
+@using Beeps.Pages.Islands
+@using Microsoft.AspNetCore.Antiforgery
 @model Beeps.Pages.Account.LoginModel
+@inject IAntiforgery Antiforgery
 @{
     ViewData["Title"] = L["Login.Title"];
+    var passkey = PasskeySignInProps.For(HttpContext, Antiforgery, Url, "/Account/Login", Model.ReturnUrl, secondStep: false);
 }
 <section class="auth">
     <h1>@L["Login.Title"]</h1>
-    <partial name="_ExternalLogins" model="new ExternalLoginLinks(Model.ReturnUrl)" />
+    <partial name="_ExternalLogins" model="new ExternalLoginLinks(Model.ReturnUrl, passkey)" />
     <p class="auth-or">@L["External.Or"]</p>
     <form class="auth-form" method="post">
         <form-errors />

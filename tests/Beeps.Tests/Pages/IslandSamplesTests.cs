@@ -226,6 +226,44 @@ public sealed partial class IslandSamplesTests : IDisposable
     }
 
     [Fact]
+    public async Task ThePasskeysMatchTheirSample()
+    {
+        using var client = await WebAuth.SignInAsync(factory, tom);
+        // One added on a Mac and used since, one on a device that did not say what it is; asked for after the password.
+        tom.PasskeyTwoFactor = true;
+        factory.Accounts.ListPasskeysAsync(tom.Id, Arg.Any<CancellationToken>()).Returns(
+        [
+            new Passkey
+            {
+                Id = Id(30),
+                UserId = tom.Id,
+                CredentialId = [1],
+                PublicKey = [1],
+                UserAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Safari/605.1.15",
+                CreatedAt = TestData.Now.AddDays(-30),
+                LastUsedAt = TestData.Now.AddDays(-1),
+            },
+            new Passkey { Id = Id(31), UserId = tom.Id, CredentialId = [2], PublicKey = [2], CreatedAt = TestData.Now.AddDays(-2) },
+        ]);
+
+        await MatchSampleAsync("settings-passkeys", "/settings/passkeys", await DrawnAsync(client, "/settings/passkeys"));
+    }
+
+    [Fact]
+    public async Task TheSecondStepMatchesItsSample()
+    {
+        tom.PasskeyTwoFactor = true;
+        factory.Accounts.ListPasskeysAsync(tom.Id, Arg.Any<CancellationToken>())
+            .Returns([new Passkey { Id = Id(30), UserId = tom.Id, CredentialId = [1], PublicKey = [1], CreatedAt = TestData.Now }]);
+        using var client = WebAuth.NewClient(factory);
+        using var login = await WebAuth.PostFormAsync(client, "/login", "/login", ("Login", "tom"), ("Password", WebAuth.Password));
+
+        var html = await client.GetStringAsync(login.Headers.Location, TestSupport.Ct);
+
+        await MatchSampleAsync("signed-out-login-passkey", "/login/passkey", html);
+    }
+
+    [Fact]
     public async Task ANewKeyMatchesItsSample()
     {
         using var client = await WebAuth.SignInAsync(factory, tom);
@@ -262,7 +300,11 @@ public sealed partial class IslandSamplesTests : IDisposable
     public void EverySampleIsOneThatATestDraws()
     {
         // The facts above draw these; the theories draw their pages.
-        string[] others = ["verify", "compose-refused", "settings-refused", "settings-linked-account", "settings-linked-password", "settings-devices", "agents-new-key", "onboarding-key"];
+        string[] others =
+        [
+            "verify", "compose-refused", "settings-refused", "settings-linked-account", "settings-linked-password", "settings-devices", "settings-passkeys",
+            "signed-out-login-passkey", "agents-new-key", "onboarding-key",
+        ];
         string[] drawn =
         [
             .. Pages.Select(row => row.Data.Item1),

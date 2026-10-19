@@ -47,6 +47,16 @@ public sealed class EfAccountStore(BeepsDbContext db, HybridCache cache, CacheIn
 
     public void RemoveLogin(ExternalLogin login) => db.Set<ExternalLogin>().Remove(login);
 
+    public Task<Passkey?> FindPasskeyAsync(byte[] credentialId, CancellationToken cancellationToken) =>
+        db.Set<Passkey>().FirstOrDefaultAsync(p => p.CredentialId == credentialId, cancellationToken);
+
+    public async Task<IReadOnlyList<Passkey>> ListPasskeysAsync(Guid userId, CancellationToken cancellationToken) =>
+        await db.Set<Passkey>().Where(p => p.UserId == userId).OrderBy(p => p.Id).ToListAsync(cancellationToken);
+
+    public void AddPasskey(Passkey passkey) => db.Set<Passkey>().Add(passkey);
+
+    public void RemovePasskey(Passkey passkey) => db.Set<Passkey>().Remove(passkey);
+
     public async Task<AccountState?> GetAccountStateAsync(Guid userId, CancellationToken cancellationToken) =>
         await cache.GetOrCreateAsync(
             SharedCache.AccountKey(userId),

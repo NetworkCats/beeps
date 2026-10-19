@@ -96,6 +96,23 @@ internal sealed class ExternalLoginConfiguration : IEntityTypeConfiguration<Exte
     }
 }
 
+internal sealed class PasskeyConfiguration : IEntityTypeConfiguration<Passkey>
+{
+    public void Configure(EntityTypeBuilder<Passkey> builder)
+    {
+        builder.ToTable("user_passkeys");
+        builder.HasKey(p => p.Id);
+        builder.Property(p => p.Id).ValueGeneratedNever();
+        builder.Property(p => p.CredentialId).HasMaxLength(Passkey.CredentialIdMaxLength);
+        builder.Property(p => p.UserAgent).HasMaxLength(Passkey.UserAgentMaxLength);
+        // Signing in looks a passkey up by the id the browser names it by; no two accounts can have the same one.
+        builder.HasIndex(p => p.CredentialId).IsUnique().HasDatabaseName(AccountIndexes.UniquePasskey);
+        // The settings' list of them.
+        builder.HasIndex(p => p.UserId);
+        builder.HasOne<User>().WithMany().HasForeignKey(p => p.UserId).OnDelete(DeleteBehavior.Cascade);
+    }
+}
+
 internal sealed class EmailCodeConfiguration : IEntityTypeConfiguration<EmailCode>
 {
     public void Configure(EntityTypeBuilder<EmailCode> builder)
