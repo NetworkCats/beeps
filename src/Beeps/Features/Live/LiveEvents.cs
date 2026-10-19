@@ -74,6 +74,9 @@ public static class LiveEventTypes
     /// <summary>Sessions of this account ended (signed out, password changed, banned…): tabs of ended sessions sign out.</summary>
     public const string SessionsEnded = "sessions_ended";
 
+    /// <summary>The account signed in on another device: its devices page lists it.</summary>
+    public const string SessionStarted = "session_started";
+
     /// <summary>The account's language or admin rights changed: its open tabs show the site anew.</summary>
     public const string AccountChanged = "account_changed";
 

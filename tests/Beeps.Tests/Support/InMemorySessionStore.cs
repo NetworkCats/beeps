@@ -41,6 +41,29 @@ internal sealed class InMemorySessionStore : ISessionStore
         return Task.CompletedTask;
     }
 
+    public Task<bool> RevokeByIdAsync(Guid userId, Guid sessionId, DateTimeOffset now, CancellationToken cancellationToken)
+    {
+        var session = sessions.Values.FirstOrDefault(s => s.Id == sessionId && s.UserId == userId && s.RevokedAt is null && s.ExpiresAt > now);
+        if (session is not null)
+        {
+            Update(session.TokenHash, s => Revoked(s, now));
+        }
+
+        return Task.FromResult(session is not null);
+    }
+
+    public Task<IReadOnlyList<ActiveSession>> ListActiveAsync(Guid userId, Guid? currentSessionId, DateTimeOffset now, int limit, CancellationToken cancellationToken) =>
+        Task.FromResult<IReadOnlyList<ActiveSession>>(
+        [
+            .. sessions.Values
+                .Where(s => s.UserId == userId && s.RevokedAt is null && s.ExpiresAt > now)
+                .OrderByDescending(s => s.Id == currentSessionId)
+                .ThenByDescending(s => s.LastSeenAt)
+                .ThenByDescending(s => s.Id)
+                .Take(limit)
+                .Select(s => new ActiveSession(s.Id, s.CreatedAt, s.LastSeenAt, s.UserAgent, s.IpAddress)),
+        ]);
+
     public Task RevokeAllAsync(Guid userId, DateTimeOffset now, CancellationToken cancellationToken)
     {
         foreach (var session in sessions.Values.Where(s => s.UserId == userId))

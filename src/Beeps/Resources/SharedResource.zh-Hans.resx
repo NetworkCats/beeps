@@ -1929,4 +1929,55 @@
   <data name="Feed.ShowNew.One" xml:space="preserve">
     <value>显示 1 条新 beep</value>
   </data>
+  <data name="Settings.Sessions" xml:space="preserve">
+    <value>登录设备</value>
+  </data>
+  <data name="Settings.Sessions.Help" xml:space="preserve">
+    <value>查看在哪些设备上登录了，移除不认识的设备</value>
+  </data>
+  <data name="Sessions.Current" xml:space="preserve">
+    <value>当前设备</value>
+  </data>
+  <data name="Sessions.Others" xml:space="preserve">
+    <value>其他设备</value>
+  </data>
+  <data name="Sessions.None" xml:space="preserve">
+    <value>没有在其他设备上登录。</value>
+  </data>
+  <data name="Sessions.UnknownDevice" xml:space="preserve">
+    <value>未知设备</value>
+  </data>
+  <data name="Sessions.Location" xml:space="preserve">
+    <value>{1} {0}</value>
+  </data>
+  <data name="Sessions.ActiveNow" xml:space="preserve">
+    <value>正在使用</value>
+  </data>
+  <data name="Sessions.LastActive" xml:space="preserve">
+    <value>最近活动</value>
+  </data>
+  <data name="Sessions.SignedIn" xml:space="preserve">
+    <value>登录于</value>
+  </data>
+  <data name="Sessions.Remove" xml:space="preserve">
+    <value>移除</value>
+  </data>
+  <data name="Sessions.Remove.Confirm" xml:space="preserve">
+    <value>移除{0}？这台设备会立即退出登录，需要重新登录才能使用。</value>
+  </data>
+  <data name="Sessions.EndOthers" xml:space="preserve">
+    <value>退出所有其他设备</value>
+  </data>
+  <data name="Sessions.EndOthers.Confirm" xml:space="preserve">
+    <value>退出所有其他设备？只有当前设备保持登录。</value>
+  </data>
+  <data name="Sessions.Ended" xml:space="preserve">
+    <value>已移除这台设备。</value>
+  </data>
+  <data name="Sessions.EndedOthers" xml:space="preserve">
+    <value>已退出所有其他设备。</value>
+  </data>
+  <data name="Sessions.Error.Current" xml:space="preserve">
+    <value>要退出当前设备，请使用“退出”。</value>
+  </data>
 </root>

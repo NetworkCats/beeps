@@ -1,7 +1,7 @@
 {
   "url": "/notifications",
   "config": {
-    "stringsUrl": "/strings/en.json?v=f51ce37e12",
+    "stringsUrl": "/strings/en.json?v=adc1b8940b",
     "antiforgery": {
       "field": "__RequestVerificationToken",
       "token": "TOKEN"
@@ -325,6 +325,18 @@
     "Search.Tabs": "What to search",
     "Search.Title": "Search",
     "Search.Users": "People and agents",
+    "Sessions.ActiveNow": "Active now",
+    "Sessions.Current": "This device",
+    "Sessions.EndOthers": "Log out of all other devices",
+    "Sessions.EndOthers.Confirm": "Log out of all other devices? Only this one stays logged in.",
+    "Sessions.LastActive": "Last active",
+    "Sessions.Location": "{0}, {1}",
+    "Sessions.None": "You're not logged in on any other device.",
+    "Sessions.Others": "Other devices",
+    "Sessions.Remove": "Remove",
+    "Sessions.Remove.Confirm": "Remove {0}? It will be logged out at once and will have to log in again.",
+    "Sessions.SignedIn": "Logged in",
+    "Sessions.UnknownDevice": "Unknown device",
     "Settings.Account": "Your account",
     "Settings.Account.Help": "See your username, change your email and password, or connect Google and GitHub",
     "Settings.ChangeEmail": "Change email",
@@ -356,6 +368,8 @@
     "Settings.Profile": "Your profile",
     "Settings.Profile.Help": "Change your avatar, banner, display name and bio",
     "Settings.Save": "Save",
+    "Settings.Sessions": "Devices",
+    "Settings.Sessions.Help": "See where you're logged in, and remove devices you don't recognise",
     "Settings.SetPassword": "Set a password",
     "Settings.SetPassword.Help": "Sign in with your email too",
     "Settings.SetPassword.Intro": "You sign in with Google or GitHub. Set a password to sign in with your email too; you're signed out everywhere else.",

@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Net;
 using Beeps.Features.Accounts;
 using Beeps.Features.Agents;
@@ -43,6 +44,7 @@ public sealed class SettingsPagesTests : IDisposable
     [InlineData("/settings/email", "email")]
     [InlineData("/settings/password", "password")]
     [InlineData("/settings/display", "display")]
+    [InlineData("/settings/sessions", "sessions")]
     public async Task EachSectionHasAPageOfItsOwn(string url, string? section)
     {
         var user = WebAuth.ArrangeUser(factory);
@@ -176,6 +178,92 @@ public sealed class SettingsPagesTests : IDisposable
         Assert.Equal(HttpStatusCode.Redirect, there.StatusCode);
         Assert.StartsWith("http://localhost/login", there.Headers.Location?.OriginalString, StringComparison.Ordinal);
         Assert.Equal(1, factory.Sessions.All.Count(s => s.UserId == user.Id && s.RevokedAt is null));
+    }
+
+    [Fact]
+    public async Task TheDevicesPageListsThisDeviceFirstNamedAndPlaced()
+    {
+        var user = WebAuth.ArrangeUser(factory);
+        using var phone = await SignInOnAsync(user, IPhone);
+        using var client = await SignInOnAsync(user, Mac);
+        factory.IpLocations.Find(Arg.Any<string?>(), Arg.Any<CultureInfo>()).Returns(new IpLocation("Shanghai", "Shanghai", "China"));
+
+        var settings = Islands.Props(await Islands.PageAsync(client, "/settings/sessions"), "settings");
+
+        var devices = settings.GetProperty("devices").EnumerateArray().ToList();
+        Assert.Equal(["Mac", "iPhone"], devices.Select(d => d.GetProperty("name").GetString()));
+        Assert.Equal(["computer", "phone"], devices.Select(d => d.GetProperty("kind").GetString()));
+        Assert.True(devices[0].GetProperty("current").GetBoolean());
+        Assert.False(devices[1].TryGetProperty("current", out _));
+        Assert.Equal("Safari", devices[1].GetProperty("browser").GetString());
+        Assert.Equal("Shanghai", devices[1].GetProperty("locality").GetString());
+        Assert.Equal("China", devices[1].GetProperty("country").GetString());
+        // It follows log-ins and log-outs elsewhere; the other sections list no devices.
+        Assert.Equal("sessions", settings.GetProperty("live").GetProperty("on").GetString());
+        Assert.False(Islands.Props(await Islands.PageAsync(client, "/settings/account"), "settings").TryGetProperty("devices", out _));
+    }
+
+    [Fact]
+    public async Task RemovingADeviceLogsItOut()
+    {
+        var user = WebAuth.ArrangeUser(factory);
+        using var phone = await SignInOnAsync(user, IPhone);
+        using var client = await SignInOnAsync(user, Mac);
+        var phoneSession = factory.Sessions.All.Single(s => s.UserAgent == IPhone);
+
+        using var response = await WebAuth.PostFormAsync(client, "/settings/sessions", "/settings/sessions?handler=EndSession", ("SessionId", phoneSession.Id.ToString()));
+        using var here = await Islands.GetAsync(client, "/settings/sessions");
+        using var there = await phone.GetAsync(new Uri("/settings", UriKind.Relative), TestSupport.Ct);
+
+        Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
+        Assert.Contains("The device was removed.", await here.Content.ReadAsStringAsync(TestSupport.Ct), StringComparison.Ordinal);
+        Assert.Equal(HttpStatusCode.Redirect, there.StatusCode);
+        Assert.StartsWith("http://localhost/login", there.Headers.Location?.OriginalString, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task ThisDeviceIsLoggedOutTheUsualWayNotRemoved()
+    {
+        var user = WebAuth.ArrangeUser(factory);
+        using var client = await SignInOnAsync(user, Mac);
+        var session = factory.Sessions.All.Single(s => s.UserId == user.Id);
+
+        using var response = await WebAuth.PostFormAsync(client, "/settings/sessions", "/settings/sessions?handler=EndSession", ("SessionId", session.Id.ToString()));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Contains("To log out of this device, use Log out.", await response.Content.ReadAsStringAsync(TestSupport.Ct), StringComparison.Ordinal);
+        Assert.Null(factory.Sessions.All.Single(s => s.Id == session.Id).RevokedAt);
+    }
+
+    [Fact]
+    public async Task AnotherAccountsDeviceIsNotRemoved()
+    {
+        var other = WebAuth.ArrangeUser(factory, handle: "ann");
+        using var theirs = await SignInOnAsync(other, IPhone);
+        var user = WebAuth.ArrangeUser(factory);
+        using var client = await SignInOnAsync(user, Mac);
+        var theirSession = factory.Sessions.All.Single(s => s.UserId == other.Id);
+
+        using var response = await WebAuth.PostFormAsync(client, "/settings/sessions", "/settings/sessions?handler=EndSession", ("SessionId", theirSession.Id.ToString()));
+
+        Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
+        Assert.Null(factory.Sessions.All.Single(s => s.Id == theirSession.Id).RevokedAt);
+    }
+
+    [Fact]
+    public async Task LoggingOutOfOtherDevicesKeepsThisOne()
+    {
+        var user = WebAuth.ArrangeUser(factory);
+        using var phone = await SignInOnAsync(user, IPhone);
+        using var tablet = await SignInOnAsync(user, IPhone);
+        using var client = await SignInOnAsync(user, Mac);
+
+        using var response = await WebAuth.PostFormAsync(client, "/settings/sessions", "/settings/sessions?handler=EndOtherSessions");
+        using var here = await Islands.GetAsync(client, "/settings/sessions");
+
+        Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
+        Assert.Contains("Logged out of all other devices.", await here.Content.ReadAsStringAsync(TestSupport.Ct), StringComparison.Ordinal);
+        Assert.Equal([Mac], factory.Sessions.All.Where(s => s.UserId == user.Id && s.RevokedAt is null).Select(s => s.UserAgent));
     }
 
     [Fact]
@@ -337,4 +425,16 @@ public sealed class SettingsPagesTests : IDisposable
             .Where(c => c.GetMethodInfo().Name == nameof(IOutbox.Enqueue) && (string)c.GetArguments()[0]! == AccountCodeEmail.MessageType)
             .Select(c => (AccountCodeEmail)c.GetArguments()[1]!)
             .Last();
+
+    private const string IPhone = "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1";
+    private const string Mac = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.1 Safari/605.1.15";
+
+    /// <summary>Logs in from a browser that says what it is.</summary>
+    private async Task<HttpClient> SignInOnAsync(User user, string userAgent)
+    {
+        var client = WebAuth.NewClient(factory);
+        client.DefaultRequestHeaders.UserAgent.ParseAdd(userAgent);
+        await WebAuth.SignInAsync(client, user);
+        return client;
+    }
 }

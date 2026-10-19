@@ -17,6 +17,7 @@ using Beeps.Infrastructure.Data;
 using Beeps.Infrastructure.Data.Stores;
 using Beeps.Infrastructure.Email;
 using Beeps.Infrastructure.Http;
+using Beeps.Infrastructure.IpGeolocation;
 using Beeps.Infrastructure.Jobs;
 using Beeps.Infrastructure.Live;
 using Beeps.Infrastructure.Media;
@@ -45,6 +46,7 @@ public static class InfrastructureSetup
         services.AddBeepsLive();
         services.AddBeepsSearch();
         services.AddBeepsModeration();
+        services.AddBeepsIpLocation();
         services.AddSingleton<IImageProcessor, SkiaImageProcessor>();
         services.AddSingleton<IRateLimitStore, RedisRateLimitStore>();
         services.AddSingleton<IIdempotencyStore, PostgresIdempotencyStore>();

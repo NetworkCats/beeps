@@ -14,8 +14,10 @@
     "check_circle",
     "chevron_right",
     "close",
+    "computer",
     "contrast",
     "delete",
+    "devices",
     "done_all",
     "edit_square",
     "error",
@@ -40,6 +42,8 @@
     "search",
     "settings",
     "shield",
-    "smart_toy"
+    "smart_toy",
+    "smartphone",
+    "tablet"
   ]
 }

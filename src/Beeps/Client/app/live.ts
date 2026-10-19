@@ -112,6 +112,9 @@ function connect(): void {
   on(events, 'admin', () => {
     if (pageLive.value.on === 'admin') refreshPage(ADMIN_INTERVAL);
   });
+  on(events, 'sessions', () => {
+    if (pageLive.value.on === 'sessions') refreshPage();
+  });
   // The account picked another colour scheme, here or in another tab.
   on(events, 'theme', (data: { theme: string }) => {
     theme.value = data.theme;
@@ -138,7 +141,7 @@ function connect(): void {
 }
 
 // Messages that say nothing about the site's content.
-const NOT_CONTENT = new Set(['ping', 'inbox', 'close', 'signed_out', 'reload', 'theme']);
+const NOT_CONTENT = new Set(['ping', 'inbox', 'close', 'signed_out', 'reload', 'theme', 'sessions']);
 
 function on<T>(events: EventSource, type: string, handle: (data: T) => void): void {
   events.addEventListener(type, (event) => {

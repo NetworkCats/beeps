@@ -21,6 +21,15 @@ public interface ISessionStore
     /// <summary>Ends one session (sign-out). Runs immediately, cache included.</summary>
     Task RevokeAsync(string tokenHash, DateTimeOffset now, CancellationToken cancellationToken);
 
+    /// <summary>Ends one of the user's sessions from another (removing a device). Runs immediately, cache included; false when the user has no such live session.</summary>
+    Task<bool> RevokeByIdAsync(Guid userId, Guid sessionId, DateTimeOffset now, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// The user's live sessions, <paramref name="currentSessionId"/> first, then the most recently used, at most
+    /// <paramref name="limit"/>. Always asks the database.
+    /// </summary>
+    Task<IReadOnlyList<ActiveSession>> ListActiveAsync(Guid userId, Guid? currentSessionId, DateTimeOffset now, int limit, CancellationToken cancellationToken);
+
     /// <summary>Ends every session of the user (password reset, ban, delete). Runs immediately, inside the caller's transaction if any.</summary>
     Task RevokeAllAsync(Guid userId, DateTimeOffset now, CancellationToken cancellationToken);
 
@@ -39,9 +48,20 @@ public interface ISessionStore
 
 public sealed record SessionRow(Guid Id, Guid UserId, string TokenHash, DateTimeOffset LastSeenAt, DateTimeOffset ExpiresAt);
 
+/// <summary>A live session as the devices page lists it.</summary>
+public sealed record ActiveSession(Guid Id, DateTimeOffset CreatedAt, DateTimeOffset LastSeenAt, string? UserAgent, string? IpAddress);
+
 /// <summary>A live session and the account behind it, as one request sees it.</summary>
 /// <param name="Renewed">This request pushed <paramref name="ExpiresAt"/> forward, so the cookie should be re-issued.</param>
 public sealed record SignedInSession(Guid SessionId, AccountState Account, DateTimeOffset ExpiresAt, bool Renewed);
 
 /// <summary>Where a sign-in came from; recorded on the session.</summary>
 public sealed record SessionClient(string? UserAgent, string? IpAddress);
+
+/// <summary>A signed-in device as the account's settings list it.</summary>
+/// <param name="Place">Roughly where it signed in from; null when that is not known.</param>
+/// <param name="IsCurrent">The device the list was asked from.</param>
+public sealed record SignedInDevice(Guid Id, DeviceInfo Device, DevicePlace? Place, DateTimeOffset SignedInAt, DateTimeOffset LastSeenAt, bool IsCurrent);
+
+/// <summary>A town or region, and its country, either of which may be unknown.</summary>
+public sealed record DevicePlace(string? Locality, string? Country);

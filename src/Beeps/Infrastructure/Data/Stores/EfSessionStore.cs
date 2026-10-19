@@ -42,6 +42,31 @@ public sealed class EfSessionStore(BeepsDbContext db, HybridCache cache, CacheIn
         await invalidator.ForgetSharedAsync([SharedCache.SessionKey(tokenHash)]);
     }
 
+    public async Task<bool> RevokeByIdAsync(Guid userId, Guid sessionId, DateTimeOffset now, CancellationToken cancellationToken)
+    {
+        var hash = await db.Set<UserSession>()
+            .Where(s => s.Id == sessionId && s.UserId == userId && s.RevokedAt == null && s.ExpiresAt > now)
+            .Select(s => s.TokenHash)
+            .FirstOrDefaultAsync(cancellationToken);
+        if (hash is null)
+        {
+            return false;
+        }
+
+        await RevokeAsync(hash, now, cancellationToken);
+        return true;
+    }
+
+    public async Task<IReadOnlyList<ActiveSession>> ListActiveAsync(Guid userId, Guid? currentSessionId, DateTimeOffset now, int limit, CancellationToken cancellationToken) =>
+        await db.Set<UserSession>()
+            .Where(s => s.UserId == userId && s.RevokedAt == null && s.ExpiresAt > now)
+            .OrderByDescending(s => s.Id == currentSessionId)
+            .ThenByDescending(s => s.LastSeenAt)
+            .ThenByDescending(s => s.Id)
+            .Take(limit)
+            .Select(s => new ActiveSession(s.Id, s.CreatedAt, s.LastSeenAt, s.UserAgent, s.IpAddress))
+            .ToListAsync(cancellationToken);
+
     public Task RevokeAllAsync(Guid userId, DateTimeOffset now, CancellationToken cancellationToken) =>
         db.Set<UserSession>()
             .Where(s => s.UserId == userId && s.RevokedAt == null)

@@ -13,17 +13,25 @@ using Microsoft.Extensions.Localization;
 namespace Beeps.Pages;
 
 /// <summary>
-/// The account's own settings: avatar, banner, profile, privacy, language, colour scheme, email, password and the Google
-/// and GitHub accounts it signs in with (PLAN 2.2, 3.4, 5.2, 6.12, 6.14). As on
+/// The account's own settings: avatar, banner, profile, privacy, language, colour scheme, email, password, the Google
+/// and GitHub accounts it signs in with and the devices signed in (PLAN 2.2, 3.4, 5.2, 6.12, 6.14). As on
 /// Twitter, <c>/settings</c> lists the sections and each has a page of its own (<see cref="SettingsSections"/>); a form
 /// comes back to the section it belongs to, whichever address it was sent to.
 /// </summary>
 [RequestSizeLimit(MediaRules.MaxImageRequestBytes)]
 [RequestFormLimits(MultipartBodyLengthLimit = MediaRules.MaxImageRequestBytes, MemoryBufferThreshold = MediaRules.MaxImageRequestBytes)]
 [AppShell]
-public sealed class SettingsModel(AccountService accounts, AvatarService avatars, BannerService banners, IStringLocalizer<SharedResource> localizer) : PageModel
+public sealed class SettingsModel(
+    AccountService accounts,
+    SessionService sessions,
+    AvatarService avatars,
+    BannerService banners,
+    IStringLocalizer<SharedResource> localizer) : PageModel
 {
     public AccountSettings Settings { get; private set; } = null!;
+
+    /// <summary>The devices signed in; only on their page.</summary>
+    public IReadOnlyList<SignedInDevice>? Devices { get; private set; }
 
     public Uri? BannerUrl { get; private set; }
 
@@ -48,6 +56,9 @@ public sealed class SettingsModel(AccountService accounts, AvatarService avatars
 
     /// <summary>The provider to unlink (<see cref="ExternalProviders"/>).</summary>
     [BindProperty] public string? Provider { get; set; }
+
+    /// <summary>The device to sign out.</summary>
+    [BindProperty] public Guid SessionId { get; set; }
 
     [BindProperty] public bool HideLikes { get; set; }
 
@@ -147,6 +158,12 @@ public sealed class SettingsModel(AccountService accounts, AvatarService avatars
     public async Task<IActionResult> OnPostCancelEmailAsync(CancellationToken cancellationToken) =>
         await DoneAsync(await accounts.CancelEmailChangeAsync(User.ActorId(), cancellationToken), SettingsSections.Email, notice: null, cancellationToken);
 
+    public async Task<IActionResult> OnPostEndSessionAsync(CancellationToken cancellationToken) =>
+        await DoneAsync(await sessions.EndDeviceAsync(User.ActorId(), User.SessionId(), SessionId, cancellationToken), SettingsSections.Sessions, "Sessions.Ended", cancellationToken);
+
+    public async Task<IActionResult> OnPostEndOtherSessionsAsync(CancellationToken cancellationToken) =>
+        await DoneAsync(await sessions.EndOtherDevicesAsync(User.ActorId(), User.SessionId(), cancellationToken), SettingsSections.Sessions, "Sessions.EndedOthers", cancellationToken);
+
     private async Task<IActionResult> DoneAsync(Result result, string section, string? notice, CancellationToken cancellationToken)
     {
         if (!result.IsSuccess)
@@ -171,6 +188,10 @@ public sealed class SettingsModel(AccountService accounts, AvatarService avatars
         {
             Settings = settings.Value;
             BannerUrl = await banners.GetUrlAsync(User.ActorId(), cancellationToken);
+            if (Section == SettingsSections.Sessions)
+            {
+                Devices = await sessions.ListDevicesAsync(User.ActorId(), User.SessionId(), cancellationToken);
+            }
         }
 
         return settings.IsSuccess;

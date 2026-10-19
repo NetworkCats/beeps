@@ -272,6 +272,8 @@ public sealed partial class LiveService(
             // Not when the page was rendered after the change: showing it anew would only replay the change, again and again.
             LiveEventTypes.AccountChanged when Read(item, LiveJsonContext.Default.AccountEvent).AccountId == connection.Viewer.AccountId && !RenderedSince(connection, item) =>
                 Message(LiveMessages.Reload, new EmptyMessage(), LiveJsonContext.Default.EmptyMessage, item.Id),
+            LiveEventTypes.SessionStarted when connection.SessionId is not null && Read(item, LiveJsonContext.Default.AccountEvent).AccountId == connection.Viewer.AccountId =>
+                Message(LiveMessages.Sessions, new EmptyMessage(), LiveJsonContext.Default.EmptyMessage, item.Id),
             LiveEventTypes.SearchChanged when connection.Topic.Kind == LiveTopicKind.Search =>
                 Message(LiveMessages.Search, new EmptyMessage(), LiveJsonContext.Default.EmptyMessage, item.Id),
             // Every page: lists add what came back, other pages (older pages of a list, say) draw their list again.
@@ -303,17 +305,20 @@ public sealed partial class LiveService(
         ];
     }
 
-    /// <summary>Sessions of the viewer's account ended: if this tab's is one of them, it signs out and the connection ends.</summary>
+    /// <summary>
+    /// Sessions of the viewer's account ended: if this tab's is one of them, it signs out and the connection ends;
+    /// otherwise its devices page drops them.
+    /// </summary>
     private async Task<IReadOnlyList<LiveMessage>> SessionsEndedAsync(Connection connection, LiveEvent item, CancellationToken cancellationToken)
     {
-        if (connection.SessionId is not { } sessionId
-            || Read(item, LiveJsonContext.Default.AccountEvent).AccountId != connection.Viewer.AccountId
-            || await sessions.IsActiveAsync(sessionId, time.GetUtcNow(), cancellationToken))
+        if (connection.SessionId is not { } sessionId || Read(item, LiveJsonContext.Default.AccountEvent).AccountId != connection.Viewer.AccountId)
         {
             return [];
         }
 
-        return [Message(LiveMessages.SignedOut, new EmptyMessage(), LiveJsonContext.Default.EmptyMessage, item.Id)];
+        return await sessions.IsActiveAsync(sessionId, time.GetUtcNow(), cancellationToken)
+            ? [Message(LiveMessages.Sessions, new EmptyMessage(), LiveJsonContext.Default.EmptyMessage, item.Id)]
+            : [Message(LiveMessages.SignedOut, new EmptyMessage(), LiveJsonContext.Default.EmptyMessage, item.Id)];
     }
 
     /// <summary>

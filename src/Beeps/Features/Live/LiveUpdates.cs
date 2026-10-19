@@ -76,7 +76,11 @@ public sealed partial class LiveUpdates(ILiveEventStore store, IBeepCounterStore
     public Task AgentKeyUsedAsync(Guid ownerId, CancellationToken cancellationToken) =>
         AppendAsync(LiveEventTypes.AgentsChanged, new AgentsChangedEvent(ownerId, OwnerOnly: true), LiveJsonContext.Default.AgentsChangedEvent, cancellationToken);
 
-    /// <summary>Sessions of the account were ended: its tabs check whether theirs is among them.</summary>
+    /// <summary>The account signed in somewhere: its devices page lists the new device.</summary>
+    public Task SessionStartedAsync(Guid accountId, CancellationToken cancellationToken) =>
+        AppendAsync(LiveEventTypes.SessionStarted, new AccountEvent(accountId), LiveJsonContext.Default.AccountEvent, cancellationToken);
+
+    /// <summary>Sessions of the account were ended: its tabs check whether theirs is among them, and its devices page drops them.</summary>
     public Task SessionsEndedAsync(Guid accountId, CancellationToken cancellationToken) =>
         AppendAsync(LiveEventTypes.SessionsEnded, new AccountEvent(accountId), LiveJsonContext.Default.AccountEvent, cancellationToken);
 

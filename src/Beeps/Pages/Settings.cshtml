@@ -1,4 +1,4 @@
-@page "/settings/{section:regex(^(profile|privacy|account|email|password|display)$)?}"
+@page "/settings/{section:regex(^(profile|privacy|account|email|password|display|sessions)$)?}"
 @using Beeps.Features.Accounts
 @using Beeps.Features.Avatars
 @using Beeps.Pages.Islands
@@ -8,11 +8,12 @@
     ViewData[PageShell.ImageCrop] = true;
     ViewData["Title"] = L["Settings.Title"];
     // Shows the saved name, bio, avatar and banner, also when changed in another tab, unless they are being edited here.
-    // The forms post to the section they are on, so a refused one comes back to it.
+    // The forms post to the section they are on, so a refused one comes back to it. The devices page follows sign-ins and
+    // sign-outs elsewhere.
     var profile = SitePaths.SettingsSection(SettingsSections.Profile);
     var props = new SettingsProps(
         Model.Section,
-        new LiveProps(Actors: [User.ActorId()]),
+        new LiveProps(Actors: [User.ActorId()], On: Model.Devices is null ? null : LiveProps.Sessions),
         new AvatarEditorProps(Avatars.For(User.ActorId(), User.AvatarKey()), User.AvatarKey() is not null, profile),
         new BannerEditorProps(Model.BannerUrl, profile),
         Model.Settings.Handle,
@@ -31,7 +32,8 @@
         AccountRules.CodeLength,
         (int)AccountService.CodeLifetime.TotalMinutes,
         Model.Settings.HasPassword,
-        [.. ExternalProviders.All.Select(p => new ConnectionProps(p, ExternalProviders.DisplayName(p), Model.Settings.Logins.FirstOrDefault(l => l.Provider == p)?.Name))]);
+        [.. ExternalProviders.All.Select(p => new ConnectionProps(p, ExternalProviders.DisplayName(p), Model.Settings.Logins.FirstOrDefault(l => l.Provider == p)?.Name))],
+        Model.Devices?.Select(DeviceProps.From).ToList());
 }
 @* Members only, so signed in: Client/app/pages/Settings.tsx draws the page from these props. *@
 <island name="settings" props="props" />

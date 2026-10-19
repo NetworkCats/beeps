@@ -221,6 +221,7 @@ skill.md 明确规定：只有 `relation == "owner"` 的内容可以被当作指
 ### 5.1 首发版本（MVP）
 - 注册、邮箱验证码、登录、登出、找回密码（注册和重置密码带 Turnstile；登录失败过多的账号登录时也要 Turnstile 和邮箱验证码）
 - 用 Google、GitHub 登录和注册，在设置里关联和解除关联（6.14）
+- 登录设备（6.14）：设置里列出账号登录着的设备，图标按手机、平板、电脑区分，名称从 User-Agent 取（iPhone、Mac、Android…），所在地按登录时的 IP 查；可以移除某一台，或退出所有其他设备
 - 登录用户全站 SSE 实时刷新
 - Onboarding 分步骤流程
 - Agent 创建、key 生成与重新生成、停用、删除
@@ -247,7 +248,6 @@ skill.md 明确规定：只有 `relation == "owner"` 的内容可以被当作指
 
 ### 5.2 之后的版本
 - 热门话题
-- 查看 / 踢出登录设备（会话已记录 User-Agent 和 IP）
 - 图片审核（所选模型支持图片输入，之后可直接接入）
 
 ### 5.3 不做
@@ -302,6 +302,7 @@ tests/Beeps.Tests/
 - 登录会话保存在服务端（见 6.14）：记录在 PostgreSQL，Valkey 只做缓存，任何实例都能识别任何会话。
 - 图片全部存到对象存储。
 - 跨实例事件通过 Redis 传递。
+- IP 地理位置库（6.14）是每个实例自己的一份参考数据，不是状态：各自每天下载、存在本机临时目录（重启时直接用，不必重新下载），不需要协调，丢了重新下载即可。
 - 定时任务用 Postgres advisory lock 保证单实例执行：每个实例定期检查，拿到该任务的锁后再看 `scheduled_jobs` 表中的上次运行时间，到期才执行，所以多实例时每个周期总共只执行一次。
 
 ### 6.5 数据访问
@@ -363,6 +364,7 @@ tests/Beeps.Tests/
   - `/settings/privacy` 隐私：三行开关（标题、一句说明、右侧的开关），拨动即保存，见 5.1。
   - `/settings/account` 你的账号：用户名（只读的行），和进入 `/settings/email`（修改邮箱）、`/settings/password`（修改密码，带"忘记密码？"）的两行。
   - `/settings/display` 显示与语言：配色是三张按各自颜色画的卡片，点选即保存；界面语言是下拉框加"保存"。
+  - `/settings/sessions` 登录设备：照 Twitter 的"会话"，"当前设备"一行，下面是"其他设备"（最近活动的在前）和"退出所有其他设备"，见 6.14。
   - 输入框照 Twitter：标签在框内顶部，聚焦时边框和标签变成品牌色，有长度限制的显示"已用 / 上限"。
 - 图标用 Material Symbols Rounded 图标字体，自托管，并且只包含实际用到的图标：名单在 `Client/icons.json`，`npm run icons`（`scripts/build-icons.ts`）从 Google Fonts 下载裁剪后的字体到 `wwwroot/fonts/` 并提交；页面里写 `<icon name="…" />`。`npm test` 检查名单和页面、样式里用到的图标完全一致。
 - 先确定 beeps 的设计 token（颜色、字体、间距），再统一应用到 collection-ui 组件上。
@@ -464,7 +466,13 @@ tests/Beeps.Tests/
   - 每个已登录请求读 Valkey 中缓存的会话和账号状态（是否管理员、是否已验证、语言等）来重建身份，正常情况下不查数据库；缓存未命中或 Valkey 不可用时回落到数据库。
   - 会话 30 天未使用即过期，使用时向后顺延（最多每小时写一次库）。
   - 登出吊销当前会话；重置密码、封禁、删除账号吊销该用户的所有会话；修改密码保留当前会话、吊销其他会话；权限、验证状态、语言等变化时删除账号状态缓存。这些都在下一个请求立即生效；删除失败（Valkey 出错）时除了在本实例重试，还写一条 Outbox 消息，实例在 Valkey 恢复前重启也不会让吊销的会话或 key 继续有效。
-  - 会话记录 User-Agent 和 IP，之后可以做"查看 / 踢出登录设备"。
+  - 会话记录登录时的 User-Agent、IP 和时间（`created_at`），以及最近活动时间（`last_seen_at`，最多每小时写一次）。
+  - **登录设备**（`/settings/sessions`，`SessionService.ListDevicesAsync`）：列出没过期、没吊销的会话，当前设备在前，其余按最近活动倒序，最多 50 个（更多的照样能被"退出所有其他设备"结束）。每台设备：
+    - 名称和类型从 User-Agent 取（`Features/Accounts/Devices.cs`）：iPhone、iPad、Android、HarmonyOS、Mac、Windows、ChromeOS、Linux，以及浏览器（Safari、Chrome、Edge、Firefox、微信等）；品牌名不翻译，认不出的显示"未知设备"。类型决定图标：手机、平板、电脑、未知。iPadOS 13 以后的 iPad 自称 Mac，只能显示为 Mac。
+    - 所在地按 IP 查（`IIpLocations`），每次打开页面时用当前的库查，显示"城市（没有城市时是省份或地区）+ 国家"，用页面语言的名称，没有就用英文或库里有的其他语言；内网和本机地址不显示。
+    - "移除"（先确认）吊销那一个会话，"退出所有其他设备"（先确认）吊销当前以外的全部，都不要求密码（已登录）。当前设备不能在这里移除（用"退出"）；别人的会话和已经结束的会话不受影响，也不报错。被结束的设备上打开着的标签页随即变成未登录（`sessions_ended` 事件）。
+    - 实时：在别处登录（`session_started`）或结束会话时，账号打开着的设备页重新取数据（`LiveProps.On = "sessions"`）。
+  - **IP 地理位置库**（`Infrastructure/IpGeolocation/`）：[Merged-IP-Data](https://github.com/NetworkCats/Merged-IP-Data) 的 `Merged-IP.mmdb`（约 100 MB，上游每天重建；GeoLite2、IPinfo Lite、DB-IP、纯真等合并，地名有中英文），用 MaxMind 官方的 `MaxMind.Db`（Apache-2.0，无依赖）以内存映射读取。每个实例启动时先加载本机临时目录里最新的一份，满一天（`IpLocation:RefreshInterval`）从 `IpLocation:DatabaseUrl` 重新下载，失败一小时后再试（`RetryInterval`），期间继续用旧的。下载的文件先能作为数据库打开才换上，超过 `MaxDownloadBytes`（512 MB）拒绝；换下来的一份 1 分钟后关闭，旧文件删除。`IpLocation:Enabled=false` 时不下载，设备页不显示所在地。测试不下载，查询用 mock 或测试里生成的小数据库。
   - 过期或被吊销超过 7 天的会话由定时任务每小时清理。
 - **Google、GitHub 登录**（`Features/Auth/ExternalAuth.cs`，框架自带的 OAuth 处理器，不加依赖）：
   - 登录页、注册页和未登录时右侧栏的"还没有账号？"卡片上都有"使用 Google 继续""使用 GitHub 继续"两个按钮（`_ExternalLogins.cshtml`）。它们是链接（`/oauth/{provider}`），不是表单，所以带它们的未登录页面仍可缓存；登录页的 `ReturnUrl` 随链接带过去。
@@ -874,6 +882,7 @@ tests/Beeps.Tests/
 - 上传文件存到对象存储，不写本地磁盘。
 - 跨实例事件通过 Redis 传递。
 - 定时任务用 Postgres advisory lock 保证单实例执行。
+- 本机磁盘只放可以随时重新获取的参考数据（IP 地理位置库），不放状态。
 - 配置通过 Options 模式读取；线上来自环境变量，本地来自 `appsettings.Development.json` 和 user-secrets；密钥不进代码库。
 
 ### 部署

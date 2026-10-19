@@ -1929,4 +1929,55 @@
   <data name="Feed.ShowNew.One" xml:space="preserve">
     <value>Show 1 new beep</value>
   </data>
+  <data name="Settings.Sessions" xml:space="preserve">
+    <value>Devices</value>
+  </data>
+  <data name="Settings.Sessions.Help" xml:space="preserve">
+    <value>See where you're logged in, and remove devices you don't recognise</value>
+  </data>
+  <data name="Sessions.Current" xml:space="preserve">
+    <value>This device</value>
+  </data>
+  <data name="Sessions.Others" xml:space="preserve">
+    <value>Other devices</value>
+  </data>
+  <data name="Sessions.None" xml:space="preserve">
+    <value>You're not logged in on any other device.</value>
+  </data>
+  <data name="Sessions.UnknownDevice" xml:space="preserve">
+    <value>Unknown device</value>
+  </data>
+  <data name="Sessions.Location" xml:space="preserve">
+    <value>{0}, {1}</value>
+  </data>
+  <data name="Sessions.ActiveNow" xml:space="preserve">
+    <value>Active now</value>
+  </data>
+  <data name="Sessions.LastActive" xml:space="preserve">
+    <value>Last active</value>
+  </data>
+  <data name="Sessions.SignedIn" xml:space="preserve">
+    <value>Logged in</value>
+  </data>
+  <data name="Sessions.Remove" xml:space="preserve">
+    <value>Remove</value>
+  </data>
+  <data name="Sessions.Remove.Confirm" xml:space="preserve">
+    <value>Remove {0}? It will be logged out at once and will have to log in again.</value>
+  </data>
+  <data name="Sessions.EndOthers" xml:space="preserve">
+    <value>Log out of all other devices</value>
+  </data>
+  <data name="Sessions.EndOthers.Confirm" xml:space="preserve">
+    <value>Log out of all other devices? Only this one stays logged in.</value>
+  </data>
+  <data name="Sessions.Ended" xml:space="preserve">
+    <value>The device was removed.</value>
+  </data>
+  <data name="Sessions.EndedOthers" xml:space="preserve">
+    <value>Logged out of all other devices.</value>
+  </data>
+  <data name="Sessions.Error.Current" xml:space="preserve">
+    <value>To log out of this device, use Log out.</value>
+  </data>
 </root>

@@ -110,6 +110,9 @@ public sealed class BeepsWebApplicationFactory : WebApplicationFactory<Program>
 
     public ISystemStore System { get; } = Substitute.For<ISystemStore>();
 
+    /// <summary>Knows no address unless a test arranges one; the real database is never fetched.</summary>
+    public IIpLocations IpLocations { get; } = Substitute.For<IIpLocations>();
+
     /// <summary>The content cache's Valkey side; the real stores that use it are mocked, so it mostly stays empty.</summary>
     internal InMemorySharedContentCache SharedCache { get; } = new();
 
@@ -138,6 +141,7 @@ public sealed class BeepsWebApplicationFactory : WebApplicationFactory<Program>
         builder.UseSetting("Moderation:WorkerEnabled", "false");
         builder.UseSetting("OpenRouter:ApiKey", "test");
         builder.UseSetting("Live:Enabled", "false");
+        builder.UseSetting("IpLocation:Enabled", "false");
         builder.UseSetting("Search:Url", "http://meilisearch.invalid");
         builder.UseSetting("Search:ApiKey", "test");
         builder.UseSetting("Site:BaseUrl", "https://beeps.test");
@@ -183,6 +187,7 @@ public sealed class BeepsWebApplicationFactory : WebApplicationFactory<Program>
             Replace(services, moderationJobs);
             Replace(services, moderator);
             Replace(services, System);
+            Replace(services, IpLocations);
             Replace<IUnitOfWork>(services, unitOfWork);
             Replace<ISessionStore>(services, Sessions);
             Replace<ISharedContentCache>(services, SharedCache);

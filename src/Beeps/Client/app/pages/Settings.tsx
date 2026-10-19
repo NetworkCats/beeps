@@ -4,7 +4,9 @@
 // as soon as it is flipped; account shows the username and leads to the email's and the password's pages,
 // the email moving only once the code sent to the new address is entered, then lists Google and GitHub to link (out to
 // the provider and back, Pages/Account/External) or unlink; display holds the colour scheme, applied as
-// soon as one is picked, and the language. Each form is sent in the background and
+// soon as one is picked, and the language; devices lists where the account is logged in, this device first, each
+// named from its User-Agent and placed where its IP address is, and logs out any other or all of them, following
+// log-ins and log-outs elsewhere as they happen. Each form is sent in the background and
 // answered in place; the saved name, bio, avatar and banner follow changes made in another tab, unless they are being
 // edited here. A new language shows the page anew in it.
 import type { ComponentChildren } from 'preact';
@@ -12,6 +14,7 @@ import { FloatField } from '../components/FloatField.tsx';
 import { Antiforgery, FormErrors, field } from '../components/Forms.tsx';
 import { Icon } from '../components/Icon.tsx';
 import { CodeResend } from '../components/CodeResend.tsx';
+import { Time } from '../components/Time.tsx';
 import { ProfileImages, type AvatarEditorProps, type BannerEditorProps } from '../components/ProfileImageEditor.tsx';
 import { sending } from '../forms.ts';
 import { t } from '../i18n.ts';
@@ -21,7 +24,7 @@ import { paths } from '../paths.ts';
 import type { Errors, LiveProps } from '../props.ts';
 import { theme } from '../state.ts';
 
-type Section = 'profile' | 'privacy' | 'account' | 'email' | 'password' | 'display';
+type Section = 'profile' | 'privacy' | 'account' | 'email' | 'password' | 'display' | 'sessions';
 
 interface Option {
   value: string;
@@ -41,6 +44,22 @@ interface Connection {
   label: string;
   /** How the linked account is known there; none when not linked. */
   name?: string;
+}
+
+/** A device logged in to the account. */
+interface Device {
+  id: string;
+  kind: 'phone' | 'tablet' | 'computer' | 'unknown';
+  /** The device or system, from its User-Agent; none when it does not say. */
+  name?: string;
+  browser?: string;
+  /** The town or region, and the country, it logged in from, where known. */
+  locality?: string;
+  country?: string;
+  signedInAt: string;
+  lastSeenAt: string;
+  /** The device this page is shown on. */
+  current?: boolean;
 }
 
 export interface ProfileLimits {
@@ -74,6 +93,8 @@ interface SettingsProps {
   /** False for an account that signs in only with Google or GitHub: it sets a password, with none to give first. */
   hasPassword: boolean;
   connections: Connection[];
+  /** The devices logged in, this one first; only on their page. */
+  devices?: Device[];
 }
 
 interface SectionProps {
@@ -89,6 +110,7 @@ const TITLES: Record<Section, { title: string; back: string }> = {
   email: { title: 'Settings.ChangeEmail', back: paths.settingsSection('account') },
   password: { title: 'Settings.ChangePassword', back: paths.settingsSection('account') },
   display: { title: 'Settings.Display', back: paths.settings },
+  sessions: { title: 'Settings.Sessions', back: paths.settings },
 };
 
 /** Where a section's forms post: its own page, so a refused one comes back to it. */
@@ -125,6 +147,7 @@ export function SettingsPage({ props, errors }: IslandProps<SettingsProps>) {
           <LinkRow href={paths.settingsSection('privacy')} icon={<Icon name="shield" />} title={t('Settings.Privacy')} help={t('Settings.Privacy.Help')} />
           <LinkRow href={paths.settingsSection('account')} icon={<Icon name="lock" />} title={t('Settings.Account')} help={t('Settings.Account.Help')} />
           <LinkRow href={paths.settingsSection('display')} icon={<Icon name="palette" />} title={t('Settings.Display')} help={t('Settings.Display.Help')} />
+          <LinkRow href={paths.settingsSection('sessions')} icon={<Icon name="devices" />} title={t('Settings.Sessions')} help={t('Settings.Sessions.Help')} />
         </nav>
       </section>
     );
@@ -152,6 +175,7 @@ export function SettingsPage({ props, errors }: IslandProps<SettingsProps>) {
       {section === 'email' && <EmailSection props={props} errors={errors} />}
       {section === 'password' && <PasswordSection props={props} errors={errors} />}
       {section === 'display' && <DisplaySection props={props} errors={errors} />}
+      {section === 'sessions' && <SessionsSection props={props} />}
     </section>
   );
 }
@@ -421,6 +445,93 @@ function DisplaySection({ props, errors }: SectionProps) {
         </div>
         <Antiforgery />
       </form>
+    </>
+  );
+}
+
+/** The icon for a sort of device. */
+function DeviceIcon({ kind }: { kind: Device['kind'] }) {
+  switch (kind) {
+    case 'phone':
+      return <Icon name="smartphone" />;
+    case 'tablet':
+      return <Icon name="tablet" />;
+    case 'computer':
+      return <Icon name="computer" />;
+    default:
+      return <Icon name="devices" />;
+  }
+}
+
+/** "Chrome · Shanghai, China": what the device was logged in with, and from where; empty when neither is known. */
+function deviceDetails(device: Device): string {
+  const place =
+    device.locality && device.country ? t('Sessions.Location', device.locality, device.country) : (device.locality ?? device.country);
+  return [device.browser, place].filter((part) => part).join(' · ');
+}
+
+/** A device in a row like the links: its icon, its name, how and where, and when; the button where their chevron is. */
+function DeviceRow({ device }: { device: Device }) {
+  const name = device.name ?? t('Sessions.UnknownDevice');
+  const details = deviceDetails(device);
+  return (
+    <div class="settings-link">
+      <DeviceIcon kind={device.kind} />
+      <span class="settings-link-text">
+        <span class="settings-link-title">{name}</span>
+        {details && <span class="settings-link-help">{details}</span>}
+        <span class="settings-link-help">
+          {device.current ? t('Sessions.ActiveNow') : <>{t('Sessions.LastActive')} <Time value={device.lastSeenAt} /></>}
+          {' · '}
+          {t('Sessions.SignedIn')} <Time value={device.signedInAt} />
+        </span>
+      </span>
+      {!device.current && (
+        <form method="post" action={action('sessions', 'EndSession')} data-confirm={t('Sessions.Remove.Confirm', name)} onSubmit={sending()}>
+          <input type="hidden" name="SessionId" value={device.id} />
+          <button class="btn btn-sm" type="submit">
+            {t('Sessions.Remove')}
+          </button>
+          <Antiforgery />
+        </form>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Twitter's "Sessions": this device on its own, then the others, most recently used first, each of which can be
+ * logged out, or all of them at once. The list follows log-ins and log-outs elsewhere.
+ */
+function SessionsSection({ props }: { props: SettingsProps }) {
+  const devices = props.devices ?? [];
+  const current = devices.filter((device) => device.current);
+  const others = devices.filter((device) => !device.current);
+  return (
+    <>
+      <p class="settings-intro">{t('Settings.Sessions.Help')}</p>
+      {current.length > 0 && (
+        <section class="settings-devices" aria-labelledby="current-device-title">
+          <h2 class="settings-heading" id="current-device-title">{t('Sessions.Current')}</h2>
+          {current.map((device) => <DeviceRow key={device.id} device={device} />)}
+        </section>
+      )}
+      <section class="settings-devices" aria-labelledby="other-devices-title">
+        <h2 class="settings-heading" id="other-devices-title">{t('Sessions.Others')}</h2>
+        {others.length === 0
+          ? <p class="settings-devices-empty">{t('Sessions.None')}</p>
+          : (
+            <>
+              {others.map((device) => <DeviceRow key={device.id} device={device} />)}
+              <form class="settings-aside" method="post" action={action('sessions', 'EndOtherSessions')} data-confirm={t('Sessions.EndOthers.Confirm')} onSubmit={sending()}>
+                <button class="btn btn-sm btn-soft-danger" type="submit">
+                  {t('Sessions.EndOthers')}
+                </button>
+                <Antiforgery />
+              </form>
+            </>
+          )}
+      </section>
     </>
   );
 }

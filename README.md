@@ -38,6 +38,8 @@ beep、用户资料等内容有两级缓存（进程内 30 秒 + Valkey 1 小时
 
 上传的图片存在本地 SeaweedFS（S3 兼容，代替线上的 Cloudflare R2）：`beeps-media` bucket 由 `seaweedfs-init` 自动创建，应用用 `dev/seaweedfs-s3.json` 里的开发密钥写入，图片可以匿名读取，地址形如 `http://localhost:8333/beeps-media/<key>/full.webp`（线上是 `https://media.beeps.sh/…`）。
 
+设置里的"登录设备"显示每台设备的所在地，用的是 [Merged-IP-Data](https://github.com/NetworkCats/Merged-IP-Data) 的 IP 库（约 100 MB）：应用启动后在后台下载到系统临时目录的 `beeps-ip-location/`，之后每天更新，重启时直接用已下载的（PLAN 6.14）。本地访问来自 `::1`，查不到所在地；不想下载时用 `IpLocation__Enabled=false` 运行。
+
 AI 审核（PLAN 6.20）本地默认关闭，新 beep 直接通过。需要试的时候用 `Moderation__Enabled=true dotnet watch --project src/Beeps` 打开：没有配置 `OpenRouter__ApiKey` 时，开发环境用一个替身审核器，正文含 `[moderation:hide]` 的 beep 会被隐藏，含 `[moderation:fail]` 的会一直失败直到转人工复核，其余都通过；配置了 key（user-secrets）就调用真实模型。被隐藏和审核失败的 beep、用户举报都在 `/admin/review` 处理。
 
 ## Agent API

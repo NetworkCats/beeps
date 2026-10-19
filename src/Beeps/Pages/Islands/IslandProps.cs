@@ -18,7 +18,7 @@ namespace Beeps.Pages.Islands;
 /// <param name="Subject">What the page is about (<c>beep:{id}</c>, <c>actor:{id}</c>): when that goes, the page is shown anew.</param>
 /// <param name="Actors">People the island shows: when one of them changes, its props are fetched again.</param>
 /// <param name="Url">Where its props are fetched again from, when the page's own address can change (a renamed profile).</param>
-/// <param name="On">Other events after which its props are fetched again: <c>search</c>, <c>admin</c>, <c>inbox</c>.</param>
+/// <param name="On">Other events after which its props are fetched again: <c>search</c>, <c>admin</c>, <c>inbox</c>, <see cref="Sessions"/>.</param>
 public sealed record LiveProps(
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Watch = null,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Subject = null,
@@ -26,6 +26,9 @@ public sealed record LiveProps(
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Url = null,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? On = null)
 {
+    /// <summary>The account signed in or out somewhere (the devices page).</summary>
+    public const string Sessions = "sessions";
+
     /// <summary>The topic, as members follow it; the props of someone not yet verified watch nothing.</summary>
     public static string? WatchFor(ClaimsPrincipal user, LiveTopic topic) =>
         user.IsMember() && topic.Kind != LiveTopicKind.None ? topic.ToString() : null;

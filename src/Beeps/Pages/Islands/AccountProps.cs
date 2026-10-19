@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using Beeps.Features.Accounts;
 using Beeps.Features.Agents;
 using Beeps.Features.Site;
 using Microsoft.Extensions.Localization;
@@ -31,6 +32,7 @@ public sealed record ProfileLimits(int DisplayNameMaxLength, int BioMaxLength);
 /// <param name="ResendAt">When another code may be sent to <paramref name="PendingEmail"/>.</param>
 /// <param name="HasPassword">False for an account that signs in only with Google or GitHub: it sets a password, with none to give first.</param>
 /// <param name="Connections">Google and GitHub, linked or not.</param>
+/// <param name="Devices">The devices signed in, this one first; only on the devices page.</param>
 public sealed record SettingsProps(
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Section,
     LiveProps Live,
@@ -52,7 +54,39 @@ public sealed record SettingsProps(
     int CodeLength,
     int CodeLifetimeMinutes,
     bool HasPassword,
-    IReadOnlyList<ConnectionProps> Connections);
+    IReadOnlyList<ConnectionProps> Connections,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] IReadOnlyList<DeviceProps>? Devices);
+
+/// <summary>A device signed in to the account (PLAN 6.14).</summary>
+/// <param name="Kind"><c>phone</c>, <c>tablet</c>, <c>computer</c> or <c>unknown</c>, which picks its icon.</param>
+/// <param name="Name">The device or system, from its User-Agent; none when it does not say.</param>
+/// <param name="Locality">The town or region it signed in from, in the page language where known.</param>
+/// <param name="Current">The device the page is shown on.</param>
+public sealed record DeviceProps(
+    Guid Id,
+    string Kind,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Name,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Browser,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Locality,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Country,
+    DateTimeOffset SignedInAt,
+    DateTimeOffset LastSeenAt,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] bool Current)
+{
+    public static DeviceProps From(SignedInDevice device)
+    {
+        ArgumentNullException.ThrowIfNull(device);
+        var kind = device.Device.Kind switch
+        {
+            DeviceKind.Phone => "phone",
+            DeviceKind.Tablet => "tablet",
+            DeviceKind.Computer => "computer",
+            _ => "unknown",
+        };
+        return new DeviceProps(
+            device.Id, kind, device.Device.Name, device.Device.Browser, device.Place?.Locality, device.Place?.Country, device.SignedInAt, device.LastSeenAt, device.IsCurrent);
+    }
+}
 
 /// <summary>A provider to sign in with, and the account linked there, if any.</summary>
 /// <param name="Label">Its own name, the same in every language.</param>

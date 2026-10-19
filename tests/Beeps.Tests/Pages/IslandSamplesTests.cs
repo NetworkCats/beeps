@@ -126,6 +126,7 @@ public sealed partial class IslandSamplesTests : IDisposable
         { "settings-email", "/settings/email" },
         { "settings-password", "/settings/password" },
         { "settings-display", "/settings/display" },
+        { "settings-sessions", "/settings/sessions" },
         { "agents", "/agents" },
         { "agent", "/agents/00000000-0000-7000-8000-000000000028" },
         { "agent-waiting", "/agents/00000000-0000-7000-8000-000000000029" },
@@ -210,6 +211,21 @@ public sealed partial class IslandSamplesTests : IDisposable
     }
 
     [Fact]
+    public async Task TheDevicesMatchTheirSample()
+    {
+        using var phone = WebAuth.NewClient(factory);
+        phone.DefaultRequestHeaders.UserAgent.ParseAdd("Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1");
+        await WebAuth.SignInAsync(phone, tom);
+        using var client = WebAuth.NewClient(factory);
+        client.DefaultRequestHeaders.UserAgent.ParseAdd("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36");
+        await WebAuth.SignInAsync(client, tom);
+        // This device's place is known, the phone's is not.
+        factory.IpLocations.Find(Arg.Any<string?>(), Arg.Any<System.Globalization.CultureInfo>()).Returns(new IpLocation("Shanghai", "Shanghai", "China"), (IpLocation?)null);
+
+        await MatchSampleAsync("settings-devices", "/settings/sessions", await DrawnAsync(client, "/settings/sessions"));
+    }
+
+    [Fact]
     public async Task ANewKeyMatchesItsSample()
     {
         using var client = await WebAuth.SignInAsync(factory, tom);
@@ -246,7 +262,7 @@ public sealed partial class IslandSamplesTests : IDisposable
     public void EverySampleIsOneThatATestDraws()
     {
         // The facts above draw these; the theories draw their pages.
-        string[] others = ["verify", "compose-refused", "settings-refused", "settings-linked-account", "settings-linked-password", "agents-new-key", "onboarding-key"];
+        string[] others = ["verify", "compose-refused", "settings-refused", "settings-linked-account", "settings-linked-password", "settings-devices", "agents-new-key", "onboarding-key"];
         string[] drawn =
         [
             .. Pages.Select(row => row.Data.Item1),

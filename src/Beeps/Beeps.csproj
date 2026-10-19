@@ -10,6 +10,7 @@
     <PackageReference Include="EFCore.NamingConventions" />
     <PackageReference Include="Jdenticon-net" />
     <PackageReference Include="MailKit" />
+    <PackageReference Include="MaxMind.Db" />
     <PackageReference Include="MeiliSearch" />
     <PackageReference Include="Microsoft.AspNetCore.DataProtection.EntityFrameworkCore" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" />

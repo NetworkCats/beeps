@@ -553,8 +553,10 @@
   }
 }
 
-// The providers the account signs in with, under a heading, in rows like the links; the button where their chevron is.
-.settings-connections {
+// The providers the account signs in with, and the devices logged in, under a heading, in rows like the links; the
+// button where their chevron is.
+.settings-connections,
+.settings-devices {
   padding-block: var(--cui-space-3) var(--cui-space-2);
 
   > .settings-heading {
@@ -570,6 +572,17 @@
   > .settings-link > form {
     flex-shrink: 0;
   }
+}
+
+// Logging out of all the other devices, under them.
+.settings-devices > .settings-aside {
+  padding-block: var(--cui-space-3) 0;
+}
+
+.settings-devices-empty {
+  padding: var(--cui-space-2) var(--beeps-pad);
+  color: var(--cui-text-2);
+  font-size: var(--cui-text-sm);
 }
 
 // What the account is, as rows like the links but leading nowhere.

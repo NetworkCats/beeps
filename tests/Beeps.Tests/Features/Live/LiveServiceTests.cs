@@ -182,14 +182,26 @@ public sealed class LiveServiceTests : IAsyncDisposable
         await OpenAsync(new LiveRequest("home", null, null, null));
         sessions.IsActiveAsync(TomSession, TestData.Now, Arg.Any<CancellationToken>()).Returns(true, false);
 
-        // Another account's sessions, and one of Tom's other sessions: this tab is still signed in.
+        // Another account's sessions, and one of Tom's other sessions: this tab is still signed in, its devices page drops it.
         feed.Publish(LiveEventTypes.SessionsEnded, $$"""{"account_id":"{{Alice:D}}"}""");
-        feed.Publish(LiveEventTypes.SessionsEnded, $$"""{"account_id":"{{Tom:D}}"}""");
+        var other = feed.Publish(LiveEventTypes.SessionsEnded, $$"""{"account_id":"{{Tom:D}}"}""");
         var id = feed.Publish(LiveEventTypes.SessionsEnded, $$"""{"account_id":"{{Tom:D}}"}""");
 
+        Assert.Equal(new LiveMessage(LiveMessages.Sessions, "{}", other), await NextAsync());
         Assert.Equal(new LiveMessage(LiveMessages.SignedOut, "{}", id), await NextAsync());
         Assert.False(await stream!.MoveNextAsync());
         await sessions.Received(2).IsActiveAsync(TomSession, TestData.Now, Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task ALogInElsewhereIsListedOnTheDevicesPage()
+    {
+        await OpenAsync(new LiveRequest("", null, null, null));
+
+        feed.Publish(LiveEventTypes.SessionStarted, $$"""{"account_id":"{{Alice:D}}"}""");
+        var id = feed.Publish(LiveEventTypes.SessionStarted, $$"""{"account_id":"{{Tom:D}}"}""");
+
+        Assert.Equal(new LiveMessage(LiveMessages.Sessions, "{}", id), await NextAsync());
     }
 
     [Fact]
