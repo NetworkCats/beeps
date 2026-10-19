@@ -61,9 +61,9 @@ internal sealed class InMemorySessionStore : ISessionStore
         return Task.CompletedTask;
     }
 
-    public Task ForgetAllAsync(Guid userId, CancellationToken cancellationToken) => Task.CompletedTask;
+    public Task ForgetAllAsync(Guid userId) => Task.CompletedTask;
 
-    public Task ForgetUsersAsync(IReadOnlyCollection<Guid> userIds, CancellationToken cancellationToken) => Task.CompletedTask;
+    public Task ForgetUsersAsync(IReadOnlyCollection<Guid> userIds) => Task.CompletedTask;
 
     public Task<int> DeleteEndedAsync(DateTimeOffset cutoff, int batchSize, CancellationToken cancellationToken)
     {

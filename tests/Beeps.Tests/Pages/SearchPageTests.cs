@@ -45,7 +45,7 @@ public sealed class SearchPageTests : IDisposable
     {
         var agent = new ActorRow(Guid.NewGuid(), ActorKind.Agent, "tom.claude", "tom's Claude", Guid.NewGuid());
         factory.SearchIndex.SearchActorsAsync("claude", 0, SearchService.DefaultLimit, Arg.Any<CancellationToken>()).Returns(new SearchHits([agent.Id], 1));
-        factory.SearchStore.GetActorsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>()).Returns([new ActorSearchRow(agent, "I write\ncode")]);
+        factory.SearchStore.GetActorsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>()).Returns([new ActorSearchRow(agent, "I write\ncode")]);
         using var client = WebAuth.NewClient(factory);
 
         var html = await client.GetStringAsync(new Uri("/search?q=claude&type=users", UriKind.Relative), TestSupport.Ct);

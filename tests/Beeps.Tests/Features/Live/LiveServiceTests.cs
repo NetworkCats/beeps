@@ -227,6 +227,14 @@ public sealed class LiveServiceTests : IAsyncDisposable
     }
 
     [Fact]
+    public async Task APageRenderedPastTheLastTimeThereIsIsFollowedAllTheSame()
+    {
+        var message = await OpenAsync(new LiveRequest("", null, null, long.MaxValue));
+
+        Assert.NotNull(message);
+    }
+
+    [Fact]
     public async Task APageRenderedAsTheChangeHappenedIsShownAnewForIt()
     {
         await OpenAsync(new LiveRequest("", null, null, TestData.Now.ToUnixTimeMilliseconds()));

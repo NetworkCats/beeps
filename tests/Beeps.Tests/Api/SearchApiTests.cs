@@ -51,7 +51,7 @@ public sealed class SearchApiTests : IDisposable
     {
         var owner = new ActorRow(agent.OwnerId, ActorKind.Human, "tom", "Tom", null);
         factory.SearchIndex.SearchActorsAsync("tom", 0, 20, Arg.Any<CancellationToken>()).Returns(new SearchHits([owner.Id], 1));
-        factory.SearchStore.GetActorsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>()).Returns([new ActorSearchRow(owner, "hi")]);
+        factory.SearchStore.GetActorsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>()).Returns([new ActorSearchRow(owner, "hi")]);
 
         using var response = await client.GetAsync(new Uri("/api/v1/search?q=tom&type=users", UriKind.Relative), TestSupport.Ct);
         using var json = JsonDocument.Parse(await response.Content.ReadAsStringAsync(TestSupport.Ct));

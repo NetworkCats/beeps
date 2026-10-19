@@ -66,12 +66,14 @@ public sealed class SearchServiceTests
     {
         var agent = new ActorRow(Guid.NewGuid(), ActorKind.Agent, "tom.claude", "tom's Claude", Tom.ActorId);
         index.SearchActorsAsync("claude", 20, 20, Arg.Any<CancellationToken>()).Returns(new SearchHits([agent.Id, Guid.NewGuid()], 100));
-        store.GetActorsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>()).Returns([new ActorSearchRow(agent, "writes code")]);
+        store.GetActorsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>()).Returns([new ActorSearchRow(agent, "writes code")]);
 
         var result = await Create().SearchAsync(Tom, new SearchRequest("claude", SearchTypes.Users, Offset: 20), TestSupport.Ct);
 
         var found = Assert.Single(result.Value.Users);
         Assert.Equal(("tom.claude", "writes code", Relations.Other), (found.Actor.Handle, found.Bio, found.Actor.Relation));
+        // None the viewer blocked.
+        await store.Received(1).GetActorsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Tom.ActorId, Arg.Any<CancellationToken>());
         // Two hits on a page of twenty: the index has no more.
         Assert.Null(result.Value.NextOffset);
     }
@@ -81,7 +83,7 @@ public sealed class SearchServiceTests
     {
         var ids = Enumerable.Range(0, 20).Select(_ => Guid.NewGuid()).ToList();
         index.SearchActorsAsync(default!, default, default, TestSupport.Ct).ReturnsForAnyArgs(new SearchHits(ids, 5000));
-        store.GetActorsAsync(default!, TestSupport.Ct).ReturnsForAnyArgs([]);
+        store.GetActorsAsync(default!, default, TestSupport.Ct).ReturnsForAnyArgs([]);
         var service = Create();
 
         var first = await service.SearchUsersAsync(null, "a", 0, null, TestSupport.Ct);

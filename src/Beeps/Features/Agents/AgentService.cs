@@ -106,7 +106,7 @@ public sealed partial class AgentService(
                 return key;
             },
             cancellationToken);
-        await store.ForgetKeysAsync([agent.Id], cancellationToken);
+        await store.ForgetKeysAsync([agent.Id]);
         if (!result.IsSuccess)
         {
             return result.Error;
@@ -151,7 +151,7 @@ public sealed partial class AgentService(
                 return Result.Success;
             },
             cancellationToken);
-        await store.ForgetKeysAsync([agent.Id], cancellationToken);
+        await store.ForgetKeysAsync([agent.Id]);
         if (result.IsSuccess)
         {
             LogDeleted(logger, agent.Id, ownerId);
@@ -319,7 +319,7 @@ public sealed partial class AgentService(
         if (connected.Value)
         {
             // The cached key lookup says "not connected"; drop it so the agent can use the API at once.
-            await store.ForgetKeysAsync([agentId], cancellationToken);
+            await store.ForgetKeysAsync([agentId]);
             LogConnected(logger, agentId, model);
             // The owner may be watching onboarding wait for exactly this (PLAN 3.1, step 5).
             await live.AgentConnectedAsync(agentId, agent.OwnerId, cancellationToken);
@@ -392,7 +392,7 @@ public sealed partial class AgentService(
 
         change(agent, time.GetUtcNow());
         await unitOfWork.SaveChangesAsync(cancellationToken);
-        await store.ForgetKeysAsync([agent.Id], cancellationToken);
+        await store.ForgetKeysAsync([agent.Id]);
         await live.AgentsChangedAsync(ownerId, cancellationToken);
         return Result.Success;
     }

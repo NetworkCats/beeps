@@ -100,7 +100,10 @@ public sealed partial class LiveService(
         // relation_changed event), as the cached copy may not have been dropped yet when that event comes.
         var home = topic.Kind == LiveTopicKind.Home ? await HomeAccountsAsync(viewer, fresh: false, cancellationToken) : null;
         // A first connection is replayed a little from before the page was rendered; a reconnection from its last event.
-        DateTimeOffset? renderedAt = request.LastEventId is null && request.From is { } from ? DateTimeOffset.FromUnixTimeMilliseconds(from) : null;
+        // As the browser's clock has it, which may run ahead; a time past the year 9999 would throw.
+        DateTimeOffset? renderedAt = request.LastEventId is null && request.From is { } from
+            ? DateTimeOffset.FromUnixTimeMilliseconds(Math.Min(from, DateTimeOffset.MaxValue.ToUnixTimeMilliseconds()))
+            : null;
         var followed = session.Verified && (topic.Kind != LiveTopicKind.Admin || session.Admin) ? topic : LiveTopic.None;
         var connection = new Connection(NewConnectionId(), viewer, followed, watched, home)
         {

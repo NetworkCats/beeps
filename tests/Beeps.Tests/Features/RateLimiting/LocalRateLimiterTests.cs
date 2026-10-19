@@ -25,6 +25,23 @@ public sealed class LocalRateLimiterTests
     }
 
     [Fact]
+    public void AReleasedHitNoLongerCounts()
+    {
+        var limiter = new LocalRateLimiter(time);
+        RateLimitCounter[] counter = [new("LoginAccount:900:a", 1, TimeSpan.FromMinutes(15))];
+
+        limiter.TryAcquire(counter);
+        limiter.Release(counter);
+        limiter.Release(counter);
+        var allowed = limiter.TryAcquire(counter);
+        var denied = limiter.TryAcquire(counter);
+
+        // Never below none: released twice, it still allows one.
+        Assert.True(allowed.IsAllowed);
+        Assert.False(denied.IsAllowed);
+    }
+
+    [Fact]
     public void CountsEachWindowAndResetsAfterIt()
     {
         var limiter = new LocalRateLimiter(time);

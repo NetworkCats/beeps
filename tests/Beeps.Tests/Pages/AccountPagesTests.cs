@@ -1,5 +1,6 @@
 using System.Net;
 using Beeps.Features.Accounts;
+using Beeps.Features.RateLimiting;
 using Beeps.Tests.Support;
 
 namespace Beeps.Tests.Pages;
@@ -172,6 +173,41 @@ public sealed class AccountPagesTests : IDisposable
     }
 
     [Fact]
+    public async Task PastItsAttemptsAnAccountsSignInAsksForTurnstileThenGoesOnToTheCode()
+    {
+        WebAuth.ArrangeUser(factory);
+        factory.RateLimitStore.TryAcquireAsync(Arg.Is<IReadOnlyList<RateLimitCounter>>(c => c.Any(x => x.Key.StartsWith("LoginAccount:", StringComparison.Ordinal))), Arg.Any<CancellationToken>())
+            .Returns(RateLimitDecision.Denied(TimeSpan.FromMinutes(1)));
+        using var client = factory.CreateClient();
+
+        using var asked = await WebAuth.PostFormAsync(client, "/login", "/login", ("Login", "tom"), ("Password", WebAuth.Password));
+        var askedHtml = await asked.Content.ReadAsStringAsync(TestSupport.Ct);
+        using var passed = await WebAuth.PostFormAsync(client, "/login", "/login",
+            ("Login", "tom"), ("Password", WebAuth.Password), ("cf-turnstile-response", "token"));
+        var codeHtml = await passed.Content.ReadAsStringAsync(TestSupport.Ct);
+
+        // Not locked (no 429): the form takes Turnstile, and its button waits for it.
+        Assert.Equal(HttpStatusCode.BadRequest, asked.StatusCode);
+        Assert.Contains("cf-turnstile", askedHtml, StringComparison.Ordinal);
+        Assert.Contains("type=\"submit\" disabled", askedHtml, StringComparison.Ordinal);
+        // Then on to the code, for the name given, which stays out of the URL; nobody is signed in yet.
+        Assert.Equal("/login/code", passed.RequestMessage?.RequestUri?.AbsolutePath);
+        Assert.Contains("name=\"Login\" value=\"tom\"", codeHtml, StringComparison.Ordinal);
+        Assert.Empty(factory.Sessions.All);
+    }
+
+    [Fact]
+    public async Task TheCodePageOpenedByItselfGoesBackToSigningIn()
+    {
+        using var client = WebAuth.NewClient(factory);
+
+        using var response = await client.GetAsync(new Uri("/login/code", UriKind.Relative), TestSupport.Ct);
+
+        Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
+        Assert.Equal("/login", response.Headers.Location?.OriginalString);
+    }
+
+    [Fact]
     public async Task ProtectedPagesAskAnonymousVisitorsToLogIn()
     {
         using var client = WebAuth.NewClient(factory);
@@ -281,6 +317,7 @@ public sealed class AccountPagesTests : IDisposable
     [Theory]
     [InlineData("/login", false)]
     [InlineData("/register", false)]
+    [InlineData("/login/code", false)]
     [InlineData("/forgot-password", true)]
     [InlineData("/reset-password", true)]
     public async Task SignedInOnlyTheWayBackInStaysOpen(string path, bool open)

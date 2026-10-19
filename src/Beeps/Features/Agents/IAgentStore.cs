@@ -34,8 +34,8 @@ public interface IAgentStore
     /// <summary>Records that the key was used. Runs immediately.</summary>
     Task TouchKeyAsync(AgentKeyMatch key, DateTimeOffset now, CancellationToken cancellationToken);
 
-    /// <summary>Drops cached lookups for these agents' keys, so a change to them takes effect at once. Call after committing.</summary>
-    Task ForgetKeysAsync(IReadOnlyCollection<Guid> agentIds, CancellationToken cancellationToken);
+    /// <summary>Drops cached lookups for these agents' keys, so a change to them takes effect at once. Call after committing. Not cancellable: a client that goes away must not leave a revoked key cached.</summary>
+    Task ForgetKeysAsync(IReadOnlyCollection<Guid> agentIds);
 
     /// <summary>Disables every enabled agent of the owner (a ban). Runs immediately; returns all of the owner's agent ids.</summary>
     Task<IReadOnlyList<Guid>> DisableAllAsync(Guid ownerId, DateTimeOffset now, CancellationToken cancellationToken);

@@ -47,7 +47,7 @@ public sealed class AccountCleanupJobTests
 
         await accounts.Received(1).ReleaseUnverifiedAsync(TestData.Now - AccountCleanupJob.UnverifiedRetention, TestData.Now, AccountCleanupJob.BatchSize, Arg.Any<CancellationToken>());
         Assert.Equal([null], unitOfWork.Locks);
-        await sessions.Received(1).ForgetUsersAsync(Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.SequenceEqual(new[] { first, second })), Arg.Any<CancellationToken>());
+        await sessions.Received(1).ForgetUsersAsync(Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.SequenceEqual(new[] { first, second })));
         // Their open tabs sign out.
         Assert.Equal([$$"""{"account_id":"{{first:D}}"}""", $$"""{"account_id":"{{second:D}}"}"""], TestData.LiveEvents(liveEvents, LiveEventTypes.SessionsEnded));
         await accounts.Received(1).ForgetAccountsAsync(Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.SequenceEqual(new[] { first, second })), Arg.Any<CancellationToken>());

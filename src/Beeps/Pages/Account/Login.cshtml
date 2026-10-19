@@ -20,8 +20,12 @@
             <input class="input" beeps-field="Password" type="password" autocomplete="current-password" required>
             <field-error name="Password" />
         </div>
+        @if (Model.NeedsCaptcha)
+        {
+            <partial name="_Captcha" />
+        }
         <div class="form-actions">
-            <button class="btn btn-primary" type="submit">@L["Login.Submit"]</button>
+            <button class="btn btn-primary" type="submit" disabled="@Model.NeedsCaptcha">@L["Login.Submit"]</button>
             <a class="btn btn-ghost" asp-page="/Account/ForgotPassword">@L["Login.Forgot"]</a>
         </div>
         <p class="auth-switch">@L["Login.NoAccount"] <a asp-page="/Account/Register">@L["Nav.Register"]</a></p>

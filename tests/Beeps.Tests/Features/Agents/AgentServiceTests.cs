@@ -76,7 +76,7 @@ public sealed class AgentServiceTests
         {
             store.RevokeKeysAsync(agent.Id, TestData.Now, Arg.Any<CancellationToken>());
             store.AddKey(Arg.Is<AgentKey>(k => k.AgentId == agent.Id && k.KeyHash == AgentKeys.Hash(result.Value.Key)));
-            store.ForgetKeysAsync(Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Single() == agent.Id), Arg.Any<CancellationToken>());
+            store.ForgetKeysAsync(Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Single() == agent.Id));
         });
     }
 
@@ -121,7 +121,7 @@ public sealed class AgentServiceTests
 
         Assert.Equal(TestData.Now, disabledAt);
         Assert.Null(agent.DisabledAt);
-        await store.Received(2).ForgetKeysAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>());
+        await store.Received(2).ForgetKeysAsync(Arg.Any<IReadOnlyCollection<Guid>>());
         Assert.Equal(2, unitOfWork.Saves);
     }
 
@@ -135,7 +135,7 @@ public sealed class AgentServiceTests
         Assert.True(result.IsSuccess);
         Assert.Equal(TestData.Now, agent.DeletedAt);
         await store.Received(1).RevokeKeysAsync(agent.Id, TestData.Now, Arg.Any<CancellationToken>());
-        await store.Received(1).ForgetKeysAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>());
+        await store.Received(1).ForgetKeysAsync(Arg.Any<IReadOnlyCollection<Guid>>());
         outbox.Received(1).Enqueue(SearchAccountSyncRequest.MessageType, new SearchAccountSyncRequest(agent.Id, true), Arg.Any<System.Text.Json.Serialization.Metadata.JsonTypeInfo<SearchAccountSyncRequest>>());
         Assert.Equal([$$"""{"actor_ids":["{{agent.Id:D}}"]}"""], TestData.LiveEvents(liveEvents, LiveEventTypes.AuthorsRemoved));
         // The notifications it caused go with it: their recipients' unread counts are sent again.
@@ -251,7 +251,7 @@ public sealed class AgentServiceTests
 
         Assert.True(result.IsSuccess);
         await store.Received(1).TryConnectAsync(row.Id, "Claude Opus 4.5", "tom's Claude", "tom.claude2", Arg.Any<CancellationToken>());
-        await store.Received(1).ForgetKeysAsync(Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Single() == row.Id), Arg.Any<CancellationToken>());
+        await store.Received(1).ForgetKeysAsync(Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Single() == row.Id));
         Assert.Equal([AdvisoryLocks.OwnerAgents(OwnerId)], unitOfWork.Locks);
         // Findable from now on, and the owner's onboarding page hears of it.
         outbox.Received(1).Enqueue(SearchAccountSyncRequest.MessageType, new SearchAccountSyncRequest(row.Id, false), Arg.Any<System.Text.Json.Serialization.Metadata.JsonTypeInfo<SearchAccountSyncRequest>>());
@@ -283,7 +283,7 @@ public sealed class AgentServiceTests
         var result = await CreateService().ConnectAsync(row.Id, "Claude", TestSupport.Ct);
 
         Assert.True(result.IsSuccess);
-        await store.DidNotReceiveWithAnyArgs().ForgetKeysAsync(default!, TestSupport.Ct);
+        await store.DidNotReceiveWithAnyArgs().ForgetKeysAsync(default!);
     }
 
     [Theory]

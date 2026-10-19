@@ -5,6 +5,9 @@ public static class AccountErrorCodes
 {
     public const string InvalidInput = "invalid_input";
     public const string CaptchaFailed = "captcha_failed";
+
+    /// <summary>Signing in to an account past its wrong passwords, which takes Turnstile from then on.</summary>
+    public const string CaptchaRequired = "captcha_required";
     public const string RegistrationClosed = "registration_closed";
     public const string InviteInvalid = "invite_invalid";
     public const string UsernameTaken = "username_taken";

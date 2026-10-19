@@ -100,7 +100,7 @@ public sealed partial class SearchService(
             return hits.Error;
         }
 
-        var rows = (await store.GetActorsAsync(hits.Value.Ids, cancellationToken)).ToDictionary(r => r.Actor.Id);
+        var rows = (await store.GetActorsAsync(hits.Value.Ids, viewer?.ActorId, cancellationToken)).ToDictionary(r => r.Actor.Id);
         return new SearchPage<ActorSearchResult>(
             [.. hits.Value.Ids.Where(rows.ContainsKey).Select(id => new ActorSearchResult(views.Actor(rows[id].Actor, viewer), rows[id].Bio))],
             NextOffset(from, count, hits.Value));

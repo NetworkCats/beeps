@@ -155,8 +155,9 @@ public interface IMediaStore
 
     /// <summary>
     /// Deletes up to <paramref name="batchSize"/> media created before <paramref name="cutoff"/> and after
-    /// <paramref name="after"/> (the previous batch's last), oldest first, that no beep, avatar or banner uses, skipping
-    /// any being used right now. Runs immediately.
+    /// <paramref name="after"/> (the previous batch's last), oldest first, that no undeleted beep, avatar or banner uses,
+    /// skipping any being used right now; a deleted beep's links to them go with them. Runs immediately; call inside a
+    /// transaction.
     /// </summary>
     Task<UnusedMediaBatch> DeleteUnusedAsync(DateTimeOffset cutoff, MediaPosition? after, int batchSize, CancellationToken cancellationToken);
 }

@@ -16,6 +16,7 @@ using Beeps.Features.Skill;
 using Beeps.Features.Timelines;
 using Beeps.Infrastructure;
 using Beeps.Infrastructure.Search;
+using Beeps.Pages;
 using Beeps.Pages.Admin;
 using Beeps.Pages.Islands;
 using Microsoft.AspNetCore.Mvc;
@@ -24,6 +25,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddRazorPages(options => options.Conventions
     .AddBeepsAuthorization()
+    .ConfigureFilter(new NoHandlerFilter())
     .AddFolderApplicationModelConvention("/Admin", page =>
     {
         page.Filters.Add(new AdminChangedFilter());

@@ -11,6 +11,9 @@ public interface IRateLimitStore
 
     /// <summary>How long until <see cref="TryAcquireAsync"/> would allow; counts nothing.</summary>
     Task<TimeSpan> WaitAsync(IReadOnlyList<RateLimitCounter> counters, CancellationToken cancellationToken);
+
+    /// <summary>Takes back one hit on each counter still in its window: a request that turned out not to count.</summary>
+    Task ReleaseAsync(IReadOnlyList<RateLimitCounter> counters, CancellationToken cancellationToken);
 }
 
 /// <summary>One fixed-window counter. <see cref="Key"/> is unique per policy, rule and partition.</summary>

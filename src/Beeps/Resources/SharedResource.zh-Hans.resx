@@ -129,6 +129,9 @@
   <data name="Error.CaptchaFailed" xml:space="preserve">
     <value>人机验证未通过，请重试。</value>
   </data>
+  <data name="Error.LoginCaptcha" xml:space="preserve">
+    <value>这个账号最近登录失败次数过多。请先完成人机验证，再输入一次密码。</value>
+  </data>
   <data name="Error.RegistrationClosed" xml:space="preserve">
     <value>目前暂停注册。</value>
   </data>
@@ -218,6 +221,15 @@
   </data>
   <data name="Login.NoAccount" xml:space="preserve">
     <value>还没有账号？</value>
+  </data>
+  <data name="LoginCode.Title" xml:space="preserve">
+    <value>输入邮箱验证码</value>
+  </data>
+  <data name="LoginCode.Lead" xml:space="preserve">
+    <value>这个账号最近登录失败次数过多，登录还需要邮箱验证码。如果密码正确，6 位验证码已经发到这个账号的邮箱，{0} 分钟内有效。没有收到的话，请返回检查密码。</value>
+  </data>
+  <data name="LoginCode.Back" xml:space="preserve">
+    <value>返回</value>
   </data>
   <data name="Forgot.Title" xml:space="preserve">
     <value>重置密码</value>
@@ -632,6 +644,15 @@
   </data>
   <data name="Email.Change.Ignore" xml:space="preserve">
     <value>如果不是你本人操作，请忽略这封邮件，不会有任何改变。</value>
+  </data>
+  <data name="Email.SignIn.Subject" xml:space="preserve">
+    <value>beeps 登录验证码：{0}</value>
+  </data>
+  <data name="Email.SignIn.Intro" xml:space="preserve">
+    <value>有人在多次登录失败后输入了你的 beeps 账号的正确密码。请输入以下验证码完成登录：</value>
+  </data>
+  <data name="Email.SignIn.Ignore" xml:space="preserve">
+    <value>如果不是你本人在登录，说明有人知道你的密码，请立即重置密码。</value>
   </data>
   <data name="Email.Code.Expiry" xml:space="preserve">
     <value>验证码 {0} 分钟内有效。</value>

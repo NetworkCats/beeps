@@ -302,10 +302,16 @@ public sealed partial class AccountService(
         return Result.Success;
     }
 
-    /// <param name="login">Email address or username.</param>
-    public async Task<Result<AccountState>> LoginAsync(string? login, string? password, RequestOrigin origin, CancellationToken cancellationToken)
+    /// <summary>
+    /// Signs in with a password. Guesses from one IP are refused past their limit. Wrong passwords for one account are
+    /// counted too, from anywhere, but past their limit the account is not locked, which would let anyone lock anyone
+    /// out: signing in to it takes Turnstile first, and then a code sent to its address (<see cref="LoginWithCodeAsync"/>).
+    /// </summary>
+    public async Task<Result<LoginOutcome>> LoginAsync(LoginRequest request, RequestOrigin origin, CancellationToken cancellationToken)
     {
+        ArgumentNullException.ThrowIfNull(request);
         ArgumentNullException.ThrowIfNull(origin);
+        var (login, password) = (request.Login, request.Password);
         if (string.IsNullOrWhiteSpace(login) || string.IsNullOrEmpty(password))
         {
             var fields = new Dictionary<string, string[]>();
@@ -322,22 +328,22 @@ public sealed partial class AccountService(
             return InvalidInput(fields);
         }
 
-        var byEmail = login.Contains('@', StringComparison.Ordinal);
-        var normalized = byEmail ? AccountRules.NormalizeEmail(login) : AccountRules.NormalizeHandle(login);
-        var user = byEmail
-            ? await store.FindUserByEmailAsync(normalized, cancellationToken)
-            : await store.FindUserByHandleAsync(normalized, cancellationToken);
-        // An account has one counter, by address or username alike. A name no account has gets its own, so guesses
-        // at it are refused just as soon and the limit does not tell which names exist.
-        var limited = await rateLimits.CheckAsync(
-            [
-                new RateLimitTarget(RateLimitPolicies.Login, RateLimitPartitions.Ip(origin.ClientIp)),
-                new RateLimitTarget(RateLimitPolicies.Login, user is null ? RateLimitPartitions.Login(normalized) : RateLimitPartitions.Account(user.Id)),
-            ],
-            cancellationToken);
-        if (!limited.IsSuccess)
+        var fromIp = await rateLimits.CheckAsync(RateLimitPolicies.Login, RateLimitPartitions.Ip(origin.ClientIp), cancellationToken);
+        if (!fromIp.IsSuccess)
         {
-            return limited.Error;
+            return fromIp.Error;
+        }
+
+        var (user, normalized) = await FindByLoginAsync(login, cancellationToken);
+        // An account has one counter of wrong passwords, by address or username alike. A name no account has gets its
+        // own, so it is asked for Turnstile just as soon and that does not tell which names exist. Each attempt takes a
+        // place on it before the password is checked, and the right password gives it back: attempts sent all at once
+        // cannot slip past it before their failures are counted.
+        var failures = user is null ? RateLimitPartitions.Login(normalized) : RateLimitPartitions.Account(user.Id);
+        var counted = await rateLimits.CheckAsync(RateLimitPolicies.LoginAccount, failures, cancellationToken);
+        if (!counted.IsSuccess)
+        {
+            return await LoginPastFailuresAsync(user, password, request.CaptchaToken, origin, cancellationToken);
         }
 
         if (user is null)
@@ -360,6 +366,7 @@ public sealed partial class AccountService(
             return InvalidCredentials();
         }
 
+        await rateLimits.ReleaseAsync(RateLimitPolicies.LoginAccount, failures, cancellationToken);
         if (user.BannedAt is not null)
         {
             return Banned();
@@ -371,7 +378,35 @@ public sealed partial class AccountService(
             await unitOfWork.SaveChangesAsync(cancellationToken);
         }
 
-        return ToState(user);
+        return new LoginOutcome(ToState(user));
+    }
+
+    /// <summary>
+    /// The second step of signing in to an account past its wrong passwords (<see cref="LoginAsync"/>): the code sent
+    /// to its address, which only Turnstile and then the right password asked for.
+    /// </summary>
+    /// <param name="login">The email address or username the first step was given.</param>
+    public async Task<Result<AccountState>> LoginWithCodeAsync(string? login, string? code, CancellationToken cancellationToken)
+    {
+        if (!AccountRules.IsWellFormedCode(code))
+        {
+            return InvalidInput(new() { [AccountFields.Code] = [localizer["Validation.Code"]] });
+        }
+
+        if (string.IsNullOrWhiteSpace(login) || (await FindByLoginAsync(login, cancellationToken)).User is not { } user)
+        {
+            return CodeInvalid();
+        }
+
+        // Every guess counts, right or wrong (ConsumeCodeAsync).
+        var consumed = await ConsumeCodeAsync(EmailCodePurpose.SignIn, user.NormalizedEmail, code!, cancellationToken);
+        if (!consumed.IsSuccess)
+        {
+            return consumed.Error;
+        }
+
+        await unitOfWork.SaveChangesAsync(cancellationToken);
+        return user.BannedAt is null ? ToState(user) : Banned();
     }
 
     /// <summary>
@@ -482,7 +517,7 @@ public sealed partial class AccountService(
             return result;
         }
 
-        await sessions.ForgetAllAsync(user.Id, cancellationToken);
+        await sessions.ForgetAllAsync(user.Id);
         await store.ForgetAccountAsync(user.Id, cancellationToken);
         await live.SessionsEndedAsync(user.Id, cancellationToken);
         if (verifies)
@@ -663,7 +698,7 @@ public sealed partial class AccountService(
                 return Result.Success;
             },
             cancellationToken);
-        await sessions.ForgetAllAsync(user.Id, cancellationToken);
+        await sessions.ForgetAllAsync(user.Id);
         // The other tabs of the sessions just ended sign out.
         await live.SessionsEndedAsync(user.Id, cancellationToken);
         LogPasswordChanged(logger, user.Id);
@@ -902,6 +937,58 @@ public sealed partial class AccountService(
         user.EmailVerifiedAt is not null,
         user.Locale);
 
+    /// <summary>The account an email address or username names, and the name as its counter knows it.</summary>
+    private async Task<(User? User, string Normalized)> FindByLoginAsync(string login, CancellationToken cancellationToken)
+    {
+        var byEmail = login.Contains('@', StringComparison.Ordinal);
+        var normalized = byEmail ? AccountRules.NormalizeEmail(login) : AccountRules.NormalizeHandle(login);
+        var user = byEmail
+            ? await store.FindUserByEmailAsync(normalized, cancellationToken)
+            : await store.FindUserByHandleAsync(normalized, cancellationToken);
+        return (user, normalized);
+    }
+
+    /// <summary>
+    /// Signing in to an account past its wrong passwords: Turnstile first, and only once it passed is the password
+    /// checked and a code sent to the account's address, for the right password alone. The answer is the same either
+    /// way, so a right guess cannot be told from a wrong one, and it gets nobody in without the mailbox. A banned
+    /// account gets no code. The account stays so until its counter's window ends.
+    /// </summary>
+    private async Task<Result<LoginOutcome>> LoginPastFailuresAsync(
+        User? user, string password, string? captchaToken, RequestOrigin origin, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrEmpty(captchaToken))
+        {
+            return Error.Validation(AccountErrorCodes.CaptchaRequired, localizer["Error.LoginCaptcha"]);
+        }
+
+        if (!await captcha.VerifyAsync(captchaToken, origin.ClientIp, cancellationToken))
+        {
+            return Error.Validation(AccountErrorCodes.CaptchaFailed, localizer["Error.CaptchaFailed"]);
+        }
+
+        if (user?.PasswordHash is null)
+        {
+            passwordHasher.VerifyHashedPassword(TimingDummy, TimingDummyHash(), password);
+            return LoginOutcome.CodeSent;
+        }
+
+        if (passwordHasher.VerifyHashedPassword(user, user.PasswordHash, password) == PasswordVerificationResult.Failed || user.BannedAt is not null)
+        {
+            return LoginOutcome.CodeSent;
+        }
+
+        // A code sent in the last minute still stands; past the limits on codes none is sent, which is not said either.
+        var last = await store.FindEmailCodeAsync(EmailCodePurpose.SignIn, user.NormalizedEmail, cancellationToken);
+        if (TooSoon(last).IsSuccess && (await CheckCodeLimitsAsync(user, user.NormalizedEmail, origin, cancellationToken)).IsSuccess)
+        {
+            await IssueCodeAsync(EmailCodePurpose.SignIn, user, cancellationToken);
+            await unitOfWork.SaveChangesAsync(cancellationToken);
+        }
+
+        return LoginOutcome.CodeSent;
+    }
+
     private static string HashCode(EmailCodePurpose purpose, string normalizedEmail, string code) =>
         TextHashes.Sha256Hex($"{purpose}:{normalizedEmail}:{code}");
 
@@ -964,8 +1051,8 @@ public sealed partial class AccountService(
     }
 
     /// <summary>
-    /// What both ways of moving to another address check, in order: the form, the password (its guesses count as
-    /// signing in to the account), and that the address is a new one nobody has.
+    /// What both ways of moving to another address check, in order: the form, the password (its guesses are limited as
+    /// <see cref="CheckPasswordAsync"/> says), and that the address is a new one nobody has.
     /// </summary>
     private async Task<Result<(User User, string Email)>> CheckNewEmailAsync(Guid userId, string? newEmail, string? currentPassword, CancellationToken cancellationToken)
     {
@@ -996,8 +1083,10 @@ public sealed partial class AccountService(
     }
 
     /// <summary>
-    /// The current password, asked again before a change; its guesses count as signing in to the account. An account
-    /// that signs in only with Google or GitHub has none: the session is all there is to go by, as the settings say.
+    /// The current password, asked again before a change. Its guesses have a counter of the account's own, refused past
+    /// its limit: not the one signing in counts on (<see cref="RateLimitPolicies.LoginAccount"/>), which anyone can run
+    /// up. An account that signs in only with Google or GitHub has none: the session is all there is to go by, as the
+    /// settings say.
     /// </summary>
     private async Task<Result<User>> CheckPasswordAsync(Guid userId, string? currentPassword, CancellationToken cancellationToken)
     {

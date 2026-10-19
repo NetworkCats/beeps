@@ -28,6 +28,14 @@ public sealed class RedisRateLimitStore(RedisConnection redis) : IRateLimitStore
         return 0
         """;
 
+    // KEYS: counter keys. Never below zero, and a counter whose window ended is left gone.
+    private const string ReleaseScript = """
+        for _, key in ipairs(KEYS) do
+          if tonumber(redis.call('GET', key) or '0') > 0 then redis.call('DECR', key) end
+        end
+        return 0
+        """;
+
     public async Task<RateLimitDecision> TryAcquireAsync(IReadOnlyList<RateLimitCounter> counters, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(counters);
@@ -46,13 +54,24 @@ public sealed class RedisRateLimitStore(RedisConnection redis) : IRateLimitStore
         return counters.Count == 0 ? TimeSpan.Zero : TimeSpan.FromMilliseconds(Math.Max(0, await EvaluateAsync(counters, count: false)));
     }
 
+    public async Task ReleaseAsync(IReadOnlyList<RateLimitCounter> counters, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(counters);
+        if (counters.Count > 0)
+        {
+            await redis.EvaluateAsync(ReleaseScript, [.. counters.Select(c => (RedisKey)CounterKey(c))]);
+        }
+    }
+
+    private static string CounterKey(RateLimitCounter counter) => $"{RedisSetup.KeyPrefix}ratelimit:{counter.Key}";
+
     private async Task<long> EvaluateAsync(IReadOnlyList<RateLimitCounter> counters, bool count)
     {
         var keys = new RedisKey[counters.Count];
         var values = new RedisValue[(counters.Count * 2) + 1];
         for (var i = 0; i < counters.Count; i++)
         {
-            keys[i] = $"{RedisSetup.KeyPrefix}ratelimit:{counters[i].Key}";
+            keys[i] = CounterKey(counters[i]);
             values[i * 2] = counters[i].PermitLimit;
             values[(i * 2) + 1] = RedisCommands.Milliseconds(counters[i].Window);
         }

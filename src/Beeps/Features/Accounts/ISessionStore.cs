@@ -27,11 +27,11 @@ public interface ISessionStore
     /// <summary>Ends every session of the user except <paramref name="keepSessionId"/> (password change). Runs immediately, inside the caller's transaction if any.</summary>
     Task RevokeOthersAsync(Guid userId, Guid keepSessionId, DateTimeOffset now, CancellationToken cancellationToken);
 
-    /// <summary>Drops the cached copies of the user's sessions. Call after committing <see cref="RevokeAllAsync"/> or <see cref="RevokeOthersAsync"/>.</summary>
-    Task ForgetAllAsync(Guid userId, CancellationToken cancellationToken);
+    /// <summary>Drops the cached copies of the user's sessions. Call after committing <see cref="RevokeAllAsync"/> or <see cref="RevokeOthersAsync"/>. Not cancellable: a client that goes away must not leave a revoked session cached.</summary>
+    Task ForgetAllAsync(Guid userId);
 
     /// <summary>As <see cref="ForgetAllAsync"/>, for many users at once (one query, one removal).</summary>
-    Task ForgetUsersAsync(IReadOnlyCollection<Guid> userIds, CancellationToken cancellationToken);
+    Task ForgetUsersAsync(IReadOnlyCollection<Guid> userIds);
 
     /// <summary>Deletes up to <paramref name="batchSize"/> sessions that expired or were revoked before <paramref name="cutoff"/>. Runs immediately; returns how many.</summary>
     Task<int> DeleteEndedAsync(DateTimeOffset cutoff, int batchSize, CancellationToken cancellationToken);

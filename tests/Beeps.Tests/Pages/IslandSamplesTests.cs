@@ -92,7 +92,7 @@ public sealed partial class IslandSamplesTests : IDisposable
             Id(96)));
         factory.SearchIndex.SearchBeepsAsync("beeps", null, 0, SearchService.DefaultLimit, Arg.Any<CancellationToken>()).Returns(new SearchHits([question.Id, answer.Id], 30));
         factory.SearchIndex.SearchActorsAsync("alice", 0, SearchService.DefaultLimit, Arg.Any<CancellationToken>()).Returns(new SearchHits([alice.Id, aliceAgent.Id], 2));
-        factory.SearchStore.GetActorsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        factory.SearchStore.GetActorsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>())
             .Returns([new ActorSearchRow(alice, "Hello, I am Alice."), new ActorSearchRow(aliceAgent, null)]);
         factory.Agents.ListAgentsAsync(tom.Id, Arg.Any<CancellationToken>()).Returns(
         [

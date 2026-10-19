@@ -74,7 +74,14 @@ export async function sendForm(form: HTMLFormElement, submitter: HTMLElement | n
     await visit(answer.url).catch(() => {});
     return;
   }
-  // Anything else (an error page): sent again the plain way, which nothing came of the first time, to show what went wrong.
+  // A server error (or a proxy's 502/504) may come after the work was done: sending it again could post a beep twice.
+  // The form stays as it was, to send again by hand.
+  if (answer.status >= 500) {
+    showToast(t('Error.ActionFailed'), true);
+    return;
+  }
+  // Anything else (a refusal with no page to show it): sent again the plain way, which nothing came of the first
+  // time, to show what went wrong.
   await submitPage(action, data);
 }
 

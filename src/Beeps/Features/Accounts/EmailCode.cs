@@ -7,6 +7,9 @@ public enum EmailCodePurpose
 
     /// <summary>Sent to the address the account is moving to; kept under the account's current address.</summary>
     ChangeEmail,
+
+    /// <summary>Signing in to an account past its wrong passwords, after Turnstile and the right password (AccountService.LoginAsync).</summary>
+    SignIn,
 }
 
 /// <summary>A pending 6-digit code (PLAN 6.13). One per address and purpose; a new one replaces the old.</summary>

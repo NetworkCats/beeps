@@ -48,12 +48,22 @@ public sealed class EfUnitOfWork(BeepsDbContext db, PendingCacheChanges cacheCha
         }
         catch
         {
-            // Disposing the transaction rolls it back.
+            // Disposing the transaction rolls it back; what was staged must not leak into a later save, as below.
             cacheChanges.Discard();
+            db.ChangeTracker.Clear();
             throw;
         }
 
-        await EndAsync(transaction, succeeded(result), cancellationToken);
+        try
+        {
+            await EndAsync(transaction, succeeded(result), cancellationToken);
+        }
+        catch
+        {
+            db.ChangeTracker.Clear();
+            throw;
+        }
+
         return result;
     }
 

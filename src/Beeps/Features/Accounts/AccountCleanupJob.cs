@@ -50,7 +50,7 @@ public sealed partial class AccountCleanupJob(
             async ct => Result.Of(await accounts.ReleaseUnverifiedAsync(now - UnverifiedRetention, now, BatchSize, ct)),
             cancellationToken);
         // A sign-up mid-onboarding is signed in: its sessions end now, not when their cached copies expire.
-        await sessions.ForgetUsersAsync(released.Value, cancellationToken);
+        await sessions.ForgetUsersAsync(released.Value);
         await accounts.ForgetAccountsAsync(released.Value, cancellationToken);
         foreach (var userId in released.Value)
         {

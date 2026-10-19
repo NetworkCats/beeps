@@ -62,7 +62,7 @@ public sealed class EfAgentStore(BeepsDbContext db, HybridCache cache, CacheInva
         await invalidator.ForgetSharedAsync([SharedCache.AgentKeyKey(key.KeyHash)]);
     }
 
-    public async Task ForgetKeysAsync(IReadOnlyCollection<Guid> agentIds, CancellationToken cancellationToken)
+    public async Task ForgetKeysAsync(IReadOnlyCollection<Guid> agentIds)
     {
         ArgumentNullException.ThrowIfNull(agentIds);
         if (agentIds.Count == 0)
@@ -76,7 +76,7 @@ public sealed class EfAgentStore(BeepsDbContext db, HybridCache cache, CacheInva
         var hashes = await db.Set<AgentKey>()
             .Where(k => agentIds.Contains(k.AgentId) && (k.RevokedAt == null || k.RevokedAt > revokedSince))
             .Select(k => k.KeyHash)
-            .ToListAsync(cancellationToken);
+            .ToListAsync(CancellationToken.None);
         await invalidator.ForgetSharedAsync([.. hashes.Select(SharedCache.AgentKeyKey)]);
     }
 

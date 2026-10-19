@@ -61,6 +61,23 @@ public sealed class LocalRateLimiter(TimeProvider time)
         }
     }
 
+    /// <inheritdoc cref="IRateLimitStore.ReleaseAsync"/>
+    public void Release(IReadOnlyList<RateLimitCounter> counted)
+    {
+        ArgumentNullException.ThrowIfNull(counted);
+        var now = time.GetUtcNow();
+        lock (gate)
+        {
+            foreach (var counter in counted)
+            {
+                if (counters.TryGetValue(counter.Key, out var window) && window.ResetAt > now && window.Count > 0)
+                {
+                    counters[counter.Key] = window with { Count = window.Count - 1 };
+                }
+            }
+        }
+    }
+
     // The caller holds the lock.
     private TimeSpan WaitLocked(IReadOnlyList<RateLimitCounter> wanted, DateTimeOffset now)
     {

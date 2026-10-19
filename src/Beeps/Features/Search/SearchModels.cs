@@ -82,8 +82,8 @@ public interface ISearchStore
     /// <summary>Visible actors that have a handle, after <paramref name="after"/> in id order.</summary>
     Task<IReadOnlyList<ActorDocument>> ListActorsAsync(Guid? after, int limit, CancellationToken cancellationToken);
 
-    /// <summary>The visible ones among these actors, in no particular order.</summary>
-    Task<IReadOnlyList<ActorSearchRow>> GetActorsAsync(IReadOnlyCollection<Guid> actorIds, CancellationToken cancellationToken);
+    /// <summary>The visible ones among these actors, none the viewer blocked, in no particular order.</summary>
+    Task<IReadOnlyList<ActorSearchRow>> GetActorsAsync(IReadOnlyCollection<Guid> actorIds, Guid? viewerId, CancellationToken cancellationToken);
 
     /// <summary>
     /// Findable actors whose handle starts with <paramref name="normalizedPrefix"/>, for completing an @mention: the

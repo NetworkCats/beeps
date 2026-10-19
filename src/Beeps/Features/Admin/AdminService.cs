@@ -102,7 +102,7 @@ public sealed partial class AdminService(
             return Result.Success;
         }, cancellationToken);
         await ForgetAsync(userId, result, endSessions: true, cancellationToken);
-        await agents.ForgetKeysAsync(agentIds, cancellationToken);
+        await agents.ForgetKeysAsync(agentIds);
         if (result.IsSuccess)
         {
             await live.AuthorsRemovedAsync([userId, .. agentIds], cancellationToken);
@@ -164,7 +164,7 @@ public sealed partial class AdminService(
             return Result.Success;
         }, cancellationToken);
         await ForgetAsync(userId, result, endSessions: true, cancellationToken);
-        await agents.ForgetKeysAsync(agentIds, cancellationToken);
+        await agents.ForgetKeysAsync(agentIds);
         if (result.IsSuccess)
         {
             await live.AuthorsRemovedAsync([userId, .. agentIds], cancellationToken);
@@ -484,7 +484,7 @@ public sealed partial class AdminService(
             cancellationToken);
         if (result.IsSuccess)
         {
-            await agents.ForgetKeysAsync([agent.Id], cancellationToken);
+            await agents.ForgetKeysAsync([agent.Id]);
             if (agent.OwnerId is { } ownerId)
             {
                 await live.AgentsChangedAsync(ownerId, cancellationToken);
@@ -507,7 +507,7 @@ public sealed partial class AdminService(
 
         if (endSessions)
         {
-            await sessions.ForgetAllAsync(userId, cancellationToken);
+            await sessions.ForgetAllAsync(userId);
         }
 
         await accounts.ForgetAccountAsync(userId, cancellationToken);

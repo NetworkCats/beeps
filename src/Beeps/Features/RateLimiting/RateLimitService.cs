@@ -69,6 +69,31 @@ public sealed partial class RateLimitService(
         }
     }
 
+    /// <summary>
+    /// Takes back the request <see cref="CheckAsync(string, string, CancellationToken)"/> counted for the partition, once
+    /// it turned out not to be what the policy counts (a password that was right, for one that counts wrong ones).
+    /// </summary>
+    public async Task ReleaseAsync(string policy, string partition, CancellationToken cancellationToken)
+    {
+        var current = options.CurrentValue;
+        if (!current.Enabled)
+        {
+            return;
+        }
+
+        var counters = Counters([new RateLimitTarget(policy, partition)], current);
+        try
+        {
+            await store.ReleaseAsync(counters, cancellationToken);
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            // Counted here, then, while Valkey was out (CheckAsync); at worst one request too many stays counted.
+            LogStoreFailed(logger, exception);
+            fallback.Release(counters);
+        }
+    }
+
     private static List<RateLimitCounter> Counters(IReadOnlyList<RateLimitTarget> targets, RateLimitOptions current)
     {
         var counters = new List<RateLimitCounter>();

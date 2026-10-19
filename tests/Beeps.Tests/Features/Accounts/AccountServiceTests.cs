@@ -439,10 +439,10 @@ public sealed partial class AccountServiceTests
         store.FindUserByEmailAsync("tom@example.com", Arg.Any<CancellationToken>()).Returns(user);
         store.FindUserByHandleAsync("tom", Arg.Any<CancellationToken>()).Returns(user);
 
-        var result = await CreateService().LoginAsync(login, "correct horse", TestData.Origin, TestSupport.Ct);
+        var result = await CreateService().LoginAsync(new LoginRequest(login, "correct horse"), TestData.Origin, TestSupport.Ct);
 
-        Assert.Equal(user.Id, result.Value.UserId);
-        Assert.Equal("tom", result.Value.Handle);
+        Assert.Equal(user.Id, result.Value.Account?.UserId);
+        Assert.Equal("tom", result.Value.Account?.Handle);
     }
 
     [Fact]
@@ -451,8 +451,8 @@ public sealed partial class AccountServiceTests
         store.FindUserByHandleAsync("tom", Arg.Any<CancellationToken>()).Returns(TestData.User(passwordHash: "hashed:correct horse"));
         var service = CreateService();
 
-        var wrongPassword = await service.LoginAsync("tom", "nope", TestData.Origin, TestSupport.Ct);
-        var unknown = await service.LoginAsync("nobody", "nope", TestData.Origin, TestSupport.Ct);
+        var wrongPassword = await service.LoginAsync(new LoginRequest("tom", "nope"), TestData.Origin, TestSupport.Ct);
+        var unknown = await service.LoginAsync(new LoginRequest("nobody", "nope"), TestData.Origin, TestSupport.Ct);
 
         Assert.Equal(AccountErrorCodes.InvalidCredentials, wrongPassword.Error?.Code);
         Assert.Equal(wrongPassword.Error, unknown.Error);
@@ -461,11 +461,24 @@ public sealed partial class AccountServiceTests
     }
 
     [Fact]
-    public async Task LoginIsLimitedByIpAndByAccount()
+    public async Task LoginIsLimitedByIpAndByAccountApart()
     {
-        await CreateService().LoginAsync("Tom", "x", TestData.Origin, TestSupport.Ct);
+        await CreateService().LoginAsync(new LoginRequest("Tom", "x"), TestData.Origin, TestSupport.Ct);
 
-        await rateLimitStore.Received(1).TryAcquireAsync(Arg.Is<IReadOnlyList<RateLimitCounter>>(c => c.Count == 2 && c[0].Key != c[1].Key), Arg.Any<CancellationToken>());
+        // Apart: past the account's limit the attempt goes on, and still counts from its IP.
+        await rateLimitStore.Received(1).TryAcquireAsync(Arg.Is<IReadOnlyList<RateLimitCounter>>(c => c.Single().Key.StartsWith("Login:", StringComparison.Ordinal)), Arg.Any<CancellationToken>());
+        await rateLimitStore.Received(1).TryAcquireAsync(Arg.Is<IReadOnlyList<RateLimitCounter>>(c => c.Single().Key.StartsWith("LoginAccount:", StringComparison.Ordinal)), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task PastItsLimitAnIpIsRefused()
+    {
+        Deny(RateLimitPolicies.Login);
+
+        var result = await CreateService().LoginAsync(new LoginRequest("tom", "correct horse", "token"), TestData.Origin, TestSupport.Ct);
+
+        Assert.Equal(ErrorKind.RateLimited, result.Error?.Kind);
+        hasher.DidNotReceiveWithAnyArgs().VerifyHashedPassword(default!, default!, default!);
     }
 
     [Fact]
@@ -478,14 +491,161 @@ public sealed partial class AccountServiceTests
         rateLimitStore.TryAcquireAsync(Arg.Do<IReadOnlyList<RateLimitCounter>>(calls.Add), Arg.Any<CancellationToken>()).Returns(RateLimitDecision.Allowed);
         var service = CreateService();
 
-        await service.LoginAsync("tom@example.com", "x", TestData.Origin, TestSupport.Ct);
-        await service.LoginAsync("Tom", "x", TestData.Origin, TestSupport.Ct);
-        await service.LoginAsync("nobody", "x", TestData.Origin, TestSupport.Ct);
+        await service.LoginAsync(new LoginRequest("tom@example.com", "x"), TestData.Origin, TestSupport.Ct);
+        await service.LoginAsync(new LoginRequest("Tom", "x"), TestData.Origin, TestSupport.Ct);
+        await service.LoginAsync(new LoginRequest("nobody", "x"), TestData.Origin, TestSupport.Ct);
 
-        Assert.Equal(AccountCounterKey(user), calls[0][1].Key);
-        Assert.Equal(AccountCounterKey(user), calls[1][1].Key);
+        // Each attempt counts by IP, then by account.
+        Assert.Equal(AccountCounterKey(user), calls[1].Single().Key);
+        Assert.Equal(AccountCounterKey(user), calls[3].Single().Key);
         // A name no account has is still counted, on a counter of its own.
-        Assert.NotEqual(AccountCounterKey(user), calls[2][1].Key);
+        Assert.StartsWith($"{RateLimitPolicies.LoginAccount}:", calls[5].Single().Key, StringComparison.Ordinal);
+        Assert.NotEqual(AccountCounterKey(user), calls[5].Single().Key);
+    }
+
+    [Fact]
+    public async Task OnlyWrongPasswordsStayCountedAgainstTheAccount()
+    {
+        store.FindUserByHandleAsync("tom", Arg.Any<CancellationToken>()).Returns(TestData.User(passwordHash: "hashed:correct horse"));
+        var service = CreateService();
+
+        await service.LoginAsync(new LoginRequest("tom", "wrong"), TestData.Origin, TestSupport.Ct);
+        await rateLimitStore.DidNotReceiveWithAnyArgs().ReleaseAsync(default!, TestSupport.Ct);
+        var result = await service.LoginAsync(new LoginRequest("tom", "correct horse"), TestData.Origin, TestSupport.Ct);
+
+        Assert.NotNull(result.Value.Account);
+        // The place the right password took on the account's counter is given back; its IP's stays taken.
+        await rateLimitStore.Received(1).ReleaseAsync(Arg.Is<IReadOnlyList<RateLimitCounter>>(c => c.Single().Key.StartsWith("LoginAccount:", StringComparison.Ordinal)), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task PastItsWrongPasswordsAnAccountAsksForTurnstileInsteadOfLockingUp()
+    {
+        store.FindUserByHandleAsync("tom", Arg.Any<CancellationToken>()).Returns(TestData.User(passwordHash: "hashed:correct horse"));
+        Deny(RateLimitPolicies.LoginAccount);
+
+        var result = await CreateService().LoginAsync(new LoginRequest("tom", "correct horse"), TestData.Origin, TestSupport.Ct);
+
+        Assert.Equal(AccountErrorCodes.CaptchaRequired, result.Error?.Code);
+        Assert.NotEqual(ErrorKind.RateLimited, result.Error?.Kind);
+        hasher.DidNotReceiveWithAnyArgs().VerifyHashedPassword(default!, default!, default!);
+        // Turnstile first: no email before it passed.
+        Assert.Empty(sentCodes);
+    }
+
+    [Fact]
+    public async Task PastItsWrongPasswordsAFailedTurnstileGoesNoFurther()
+    {
+        store.FindUserByHandleAsync("tom", Arg.Any<CancellationToken>()).Returns(TestData.User(passwordHash: "hashed:correct horse"));
+        Deny(RateLimitPolicies.LoginAccount);
+        captcha.VerifyAsync("bad", "203.0.113.7", Arg.Any<CancellationToken>()).Returns(false);
+
+        var result = await CreateService().LoginAsync(new LoginRequest("tom", "correct horse", "bad"), TestData.Origin, TestSupport.Ct);
+
+        Assert.Equal(AccountErrorCodes.CaptchaFailed, result.Error?.Code);
+        hasher.DidNotReceiveWithAnyArgs().VerifyHashedPassword(default!, default!, default!);
+        Assert.Empty(sentCodes);
+    }
+
+    [Fact]
+    public async Task PastItsWrongPasswordsTheRightPasswordSendsACodeToTheAccountsAddressAndSignsNobodyInYet()
+    {
+        var user = TestData.User(passwordHash: "hashed:correct horse");
+        store.FindUserByHandleAsync("tom", Arg.Any<CancellationToken>()).Returns(user);
+        Deny(RateLimitPolicies.LoginAccount);
+
+        var result = await CreateService().LoginAsync(new LoginRequest("tom", "correct horse", "token"), TestData.Origin, TestSupport.Ct);
+
+        Assert.Null(result.Value.Account);
+        var sent = Assert.Single(sentCodes);
+        Assert.Equal((EmailCodePurpose.SignIn, user.Email), (sent.Purpose, sent.To));
+    }
+
+    [Theory]
+    [InlineData("tom", "wrong")]
+    [InlineData("nobody", "correct horse")]
+    public async Task PastItsWrongPasswordsAWrongPasswordOrNameLooksJustTheSameButSendsNothing(string login, string password)
+    {
+        store.FindUserByHandleAsync("tom", Arg.Any<CancellationToken>()).Returns(TestData.User(passwordHash: "hashed:correct horse"));
+        Deny(RateLimitPolicies.LoginAccount);
+
+        var result = await CreateService().LoginAsync(new LoginRequest(login, password, "token"), TestData.Origin, TestSupport.Ct);
+
+        Assert.Same(LoginOutcome.CodeSent, result.Value);
+        Assert.Empty(sentCodes);
+        // An unknown name still paid for a hash check.
+        hasher.ReceivedWithAnyArgs(1).VerifyHashedPassword(default!, default!, default!);
+    }
+
+    [Fact]
+    public async Task PastItsWrongPasswordsABannedAccountGetsNoCode()
+    {
+        var user = TestData.User(passwordHash: "hashed:correct horse");
+        user.BannedAt = TestData.Now;
+        store.FindUserByHandleAsync("tom", Arg.Any<CancellationToken>()).Returns(user);
+        Deny(RateLimitPolicies.LoginAccount);
+
+        var result = await CreateService().LoginAsync(new LoginRequest("tom", "correct horse", "token"), TestData.Origin, TestSupport.Ct);
+
+        Assert.Same(LoginOutcome.CodeSent, result.Value);
+        Assert.Empty(sentCodes);
+    }
+
+    [Fact]
+    public async Task PastItsWrongPasswordsACodeSentAMinuteAgoStillStands()
+    {
+        var user = TestData.User(passwordHash: "hashed:correct horse");
+        store.FindUserByHandleAsync("tom", Arg.Any<CancellationToken>()).Returns(user);
+        store.FindEmailCodeAsync(EmailCodePurpose.SignIn, user.NormalizedEmail, Arg.Any<CancellationToken>())
+            .Returns(new EmailCode { Purpose = EmailCodePurpose.SignIn, NormalizedEmail = user.NormalizedEmail, CodeHash = "x", CreatedAt = TestData.Now.AddSeconds(-30) });
+        Deny(RateLimitPolicies.LoginAccount);
+
+        var result = await CreateService().LoginAsync(new LoginRequest("tom", "correct horse", "token"), TestData.Origin, TestSupport.Ct);
+
+        Assert.Same(LoginOutcome.CodeSent, result.Value);
+        Assert.Empty(sentCodes);
+    }
+
+    [Fact]
+    public async Task TheCodeFinishesSigningInOnce()
+    {
+        var user = TestData.User(passwordHash: "hashed:correct horse");
+        var (code, stored) = await IssueSignInCodeAsync(user);
+        var service = CreateService();
+
+        var wrong = await service.LoginWithCodeAsync("tom", code == "000000" ? "111111" : "000000", TestSupport.Ct);
+        var result = await service.LoginWithCodeAsync("tom", code, TestSupport.Ct);
+
+        Assert.Equal(AccountErrorCodes.CodeInvalid, wrong.Error?.Code);
+        Assert.Equal(user.Id, result.Value.UserId);
+        store.Received(1).RemoveEmailCode(stored);
+    }
+
+    [Fact]
+    public async Task ACodeForNoAccountOrNoneAtAllSignsNobodyIn()
+    {
+        store.FindUserByHandleAsync("tom", Arg.Any<CancellationToken>()).Returns(TestData.User());
+        var service = CreateService();
+
+        var unknown = await service.LoginWithCodeAsync("nobody", "123456", TestSupport.Ct);
+        var none = await service.LoginWithCodeAsync("tom", "123456", TestSupport.Ct);
+        var malformed = await service.LoginWithCodeAsync("tom", "12", TestSupport.Ct);
+
+        Assert.Equal(AccountErrorCodes.CodeInvalid, unknown.Error?.Code);
+        Assert.Equal(AccountErrorCodes.CodeInvalid, none.Error?.Code);
+        Assert.Equal([AccountFields.Code], malformed.Error?.Fields?.Keys);
+    }
+
+    [Fact]
+    public async Task TheCurrentPasswordAskedAgainIsNotRefusedForAttemptsAtSigningIn()
+    {
+        var user = TestData.User(passwordHash: "hashed:old password");
+        store.FindUserAsync(user.Id, Arg.Any<CancellationToken>()).Returns(user);
+        Deny(RateLimitPolicies.LoginAccount);
+
+        var result = await CreateService().ChangePasswordAsync(user.Id, null, "old password", "new password!", TestSupport.Ct);
+
+        Assert.True(result.IsSuccess);
     }
 
     [Fact]
@@ -495,7 +655,7 @@ public sealed partial class AccountServiceTests
         user.BannedAt = TestData.Now;
         store.FindUserByHandleAsync("tom", Arg.Any<CancellationToken>()).Returns(user);
 
-        var result = await CreateService().LoginAsync("tom", "correct horse", TestData.Origin, TestSupport.Ct);
+        var result = await CreateService().LoginAsync(new LoginRequest("tom", "correct horse"), TestData.Origin, TestSupport.Ct);
 
         Assert.Equal(AccountErrorCodes.AccountBanned, result.Error?.Code);
     }
@@ -507,7 +667,7 @@ public sealed partial class AccountServiceTests
         store.FindUserByHandleAsync("tom", Arg.Any<CancellationToken>()).Returns(user);
         hasher.VerifyHashedPassword(user, "old-format", "correct horse").Returns(PasswordVerificationResult.SuccessRehashNeeded);
 
-        var result = await CreateService().LoginAsync("tom", "correct horse", TestData.Origin, TestSupport.Ct);
+        var result = await CreateService().LoginAsync(new LoginRequest("tom", "correct horse"), TestData.Origin, TestSupport.Ct);
 
         Assert.True(result.IsSuccess);
         Assert.Equal("hashed:correct horse", user.PasswordHash);
@@ -517,7 +677,7 @@ public sealed partial class AccountServiceTests
     [Fact]
     public async Task LoginNeedsBothFields()
     {
-        var result = await CreateService().LoginAsync(" ", "", TestData.Origin, TestSupport.Ct);
+        var result = await CreateService().LoginAsync(new LoginRequest(" ", ""), TestData.Origin, TestSupport.Ct);
 
         Assert.Equal([AccountFields.Login, AccountFields.Password], result.Error?.Fields?.Keys.Order());
     }
@@ -571,7 +731,7 @@ public sealed partial class AccountServiceTests
         Received.InOrder(() =>
         {
             sessions.RevokeAllAsync(user.Id, TestData.Now, Arg.Any<CancellationToken>());
-            sessions.ForgetAllAsync(user.Id, Arg.Any<CancellationToken>());
+            sessions.ForgetAllAsync(user.Id);
             store.ForgetAccountAsync(user.Id, Arg.Any<CancellationToken>());
         });
         // Tabs still open in the old sessions sign out.
@@ -748,7 +908,7 @@ public sealed partial class AccountServiceTests
         Received.InOrder(() =>
         {
             sessions.RevokeOthersAsync(user.Id, current, TestData.Now, Arg.Any<CancellationToken>());
-            sessions.ForgetAllAsync(user.Id, Arg.Any<CancellationToken>());
+            sessions.ForgetAllAsync(user.Id);
         });
         await sessions.DidNotReceiveWithAnyArgs().RevokeAllAsync(default, default, TestSupport.Ct);
         // The tabs of the other sessions sign out.
@@ -782,7 +942,7 @@ public sealed partial class AccountServiceTests
     }
 
     [Fact]
-    public async Task PasswordGuessesShareTheAccountsSignInLimit()
+    public async Task PasswordGuessesAreLimitedPerAccount()
     {
         var user = TestData.User(passwordHash: "hashed:old password");
         store.FindUserAsync(user.Id, Arg.Any<CancellationToken>()).Returns(user);
@@ -793,8 +953,8 @@ public sealed partial class AccountServiceTests
         var result = await CreateService().ChangePasswordAsync(user.Id, Guid.NewGuid(), "old password", "new password!", TestSupport.Ct);
 
         Assert.Equal(ErrorKind.RateLimited, result.Error?.Kind);
-        // The same counter a sign-in to the account uses, by address or username.
-        Assert.Equal(AccountCounterKey(user), Assert.Single(counted!).Key);
+        // The account's own, apart from signing in, which anyone can run up (and is not refused past it).
+        Assert.Equal(PasswordCheckCounterKey(user), Assert.Single(counted!).Key);
         hasher.DidNotReceiveWithAnyArgs().VerifyHashedPassword(default!, default!, default!);
     }
 
@@ -844,7 +1004,7 @@ public sealed partial class AccountServiceTests
         user.PasswordHash = null;
         store.FindUserByHandleAsync("tom", Arg.Any<CancellationToken>()).Returns(user);
 
-        var result = await CreateService().LoginAsync("tom", "anything", TestData.Origin, TestSupport.Ct);
+        var result = await CreateService().LoginAsync(new LoginRequest("tom", "anything"), TestData.Origin, TestSupport.Ct);
 
         Assert.Equal(AccountErrorCodes.InvalidCredentials, result.Error?.Code);
     }
@@ -884,7 +1044,7 @@ public sealed partial class AccountServiceTests
     }
 
     [Fact]
-    public async Task EmailChangePasswordGuessesShareTheAccountsSignInLimit()
+    public async Task EmailChangePasswordGuessesAreLimitedPerAccount()
     {
         var user = TestData.User(passwordHash: "hashed:old password");
         store.FindUserAsync(user.Id, Arg.Any<CancellationToken>()).Returns(user);
@@ -895,7 +1055,7 @@ public sealed partial class AccountServiceTests
         var result = await CreateService().RequestEmailChangeAsync(user.Id, "new@example.org", "old password", TestData.Origin, TestSupport.Ct);
 
         Assert.Equal(ErrorKind.RateLimited, result.Error?.Kind);
-        Assert.Equal(AccountCounterKey(user), Assert.Single(counted!).Key);
+        Assert.Equal(PasswordCheckCounterKey(user), Assert.Single(counted!).Key);
         hasher.DidNotReceiveWithAnyArgs().VerifyHashedPassword(default!, default!, default!);
     }
 
@@ -1132,10 +1292,32 @@ public sealed partial class AccountServiceTests
     }
 
     /// <summary>The account's sign-in counter, as the store sees it (keys hold a hash of the partition).</summary>
-    private static string AccountCounterKey(User user)
+    private static string AccountCounterKey(User user) => CounterKey(RateLimitPolicies.LoginAccount, user);
+
+    /// <summary>The account's counter for its current password asked again.</summary>
+    private static string PasswordCheckCounterKey(User user) => CounterKey(RateLimitPolicies.Login, user);
+
+    private static string CounterKey(string policy, User user)
     {
         var partition = System.Text.Encoding.UTF8.GetBytes(RateLimitPartitions.Account(user.Id));
-        return $"{RateLimitPolicies.Login}:60:{Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(partition).AsSpan(0, 16))}";
+        return $"{policy}:60:{Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(partition).AsSpan(0, 16))}";
+    }
+
+    /// <summary>Has every counter of the policy refuse.</summary>
+    private void Deny(string policy) =>
+        rateLimitStore.TryAcquireAsync(Arg.Is<IReadOnlyList<RateLimitCounter>>(c => c.Any(x => x.Key.StartsWith(policy + ":", StringComparison.Ordinal))), Arg.Any<CancellationToken>())
+            .Returns(RateLimitDecision.Denied(TimeSpan.FromMinutes(1)));
+
+    /// <summary>Issues a real code through the service (signing in past the account's wrong passwords).</summary>
+    private async Task<(string Code, EmailCode Stored)> IssueSignInCodeAsync(User user)
+    {
+        EmailCode? stored = null;
+        store.FindUserByHandleAsync(user.Actor.NormalizedHandle!, Arg.Any<CancellationToken>()).Returns(user);
+        store.When(s => s.AddEmailCode(Arg.Any<EmailCode>())).Do(ci => stored = ci.Arg<EmailCode>());
+        Deny(RateLimitPolicies.LoginAccount);
+        await CreateService().LoginAsync(new LoginRequest(user.Actor.Handle, "correct horse", "token"), TestData.Origin, TestSupport.Ct);
+        store.FindEmailCodeAsync(EmailCodePurpose.SignIn, user.NormalizedEmail, Arg.Any<CancellationToken>()).Returns(stored);
+        return (Unprotect(sentCodes[^1]), stored!);
     }
 
     private string Unprotect(AccountCodeEmail email) =>

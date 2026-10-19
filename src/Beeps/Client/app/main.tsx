@@ -24,6 +24,14 @@ registerPages();
 
 const loadLive = () => import('./live.ts');
 
+/** Follows the site live once its code has loaded; a failed load (the network dropped a moment) is tried again. */
+function followLive(attempt = 0): void {
+  loadLive().then(
+    (live) => live.startLive(),
+    () => window.setTimeout(() => followLive(attempt + 1), Math.min(60_000, 1000 * 2 ** attempt)),
+  );
+}
+
 /** Once the page has loaded and the browser has nothing better to do: every script and stylesheet this person may use. */
 function fetchAhead(): void {
   const idle = window.requestIdleCallback ?? ((run: () => void) => window.setTimeout(run, 200));
@@ -58,7 +66,7 @@ const drawn = document.querySelector('#main[data-app-shell]')
   : loadStrings().then(() => mountIslands(document.body));
 // Signed in, the page follows the site live, from when its islands have said which beeps they show.
 if (document.body.dataset.liveStream) {
-  void drawn.catch(() => {}).then(() => loadLive()).then((live) => live.startLive());
+  void drawn.catch(() => {}).then(() => followLive());
 }
 // Signed out, or in as someone else, in another tab: this page is shown again as it now is.
 initAuthSync(() => void showAnew());

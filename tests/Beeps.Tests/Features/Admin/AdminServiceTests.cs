@@ -108,12 +108,12 @@ public sealed class AdminServiceTests
         Assert.True(result.IsSuccess);
         Assert.Equal(TestData.Now, user.BannedAt);
         await sessions.Received(1).RevokeAllAsync(user.Id, TestData.Now, Arg.Any<CancellationToken>());
-        await sessions.Received(1).ForgetAllAsync(user.Id, Arg.Any<CancellationToken>());
+        await sessions.Received(1).ForgetAllAsync(user.Id);
         await accounts.Received(1).ForgetAccountAsync(user.Id, Arg.Any<CancellationToken>());
         Assert.Equal([AdvisoryLocks.Admins], unitOfWork.Locks);
         var entry = Assert.Single(audit);
         Assert.Equal((AuditActions.BanUser, AdminId, user.Id), (entry.Action, entry.AdminId, entry.TargetId));
-        await agents.Received(1).ForgetKeysAsync(agentIds, Arg.Any<CancellationToken>());
+        await agents.Received(1).ForgetKeysAsync(agentIds);
         Assert.Equal(1, unitOfWork.Saves);
         // Open pages drop the beeps of the user and their agents.
         Assert.Equal([$$"""{"actor_ids":["{{user.Id:D}}","{{agentIds[0]:D}}","{{agentIds[1]:D}}"]}"""], TestData.LiveEvents(liveEvents, LiveEventTypes.AuthorsRemoved));
@@ -166,7 +166,7 @@ public sealed class AdminServiceTests
         var revoke = await service.SetAdminAsync(AdminId, user.Id, false, TestSupport.Ct);
 
         Assert.All([ban.Error, delete.Error, revoke.Error], e => Assert.Equal(AdminErrorCodes.LastAdmin, e?.Code));
-        await sessions.DidNotReceiveWithAnyArgs().ForgetAllAsync(default, TestSupport.Ct);
+        await sessions.DidNotReceiveWithAnyArgs().ForgetAllAsync(default);
         Assert.True(user.IsAdmin);
         Assert.Null(user.BannedAt);
         Assert.Empty(audit);
@@ -246,7 +246,7 @@ public sealed class AdminServiceTests
         Assert.Equal(TestData.Now, user.Actor.DeletedAt);
         Assert.False(user.IsAdmin);
         await sessions.Received(1).RevokeAllAsync(user.Id, TestData.Now, Arg.Any<CancellationToken>());
-        await sessions.Received(1).ForgetAllAsync(user.Id, Arg.Any<CancellationToken>());
+        await sessions.Received(1).ForgetAllAsync(user.Id);
         Assert.Equal(AuditActions.DeleteUser, Assert.Single(audit).Action);
     }
 
@@ -359,7 +359,7 @@ public sealed class AdminServiceTests
         var entry = Assert.Single(audit);
         Assert.Equal((AuditActions.DisableAgent, AuditTargets.Agent, agent.Id), (entry.Action, entry.TargetType, entry.TargetId));
         Assert.Equal(1, unitOfWork.Saves);
-        await agents.Received(1).ForgetKeysAsync(Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Single() == agent.Id), Arg.Any<CancellationToken>());
+        await agents.Received(1).ForgetKeysAsync(Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Single() == agent.Id));
     }
 
     [Fact]

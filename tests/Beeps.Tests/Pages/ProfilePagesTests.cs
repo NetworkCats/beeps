@@ -350,6 +350,19 @@ public sealed class ProfilePagesTests : IDisposable
         PageAssert.NoInlineScriptsOrStyles(html);
     }
 
+    [Fact]
+    public async Task ARequestNoHandlerTakesIsRefusedNotDrawnWithoutItsModel()
+    {
+        ArrangeProfile("tom");
+        using var client = WebAuth.NewClient(factory);
+
+        // TRACE passes antiforgery; the page has no handler for it, and drawn anyway it threw on its empty model.
+        using var request = new HttpRequestMessage(HttpMethod.Trace, new Uri("/@tom", UriKind.Relative));
+        using var response = await client.SendAsync(request, TestSupport.Ct);
+
+        Assert.Equal(HttpStatusCode.MethodNotAllowed, response.StatusCode);
+    }
+
     private ActorRow ArrangeProfile(string handle, string? bio = null)
     {
         var actor = TestBeeps.Human(handle);

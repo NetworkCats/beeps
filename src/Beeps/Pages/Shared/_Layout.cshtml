@@ -16,7 +16,7 @@
     var appShell = ViewData[PageShell.AppShell] is true;
     var (notice, alert) = appShell ? (null, null) : Notices.Take(Context, TempData);
     // The pages that are themselves the way in: the shell offers no other sign-in or sign-up there.
-    var offerSignIn = !signedIn && page is not ("/Account/Login" or "/Account/Register" or "/Account/ExternalComplete" or "/Account/ForgotPassword" or "/Account/ResetPassword");
+    var offerSignIn = !signedIn && page is not ("/Account/Login" or "/Account/Register" or "/Account/ExternalComplete" or "/Account/LoginCode" or "/Account/ForgotPassword" or "/Account/ResetPassword");
     // Light or dark when picked by hand (settings, the footer, the top bar's menu); otherwise the device's.
     var theme = Themes.Scheme(Themes.For(User, Context.Request));
     // What only signed-in people see, and the admin pages, have stylesheets of their own (Client/scss): linked where

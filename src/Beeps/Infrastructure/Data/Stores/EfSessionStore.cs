@@ -52,9 +52,9 @@ public sealed class EfSessionStore(BeepsDbContext db, HybridCache cache, CacheIn
             .Where(s => s.UserId == userId && s.Id != keepSessionId && s.RevokedAt == null)
             .ExecuteUpdateAsync(s => s.SetProperty(x => x.RevokedAt, now), cancellationToken);
 
-    public Task ForgetAllAsync(Guid userId, CancellationToken cancellationToken) => ForgetUsersAsync([userId], cancellationToken);
+    public Task ForgetAllAsync(Guid userId) => ForgetUsersAsync([userId]);
 
-    public async Task ForgetUsersAsync(IReadOnlyCollection<Guid> userIds, CancellationToken cancellationToken)
+    public async Task ForgetUsersAsync(IReadOnlyCollection<Guid> userIds)
     {
         if (userIds.Count == 0)
         {
@@ -68,7 +68,7 @@ public sealed class EfSessionStore(BeepsDbContext db, HybridCache cache, CacheIn
         var hashes = await db.Set<UserSession>()
             .Where(s => userIds.Contains(s.UserId) && s.ExpiresAt > now && (s.RevokedAt == null || s.RevokedAt > revokedSince))
             .Select(s => s.TokenHash)
-            .ToListAsync(cancellationToken);
+            .ToListAsync(CancellationToken.None);
         await invalidator.ForgetSharedAsync([.. hashes.Select(SharedCache.SessionKey)]);
     }
 

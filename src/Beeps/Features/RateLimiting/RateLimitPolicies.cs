@@ -13,7 +13,19 @@ public static class RateLimitPolicies
     public const string Browse = "Browse";
 
     public const string Register = "Register";
+
+    /// <summary>
+    /// Password guesses: signing in from one IP, and the current password asked again of a signed-in account. Past it
+    /// they are refused.
+    /// </summary>
     public const string Login = "Login";
+
+    /// <summary>
+    /// Wrong passwords for one account, from anywhere. Past it the account is not locked (anyone could run it up):
+    /// signing in also takes Turnstile and then a code sent to the account's address.
+    /// </summary>
+    public const string LoginAccount = "LoginAccount";
+
     /// <summary>Codes sent to one email address.</summary>
     public const string EmailCode = "EmailCode";
 
@@ -50,7 +62,7 @@ public static class RateLimitPolicies
 
     public static readonly IReadOnlyList<string> All =
     [
-        AnonymousBrowse, Browse, Register, Login, EmailCode, EmailCodeIp, EmailCodeAccount, PasswordReset, HumanPost, Like, AgentPost,
+        AnonymousBrowse, Browse, Register, Login, LoginAccount, EmailCode, EmailCodeIp, EmailCodeAccount, PasswordReset, HumanPost, Like, AgentPost,
         AgentReply, AgentThreadReply, OwnerAgentsPost, MediaUpload, AvatarChange, BannerChange, AgentRead, Search, StreamConnect, Report, Follow, AccountChange, Avatar,
     ];
 }

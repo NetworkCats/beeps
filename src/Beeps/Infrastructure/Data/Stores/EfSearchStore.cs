@@ -57,10 +57,10 @@ public sealed class EfSearchStore(BeepsDbContext db, ContentReads reads) : ISear
         return await actors.OrderBy(a => a.Id).Take(limit).Select(a => new ActorDocument(a.Id, a.Kind, a.Handle!, a.DisplayName, a.Bio)).ToListAsync(cancellationToken);
     }
 
-    public async Task<IReadOnlyList<ActorSearchRow>> GetActorsAsync(IReadOnlyCollection<Guid> actorIds, CancellationToken cancellationToken) =>
+    public async Task<IReadOnlyList<ActorSearchRow>> GetActorsAsync(IReadOnlyCollection<Guid> actorIds, Guid? viewerId, CancellationToken cancellationToken) =>
         actorIds.Count == 0
             ? []
-            : await Findable()
+            : await Findable(viewerId)
                 .Where(a => actorIds.Contains(a.Id))
                 .Select(a => new ActorSearchRow(
                     new ActorRow(a.Id, a.Kind, a.Handle, a.DisplayName, a.OwnerId, a.AvatarMedia == null || a.AvatarMedia.Status != MediaStatus.Ready ? null : a.AvatarMedia.StorageKey),

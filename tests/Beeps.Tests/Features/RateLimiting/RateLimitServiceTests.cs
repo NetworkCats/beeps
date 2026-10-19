@@ -138,6 +138,21 @@ public sealed class RateLimitServiceTests
         await store.DidNotReceiveWithAnyArgs().TryAcquireAsync(default!, TestSupport.Ct);
     }
 
+    [Fact]
+    public async Task DuringAStoreOutageAReleaseIsTakenBackHere()
+    {
+        store.TryAcquireAsync(default!, TestSupport.Ct).ThrowsAsyncForAnyArgs(new TimeoutException("valkey is down"));
+        store.ReleaseAsync(default!, TestSupport.Ct).ThrowsAsyncForAnyArgs(new TimeoutException("valkey is down"));
+        options.Policies["Outage"] = Policy((1, TimeSpan.FromMinutes(1)));
+        var service = CreateService();
+
+        await service.CheckAsync("Outage", "account:1", TestSupport.Ct);
+        await service.ReleaseAsync("Outage", "account:1", TestSupport.Ct);
+        var again = await service.CheckAsync("Outage", "account:1", TestSupport.Ct);
+
+        Assert.True(again.IsSuccess);
+    }
+
     private RateLimitService CreateService()
     {
         var monitor = Substitute.For<IOptionsMonitor<RateLimitOptions>>();

@@ -229,10 +229,13 @@ async function reconnect(): Promise<void> {
 
 /**
  * Another page is shown: the connection follows it from where it was, so nothing in between is lost. A page fetched
- * ahead may have been drawn before that, so it is followed from when it was drawn instead.
+ * ahead may have been drawn before that, and one gone back to was drawn when first shown, so these are followed from
+ * when they were drawn instead: the last event this tab saw passed over what concerned them while another page was up
+ * (and a page left too long ago is told to fetch everything again).
  */
 function followPage(event?: Event): void {
-  if ((event as CustomEvent<PageShown> | undefined)?.detail?.ahead) lastEventId = undefined;
+  const detail = (event as CustomEvent<PageShown> | undefined)?.detail;
+  if (detail?.ahead || detail?.restored) lastEventId = undefined;
   disconnect();
   closed = false;
   retryDelay = 0;

@@ -65,21 +65,30 @@ public sealed class EfMediaStore(BeepsDbContext db, PendingCacheChanges cacheCha
         // Media are never older than this, so it stands for "from the start".
         var (afterCreatedAt, afterId) = after is null ? (DateTimeOffset.UnixEpoch, Guid.Empty) : (after.CreatedAt, after.Id);
         // SKIP LOCKED passes over media a beep, an avatar or a banner is taking right now (see LockOwnedAsync).
-        var deleted = await db.Database
-            .SqlQuery<DeletedMedia>(
+        // Images of deleted beeps go too: deleting a beep takes its images off the media domain, not only off the page.
+        var ids = (await db.Database
+            .SqlQuery<Guid>(
                 $"""
-                DELETE FROM media WHERE id IN (
-                    SELECT m.id FROM media m
-                    WHERE m.created_at < {cutoff}
-                      AND m.created_at >= {afterCreatedAt} AND (m.created_at, m.id) > ({afterCreatedAt}, {afterId})
-                      AND NOT EXISTS (SELECT 1 FROM beep_media bm WHERE bm.media_id = m.id)
-                      AND NOT EXISTS (SELECT 1 FROM actors a WHERE a.avatar_media_id = m.id)
-                      AND NOT EXISTS (SELECT 1 FROM actors a WHERE a.banner_media_id = m.id)
-                    ORDER BY m.created_at, m.id
-                    LIMIT {batchSize}
-                    FOR UPDATE SKIP LOCKED)
-                RETURNING storage_key, created_at, id
+                SELECT m.id AS "Value" FROM media m
+                WHERE m.created_at < {cutoff}
+                  AND m.created_at >= {afterCreatedAt} AND (m.created_at, m.id) > ({afterCreatedAt}, {afterId})
+                  AND NOT EXISTS (SELECT 1 FROM beep_media bm JOIN beeps b ON b.id = bm.beep_id WHERE bm.media_id = m.id AND b.deleted_at IS NULL)
+                  AND NOT EXISTS (SELECT 1 FROM actors a WHERE a.avatar_media_id = m.id)
+                  AND NOT EXISTS (SELECT 1 FROM actors a WHERE a.banner_media_id = m.id)
+                ORDER BY m.created_at, m.id
+                LIMIT {batchSize}
+                FOR UPDATE SKIP LOCKED
                 """)
+            .ToListAsync(cancellationToken)).ToArray();
+        if (ids.Length == 0)
+        {
+            return new UnusedMediaBatch([], null);
+        }
+
+        // What still links them belongs to deleted beeps only, which nothing shows again.
+        await db.Database.ExecuteSqlAsync($"DELETE FROM beep_media WHERE media_id = ANY({ids})", cancellationToken);
+        var deleted = await db.Database
+            .SqlQuery<DeletedMedia>($"DELETE FROM media WHERE id = ANY({ids}) RETURNING storage_key, created_at, id")
             .ToListAsync(cancellationToken);
         var last = deleted.OrderBy(d => d.CreatedAt).ThenBy(d => d.Id).LastOrDefault();
         return new UnusedMediaBatch([.. deleted.Select(d => d.StorageKey)], last is null ? null : new MediaPosition(last.CreatedAt, last.Id));
