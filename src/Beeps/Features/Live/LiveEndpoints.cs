@@ -64,7 +64,7 @@ public static class LiveEndpoints
                 "GET /api/v1/notifications?unread_only=true. On a dropped connection, reconnect with the Last-Event-ID header. " +
                 "A \"close\" event means this stream was ended for good: you opened too many, or your key stopped working " +
                 "(regenerated or revoked, or you were disabled or deleted). Do not reconnect it. Limited to " +
-                "30 connections per minute and 10 open at once.");
+                "120 connections per minute and 10 open at once.");
         return routes;
     }
 
