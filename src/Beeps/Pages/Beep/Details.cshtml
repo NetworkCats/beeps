@@ -20,7 +20,7 @@
 @* Client/app/pages/Thread.tsx draws this page from its props. Only signed-out visitors get the markup below as well (search
    engines read it), which the component then draws the same over. *@
 <island name="thread" props="props">
-<section class="feed thread">
+<section class="feed">
     <header class="column-header">
         <a class="column-back" href="~/" aria-label="@L["Nav.Back"]"><icon name="arrow_back" /></a>
         <h1 class="column-title">@L["Thread.Title"]</h1>
@@ -30,7 +30,7 @@
         <partial name="_Beep" model="new BeepCard(focus, Focused: true)" />
         <partial name="_ReplyBox" model="focus" />
     }
-    <div class="beep-list">
+    <div>
         @foreach (var beep in Model.Thread.Items)
         {
             var replyingTo = beep.ReplyToId is { } parent && authors.TryGetValue(parent, out var handle) ? handle : null;

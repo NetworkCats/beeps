@@ -29,7 +29,7 @@
 <island name="site-options" props="props">
 @if (inMenu)
 {
-    <details class="menu @(rail ? "sidenav-more" : "topbar-more")">
+    <details class="@(rail ? "menu sidenav-more" : "menu")">
         @if (rail)
         {
             <summary class="sidenav-item" aria-label="@L["Nav.More"]"><icon name="more_horiz" /><span class="sidenav-label">@L["Nav.More"]</span></summary>

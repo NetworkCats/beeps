@@ -290,7 +290,7 @@ export function ProfilePage({ props }: IslandProps<ProfileProps>) {
   const actor = props.profile.actor;
   const handle = actor.handle ?? '';
   return (
-    <section class="feed profile">
+    <section class="feed">
       <header class="column-header">
         <a class="column-back" href="/" aria-label={t('Nav.Back')}>
           <Icon name="arrow_back" />
@@ -314,7 +314,7 @@ export function ProfilePage({ props }: IslandProps<ProfileProps>) {
       </div>
       <ProfileCard profile={props.profile} />
 
-      <nav class="tabs tabs-justify profile-tabs" aria-label={t('Profile.Tabs')}>
+      <nav class="tabs tabs-justify" aria-label={t('Profile.Tabs')}>
         <a class="tab" href={paths.profile(handle)} aria-current={props.tab ? undefined : 'page'}>
           {t('Profile.Beeps')}
         </a>

@@ -29,54 +29,26 @@
   }
 
   /* ---- Headings ------------------------------------------------------------ */
-  h1, h2, h3, h4, h5, h6, .#{$prefix}h1, .#{$prefix}h2, .#{$prefix}h3, .#{$prefix}h4, .#{$prefix}h5, .#{$prefix}h6 {
+  h1, h2, h3, h4, h5, h6 {
     font-family: var(--cui-font-heading);
     font-weight: var(--cui-weight-semibold);
     line-height: var(--cui-leading-tight);
     color: var(--cui-text);
   }
-  h1, .#{$prefix}h1 { font-size: var(--cui-text-4xl); letter-spacing: -0.02em; }
-  h2, .#{$prefix}h2 { font-size: var(--cui-text-2xl); letter-spacing: var(--cui-tracking-tight); }
-  h3, .#{$prefix}h3 { font-size: var(--cui-text-xl); letter-spacing: -0.01em; }
-  h4, .#{$prefix}h4 { font-size: var(--cui-text-lg); }
-  h5, .#{$prefix}h5 { font-size: var(--cui-text-base); }
-  h6, .#{$prefix}h6 { font-size: var(--cui-text-sm); }
+  h1 { font-size: var(--cui-text-4xl); letter-spacing: -0.02em; }
+  h2 { font-size: var(--cui-text-2xl); letter-spacing: var(--cui-tracking-tight); }
+  h3 { font-size: var(--cui-text-xl); letter-spacing: -0.01em; }
+  h4 { font-size: var(--cui-text-lg); }
+  h5 { font-size: var(--cui-text-base); }
+  h6 { font-size: var(--cui-text-sm); }
 
   @include mq(max-sm) {
-    h1, .#{$prefix}h1 { font-size: var(--cui-text-3xl); }
-    h2, .#{$prefix}h2 { font-size: var(--cui-text-xl); }
+    h1 { font-size: var(--cui-text-3xl); }
+    h2 { font-size: var(--cui-text-xl); }
   }
-
-  /* The "eyebrow": 12px uppercase tracked label above a section. */
-  .#{$prefix}eyebrow {
-    display: block;
-    font-size: var(--cui-text-xs);
-    font-weight: var(--cui-weight-semibold);
-    letter-spacing: var(--cui-tracking-wide);
-    text-transform: uppercase;
-    color: var(--cui-text-3);
-    line-height: var(--cui-leading-snug);
-  }
-  .#{$prefix}eyebrow-primary { color: var(--cui-primary-text); }
-  /* Section heading with a short brand rule under it (sidebar sections, landing blocks). */
-  .#{$prefix}heading-rule {
-    padding-block-end: var(--cui-space-2);
-    border-block-end: var(--cui-border-width) solid var(--cui-border);
-    background: linear-gradient(var(--cui-primary), var(--cui-primary)) no-repeat 0 100% / 2.5rem 2px;
-  }
-
-  .#{$prefix}display {
-    font-size: var(--cui-text-5xl);
-    font-weight: var(--cui-weight-semibold);
-    letter-spacing: -0.025em;
-    line-height: 1.1;
-    @include mq(max-sm) { font-size: var(--cui-text-4xl); }
-  }
-
-  .#{$prefix}lead { font-size: var(--cui-text-lg); color: var(--cui-text-2); line-height: var(--cui-leading-relaxed); }
 
   /* ---- Inline -------------------------------------------------------------- */
-  a:where(:not([class])) , .#{$prefix}link {
+  a:where(:not([class])) {
     color: var(--cui-link);
     text-decoration: underline;
     text-decoration-color: color-mix(in oklch, currentColor 35%, transparent);
@@ -84,20 +56,14 @@
     transition: color var(--cui-transition), text-decoration-color var(--cui-transition);
     &:hover { color: var(--cui-link-hover); text-decoration-color: currentColor; }
   }
-  .#{$prefix}link-quiet {
-    color: inherit;
-    text-decoration: none;
-    &:hover { color: var(--cui-link); text-decoration: underline; text-underline-offset: 0.15em; }
-  }
-
   strong, b { font-weight: var(--cui-weight-semibold); }
-  small, .#{$prefix}small { font-size: var(--cui-text-sm); }
+  small { font-size: var(--cui-text-sm); }
   mark { background: color-mix(in oklch, var(--cui-warning) 30%, transparent); color: inherit; padding: 0 0.15em; border-radius: var(--cui-radius-sm); }
   abbr { cursor: help; }
   time { font-variant-numeric: tabular-nums; }
 
-  code, kbd, samp, pre, .#{$prefix}mono { font-family: var(--cui-font-mono); font-size: 0.9em; }
-  :where(code):not(pre code, .#{$prefix}cmd code) {
+  code, kbd, samp, pre { font-family: var(--cui-font-mono); font-size: 0.9em; }
+  :where(code):not(pre code) {
     padding: 0.125em 0.35em;
     border-radius: var(--cui-radius-sm);
     background: var(--cui-primary-soft);
@@ -105,7 +71,7 @@
     font-size: 0.875em;
   }
 
-  kbd, .#{$prefix}kbd {
+  kbd {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -124,71 +90,9 @@
     white-space: nowrap;
   }
 
-  hr, .#{$prefix}divider {
+  hr {
     border: 0;
     border-top: var(--cui-border-width) solid var(--cui-divider);
     margin-block: var(--cui-space-6);
-  }
-
-  /* ---- Prose: long-form content (README, docs). Opt in with .prose. -------- */
-  .#{$prefix}prose {
-    font-size: var(--cui-text-base);
-    line-height: var(--cui-leading-relaxed);
-    color: var(--cui-text);
-    max-width: 72ch;
-
-    > * + * { margin-block-start: var(--cui-space-4); }
-    > h1, > h2, > h3, > h4 { margin-block-start: var(--cui-space-8); }
-    > h2 + *, > h3 + *, > h4 + * { margin-block-start: var(--cui-space-3); }
-    > h1 { font-size: var(--cui-text-3xl); }
-    > h2 { font-size: var(--cui-text-2xl); padding-block-end: var(--cui-space-2); border-block-end: var(--cui-border-width) solid var(--cui-border); }
-    > h3 { font-size: var(--cui-text-xl); }
-    > h4 { font-size: var(--cui-text-lg); }
-
-    ul, ol { padding-inline-start: 1.5em; }
-    ul { list-style: disc; }
-    ol { list-style: decimal; }
-    li + li { margin-block-start: var(--cui-space-1); }
-    li > ul, li > ol { margin-block-start: var(--cui-space-1); }
-
-    blockquote {
-      padding-inline-start: var(--cui-space-4);
-      border-inline-start: 3px solid var(--cui-border-strong);
-      color: var(--cui-text-2);
-    }
-
-    pre {
-      padding: var(--cui-space-4);
-      border-radius: var(--cui-radius);
-      background: var(--cui-surface-2);
-      border: var(--cui-border-width) solid var(--cui-border);
-      font-size: var(--cui-text-sm);
-      line-height: 1.6;
-      overflow-x: auto;
-      code { background: none; padding: 0; font-size: inherit; }
-    }
-
-    table {
-      width: 100%;
-      font-size: var(--cui-text-sm);
-      th, td { padding: var(--cui-space-2) var(--cui-space-3); border: var(--cui-border-width) solid var(--cui-border); text-align: start; }
-      th { background: var(--cui-surface-2); font-weight: var(--cui-weight-semibold); }
-    }
-
-    img { border-radius: var(--cui-radius); }
-    hr { margin-block: var(--cui-space-8); }
-    a:not([class]) { font-weight: var(--cui-weight-medium); }
-  }
-
-  .#{$prefix}prose-sm { font-size: var(--cui-text-sm); }
-  .#{$prefix}prose-full { max-width: none; }
-
-  /* Theme switch (theme.js): the page crossfades as a whole; element transitions are paused
-   * so colours don't drift in one by one. */
-  [data-cui-theming] *, [data-cui-theming] *::before, [data-cui-theming] *::after { transition: none !important; }
-  :root[data-cui-theming]::view-transition-old(root),
-  :root[data-cui-theming]::view-transition-new(root) {
-    animation-duration: var(--cui-duration-slow);
-    animation-timing-function: var(--cui-ease);
   }
 }

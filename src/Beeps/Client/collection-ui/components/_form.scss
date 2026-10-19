@@ -1,4 +1,4 @@
-/* Forms: fields, inputs, select, checkbox/radio/switch, range, file, input groups. */
+/* Forms: fields, inputs, select, checkbox/radio/switch, file. */
 @use "../foundation/layers";
 @use "../abstracts" as *;
 
@@ -10,13 +10,11 @@
     gap: var(--cui-space-1-5);
     min-width: 0;
   }
-  .#{$prefix}field-inline { flex-direction: row; align-items: center; gap: var(--cui-space-3); }
   .#{$prefix}label {
     font-size: var(--cui-text-sm);
     font-weight: var(--cui-weight-medium);
     color: var(--cui-text);
     line-height: var(--cui-leading-snug);
-    &.#{$prefix}required::after, .#{$prefix}required > &::after { content: " *"; color: var(--cui-danger); }
   }
   .#{$prefix}help { font-size: var(--cui-text-xs); color: var(--cui-text-3); line-height: var(--cui-leading-snug); }
   .#{$prefix}error { font-size: var(--cui-text-xs); color: var(--cui-danger-text); line-height: var(--cui-leading-snug); }
@@ -26,20 +24,6 @@
     --_border: var(--cui-danger);
     --_ring: var(--cui-ring-danger);
   }
-  .#{$prefix}field:has(.#{$prefix}success) :is(.#{$prefix}input, .#{$prefix}select, .#{$prefix}textarea) { --_border: var(--cui-success); --_ring: var(--cui-ring-success); }
-  .#{$prefix}success { font-size: var(--cui-text-xs); color: var(--cui-success-text); line-height: var(--cui-leading-snug); }
-
-  fieldset.#{$prefix}fieldset {
-    display: flex;
-    flex-direction: column;
-    gap: var(--cui-space-4);
-    padding: var(--cui-space-5);
-    border: var(--cui-border-width) solid var(--cui-border);
-    border-radius: var(--cui-radius-lg);
-    min-width: 0;
-    > legend { padding-inline: var(--cui-space-2); font-size: var(--cui-text-sm); font-weight: var(--cui-weight-semibold); }
-  }
-  .#{$prefix}form-row { display: grid; gap: var(--cui-space-4); grid-template-columns: repeat(auto-fit, minmax(min(14rem, 100%), 1fr)); }
   .#{$prefix}form-actions { display: flex; flex-wrap: wrap; gap: var(--cui-space-2); align-items: center; padding-block-start: var(--cui-space-2); }
 
   /* ---- Text-like controls ------------------------------------------------- */
@@ -77,8 +61,8 @@
     &[aria-invalid="true"], &:user-invalid { --_border: var(--cui-danger); --_ring: var(--cui-ring-danger); }
   }
   .#{$prefix}textarea { min-height: 6rem; padding-block: var(--cui-space-2-5); line-height: var(--cui-leading-base); }
-  .#{$prefix}input-sm, .#{$prefix}select-sm { --_height: var(--cui-control-height-sm); --_px: 0.625rem; }
-  .#{$prefix}input-lg, .#{$prefix}select-lg { --_height: var(--cui-control-height-lg); --_px: 1rem; font-size: var(--cui-text-base); }
+  .#{$prefix}input-sm { --_height: var(--cui-control-height-sm); --_px: 0.625rem; }
+  .#{$prefix}input-lg { --_height: var(--cui-control-height-lg); --_px: 1rem; font-size: var(--cui-text-base); }
   .#{$prefix}input-mono { font-family: var(--cui-font-mono); }
 
   /* The chevron is two gradient strokes in --_chevron, so it follows the theme, the brand
@@ -102,67 +86,6 @@
     &:hover:not(:disabled) { --_chevron: var(--cui-text-2); }
     &[multiple], &[size] { background-image: none; padding-inline-end: var(--_px); height: auto; }
     option { color: var(--cui-text); background: var(--cui-surface); }
-  }
-
-  /* ---- Input with leading/trailing adornments ----------------------------- */
-  .#{$prefix}input-group {
-    --_height: var(--cui-control-height);
-    display: flex;
-    align-items: stretch;
-    width: 100%;
-    > .#{$prefix}input, > .#{$prefix}select { flex: 1 1 auto; min-width: 0; border-radius: 0; }
-    > .#{$prefix}input:first-child, > .#{$prefix}select:first-child, > .#{$prefix}btn:first-child, > .#{$prefix}input-addon:first-child {
-      border-start-start-radius: var(--cui-control-radius); border-end-start-radius: var(--cui-control-radius);
-    }
-    > .#{$prefix}input:last-child, > .#{$prefix}select:last-child, > .#{$prefix}btn:last-child, > .#{$prefix}input-addon:last-child {
-      border-start-end-radius: var(--cui-control-radius); border-end-end-radius: var(--cui-control-radius);
-    }
-    > :not(:first-child) { margin-inline-start: calc(-1 * var(--cui-border-width)); }
-    > .#{$prefix}btn { border-radius: 0; flex-shrink: 0; min-height: var(--_height); &:active { translate: none; } }
-    > .#{$prefix}input:focus, > .#{$prefix}select:focus, > .#{$prefix}btn:focus-visible { position: relative; z-index: 1; }
-  }
-  /* Sizes: the group re-sizes every control in it. */
-  .#{$prefix}input-group-sm {
-    > :is(.#{$prefix}input, .#{$prefix}select, .#{$prefix}btn) { --_height: var(--cui-control-height-sm); }
-    > :is(.#{$prefix}input, .#{$prefix}select) { padding-inline-start: 0.625rem; }
-    > .#{$prefix}btn { --_px: 0.625rem; }
-    > .#{$prefix}input-addon { padding-inline: var(--cui-space-2-5); font-size: var(--cui-text-xs); }
-  }
-  .#{$prefix}input-group-lg {
-    > :is(.#{$prefix}input, .#{$prefix}select, .#{$prefix}btn) { --_height: var(--cui-control-height-lg); font-size: var(--cui-text-base); }
-    > :is(.#{$prefix}input, .#{$prefix}select) { padding-inline-start: 1rem; }
-    > .#{$prefix}btn { --_px: 1.25rem; }
-    > .#{$prefix}input-addon { padding-inline: var(--cui-space-4); font-size: var(--cui-text-base); }
-  }
-  .#{$prefix}input-addon {
-    display: inline-flex;
-    align-items: center;
-    padding-inline: var(--cui-space-3);
-    font-size: var(--cui-text-sm);
-    color: var(--cui-text-3);
-    background: var(--cui-surface-2);
-    border: var(--cui-border-width) solid var(--cui-control-border);
-    white-space: nowrap;
-    box-shadow: var(--cui-shadow-well);
-  }
-
-  /* Icon inside an input: <div class="input-icon"><span class="icon">search</span><input class="input"></div> */
-  .#{$prefix}input-icon {
-    position: relative;
-    display: flex;
-    align-items: center;
-    > .#{$prefix}icon {
-      position: absolute;
-      inset-inline-start: 0.75rem;
-      color: var(--cui-text-3);
-      pointer-events: none;
-      --cui-icon-size: 1.25rem;
-    }
-    > .#{$prefix}input { padding-inline-start: 2.5rem; }
-    > .#{$prefix}icon:last-child { inset-inline-start: auto; inset-inline-end: 0.75rem; }
-    > .#{$prefix}input:has(+ .#{$prefix}icon) { padding-inline-start: var(--_px); padding-inline-end: 2.5rem; }
-    > kbd, > .#{$prefix}kbd { position: absolute; inset-inline-end: 0.625rem; pointer-events: none; }
-    &:has(> kbd) > .#{$prefix}input { padding-inline-end: 3rem; }
   }
 
   /* ---- Checkbox / radio / switch ------------------------------------------ */
@@ -267,43 +190,6 @@
     &:checked:focus-visible { box-shadow: inset 0 1px 2px oklch(0% 0 0 / 0.2), var(--cui-ring); }
   }
   .#{$prefix}check-group { display: flex; flex-direction: column; gap: var(--cui-space-2); }
-  .#{$prefix}check-group-inline { flex-direction: row; flex-wrap: wrap; gap: var(--cui-space-4); }
-
-  /* Checkbox list in a bordered box (facet filters). */
-  .#{$prefix}check-list {
-    display: flex;
-    flex-direction: column;
-    border: var(--cui-border-width) solid var(--cui-border);
-    border-radius: var(--cui-radius);
-    background: var(--cui-surface);
-    > .#{$prefix}checkbox, > .#{$prefix}radio {
-      padding: var(--cui-space-2-5) var(--cui-space-3);
-      & + * { border-block-start: var(--cui-border-width) solid var(--cui-border); }
-      &:hover { background: var(--cui-surface-hover); }
-    }
-  }
-
-  /* ---- Range ---------------------------------------------------------------- */
-  .#{$prefix}range {
-    appearance: none;
-    width: 100%;
-    height: 1.25rem;
-    background: transparent;
-    cursor: pointer;
-    &::-webkit-slider-runnable-track { height: 0.375rem; border-radius: var(--cui-radius-full); background: var(--cui-surface-3); }
-    &::-moz-range-track { height: 0.375rem; border-radius: var(--cui-radius-full); background: var(--cui-surface-3); }
-    &::-moz-range-progress { height: 0.375rem; border-radius: var(--cui-radius-full); background: var(--cui-primary-solid); }
-    &::-webkit-slider-thumb { appearance: none; width: 1.125rem; height: 1.125rem; margin-top: -0.375rem; border-radius: 50%; background: var(--cui-primary-solid); border: 2px solid var(--cui-surface); box-shadow: var(--cui-shadow-sm); transition: scale var(--cui-duration) var(--cui-ease), box-shadow var(--cui-transition); }
-    &::-moz-range-thumb { width: 1.125rem; height: 1.125rem; border-radius: 50%; background: var(--cui-primary-solid); border: 2px solid var(--cui-surface); box-shadow: var(--cui-shadow-sm); transition: scale var(--cui-duration) var(--cui-ease), box-shadow var(--cui-transition); }
-    &:hover:not(:disabled)::-webkit-slider-thumb { scale: 1.1; }
-    &:hover:not(:disabled)::-moz-range-thumb { scale: 1.1; }
-    &:active:not(:disabled)::-webkit-slider-thumb { scale: 1.2; }
-    &:active:not(:disabled)::-moz-range-thumb { scale: 1.2; }
-    &:disabled { opacity: 0.55; cursor: not-allowed; }
-    &:focus-visible { outline: none; }
-    &:focus-visible::-webkit-slider-thumb { box-shadow: var(--cui-shadow-sm), var(--cui-ring); }
-    &:focus-visible::-moz-range-thumb { box-shadow: var(--cui-shadow-sm), var(--cui-ring); }
-  }
 
   /* ---- File ----------------------------------------------------------------- */
   .#{$prefix}file {
@@ -329,20 +215,5 @@
     &:active::file-selector-button { background: var(--cui-surface-2); box-shadow: var(--cui-shadow-pressed); }
     &:focus-visible { outline: none; &::file-selector-button { box-shadow: var(--cui-shadow-key), var(--cui-ring); } }
     &:disabled { opacity: 0.55; cursor: not-allowed; &::file-selector-button { cursor: not-allowed; } }
-  }
-  .#{$prefix}dropzone {
-    display: grid;
-    place-items: center;
-    gap: var(--cui-space-2);
-    padding: var(--cui-space-8);
-    text-align: center;
-    font-size: var(--cui-text-sm);
-    color: var(--cui-text-2);
-    border: 2px dashed var(--cui-border-strong);
-    border-radius: var(--cui-radius-lg);
-    background: var(--cui-surface);
-    transition: border-color var(--cui-transition), background-color var(--cui-transition);
-    &:hover, &.#{$prefix}dragover { border-color: var(--cui-primary); background: var(--cui-primary-soft); }
-    > .#{$prefix}icon { --cui-icon-size: 2rem; color: var(--cui-text-3); }
   }
 }

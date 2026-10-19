@@ -6,7 +6,7 @@
 @use "sass:string";
 @use "config" as *;
 
-/// The media query for a breakpoint (`sm`, `max-md`…) or a named feature (`motion`, `hover`).
+/// The media query for a breakpoint (`sm`, `max-lg`…) or a named feature (`motion`, `hover`).
 /// Anything else is passed through, so `mq("(orientation: portrait)")` works too.
 @function media-query($name) {
   $key: $name;
@@ -54,7 +54,7 @@
   @return string.unquote("oklch(#{map.get($ladder, $step)} #{list.nth(map.get($def, chroma), $i)} #{$angle})");
 }
 
-/// light-dark() pair for a brand preset: the hue's light and dark brand steps.
+/// light-dark() pair for the brand or a status: the hue's light and dark brand steps.
 @function brand-color($hue) {
   $hue: hue-name($hue);
   @if $hue == "neutral" {
@@ -68,19 +68,4 @@
 /// Status names from $statuses + $statuses-extra (success, warning, danger, info by default).
 @function statuses() {
   @return map.keys($all-statuses);
-}
-
-/// The colour "tones" every coloured variant is generated for: primary plus each status.
-/// A status added to $statuses-extra gets .btn-<name>, .badge-<name>, .alert-<name>, .text-<name>…
-/// automatically.
-@function tones() {
-  @return list.join(("primary",), statuses());
-}
-
-/// Brand presets to emit: $brand-presets, or every hue plus neutral.
-@function brand-presets() {
-  @if $brand-presets {
-    @return $brand-presets;
-  }
-  @return list.append(map.keys($all-hues), "neutral");
 }

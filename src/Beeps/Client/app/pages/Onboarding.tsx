@@ -133,7 +133,7 @@ export function ConnectPage({ props }: IslandProps<ConnectProps>) {
     <div aria-live="polite">
       {agent.connected ? (
         <>
-          <div class="agent-card connected">
+          <div class="agent-card">
             <span class="avatar avatar-lg">
               <img src={agent.avatarUrl} alt="" />
             </span>

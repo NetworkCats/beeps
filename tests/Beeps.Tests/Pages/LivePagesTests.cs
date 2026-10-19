@@ -398,7 +398,7 @@ public sealed partial class LivePagesTests : IDisposable
         Assert.Equal($"actor:{agent.Id:D}", live.GetProperty("subject").GetString());
         Assert.Equal($"/actors/{agent.Id:D}", live.GetProperty("url").GetString());
         // Signed-out pages are cached for everyone: the same markup, following nothing live.
-        Assert.Contains("<section class=\"feed profile\">", signedOut, StringComparison.Ordinal);
+        Assert.Contains("<div class=\"profile-card\">", signedOut, StringComparison.Ordinal);
         Assert.False(Islands.Props(signedOut, "profile").GetProperty("live").TryGetProperty("watch", out _));
     }
 

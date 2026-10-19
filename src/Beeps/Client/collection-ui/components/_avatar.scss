@@ -1,12 +1,8 @@
 /* Avatars.
  *
  *   <span class="avatar"><img src="…" alt=""></span>          or initials / an .icon inside
- *   <span class="avatar-group"><span class="avatar">…</span>…<span class="avatar avatar-more">+3</span></span>
- *   <span class="avatar-status"><span class="avatar">…</span><span class="status-dot status-online"></span></span>
- *   <a class="user" href><span class="avatar">…</span> Grace <small>@grace</small></a>
  *
- * Sizes: .avatar-xs (20) -sm (24) default (32) -lg (44) -xl (64) -2xl (96). Shape: .avatar-square.
- * Rings around overlapping marks use --cui-cutout, which bands and navbars re-point. */
+ * Sizes: default (32) .avatar-lg (44) -xl (64). */
 @use "../foundation/layers";
 @use "../abstracts" as *;
 
@@ -34,60 +30,6 @@
     > img { width: 100%; height: 100%; object-fit: cover; }
     > .#{$prefix}icon { --cui-icon-size: calc(var(--_size) * 0.55); }
   }
-  .#{$prefix}avatar-xs { --_size: 1.25rem; }
-  .#{$prefix}avatar-sm { --_size: 1.5rem; }
   .#{$prefix}avatar-lg { --_size: 2.75rem; }
   .#{$prefix}avatar-xl { --_size: 4rem; }
-  .#{$prefix}avatar-2xl { --_size: 6rem; }
-  .#{$prefix}avatar-square { --_radius: var(--cui-radius); }
-  .#{$prefix}avatar-ring { box-shadow: 0 0 0 2px var(--cui-surface), 0 0 0 4px var(--cui-primary); }
-
-  /* Overlapping group */
-  .#{$prefix}avatar-group {
-    display: inline-flex;
-    align-items: center;
-    > .#{$prefix}avatar {
-      box-shadow: 0 0 0 2px var(--cui-cutout);
-      & + .#{$prefix}avatar { margin-inline-start: calc(var(--_size, 2rem) * -0.3); }
-    }
-    > .#{$prefix}avatar-more { background: var(--cui-surface-2); color: var(--cui-text-2); font-size: var(--cui-text-xs); }
-  }
-
-  /* Inline user: avatar + name */
-  .#{$prefix}user {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--cui-space-2);
-    font-size: var(--cui-text-sm);
-    font-weight: var(--cui-weight-medium);
-    /* Default 24px; an explicit size class on the avatar still wins. */
-    > .#{$prefix}avatar:not(.#{$prefix}avatar-xs, .#{$prefix}avatar-sm, .#{$prefix}avatar-lg, .#{$prefix}avatar-xl, .#{$prefix}avatar-2xl) { --_size: 1.5rem; }
-    > small { font-weight: normal; color: var(--cui-text-3); }
-  }
-
-  /* Presence dot: <span class="avatar-status"><span class="avatar">…</span><span class="status-dot status-online"></span></span> */
-  .#{$prefix}avatar-status {
-    --_dot: 0.75rem;
-    position: relative;
-    display: inline-flex;
-    flex-shrink: 0;
-    vertical-align: middle;
-    &:has(> .#{$prefix}avatar-xs, > .#{$prefix}avatar-sm) { --_dot: 0.5rem; }
-    &:has(> .#{$prefix}avatar-xl, > .#{$prefix}avatar-2xl) { --_dot: 1.125rem; }
-  }
-  .#{$prefix}status-dot {
-    position: absolute;
-    inset-block-end: 0;
-    inset-inline-end: 0;
-    width: var(--_dot, 0.75rem);
-    height: var(--_dot, 0.75rem);
-    background: var(--cui-text-4);
-    border: 2px solid var(--cui-cutout);
-    border-radius: 50%;
-    box-sizing: border-box;
-  }
-  .#{$prefix}status-online { background: var(--cui-success); }
-  .#{$prefix}status-away { background: var(--cui-warning); }
-  .#{$prefix}status-busy { background: var(--cui-danger); }
-  .#{$prefix}status-offline { background: var(--cui-text-4); }
 }

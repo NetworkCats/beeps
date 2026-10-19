@@ -1,105 +1,17 @@
-/* Timeline (activity log) and steps (progress stepper).
- *
- * <ol class="timeline">
- *   <li class="timeline-item">
- *     <span class="timeline-dot timeline-dot-success"><span class="icon">check</span></span>
- *     <div class="timeline-content">
- *       <div class="timeline-title"><b>grace</b> merged pull request #42</div>
- *       <time class="timeline-time">2 hours ago</time>
- *       <div class="timeline-card card card-sm"><div class="card-body">…</div></div>
- *     </div>
- *   </li>
- * </ol>
+/* Steps (progress stepper).
  *
  * <ol class="steps">
- *   <li class="step step-done"><span class="step-dot"></span><span class="step-label">Account</span><span class="step-desc">Done</span></li>
+ *   <li class="step step-done"><span class="step-dot"></span><span class="step-label">Account</span></li>
  *   <li class="step step-active"><span class="step-dot"></span><span class="step-label">Profile</span></li>
  *   <li class="step"><span class="step-dot"></span><span class="step-label">Finish</span></li>
  * </ol>
  *
- * Modifiers: .timeline-sm (tiny dots, no icons); .timeline-dot-primary/-success/-warning/
- * -danger/-info (solid), .timeline-dot-soft; .steps-vertical; .steps-sm. The step number comes from a CSS counter;
- * put an .icon inside .step-dot to replace it. */
+ * Modifier: .steps-sm. The step number comes from a CSS counter; put an .icon inside .step-dot
+ * to replace it. (Upstream this file also holds the timeline, which beeps does not use.) */
 @use "../foundation/layers";
 @use "../abstracts" as *;
 
 @layer cui.components {
-  /* ---- Timeline ----------------------------------------------------------- */
-  .#{$prefix}timeline {
-    --_dot: var(--cui-timeline-dot, 1.75rem);
-    position: relative;
-    display: flex;
-    flex-direction: column;
-    margin: 0;
-    padding: 0;
-    list-style: none;
-    min-width: 0;
-    &::before {
-      content: "";
-      position: absolute;
-      top: var(--cui-space-2);
-      bottom: var(--cui-space-2);
-      inset-inline-start: calc(var(--_dot) / 2 - 1px);
-      width: 2px;
-      background: var(--cui-timeline-line, var(--cui-border));
-      border-radius: 1px;
-    }
-  }
-  .#{$prefix}timeline-item {
-    position: relative;
-    display: grid;
-    grid-template-columns: var(--_dot) minmax(0, 1fr);
-    gap: var(--cui-space-3);
-    padding-block: var(--cui-space-2);
-    align-items: start;
-  }
-  .#{$prefix}timeline-dot {
-    --_bg: var(--cui-timeline-dot-bg, var(--cui-surface-2));
-    --_fg: var(--cui-timeline-dot-fg, var(--cui-text-3));
-    --_border: var(--cui-timeline-dot-border, var(--cui-border));
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: var(--_dot);
-    height: var(--_dot);
-    color: var(--_fg);
-    background: var(--_bg);
-    border: var(--cui-border-width) solid var(--_border);
-    border-radius: 50%;
-    > .#{$prefix}icon { --cui-icon-size: 1rem; }
-    > .#{$prefix}avatar { --_size: calc(var(--_dot) - 2px); }
-  }
-  @each $tone in tones() {
-    .#{$prefix}timeline-dot-#{$tone} { --_bg: var(--cui-#{$tone}-solid); --_fg: var(--cui-#{$tone}-contrast); --_border: var(--cui-#{$tone}-solid); }
-  }
-  .#{$prefix}timeline-dot-soft { --_bg: var(--cui-primary-soft); --_fg: var(--cui-primary-text); --_border: transparent; }
-  .#{$prefix}timeline-content {
-    display: flex;
-    flex-direction: column;
-    gap: var(--cui-space-1);
-    min-width: 0;
-    padding-block-start: calc((var(--_dot) - var(--cui-text-sm) * var(--cui-leading-base)) / 2);
-    font-size: var(--cui-text-sm);
-    line-height: var(--cui-leading-base);
-    color: var(--cui-text-2);
-  }
-  .#{$prefix}timeline-title {
-    color: var(--cui-text);
-    font-weight: var(--cui-weight-medium);
-    overflow-wrap: anywhere;
-    b, strong { font-weight: var(--cui-weight-semibold); }
-    a { color: var(--cui-link); text-decoration: none; &:hover { text-decoration: underline; } }
-  }
-  .#{$prefix}timeline-time { font-size: var(--cui-text-xs); color: var(--cui-text-3); font-variant-numeric: tabular-nums; }
-  .#{$prefix}timeline-card { margin-block-start: var(--cui-space-2); }
-  .#{$prefix}timeline-sm {
-    --_dot: 0.75rem;
-    .#{$prefix}timeline-dot { margin-block-start: 0.3rem; > .#{$prefix}icon { display: none; } }
-    .#{$prefix}timeline-content { padding-block-start: 0; }
-    .#{$prefix}timeline-item { padding-block: var(--cui-space-1-5); }
-  }
-  .#{$prefix}timeline-item-muted { .#{$prefix}timeline-content { color: var(--cui-text-3); } .#{$prefix}timeline-title { color: var(--cui-text-3); font-weight: var(--cui-weight-normal); } }
-
   /* ---- Steps (stepper) ---------------------------------------------------- */
   .#{$prefix}steps {
     --_dot: 2rem;
@@ -161,7 +73,6 @@
     line-height: var(--cui-leading-snug);
     overflow-wrap: anywhere;
   }
-  .#{$prefix}step-desc { font-size: var(--cui-text-xs); color: var(--cui-text-3); margin-block-start: calc(-1 * var(--cui-space-1)); }
   .#{$prefix}step-done {
     color: var(--cui-text-2);
     .#{$prefix}step-dot {
@@ -180,34 +91,6 @@
     .#{$prefix}step-label { font-weight: var(--cui-weight-semibold); }
     &::before { background: var(--cui-primary); }
   }
-  .#{$prefix}step-error { color: var(--cui-danger-text); .#{$prefix}step-dot { color: var(--cui-danger-text); border-color: var(--cui-danger); } }
   a.#{$prefix}step, button.#{$prefix}step { text-decoration: none; cursor: pointer; background: none; border: 0; font: inherit; &:hover .#{$prefix}step-label { color: var(--cui-text); } &:focus-visible { outline: none; .#{$prefix}step-dot { box-shadow: var(--cui-ring); } } }
-  .#{$prefix}step-sm, .#{$prefix}steps-sm { --_dot: 1.5rem; .#{$prefix}step-dot { font-size: var(--cui-text-xs); > .#{$prefix}icon { --cui-icon-size: 1rem; } } .#{$prefix}step-done .#{$prefix}step-dot::before { font-size: 1rem; } }
-
-  .#{$prefix}steps-vertical {
-    flex-direction: column;
-    .#{$prefix}step {
-      flex: 0 0 auto;
-      flex-direction: row;
-      align-items: flex-start;
-      gap: var(--cui-space-3);
-      padding-inline: 0;
-      padding-block-end: var(--cui-space-6);
-      text-align: start;
-      /* Connector runs down to the next step */
-      &::before {
-        display: block;
-        top: calc(var(--_dot) + var(--cui-space-1));
-        bottom: var(--cui-space-1);
-        inset-inline-start: calc(var(--_dot) / 2 - 1px);
-        inset-inline-end: auto;
-        width: 2px;
-        height: auto;
-      }
-      &:last-child { padding-block-end: 0; &::before { display: none; } }
-    }
-    .#{$prefix}step-active::before { background: var(--cui-border); }
-    .#{$prefix}step-body { display: flex; flex-direction: column; gap: var(--cui-space-1); min-width: 0; padding-block-start: calc((var(--_dot) - 1.25rem) / 2); }
-    .#{$prefix}step-desc { margin-block-start: 0; }
-  }
+  .#{$prefix}steps-sm { --_dot: 1.5rem; .#{$prefix}step-dot { font-size: var(--cui-text-xs); > .#{$prefix}icon { --cui-icon-size: 1rem; } } .#{$prefix}step-done .#{$prefix}step-dot::before { font-size: 1rem; } }
 }

@@ -1,8 +1,9 @@
 /* Buttons. Base .btn is the "secondary" look: a white keycap with a tinted hairline, a
  * highlight on top and a 1px edge below. Pressing flattens it (edge gone, 1px down).
- * Solid variants keep the same relief in their own colour. */
+ * Solid variants keep the same relief in their own colour.
+ * Variants: .btn-primary / -danger, .btn-soft-danger, .btn-ghost; sizes .btn-sm / -xs, .btn-block,
+ * .btn-icon, .btn-loading; .btn-close. */
 @use "../foundation/layers";
-@use "sass:list";
 @use "../abstracts" as *;
 
 // Focus ring per tone: primary keeps --cui-ring so overriding it re-styles every control.
@@ -11,14 +12,6 @@
     @return var(--cui-ring);
   }
   @return var(--cui-ring-#{$tone});
-}
-
-@function _solid-variants() {
-  $sel: ();
-  @each $tone in tones() {
-    $sel: list.append($sel, ".#{$prefix}btn-#{$tone}", $separator: comma);
-  }
-  @return $sel;
 }
 
 @layer cui.components {
@@ -63,9 +56,9 @@
     transition: background-color var(--cui-transition), border-color var(--cui-transition), color var(--cui-transition), box-shadow var(--cui-transition), translate var(--cui-duration-fast) var(--cui-ease);
 
     &:hover { background: var(--_bg-hover); color: var(--_fg); text-decoration: none; }
-    &:active, &.#{$prefix}active { background: var(--_bg-active); translate: 0 1px; box-shadow: var(--_shadow-active); }
+    &:active { background: var(--_bg-active); translate: 0 1px; box-shadow: var(--_shadow-active); }
     &:focus-visible { outline: none; box-shadow: var(--_shadow), var(--_ring); }
-    &:disabled, &.#{$prefix}disabled, &[aria-disabled="true"] {
+    &:disabled, &[aria-disabled="true"] {
       opacity: 0.5;
       pointer-events: none;
       box-shadow: none;
@@ -75,10 +68,9 @@
     > .#{$prefix}icon { --cui-icon-size: 1.25em; margin-inline: -0.125em; }
   }
 
-  /* Solid variants, one per tone (primary + every status in the config): same keycap
-   * relief, coloured. The border is a darker step of the fill so the button reads as an
-   * object, not a flat rectangle. */
-  @each $tone in tones() {
+  /* Solid variants: same keycap relief, coloured. The border is a darker step of the fill
+   * so the button reads as an object, not a flat rectangle. */
+  @each $tone in ("primary", "danger") {
     .#{$prefix}btn-#{$tone} {
       --_bg: var(--cui-#{$tone}-solid);
       --_bg-hover: var(--cui-#{$tone}-solid-hover);
@@ -93,32 +85,16 @@
     }
   }
 
-  /* Flat variants: no relief at all, so they sit inside rows and toolbars quietly.
-   * .btn-soft is the primary one; .btn-soft-<status> for each status. */
-  @each $tone in tones() {
-    $suffix: "-#{$tone}";
-    @if $tone == "primary" {
-      $suffix: "";
-    }
-    .#{$prefix}btn-soft#{$suffix} {
-      --_bg: var(--cui-#{$tone}-soft);
-      --_bg-hover: var(--cui-#{$tone}-soft-hover);
-      --_bg-active: color-mix(in oklch, var(--cui-#{$tone}) 22%, transparent);
-      --_fg: var(--cui-#{$tone}-text);
-      --_border: transparent;
-      --_shadow: none;
-      --_shadow-active: none;
-      --_ring: #{_ring($tone)};
-    }
-  }
-  .#{$prefix}btn-outline {
-    --_bg: transparent;
-    --_bg-hover: var(--cui-primary-soft);
-    --_bg-active: var(--cui-primary-soft-hover);
-    --_fg: var(--cui-primary-text);
-    --_border: var(--cui-primary-border);
+  /* Flat variant: no relief at all, so it sits inside rows and toolbars quietly. */
+  .#{$prefix}btn-soft-danger {
+    --_bg: var(--cui-danger-soft);
+    --_bg-hover: var(--cui-danger-soft-hover);
+    --_bg-active: color-mix(in oklch, var(--cui-danger) 22%, transparent);
+    --_fg: var(--cui-danger-text);
+    --_border: transparent;
     --_shadow: none;
     --_shadow-active: none;
+    --_ring: #{_ring("danger")};
   }
   .#{$prefix}btn-ghost {
     --_bg: transparent;
@@ -130,37 +106,10 @@
     --_shadow-active: none;
     &:hover { --_fg: var(--cui-text); }
   }
-  .#{$prefix}btn-link {
-    --_bg: transparent;
-    --_bg-hover: transparent;
-    --_bg-active: transparent;
-    --_fg: var(--cui-link);
-    --_border: transparent;
-    --_shadow: none;
-    --_shadow-active: none;
-    --_px: 0.25rem;
-    &:hover { text-decoration: underline; text-underline-offset: 0.15em; --_fg: var(--cui-link-hover); }
-    &:active { translate: none; }
-  }
-  /* On dark bands (navbar, hero): translucent white. */
-  .#{$prefix}btn-band {
-    --_bg: oklch(100% 0 0 / 0.1);
-    --_bg-hover: oklch(100% 0 0 / 0.16);
-    --_bg-active: oklch(100% 0 0 / 0.22);
-    --_fg: #fff;
-    --_border: oklch(100% 0 0 / 0.16);
-    --_highlight: oklch(100% 0 0 / 0.1);
-    --_edge: oklch(0% 0 0 / 0.35);
-    --_shadow-active: inset 0 1px 2px oklch(0% 0 0 / 0.3);
-    --_ring: var(--cui-band-ring);
-  }
-
   /* Sizes */
   .#{$prefix}btn-sm { --_height: var(--cui-control-height-sm); --_px: 0.625rem; --_font: var(--cui-text-xs); gap: var(--cui-space-1-5); }
   .#{$prefix}btn-xs { --_height: var(--cui-control-height-xs); --_px: 0.5rem; --_font: var(--cui-text-xs); gap: var(--cui-space-1); --_radius: var(--cui-radius-sm); }
-  .#{$prefix}btn-lg { --_height: var(--cui-control-height-lg); --_px: 1rem; --_font: var(--cui-text-sm); }
   .#{$prefix}btn-block { display: flex; width: 100%; }
-  .#{$prefix}btn-pill { --_radius: var(--cui-radius-full); }
 
   /* Icon-only: square. */
   .#{$prefix}btn-icon {
@@ -190,43 +139,7 @@
     }
   }
 
-  /* Group: fused buttons sharing borders. */
-  .#{$prefix}btn-group {
-    display: inline-flex;
-    align-items: stretch;
-    isolation: isolate;
-    > .#{$prefix}btn {
-      border-radius: 0;
-      &:first-child { border-start-start-radius: var(--_radius); border-end-start-radius: var(--_radius); }
-      &:last-child { border-start-end-radius: var(--_radius); border-end-end-radius: var(--_radius); }
-      &:not(:first-child) { margin-inline-start: calc(-1 * var(--cui-border-width)); }
-      &:hover, &:focus-visible, &.#{$prefix}active { z-index: 1; }
-      /* Fused keys don't drop; the pressed look comes from the variant's own active slots. */
-      &:active, &.#{$prefix}active { translate: none; }
-    }
-    > :is(#{_solid-variants()}):not(:first-child) { border-inline-start-color: oklch(0% 0 0 / 0.25); }
-  }
-
-  /* Split count button, GitHub-style: [★ Star][1.2k] */
-  .#{$prefix}btn-count {
-    display: inline-flex;
-    align-items: center;
-    min-height: var(--cui-control-height-sm);
-    padding-inline: 0.625rem;
-    font-size: var(--cui-text-xs);
-    font-weight: var(--cui-weight-semibold);
-    font-variant-numeric: tabular-nums;
-    color: var(--cui-text-2);
-    background: var(--cui-surface-2);
-    border: var(--cui-border-width) solid var(--cui-control-border);
-    border-inline-start: 0;
-    border-start-end-radius: var(--cui-control-radius);
-    border-end-end-radius: var(--cui-control-radius);
-    box-shadow: 0 1px 0 var(--cui-edge);
-  }
-  .#{$prefix}btn-group > .#{$prefix}btn-count { margin-inline-start: 0; }
-
-  /* Close button (dialogs, alerts, chips) */
+  /* Close button (dialogs, alerts, toasts) */
   .#{$prefix}btn-close {
     display: inline-flex;
     align-items: center;

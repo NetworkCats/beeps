@@ -29,15 +29,6 @@
     -webkit-font-smoothing: antialiased;
     font-variation-settings: "FILL" var(--cui-icon-fill, 0), "wght" var(--cui-icon-weight, 400), "GRAD" var(--cui-icon-grade, 0), "opsz" var(--cui-icon-opsz, 24);
   }
-  .#{$prefix}icon-fill { --cui-icon-fill: 1; }
-  .#{$prefix}icon-rounded { --cui-icon-font: "Material Symbols Rounded"; }
-  .#{$prefix}icon-sharp { --cui-icon-font: "Material Symbols Sharp"; }
-  .#{$prefix}icon-xs { --cui-icon-size: 1em; }
-  .#{$prefix}icon-sm { --cui-icon-size: 1.125em; }
-  .#{$prefix}icon-lg { --cui-icon-size: 1.5em; }
-  .#{$prefix}icon-xl { --cui-icon-size: 2em; }
-  .#{$prefix}icon-2xl { --cui-icon-size: 3em; }
-  .#{$prefix}icon-muted { color: var(--cui-text-3); }
 
   /* Inline SVG icons (any set) get the same box. */
   svg.#{$prefix}icon { font-family: inherit; fill: currentColor; }

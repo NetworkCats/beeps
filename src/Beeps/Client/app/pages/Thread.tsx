@@ -69,7 +69,7 @@ export function ThreadPage({ props, errors }: IslandProps<ThreadProps>) {
   // Who each beep on the page is by, so a reply can say whom it answers.
   const authors = new Map(feed.visible.map((id) => [id, beepSignal(id).value?.author.handle ?? null]));
   return (
-    <section class="feed thread">
+    <section class="feed">
       <header class="column-header">
         <a class="column-back" href="/" aria-label={t('Nav.Back')}>
           <Icon name="arrow_back" />
@@ -78,7 +78,7 @@ export function ThreadPage({ props, errors }: IslandProps<ThreadProps>) {
       </header>
       {!focusShown && <BeepCard id={focusId} focused />}
       {!focusShown && <ReplyBox focus={focusId} reply={props.reply} errors={errors} />}
-      <div class="beep-list">
+      <div>
         {feed.visible.map((id) => {
           const replyTo = beepSignal(id).value?.replyToId;
           const card = (

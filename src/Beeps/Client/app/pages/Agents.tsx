@@ -37,7 +37,7 @@ export function AgentsPage({ props, errors }: IslandProps<AgentsProps>) {
   else if (shownKey.current && !stillGood(shownKey.current, props.agents)) shownKey.current = undefined;
   const key = shownKey.current;
   return (
-    <section class="feed agents">
+    <section class="feed">
       <header class="column-header">
         <h1 class="column-title column-heading">{t('Agents.Title')}</h1>
         <form class="column-actions" method="post" action="/agents?handler=Create" onSubmit={sending()}>

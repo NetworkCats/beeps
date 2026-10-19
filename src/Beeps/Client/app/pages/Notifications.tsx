@@ -75,7 +75,7 @@ function LikeEntry({ entry }: { entry: NotificationProps }) {
     else void visit(permalink).catch(() => {});
   };
   return (
-    <li class={entry.read ? 'notification' : 'notification notification-unread'}>
+    <li class="notification">
       <UnreadDot entry={entry} />
       <article class="notification-group" onClick={open}>
         <span class="notification-icon notification-icon-like" aria-hidden="true">
@@ -108,7 +108,7 @@ function LikeEntry({ entry }: { entry: NotificationProps }) {
 /** A reply or a mention: the beep itself, as Twitter shows it. */
 function BeepEntry({ entry }: { entry: NotificationProps }) {
   return (
-    <li class={entry.read ? 'notification' : 'notification notification-unread'}>
+    <li class="notification">
       <UnreadDot entry={entry} />
       <p class="visually-hidden">
         {nameOf(entry.from)} {t(entry.type === 'reply' ? 'Notifications.Reply' : 'Notifications.Mention')}

@@ -77,9 +77,9 @@ public sealed class SearchPageTests : IDisposable
         var user = WebAuth.ArrangeUser(factory, locale: "zh-Hans");
         using var client = await WebAuth.SignInAsync(factory, user);
 
-        var html = await client.GetStringAsync(new Uri("/search", UriKind.Relative), TestSupport.Ct);
+        var page = await Islands.PageAsync(client, "/search");
 
-        Assert.DoesNotContain("search-tabs", html, StringComparison.Ordinal);
+        Assert.False(Islands.Props(page, "search").TryGetProperty("results", out _));
         await factory.SearchIndex.DidNotReceiveWithAnyArgs().SearchBeepsAsync(default!, default, default, default, TestSupport.Ct);
     }
 

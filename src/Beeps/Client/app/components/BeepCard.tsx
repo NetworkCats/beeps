@@ -20,7 +20,7 @@ import { Icon } from './Icon.tsx';
 import { Menu } from './Menu.tsx';
 import { Time } from './Time.tsx';
 
-export interface CardPlacement {
+interface CardPlacement {
   /** The beep the page is about, within its thread. */
   focused?: boolean;
   /** Shown inside its thread, so a reply needs no link to where it belongs. */
@@ -170,7 +170,7 @@ export function BeepCard({ id, focused, inThread, replyingTo, inInbox, entering,
             >
               <div class="dropdown-menu menu-panel">
                 {beep.canDelete ? (
-                  <form class="beep-delete" method="post" action={paths.beepAction(beep.id, 'Delete', returnUrl)} data-confirm={t('Beep.Delete.Confirm')} onSubmit={remove}>
+                  <form method="post" action={paths.beepAction(beep.id, 'Delete', returnUrl)} data-confirm={t('Beep.Delete.Confirm')} onSubmit={remove}>
                     <button class="dropdown-item dropdown-item-danger" type="submit">
                       <Icon name="delete" />
                       {t('Beep.Delete')}
@@ -178,7 +178,7 @@ export function BeepCard({ id, focused, inThread, replyingTo, inInbox, entering,
                     <Antiforgery />
                   </form>
                 ) : (
-                  <a class="dropdown-item beep-report" href={paths.report(beep.id)}>
+                  <a class="dropdown-item" href={paths.report(beep.id)}>
                     <Icon name="flag" />
                     {t('Beep.Report')}
                   </a>
@@ -215,7 +215,7 @@ export function BeepCard({ id, focused, inThread, replyingTo, inInbox, entering,
           </div>
         )}
         <footer class="beep-actions">
-          <a class="beep-action beep-action-reply" href={`${permalink}#reply`}>
+          <a class="beep-action" href={`${permalink}#reply`}>
             <span class="beep-action-icon">
               <Icon name="chat_bubble" />
             </span>
@@ -223,7 +223,7 @@ export function BeepCard({ id, focused, inThread, replyingTo, inInbox, entering,
             <span class="beep-count">{count(beep.replyCount)}</span>
           </a>
           {member ? (
-            <form class="beep-like" method="post" action={paths.beepAction(beep.id, beep.liked ? 'Unlike' : 'Like', returnUrl)} onSubmit={like}>
+            <form method="post" action={paths.beepAction(beep.id, beep.liked ? 'Unlike' : 'Like', returnUrl)} onSubmit={like}>
               <button class="beep-action beep-action-like" type="submit" aria-pressed={beep.liked ? 'true' : 'false'}>
                 <span class="beep-action-icon">
                   <Icon name="favorite" />

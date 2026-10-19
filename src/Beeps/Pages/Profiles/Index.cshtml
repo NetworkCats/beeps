@@ -38,7 +38,7 @@
 @* Client/app/pages/Profile.tsx draws this page from its props. Only signed-out visitors get the markup below as well (search
    engines read it), which the component then draws the same over. *@
 <island name="profile" props="props">
-<section class="feed profile">
+<section class="feed">
     <header class="column-header">
         <a class="column-back" href="~/" aria-label="@L["Nav.Back"]"><icon name="arrow_back" /></a>
         <div class="column-heading">
@@ -145,7 +145,7 @@
         }
     </div>
 
-    <nav class="tabs tabs-justify profile-tabs" aria-label="@L["Profile.Tabs"]">
+    <nav class="tabs tabs-justify" aria-label="@L["Profile.Tabs"]">
         <a class="tab" href="@SitePaths.Profile(handle)" aria-current="@(tab is null ? "page" : null)">@L["Profile.Beeps"]</a>
         <a class="tab" href="@SitePaths.ProfileTab(handle, ProfileTabs.Replies)" aria-current="@(tab == ProfileTabs.Replies ? "page" : null)">@L["Profile.Replies"]</a>
         @if (profile.LikesShown)

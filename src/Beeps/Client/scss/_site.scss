@@ -1316,8 +1316,8 @@
 }
 
 .beep-action-like {
-  --_tone: light-dark(var(--cui-pink-600), var(--cui-pink-400));
-  --_tone-soft: color-mix(in oklch, var(--cui-pink-500) 12%, transparent);
+  --_tone: light-dark(#{palette-color("pink", 600)}, #{palette-color("pink", 400)});
+  --_tone-soft: color-mix(in oklch, #{palette-color("pink", 500)} 12%, transparent);
 
   &[aria-pressed="true"] {
     color: var(--_tone);

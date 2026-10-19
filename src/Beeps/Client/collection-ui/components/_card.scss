@@ -1,4 +1,4 @@
-/* Card: white surface, hairline border, optional header/footer bands. */
+/* Card: white surface, hairline border; .card-body holds the content, .card-title heads it. */
 @use "../foundation/layers";
 @use "../abstracts" as *;
 
@@ -10,8 +10,6 @@
     --_radius: var(--cui-card-radius, var(--cui-radius-lg));
     --_shadow: var(--cui-card-shadow, none);
     --_padding: var(--cui-card-padding, var(--cui-space-5));
-    --_header-py: var(--cui-card-header-py, var(--cui-space-3));
-    --_header-bg: var(--cui-card-header-bg, var(--cui-surface-2));
     display: flex;
     flex-direction: column;
     min-width: 0;
@@ -24,49 +22,5 @@
     transition: border-color var(--cui-transition), box-shadow var(--cui-transition), background-color var(--cui-transition), translate var(--cui-duration-fast) var(--cui-ease);
   }
   .#{$prefix}card-body { padding: var(--_padding); flex: 1 1 auto; }
-  .#{$prefix}card-header, .#{$prefix}card-footer {
-    display: flex;
-    align-items: center;
-    gap: var(--cui-space-3);
-    padding: var(--_header-py) var(--_padding);
-    font-size: var(--cui-text-sm);
-  }
-  .#{$prefix}card-header {
-    border-block-end: var(--cui-border-width) solid var(--_border);
-    background: var(--_header-bg);
-    font-weight: var(--cui-weight-semibold);
-    > .#{$prefix}eyebrow { font-weight: var(--cui-weight-semibold); }
-  }
-  .#{$prefix}card-footer {
-    border-block-start: var(--cui-border-width) solid var(--_border);
-    background: var(--_header-bg);
-    color: var(--cui-text-2);
-  }
-  .#{$prefix}card-header-plain, .#{$prefix}card-footer-plain { background: transparent; }
   .#{$prefix}card-title { font-size: var(--cui-text-base); font-weight: var(--cui-weight-semibold); line-height: var(--cui-leading-snug); margin: 0; }
-  .#{$prefix}card-title + .#{$prefix}card-text, .#{$prefix}card-text + .#{$prefix}card-text { margin-block-start: var(--cui-space-2); }
-  .#{$prefix}card-text { font-size: var(--cui-text-sm); color: var(--cui-text-2); }
-  .#{$prefix}card-img { width: 100%; aspect-ratio: 16 / 9; object-fit: cover; }
-  .#{$prefix}card-sm { --_padding: var(--cui-space-4); --_header-py: var(--cui-space-2); }
-  .#{$prefix}card-flat { --_bg: var(--cui-surface-2); border: 0; }
-  .#{$prefix}card-ghost { --_bg: transparent; border-style: dashed; }
-  .#{$prefix}card-raised { --_shadow: var(--cui-shadow-sm); }
-
-  /* Whole-card link, with the "press" from crates.io/jsr. */
-  a.#{$prefix}card, .#{$prefix}card-link, .#{$prefix}card-interactive {
-    cursor: pointer;
-    text-decoration: none;
-    &:hover { border-color: var(--cui-border-strong); box-shadow: var(--cui-shadow-md); }
-    &:active { translate: 0 1px; box-shadow: var(--cui-shadow-sm); }
-    &:focus-visible { outline: none; box-shadow: var(--cui-ring); border-color: var(--cui-primary); }
-  }
-
-  /* Accent stripe (Swift Package Index). */
-  .#{$prefix}card-accent { border-inline-start: 3px solid var(--cui-primary); }
-  .#{$prefix}card-accent-success { border-inline-start: 3px solid var(--cui-success); }
-  .#{$prefix}card-accent-warning { border-inline-start: 3px solid var(--cui-warning); }
-  .#{$prefix}card-accent-danger { border-inline-start: 3px solid var(--cui-danger); }
-
-  /* Card grid helper */
-  .#{$prefix}card-grid { display: grid; gap: var(--cui-space-4); grid-template-columns: repeat(auto-fill, minmax(min(18rem, 100%), 1fr)); }
 }

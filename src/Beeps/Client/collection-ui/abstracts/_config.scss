@@ -5,7 +5,7 @@
 //
 //   @use "collection-ui/scss" with (
 //     $brand: "teal",
-//     $breakpoints: (sm: 36rem, md: 48rem, lg: 62rem, xl: 80rem),
+//     $breakpoints: (sm: 36rem, lg: 62rem, xl: 80rem),
 //     $hues-extra: ("lime": (hue: 130, chroma: (0.02, 0.05, 0.09, 0.13, 0.16, 0.17, 0.16, 0.14, 0.12, 0.1, 0.07))),
 //   );
 //
@@ -15,17 +15,14 @@
 @use "sass:map";
 
 // ---- Class prefix ----------------------------------------------------------
-// Prepended to every class the framework defines, utilities and state classes included:
-// $prefix: "cui-" gives .cui-btn, .cui-card, .cui-flex, .cui-active… Custom properties keep
-// their --cui- names and data attributes their data-cui- names either way. The JS reads the
-// prefix from --cui-prefix (emitted below), so it follows automatically.
+// Prepended to every class the framework defines:
+// $prefix: "cui-" gives .cui-btn, .cui-card… Custom properties keep their --cui- names either way.
 $prefix: "" !default;
 
 // ---- Breakpoints -----------------------------------------------------------
 // mq(sm) → (width >= 40rem), mq(max-sm) → (width < 40rem). See _mixins.scss.
 $breakpoints: (
   sm: 40rem,
-  md: 48rem,
   lg: 64rem,
   xl: 80rem,
 ) !default;
@@ -97,21 +94,18 @@ $neutral: (
 $brand: "blue" !default;
 $brand-steps: (light: 600, dark: 400) !default;
 
-// Presets emitted as [data-brand="…"]. Defaults to every hue plus neutral.
-$brand-presets: null !default;
-
 // ---- Status colours --------------------------------------------------------
-// Each one gets the full scale (-hover, -soft, -border, -text, -solid, -contrast, -ring, -edge…).
-// `soft` / `soft-hover` / `border` are how much of the colour is mixed into transparent.
-// `cap-solid: false` keeps the solid fill bright in dark mode (amber reads best that way).
+// Each one gets the scale its `tokens` list names (-soft, -text, -solid, -contrast, -ring, -edge…;
+// all of them when it names none), so only what the components read is emitted.
+// `soft` / `soft-hover` are how much of the colour is mixed into transparent.
 $statuses: (
-  success: (hue: "green", soft: 12%, soft-hover: 18%, border: 40%),
-  warning: (hue: "amber", soft: 14%, soft-hover: 20%, border: 45%, cap-solid: false),
-  danger: (hue: "red", soft: 10%, soft-hover: 16%, border: 40%),
-  info: (hue: "cyan", soft: 12%, soft-hover: 18%, border: 40%),
+  success: (hue: "green", soft: 12%, tokens: (soft, text)),
+  warning: (hue: "amber", soft: 14%, tokens: (soft, text)),
+  danger: (hue: "red", soft: 10%, soft-hover: 16%, tokens: (soft, soft-hover, text, ring, solid, contrast, edge)),
+  info: (hue: "cyan", tokens: ()),
 ) !default;
 
-// Extra statuses merged into $statuses, e.g. ("promo": (hue: "violet", soft: 12%, soft-hover: 18%, border: 40%)).
+// Extra statuses merged into $statuses, e.g. ("promo": (hue: "violet", soft: 12%, soft-hover: 18%)).
 $statuses-extra: () !default;
 
 // ---- Scales ----------------------------------------------------------------
@@ -125,12 +119,9 @@ $font-sizes: (
   2xl: 1.5rem,    // 24
   3xl: 1.875rem,  // 30
   4xl: 2.25rem,   // 36
-  5xl: 3rem,      // 48
 ) !default;
 
 $spacers: (
-  0: 0,
-  px: 1px,
   "0-5": 0.125rem,
   1: 0.25rem,
   "1-5": 0.375rem,
@@ -144,9 +135,6 @@ $spacers: (
   8: 2rem,
   10: 2.5rem,
   12: 3rem,
-  16: 4rem,
-  20: 5rem,
-  24: 6rem,
 ) !default;
 
 // Tight corners, registry-style.
@@ -161,16 +149,10 @@ $radii: (
 $z-layers: (
   sticky: 100,
   dropdown: 1000,
-  drawer: 1100,
   dialog: 1200,
   toast: 1300,
   tooltip: 1400,
 ) !default;
-
-// ---- Utilities -------------------------------------------------------------
-// Which $spacers steps get m-*/p-* and gap-* classes.
-$utility-spacers: (0, 1, 2, 3, 4, 5, 6, 8, 10, 12, 16) !default;
-$utility-gaps: (0, 1, 2, 3, 4, 6, 8) !default;
 
 // ---- Icons -----------------------------------------------------------------
 // Fallback icon font for pseudo-element glyphs; --cui-icon-font overrides it at runtime.

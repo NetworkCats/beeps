@@ -76,7 +76,7 @@ export function FollowsPage({ props }: IslandProps<FollowsProps>) {
   const handle = actor.handle ?? '';
   const empty = props.hidden ? 'Follows.Hidden' : props.followers ? 'Follows.NoFollowers' : 'Follows.NoFollowing';
   return (
-    <section class="feed follows">
+    <section class="feed">
       <header class="column-header">
         <a class="column-back" href={paths.profile(handle)} aria-label={t('Nav.Back')}>
           <Icon name="arrow_back" />

@@ -169,7 +169,7 @@ function RemoveForm({ action, confirm, label }: { action: string; confirm: strin
 /** The banner, with the avatar over its lower edge, each with its buttons. */
 export function ProfileImages({ avatar, banner }: { avatar: AvatarEditorProps; banner: BannerEditorProps }) {
   return (
-    <div class="image-editor">
+    <div>
       <div class="image-editor-banner">
         {banner.bannerUrl && <img src={banner.bannerUrl} alt="" width={1500} height={500} />}
         <div class="image-actions">

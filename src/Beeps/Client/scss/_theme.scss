@@ -61,7 +61,6 @@
     --cui-shadow-key: none;
     --cui-shadow-well: none;
     --cui-shadow-pressed: none;
-    --cui-shadow-md: 0 4px 16px -2px oklch(0% 0 0 / 0.1), 0 1px 3px oklch(0% 0 0 / 0.06);
     --cui-shadow-lg: 0 12px 32px -6px oklch(0% 0 0 / 0.16), 0 2px 6px oklch(0% 0 0 / 0.06);
 
     // ---- Controls ------------------------------------------------------------------------------
@@ -96,7 +95,6 @@
     // 15px on a 21px line: close to the 20px feeds use, with the room Chinese text needs.
     --beeps-text-leading: 1.4;
     --beeps-text-size: 0.9375rem;
-    --cui-navbar-height: 0px;
   }
 }
 
@@ -109,17 +107,17 @@
     text-rendering: optimizeLegibility;
   }
 
-  h1, .h1 { font-size: var(--cui-text-xl); font-weight: 800; letter-spacing: -0.01em; }
-  h2, .h2 { font-size: 1.0625rem; font-weight: var(--cui-weight-bold); letter-spacing: -0.005em; }
-  h3, .h3 { font-size: var(--cui-text-base); letter-spacing: 0; }
-  h4, .h4 { font-size: var(--cui-text-sm); }
+  h1 { font-size: var(--cui-text-xl); font-weight: 800; letter-spacing: -0.01em; }
+  h2 { font-size: 1.0625rem; font-weight: var(--cui-weight-bold); letter-spacing: -0.005em; }
+  h3 { font-size: var(--cui-text-base); letter-spacing: 0; }
+  h4 { font-size: var(--cui-text-sm); }
 
   @include mq(max-sm) {
-    h1, .h1 { font-size: var(--cui-text-lg); }
-    h2, .h2 { font-size: var(--cui-text-base); }
+    h1 { font-size: var(--cui-text-lg); }
+    h2 { font-size: var(--cui-text-base); }
   }
 
-  :where(code):not(pre code, .cmd code) {
+  :where(code):not(pre code) {
     background: var(--cui-surface-2);
     color: var(--cui-text);
   }
@@ -128,7 +126,6 @@
 // Component tuning that only touches collection-ui's own knobs, in its own layer so page CSS still wins.
 @layer cui.components {
   .btn-sm { --_height: var(--cui-control-height-sm); --_font: 0.875rem; --_px: 1rem; }
-  .btn-lg { --_height: var(--cui-control-height-lg); --_font: 1.0625rem; --_px: 1.5rem; }
   .btn:active { translate: none; }
   .btn-primary, .btn-danger { --_border: transparent; }
   .input, .select, .textarea { font-size: var(--cui-text-base); }

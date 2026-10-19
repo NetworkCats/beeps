@@ -1,10 +1,8 @@
 // collection-ui configured for beeps. Every stylesheet (main, member, admin) loads this first, so the
-// components it pulls in are drawn with the same settings. collection-ui is configured here rather than edited in
-// place, so the copied files stay comparable with upstream (see Client/collection-ui/README.md).
+// components it pulls in are drawn with the same settings. What upstream's defaults can set is set here; the copy
+// itself is cut down to what beeps uses (see Client/collection-ui/README.md).
 @use "../collection-ui/abstracts" with (
   $brand: "indigo",
-  // One brand only: the [data-brand] presets would ship ~11 unused re-theming blocks.
-  $brand-presets: (),
   // Self-hosted and cut down to the icons beeps uses (scripts/build-icons.ts, Client/icons.json).
   $icon-font: "Material Symbols Rounded",
   // Pure grays (no chroma): upstream's slate leans blue, and beeps' page and chrome must not carry any hue.

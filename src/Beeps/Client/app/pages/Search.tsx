@@ -87,7 +87,7 @@ export function SearchPage({ props, errors }: IslandProps<SearchProps>) {
   const empty = props.users ? users.length === 0 : beeps.length === 0;
   const next = state.next.value;
   return (
-    <section class="feed search-page">
+    <section class="feed">
       <header class="column-header column-header-search">
         <h1 class="visually-hidden">{t('Search.Title')}</h1>
         <form class="search search-pill" role="search" method="get" action="/search">
@@ -110,7 +110,7 @@ export function SearchPage({ props, errors }: IslandProps<SearchProps>) {
       )}
 
       {results && (
-        <nav class="tabs tabs-justify search-tabs" aria-label={t('Search.Tabs')}>
+        <nav class="tabs tabs-justify" aria-label={t('Search.Tabs')}>
           <a class="tab" href={props.beepsUrl} aria-current={props.users ? undefined : 'page'}>
             {t('Search.Beeps')}
           </a>
@@ -133,7 +133,7 @@ export function SearchPage({ props, errors }: IslandProps<SearchProps>) {
         </ul>
       )}
       {results && !empty && !props.users && (
-        <div class="beep-list">
+        <div>
           {beeps.map((id) => (
             <BeepCard key={id} id={id} />
           ))}

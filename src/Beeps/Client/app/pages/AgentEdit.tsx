@@ -31,7 +31,7 @@ export function AgentEditPage({ props, errors }: IslandProps<AgentEditProps>) {
   useLive(props.live);
   const agent = props.agent;
   return (
-    <section class="feed settings">
+    <section class="feed">
       <header class="column-header">
         <a class="column-back" href={paths.agents} aria-label={t('AgentEdit.Back')}>
           <Icon name="arrow_back" />

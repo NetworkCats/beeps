@@ -1,20 +1,12 @@
 /* Tabs: the underline strip under a page header (pub.dev, crates, jsr).
  *
- *   <div data-cui-tabs>
- *     <nav class="tabs" role="tablist">
- *       <button class="tab" role="tab" aria-selected="true" aria-controls="readme">
- *         <span class="icon">description</span> Readme
- *       </button>
- *       <button class="tab" role="tab" aria-controls="versions">Versions <span class="count">12</span></button>
- *       <a class="tab" href="/pkg/deps">Dependencies</a>         links work without JS
- *     </nav>
- *     <section id="readme" class="tab-panel" role="tabpanel">…</section>
- *     <section id="versions" class="tab-panel" role="tabpanel" hidden>…</section>
- *   </div>
+ *   <nav class="tabs">
+ *     <a class="tab" href="/pkg/readme" aria-current="page"><span class="icon">description</span> Readme</a>
+ *     <a class="tab" href="/pkg/versions">Versions <span class="count">12</span></a>
+ *   </nav>
  *
- * Active: [aria-selected="true"], [aria-current], or .active. With the JS loaded the active
- * highlight is one ::after (data-cui-indicator) that slides between tabs; see indicator.js.
- * Variants on .tabs: -pills -boxed -vertical -justify -sm -lg. */
+ * Active: [aria-selected="true"] or [aria-current]. .tabs-justify spreads the tabs
+ * over the strip. */
 @use "../foundation/layers";
 @use "../abstracts" as *;
 
@@ -71,138 +63,19 @@
     &:hover { --_fg: var(--cui-text); background: var(--cui-surface-hover); text-decoration: none; }
     &:focus-visible { @include focus-ring($inset: true); }
     /* Active: the tab fills with a brand wash and sits on a 2px brand rule (crates.io). */
-    &[aria-selected="true"], &[aria-current]:not([aria-current="false"]), &.#{$prefix}active {
+    &[aria-selected="true"], &[aria-current]:not([aria-current="false"]) {
       --_fg: var(--_active-fg);
       font-weight: var(--cui-weight-semibold);
       background: var(--_active-bg);
       border-block-end-color: var(--_accent);
     }
-    &:disabled, &[aria-disabled="true"], &.#{$prefix}disabled { opacity: 0.5; pointer-events: none; }
+    &:disabled, &[aria-disabled="true"] { opacity: 0.5; pointer-events: none; }
 
     > .#{$prefix}icon { --cui-icon-size: 1.25rem; color: var(--cui-text-3); }
-    &[aria-selected="true"] > .#{$prefix}icon, &[aria-current]:not([aria-current="false"]) > .#{$prefix}icon, &.#{$prefix}active > .#{$prefix}icon { color: inherit; }
+    &[aria-selected="true"] > .#{$prefix}icon, &[aria-current]:not([aria-current="false"]) > .#{$prefix}icon { color: inherit; }
     > .#{$prefix}count { margin-inline-start: var(--cui-space-0-5); }
   }
 
-  /* Sizes */
-  .#{$prefix}tabs-sm > .#{$prefix}tab { --_height: 2.25rem; --_px: var(--cui-space-2-5); gap: var(--cui-space-1); > .#{$prefix}icon { --cui-icon-size: 1.125rem; } }
-  .#{$prefix}tabs-lg > .#{$prefix}tab { --_height: 3.25rem; --_px: var(--cui-space-4); --_font: var(--cui-text-base); gap: var(--cui-space-2); }
+  /* Spread over the strip */
   .#{$prefix}tabs-justify > .#{$prefix}tab { flex: 1 1 0; }
-
-  /* Pills: no strip, soft brand pill for the active tab. */
-  .#{$prefix}tabs-pills {
-    box-shadow: none;
-    gap: var(--cui-space-1);
-    > .#{$prefix}tab {
-      --_height: 2.25rem;
-      border-block-end: 0;
-      border-radius: var(--cui-radius-full);
-      &[aria-selected="true"], &[aria-current]:not([aria-current="false"]), &.#{$prefix}active {
-        --_fg: var(--_active-fg);
-        background: var(--_active-bg);
-      }
-      &:focus-visible { box-shadow: var(--cui-ring); }
-    }
-  }
-
-  /* Boxed: a tinted strip; the active tab is a raised surface (big segmented control). */
-  .#{$prefix}tabs-boxed {
-    gap: var(--cui-space-1);
-    padding: var(--cui-space-1);
-    background: var(--cui-surface-2);
-    border-radius: var(--cui-radius-lg);
-    box-shadow: none;
-    > .#{$prefix}tab {
-      --_height: 2.25rem;
-      border-block-end: 0;
-      border-radius: var(--cui-radius);
-      &:hover { background: color-mix(in oklch, var(--cui-surface) 50%, transparent); }
-      &[aria-selected="true"], &[aria-current]:not([aria-current="false"]), &.#{$prefix}active {
-        --_fg: var(--cui-text);
-        background: var(--cui-surface);
-        box-shadow: var(--cui-shadow-key);
-      }
-      &:focus-visible { box-shadow: var(--cui-ring); }
-    }
-  }
-
-  /* Vertical: a column with the line on the start edge. */
-  .#{$prefix}tabs-vertical {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 1px;
-    box-shadow: none;
-    border-inline-start: var(--cui-border-width) solid var(--cui-border);
-    overflow: visible;
-    > .#{$prefix}tab {
-      --_height: 2.5rem;
-      justify-content: flex-start;
-      text-align: start;
-      white-space: normal;
-      margin-inline-start: calc(-1 * var(--cui-border-width));
-      border-block-end: 0;
-      border-inline-start: 2px solid transparent;
-      border-radius: 0;
-      border-start-end-radius: var(--cui-radius);
-      border-end-end-radius: var(--cui-radius);
-      &[aria-selected="true"], &[aria-current]:not([aria-current="false"]), &.#{$prefix}active { border-inline-start-color: var(--_accent); background: var(--_active-bg); }
-      > .#{$prefix}count { margin-inline-start: auto; }
-    }
-  }
-
-  /* ---- Sliding indicator (indicator.js) ------------------------------------
-   * The container's ::after takes over the active tab's wash and rule and glides to the
-   * next tab; the tab itself goes transparent. Each variant restyles the slider below. */
-  .#{$prefix}tabs[data-cui-indicator] {
-    --_ind-bg: var(--cui-primary-soft);
-    --_ind-rule: var(--_accent);
-    --_ind-shadow: none;
-    &::after {
-      content: "";
-      position: absolute;
-      z-index: -1;
-      top: 0;
-      left: 0;
-      width: var(--_ind-w);
-      height: var(--_ind-h);
-      translate: var(--_ind-x) var(--_ind-y);
-      background: var(--_ind-bg);
-      border-block-end: 2px solid var(--_ind-rule);
-      border-start-start-radius: var(--cui-radius);
-      border-start-end-radius: var(--cui-radius);
-      box-shadow: var(--_ind-shadow);
-      pointer-events: none;
-      transition:
-        translate var(--cui-duration-slow) var(--cui-ease-out),
-        width var(--cui-duration-slow) var(--cui-ease-out),
-        height var(--cui-duration-slow) var(--cui-ease-out);
-    }
-    > .#{$prefix}tab:is([aria-selected="true"], [aria-current]:not([aria-current="false"]), .#{$prefix}active) {
-      background: transparent;
-      border-block-end-color: transparent;
-      &:not(:focus-visible) { box-shadow: none; }
-    }
-  }
-  .#{$prefix}tabs-pills[data-cui-indicator]::after { border-block-end: 0; border-radius: var(--cui-radius-full); }
-  .#{$prefix}tabs-boxed[data-cui-indicator] {
-    --_ind-bg: var(--cui-surface);
-    --_ind-shadow: var(--cui-shadow-key);
-    &::after { border-block-end: 0; border-radius: var(--cui-radius); }
-  }
-  .#{$prefix}tabs-vertical[data-cui-indicator] {
-    &::after {
-      border-block-end: 0;
-      border-inline-start: 2px solid var(--_ind-rule);
-      border-radius: 0;
-      border-start-end-radius: var(--cui-radius);
-      border-end-end-radius: var(--cui-radius);
-    }
-    > .#{$prefix}tab:is([aria-selected="true"], [aria-current]:not([aria-current="false"]), .#{$prefix}active) { border-inline-start-color: transparent; }
-  }
-
-  .#{$prefix}tab-panel {
-    padding-block: var(--cui-space-4);
-    &[hidden] { display: none; }
-    &:focus-visible { outline: none; box-shadow: var(--cui-ring); border-radius: var(--cui-radius); }
-  }
 }

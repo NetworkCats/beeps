@@ -7,8 +7,7 @@
  *     <div class="empty-actions"><a class="btn btn-primary">Find people</a><a class="btn">Learn more</a></div>
  *   </div>
  *
- * Variants: .empty-sm (compact), .empty-bordered (dashed box), .empty-card (surface + border),
- * .empty-icon-circle on the icon slot for a tinted disc. */
+ * Variants: .empty-sm (compact), .empty-icon-circle on the icon slot for a tinted disc. */
 @use "../foundation/layers";
 @use "../abstracts" as *;
 
@@ -48,7 +47,6 @@
     background: var(--cui-surface-2);
     border-radius: 50%;
   }
-  .#{$prefix}empty-icon-primary { color: var(--cui-primary); &.#{$prefix}empty-icon-circle { background: var(--cui-primary-soft); } }
   .#{$prefix}empty-title {
     margin: 0;
     font-size: var(--cui-text-lg);
@@ -84,6 +82,4 @@
     .#{$prefix}empty-title { font-size: var(--cui-text-base); }
     .#{$prefix}empty-actions { margin-block-start: var(--cui-space-1); }
   }
-  .#{$prefix}empty-bordered { border: var(--cui-border-width) dashed var(--cui-border-strong); border-radius: var(--cui-radius-lg); }
-  .#{$prefix}empty-card { background: var(--cui-surface); border: var(--cui-border-width) solid var(--cui-border); border-radius: var(--cui-radius-lg); }
 }

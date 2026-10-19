@@ -104,7 +104,7 @@ export function SettingsPage({ props, errors }: IslandProps<SettingsProps>) {
   const section = props.section && TITLES[props.section] ? props.section : undefined;
   if (!section) {
     return (
-      <section class="feed settings">
+      <section class="feed">
         <header class="column-header">
           <h1 class="column-title">{t('Settings.Title')}</h1>
         </header>
@@ -120,7 +120,7 @@ export function SettingsPage({ props, errors }: IslandProps<SettingsProps>) {
   }
   const { title, back } = TITLES[section];
   return (
-    <section class="feed settings">
+    <section class="feed">
       <header class="column-header">
         <a class="column-back" href={back} aria-label={t('Nav.Back')}>
           <Icon name="arrow_back" />

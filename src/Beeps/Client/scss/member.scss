@@ -348,7 +348,7 @@
 }
 
 .notification-icon-like {
-  color: light-dark(var(--cui-pink-600), var(--cui-pink-400));
+  color: light-dark(#{palette-color("pink", 600)}, #{palette-color("pink", 400)});
 }
 
 .notification-main {

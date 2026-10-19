@@ -43,7 +43,7 @@ export function ReportPage({ props, errors }: IslandProps<ReportProps>) {
       <p class="column-lead">{t('Report.Lead')}</p>
       <FormErrors errors={errors} />
       <BeepCard id={props.beep.id} />
-      <form class="report-form settings-section" method="post" onSubmit={submit}>
+      <form class="settings-section" method="post" onSubmit={submit}>
         <fieldset class="check-group">
           <legend class="label">{t('Report.Reason')}</legend>
           {props.reasons.map((reason) => (

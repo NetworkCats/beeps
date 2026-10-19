@@ -2,25 +2,19 @@
  *
  * .nav — generic vertical (or .nav-horizontal) list of links for sidebars, settings, filters:
  *   <nav class="nav">
- *     <div class="nav-section">
- *       <span class="eyebrow">Account</span>
- *       <a class="nav-item" href aria-current="page"><span class="icon">person</span> Profile</a>
- *       <a class="nav-item" href><span class="icon">notifications</span> Notifications <span class="count">3</span></a>
- *     </div>
- *     <hr class="nav-divider">
- *     <button class="nav-item" disabled>…</button>
+ *     <a class="nav-item" href aria-current="page"><span class="icon">person</span> Profile</a>
+ *     <a class="nav-item" href><span class="icon">notifications</span> Notifications <span class="count">3</span></a>
  *   </nav>
  *
  * .sidenav — an app-shell left column of large icon + label links:
- *   <nav class="sidenav sidenav-auto">
+ *   <nav class="sidenav">
  *     <a class="sidenav-brand" href="/"><span class="icon">hive</span><span class="sidenav-label">Acme</span></a>
  *     <a class="sidenav-item" href aria-current="page"><span class="icon">home</span><span class="sidenav-label">Home</span></a>
  *     <a class="sidenav-item" href><span class="icon">mail</span><span class="sidenav-label">Messages</span><span class="count">2</span></a>
  *     <a class="btn btn-primary sidenav-cta" href><span class="icon">edit</span><span class="sidenav-label">Post</span></a>
  *     <div class="sidenav-footer">…user menu…</div>
  *   </nav>
- * Collapsed (icons only): add .sidenav-collapsed, or .sidenav-auto to collapse below --lg.
- * Active: [aria-current] or .active. */
+ * Active: [aria-current]. */
 @use "../foundation/layers";
 @use "../abstracts" as *;
 
@@ -63,36 +57,20 @@
 
     &:hover { background: var(--cui-surface-hover); color: var(--cui-text); text-decoration: none; > .#{$prefix}icon { color: var(--cui-text-2); } }
     &:focus-visible { @include focus-ring($inset: true); }
-    &[aria-current]:not([aria-current="false"]), &.#{$prefix}active {
+    &[aria-current]:not([aria-current="false"]) {
       background: var(--_active-bg);
       color: var(--_active-fg);
       > .#{$prefix}icon { color: var(--_active-fg); }
     }
-    &[disabled], &:disabled, &.#{$prefix}disabled, &[aria-disabled="true"] { opacity: 0.5; pointer-events: none; }
+    &[disabled], &:disabled, &[aria-disabled="true"] { opacity: 0.5; pointer-events: none; }
   }
   .#{$prefix}nav-horizontal {
     flex-direction: row;
     flex-wrap: wrap;
     align-items: center;
     gap: var(--cui-space-1);
-    > .#{$prefix}nav-item, > .#{$prefix}nav-section { width: auto; }
-    > .#{$prefix}nav-divider { width: 1px; height: 1.5rem; margin: 0 var(--cui-space-1); }
+    > .#{$prefix}nav-item { width: auto; }
   }
-  .#{$prefix}nav-section {
-    display: flex;
-    flex-direction: column;
-    gap: 1px;
-    min-width: 0;
-    & + & { margin-block-start: var(--cui-space-4); }
-    > .#{$prefix}eyebrow { padding: var(--cui-space-1) var(--cui-space-3); margin-block-end: var(--cui-space-1); }
-  }
-  .#{$prefix}nav-divider {
-    height: 1px;
-    margin: var(--cui-space-2) var(--cui-space-3);
-    border: 0;
-    background: var(--cui-border);
-  }
-  .#{$prefix}nav-sm > .#{$prefix}nav-item, .#{$prefix}nav-sm .#{$prefix}nav-item { --_py: var(--cui-space-1-5); --_px: var(--cui-space-2-5); gap: var(--cui-space-2); > .#{$prefix}icon { --cui-icon-size: 1.125rem; } }
 
   /* ---- .sidenav ------------------------------------------------------------ */
   .#{$prefix}sidenav {
@@ -150,12 +128,12 @@
 
     &:hover { background: var(--cui-surface-hover); color: var(--cui-text); text-decoration: none; }
     &:focus-visible { @include focus-ring; }
-    &[aria-current]:not([aria-current="false"]), &.#{$prefix}active {
+    &[aria-current]:not([aria-current="false"]) {
       color: var(--cui-text);
       font-weight: var(--cui-weight-semibold);
       > .#{$prefix}icon { --cui-icon-fill: 1; }
     }
-    &[disabled], &:disabled, &.#{$prefix}disabled, &[aria-disabled="true"] { opacity: 0.5; pointer-events: none; }
+    &[disabled], &:disabled, &[aria-disabled="true"] { opacity: 0.5; pointer-events: none; }
   }
   /* Big primary action (Post / New). Use with .btn.btn-primary. */
   .#{$prefix}sidenav-cta {
@@ -171,46 +149,5 @@
   .#{$prefix}sidenav-footer {
     margin-block-start: auto;
     padding-block-start: var(--cui-space-4);
-  }
-  .#{$prefix}sidenav-divider { height: 1px; margin: var(--cui-space-2) var(--cui-space-3); border: 0; background: var(--cui-border); }
-
-  /* Collapsed: icon rail. The same block appears again below for .sidenav-auto inside a media
-   * query: plain CSS can't share one rule set between a class and a breakpoint (style container
-   * queries would, but Firefox lacks them), so keep the two copies identical. */
-  .#{$prefix}sidenav-collapsed {
-    align-items: center;
-    .#{$prefix}sidenav-label { display: none; }
-    .#{$prefix}sidenav-brand { justify-content: center; width: 3rem; padding: 0; }
-    .#{$prefix}sidenav-item {
-      justify-content: center;
-      width: 3rem;
-      min-height: 3rem;
-      padding: 0;
-      gap: 0;
-      > .#{$prefix}badge { display: none; }
-      > .#{$prefix}count { position: absolute; top: 0.125rem; inset-inline-end: 0.125rem; margin: 0; }
-    }
-    .#{$prefix}sidenav-cta { width: 3rem; padding: 0; margin-inline: auto; > .#{$prefix}icon { margin: 0; } }
-    .#{$prefix}sidenav-footer { display: flex; justify-content: center; }
-    .#{$prefix}sidenav-divider { width: 2rem; margin-inline: auto; }
-  }
-  @include mq(max-lg) {
-    .#{$prefix}sidenav-auto {
-      align-items: center;
-      .#{$prefix}sidenav-label { display: none; }
-      .#{$prefix}sidenav-brand { justify-content: center; width: 3rem; padding: 0; }
-      .#{$prefix}sidenav-item {
-        justify-content: center;
-        width: 3rem;
-        min-height: 3rem;
-        padding: 0;
-        gap: 0;
-        > .#{$prefix}badge { display: none; }
-        > .#{$prefix}count { position: absolute; top: 0.125rem; inset-inline-end: 0.125rem; margin: 0; }
-      }
-      .#{$prefix}sidenav-cta { width: 3rem; padding: 0; margin-inline: auto; > .#{$prefix}icon { margin: 0; } }
-      .#{$prefix}sidenav-footer { display: flex; justify-content: center; }
-      .#{$prefix}sidenav-divider { width: 2rem; margin-inline: auto; }
-    }
   }
 }

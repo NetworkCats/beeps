@@ -130,7 +130,7 @@ export function ReviewBeepPage({ props: beep }: IslandProps<AdminReviewBeepProps
         </section>
       )}
 
-      <article class="review-beep">
+      <article>
         <dl class="facts">
           <dt>{t('Admin.Review.Author')}</dt>
           <dd>

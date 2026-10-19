@@ -2,9 +2,19 @@
 //
 // Ladder (L):  50 97% · 100 93% · 200 87% · 300 79% · 400 69% · 500 59%
 //              600 51% · 700 44% · 800 38% · 900 32% · 950 25%
+//
+// Every neutral step is a custom property. Of the hues, only what the tokens read is: the light and
+// dark brand steps ($brand-steps) of the brand and of each status, which brand-color() points at.
+// Any other step is at hand in Sass as palette-color($hue, $step).
+@use "sass:list";
 @use "sass:map";
 @use "layers";
 @use "../abstracts" as *;
+
+$_hues: (hue-name($brand),);
+@each $_, $status in $all-statuses {
+  $_hues: list.append($_hues, hue-name(map.get($status, hue)));
+}
 
 @layer cui.tokens {
   :root {
@@ -13,18 +23,13 @@
     }
 
     @each $hue, $_ in $all-hues {
-      @each $step, $_ in $ladder {
-        --cui-#{$hue}-#{$step}: #{palette-color($hue, $step)};
+      @if list.index($_hues, $hue) {
+        @each $step, $_ in $ladder {
+          @if list.index(map.values($brand-steps), $step) {
+            --cui-#{$hue}-#{$step}: #{palette-color($hue, $step)};
+          }
+        }
       }
-    }
-  }
-
-  // Brand presets: data-brand on <html> (or any subtree) re-points --cui-primary.
-  // `:root[data-brand]` outranks the :root defaults in _tokens.scss (which load later).
-  @each $hue in brand-presets() {
-    :root[data-brand="#{$hue}"],
-    [data-brand="#{$hue}"] {
-      --cui-primary: #{brand-color($hue)};
     }
   }
 }

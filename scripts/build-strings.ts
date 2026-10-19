@@ -12,7 +12,7 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const app = join(root, 'src/Beeps/Client/app');
 const target = join(root, 'src/Beeps/Client/strings.json');
 
-export function keysIn(source: string): string[] {
+function keysIn(source: string): string[] {
   return [...source.matchAll(/'([A-Z][A-Za-z0-9]*(?:\.[A-Za-z0-9]+)+)'/g)].map((match) => match[1] ?? '');
 }
 

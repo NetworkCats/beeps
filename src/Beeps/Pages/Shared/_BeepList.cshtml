@@ -10,7 +10,7 @@
 </div>
 @if (Model.Page.Items.Count > 0)
 {
-    <div class="beep-list">
+    <div>
         @foreach (var beep in Model.Page.Items)
         {
             <partial name="_Beep" model="new BeepCard(beep)" />

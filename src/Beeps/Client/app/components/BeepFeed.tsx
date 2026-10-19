@@ -12,7 +12,7 @@ import { appendPage, insertOrdered, mergeFresh } from '../lists.ts';
 import { refreshPage, useLiveEvent } from '../page.ts';
 import type { BeepProps, IslandsPage } from '../props.ts';
 import { schedule } from '../schedule.ts';
-import { BeepCard, type CardPlacement } from './BeepCard.tsx';
+import { BeepCard } from './BeepCard.tsx';
 import { Pager } from './Pager.tsx';
 
 // Matches LiveFeedService.Limit: how many beeps the server sends at most for one fetch.
@@ -196,11 +196,10 @@ export interface BeepListViewProps {
   feed: Feed;
   emptyTitle: string;
   emptyText?: string;
-  placement?: (id: string) => CardPlacement;
 }
 
 /** The list as Pages/Shared/_BeepList.cshtml draws it: the empty state (hidden while there are beeps), the beeps, the pager. */
-export function BeepListView({ feed, emptyTitle, emptyText, placement }: BeepListViewProps) {
+export function BeepListView({ feed, emptyTitle, emptyText }: BeepListViewProps) {
   const { visible } = feed;
   return (
     <>
@@ -209,9 +208,9 @@ export function BeepListView({ feed, emptyTitle, emptyText, placement }: BeepLis
         {emptyText && <p class="empty-text">{emptyText}</p>}
       </div>
       {visible.length > 0 && (
-        <div class="beep-list">
+        <div>
           {visible.map((id) => (
-            <BeepCard key={id} id={id} {...placement?.(id)} entering={feed.entering(id)} onEntered={() => feed.entered(id)} />
+            <BeepCard key={id} id={id} entering={feed.entering(id)} onEntered={() => feed.entered(id)} />
           ))}
         </div>
       )}

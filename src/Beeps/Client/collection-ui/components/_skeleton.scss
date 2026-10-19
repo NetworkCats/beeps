@@ -2,14 +2,13 @@
  *
  *   <div class="skeleton skeleton-title"></div>
  *   <div class="skeleton skeleton-text"></div>
- *   <div class="skeleton skeleton-text w-50"></div>             width utilities (.w-25/.w-50/.w-75) or inline style
+ *   <div class="skeleton skeleton-text" style="width: 50%"></div>
  *   <div class="skeleton skeleton-circle" style="--size: 3rem"></div>
- *   <div class="skeleton skeleton-rect"></div>                   16:9 media block
  *   <span class="skeleton skeleton-btn"></span>
  *
  * Composites (wrap in aria-busy="true" / aria-hidden="true"):
  *   <div class="skeleton-post"><div class="skeleton skeleton-circle"></div>
- *     <div class="skeleton-lines"><div class="skeleton skeleton-text w-25"></div><div class="skeleton skeleton-text"></div></div></div>
+ *     <div class="skeleton-lines"><div class="skeleton skeleton-text" style="width: 25%"></div><div class="skeleton skeleton-text"></div></div></div>
  *   <div class="skeleton-row"><div class="skeleton skeleton-circle"></div><div class="skeleton-lines">…</div></div>
  * Reduced motion: no shimmer, static blocks. */
 @use "../foundation/layers";
@@ -45,11 +44,7 @@
   .#{$prefix}skeleton-text { height: 0.875em; width: 100%; margin-block: 0.35em; border-radius: var(--cui-radius-sm); }
   .#{$prefix}skeleton-title { height: 1.25em; width: 60%; margin-block: 0.35em; border-radius: var(--cui-radius-sm); }
   .#{$prefix}skeleton-circle { --size: 2.5rem; width: var(--size); height: var(--size); flex-shrink: 0; border-radius: 50%; }
-  .#{$prefix}skeleton-rect { width: 100%; aspect-ratio: 16 / 9; border-radius: var(--cui-radius-lg); }
-  .#{$prefix}skeleton-square { --size: 4rem; width: var(--size); height: var(--size); flex-shrink: 0; border-radius: var(--cui-radius); }
   .#{$prefix}skeleton-btn { display: inline-block; width: 6rem; height: var(--cui-control-height); border-radius: var(--cui-control-radius); }
-  .#{$prefix}skeleton-badge { display: inline-block; width: 3.5rem; height: 1.25rem; border-radius: var(--cui-radius-sm); }
-  .#{$prefix}skeleton-inline { display: inline-block; vertical-align: middle; }
 
   /* Composites */
   .#{$prefix}skeleton-lines { flex: 1 1 auto; min-width: 0; }
@@ -58,7 +53,6 @@
     align-items: flex-start;
     gap: var(--cui-space-3);
     padding: var(--cui-space-4);
-    > .#{$prefix}skeleton-lines > .#{$prefix}skeleton-rect { margin-block-start: var(--cui-space-3); }
   }
   .#{$prefix}skeleton-row {
     display: flex;
@@ -66,13 +60,5 @@
     gap: var(--cui-space-4);
     padding: var(--cui-space-3) var(--cui-space-4);
     > .#{$prefix}skeleton-btn { margin-inline-start: auto; width: 4.5rem; height: var(--cui-control-height-sm); }
-  }
-  .#{$prefix}skeleton-card {
-    border: var(--cui-border-width) solid var(--cui-border);
-    border-radius: var(--cui-radius-lg);
-    background: var(--cui-surface);
-    overflow: clip;
-    > .#{$prefix}skeleton-rect { border-radius: 0; }
-    > .#{$prefix}skeleton-lines { padding: var(--cui-space-4); }
   }
 }

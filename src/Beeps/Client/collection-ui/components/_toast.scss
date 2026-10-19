@@ -1,20 +1,19 @@
-/* Toasts. toast.js renders into a fixed .toast-stack (created on demand):
+/* Toasts, in a fixed .toast-stack:
  *
  *   <div class="toast-stack" data-position="bottom-end" role="region" aria-label="Notifications">
- *     <div class="toast toast-success" role="status">
- *       <span class="icon toast-icon" aria-hidden="true">check_circle</span>
- *       <div class="toast-content"><div class="toast-title">Saved</div><div class="toast-message">Your changes are live.</div></div>
- *       <button class="btn btn-xs btn-ghost toast-action">Undo</button>
+ *     <div class="toast toast-danger" role="alert">
+ *       <span class="icon toast-icon" aria-hidden="true">error</span>
+ *       <div class="toast-content"><p class="toast-message">Could not save.</p></div>
  *       <button class="btn-close toast-close" aria-label="Dismiss"></button>
  *     </div>
  *   </div>
  *
  * Positions: data-position="bottom-end" (default) | bottom-start | bottom-center | top-end | top-start | top-center.
- * Variants set the accent stripe + icon colour: .toast-info / -success / -warning / -danger; .toast-dark
- * is a solid dark toast in both themes. toast.js adds .toast-leaving before removing the element.
+ * .toast-danger sets the accent stripe + icon colour; .toast-dark is a solid dark toast in both themes.
+ * Add .toast-leaving to play the way out before removing the element.
  *
- * Hooks: .toast-stack[data-position], .toast (+ -info / -success / -warning / -danger / -dark, .toast-leaving),
- * .toast-icon, .toast-content, .toast-title, .toast-message, .toast-action, .toast-close. */
+ * Hooks: .toast-stack[data-position], .toast (+ -danger / -dark, .toast-leaving), .toast-icon,
+ * .toast-content, .toast-message, .toast-close. */
 @use "../foundation/layers";
 @use "../abstracts" as *;
 
@@ -69,29 +68,22 @@
     border-radius: var(--_radius);
     box-shadow: inset 3px 0 0 var(--_accent), var(--cui-shadow-lg);
     &:dir(rtl) { box-shadow: inset -3px 0 0 var(--_accent), var(--cui-shadow-lg); }
-    /* Rises in from the stack's edge and settles; toast.js slides the rest of the stack
-     * (FLIP) when one arrives or leaves, so nothing jumps. */
+    /* Rises in from the stack's edge and settles. */
     transform-origin: 50% 100%;
     animation: cui-toast-in var(--cui-duration-slower) var(--cui-ease-out) both;
     [data-position^="top"] > & { transform-origin: 50% 0; }
 
-    &.#{$prefix}toast-leaving, &.#{$prefix}is-dismissing {
+    &.#{$prefix}toast-leaving {
       animation: cui-toast-out var(--cui-duration) var(--cui-ease-in) forwards;
       pointer-events: none;
     }
   }
   .#{$prefix}toast-icon { --cui-icon-size: 1.25rem; color: var(--_accent); flex-shrink: 0; }
   .#{$prefix}toast-content { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; }
-  .#{$prefix}toast-title { font-weight: var(--cui-weight-semibold); color: var(--_fg); }
   .#{$prefix}toast-message { color: var(--cui-text-2); }
-  .#{$prefix}toast-title + .#{$prefix}toast-message { margin-block-start: 0.125rem; }
-  .#{$prefix}toast-action { align-self: flex-start; flex-shrink: 0; margin-block-start: -0.1875rem; }
   .#{$prefix}toast-close { flex-shrink: 0; margin: -0.25rem -0.25rem auto 0; }
 
-  /* Variants */
-  @each $status in statuses() {
-    .#{$prefix}toast-#{$status} { --_accent: var(--cui-#{$status}); }
-  }
+  .#{$prefix}toast-danger { --_accent: var(--cui-danger); }
 
   /* Solid dark toast in both themes (text tokens remapped like the navbar band). */
   .#{$prefix}toast-dark {

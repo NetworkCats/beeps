@@ -38,7 +38,7 @@ function withList<P extends { list: BeepListProps }>(props: P, list: FeedSource)
 /** Signed in, home and public are two feeds of one place: tabs in the column header switch between them. */
 function FeedTabs({ current }: { current: 'home' | 'public' }) {
   return (
-    <nav class="tabs tabs-justify column-tabs" aria-label={t('Nav.Feeds')}>
+    <nav class="tabs tabs-justify" aria-label={t('Nav.Feeds')}>
       <a class="tab" href="/" aria-current={current === 'home' ? 'page' : undefined}>
         {t('Nav.Home')}
       </a>

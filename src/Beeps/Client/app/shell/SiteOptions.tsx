@@ -98,7 +98,7 @@ export function SiteOptions({ props }: IslandProps<SiteOptionsProps>) {
   if (!props.menu) return <Options props={props} />;
   return (
     <Menu
-      class={props.rail ? 'menu sidenav-more' : 'menu topbar-more'}
+      class={props.rail ? 'menu sidenav-more' : 'menu'}
       summary={
         props.rail ? (
           <summary class="sidenav-item" aria-label={t('Nav.More')}>
