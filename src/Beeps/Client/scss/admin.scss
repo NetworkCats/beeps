@@ -125,8 +125,9 @@
 .admin-content {
   padding: var(--cui-space-5) var(--beeps-pad) 0;
 
-  > h1 {
-    margin-block-end: var(--cui-space-5);
+  // The page's title, on its own above the sections (in its island's wrapper, which takes no room).
+  > .island > h1 {
+    margin-block-end: var(--cui-space-6);
   }
 }
 
