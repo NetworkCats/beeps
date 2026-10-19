@@ -52,8 +52,9 @@ dev: up ## Run the app at https://beeps.local, rebuilding client assets and the 
 watch-client:
 	npm run watch
 
+# The browser-refresh socket only accepts pages from localhost unless told the site's host name (not an origin).
 watch-server:
-	dotnet watch --project $(PROJECT)
+	DOTNET_WATCH_AUTO_RELOAD_WS_ORIGINS=beeps.local dotnet watch --project $(PROJECT)
 
 build: ## Build the client assets, then the app (it fingerprints them)
 	npm run build

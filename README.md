@@ -23,7 +23,7 @@ make dev     # 之后每次：启动依赖服务，同时监听 TypeScript / SCS
 | 搜索（Meilisearch） | http://localhost:7700 |
 | PostgreSQL / Valkey | `localhost:5432` / `localhost:6379` |
 
-`make setup` 中途会要几次密码：`make certs` 把 mkcert 的本地 CA 加进系统钥匙串，并签发 `beeps.local`、`media.beeps.local` 的证书（`dev/certs/`，不提交），再信任 .NET 的开发证书（dotnet watch 通过 `wss://localhost` 让浏览器在改动后自动刷新，用的是这张证书）；`make hosts` 往 `/etc/hosts` 加这两个域名（IPv4 和 IPv6 各一行，只有 IPv4 时 macOS 会先用 mDNS 查 `.local` 的 IPv6 地址，每次卡几秒）。依赖服务是 `compose.dev.yml` 里的 PostgreSQL、Valkey、Meilisearch、SeaweedFS、MailHog，只监听 127.0.0.1；`make up`、`make down`、`make logs` 单独启停和看日志。
+`make setup` 中途会要几次密码：`make certs` 把 mkcert 的本地 CA 加进系统钥匙串，并签发 `beeps.local`、`media.beeps.local` 的证书（`dev/certs/`，不提交），再信任 .NET 的开发证书（dotnet watch 通过 `wss://localhost` 让浏览器在改动后自动刷新，用的是这张证书；它默认只接受 localhost 的页面，`make dev` 用 `DOTNET_WATCH_AUTO_RELOAD_WS_ORIGINS=beeps.local` 放行，自己运行 `dotnet watch` 时也要带上）；`make hosts` 往 `/etc/hosts` 加这两个域名（IPv4 和 IPv6 各一行，只有 IPv4 时 macOS 会先用 mDNS 查 `.local` 的 IPv6 地址，每次卡几秒）。依赖服务是 `compose.dev.yml` 里的 PostgreSQL、Valkey、Meilisearch、SeaweedFS、MailHog，只监听 127.0.0.1；`make up`、`make down`、`make logs` 单独启停和看日志。
 
 应用由 Kestrel 直接提供 HTTPS（HTTP/2），没有反向代理：`launchSettings.json` 让它监听 `https://*:443`，证书在 `appsettings.Development.json` 的 `Kestrel:Certificates`。macOS 只允许普通用户在所有网卡上监听 443，不能只监听 127.0.0.1，所以开发时局域网里的设备也能连到这台机器的 443。另外还监听 http://localhost:5080，只在需要 `localhost` 的场合用（见下面的 Google 登录）。
 
