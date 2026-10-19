@@ -13,6 +13,11 @@ export function countCharacters(text: string): number {
 /** The image types the site takes, for a file input's `accept`. */
 export const IMAGE_TYPES = 'image/jpeg,image/png,image/webp,image/gif';
 
+/** Whether a file dropped or pasted on the composer is one of those images; anything else is left out. */
+export function isImageType(type: string): boolean {
+  return IMAGE_TYPES.split(',').includes(type.toLowerCase());
+}
+
 export type ImagesProblem = 'too-many' | 'too-large' | null;
 
 /** Too many or too large files, flagged as soon as they are chosen, rather than after a long upload that would fail. */

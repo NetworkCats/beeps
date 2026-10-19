@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { checkImages, countCharacters } from './text.ts';
+import { checkImages, countCharacters, isImageType } from './text.ts';
 
 test('a Chinese character or an emoji counts as one, like on the server', () => {
   assert.equal(countCharacters('你好'), 2);
@@ -25,4 +25,12 @@ test('too many files are flagged before their sizes', () => {
 
 test('one file over the size limit is enough', () => {
   assert.equal(checkImages([mb, 5 * mb + 1], 4, 5 * mb), 'too-large');
+});
+
+test('only the image types the site takes are taken from a drop or a paste', () => {
+  assert.equal(isImageType('image/png'), true);
+  assert.equal(isImageType('IMAGE/JPEG'), true);
+  assert.equal(isImageType('image/heic'), false);
+  assert.equal(isImageType('application/pdf'), false);
+  assert.equal(isImageType(''), false);
 });

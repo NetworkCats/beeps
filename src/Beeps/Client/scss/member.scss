@@ -103,6 +103,12 @@
   border-block-end: var(--cui-border-width) solid var(--cui-border);
 }
 
+// Images dragged over the composer can be dropped anywhere on it.
+.composer[data-dropping] {
+  background: var(--cui-primary-soft);
+  box-shadow: inset 0 0 0 2px var(--cui-primary);
+}
+
 .composer-avatar {
   --cui-avatar-size: 2.5rem;
 }

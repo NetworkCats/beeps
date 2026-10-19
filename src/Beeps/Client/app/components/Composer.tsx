@@ -1,9 +1,9 @@
 // The posting form, for members. It counts what is left in the characters people see (one Chinese character or emoji
-// is one), posts with Ctrl/⌘+Enter, shows the picked images small and flags too many or too large ones at once. It posts in the background: the page it was written on catches up with the new beep,
+// is one), posts with Ctrl/⌘+Enter, takes images picked, dropped on it or pasted, shows them small and flags too many or too large ones at once. It posts in the background: the page it was written on catches up with the new beep,
 // and a refused post shows why next to the form, with the text kept. Mentions show in colour as they are typed (drawn
 // on a copy of the text behind the textarea, whose own text is transparent), and one being typed is offered the people
 // it may mean, under its line, as on Twitter.
-import type { ComponentChildren, TargetedEvent, TargetedKeyboardEvent, TargetedSubmitEvent } from 'preact';
+import type { ComponentChildren, TargetedClipboardEvent, TargetedDragEvent, TargetedEvent, TargetedKeyboardEvent, TargetedSubmitEvent } from 'preact';
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { config, viewer } from '../config.ts';
 import { sendForm } from '../forms.ts';
@@ -12,7 +12,7 @@ import { t } from '../i18n.ts';
 import { completeMention, mentionAt, mentionRanges, type MentionAt } from '../mention.ts';
 import { paths } from '../paths.ts';
 import type { ActorProps, ComposerProps, Errors } from '../props.ts';
-import { checkImages, countCharacters, IMAGE_TYPES } from '../text.ts';
+import { checkImages, countCharacters, IMAGE_TYPES, isImageType } from '../text.ts';
 import { Antiforgery, FieldError, field } from './Forms.tsx';
 import { Icon } from './Icon.tsx';
 
@@ -57,6 +57,11 @@ function lineBottom(textarea: HTMLTextAreaElement, index: number): number {
 }
 
 /** The text as the layer behind the textarea draws it, mentions in colour; a last space keeps a final empty line. */
+/** Whether what is being dragged is files from outside, not text moved about in the page. */
+function carriesFiles(event: DragEvent): boolean {
+  return event.dataTransfer?.types.includes('Files') ?? false;
+}
+
 function highlighted(text: string): ComponentChildren[] {
   const parts: ComponentChildren[] = [];
   let from = 0;
@@ -81,6 +86,10 @@ export function Composer({ composer, errors }: { composer: ComposerProps; errors
   const [listTop, setListTop] = useState(0);
   const textarea = useRef<HTMLTextAreaElement>(null);
   const highlight = useRef<HTMLDivElement>(null);
+  const fileInput = useRef<HTMLInputElement>(null);
+  const [dropping, setDropping] = useState(false);
+  // Moving onto a child of the form leaves the form's own box too, so a drag is over it while enters outnumber leaves.
+  const dragDepth = useRef(0);
   const lookup = useRef<{ timer?: ReturnType<typeof setTimeout>; query?: string; answers: Map<string, ActorProps[]> }>({ answers: new Map() });
   const listId = reply ? 'reply-mentions' : 'compose-mentions';
 
@@ -190,8 +199,7 @@ export function Composer({ composer, errors }: { composer: ComposerProps; errors
   };
 
   // Too many or too large files are flagged as soon as they are chosen, with the server's own message.
-  const picked = (event: TargetedEvent<HTMLInputElement>): void => {
-    const input = event.currentTarget;
+  const showImages = (input: HTMLInputElement): void => {
     const files: File[] = Array.from(input.files ?? []);
     const problem = checkImages(files.map((file) => file.size), imagesPerBeep, mediaBytes);
     const message = problem === 'too-many'
@@ -200,6 +208,60 @@ export function Composer({ composer, errors }: { composer: ComposerProps; errors
     input.setCustomValidity(message);
     if (message) input.reportValidity();
     setPreviews(files.map((file) => ({ src: URL.createObjectURL(file), name: file.name })));
+  };
+
+  const picked = (event: TargetedEvent<HTMLInputElement>): void => showImages(event.currentTarget);
+
+  // Dropped or pasted images join those already chosen, in the file input the form posts; other files are left out.
+  const addImages = (files: File[]): void => {
+    const input = fileInput.current;
+    const images = files.filter((file) => isImageType(file.type));
+    if (!input || images.length === 0) return;
+    const all = new DataTransfer();
+    for (const file of [...Array.from(input.files ?? []), ...images]) all.items.add(file);
+    input.files = all.files;
+    showImages(input);
+  };
+
+  const dragEnter = (event: TargetedDragEvent<HTMLFormElement>): void => {
+    if (!carriesFiles(event)) return;
+    event.preventDefault();
+    dragDepth.current++;
+    setDropping(true);
+  };
+
+  // Without this the browser would not let the files be dropped here.
+  const dragOver = (event: TargetedDragEvent<HTMLFormElement>): void => {
+    if (!carriesFiles(event)) return;
+    event.preventDefault();
+    if (event.dataTransfer) event.dataTransfer.dropEffect = 'copy';
+  };
+
+  const dragLeave = (event: TargetedDragEvent<HTMLFormElement>): void => {
+    if (!carriesFiles(event)) return;
+    dragDepth.current = Math.max(0, dragDepth.current - 1);
+    if (dragDepth.current === 0) setDropping(false);
+  };
+
+  // Taken here rather than opened by the browser in place of the page, even when none of the files is an image.
+  const drop = (event: TargetedDragEvent<HTMLFormElement>): void => {
+    if (!carriesFiles(event)) return;
+    event.preventDefault();
+    dragDepth.current = 0;
+    setDropping(false);
+    addImages(Array.from(event.dataTransfer?.files ?? []));
+  };
+
+  // A pasted image (a screenshot, an image copied from a page) is attached. A copied selection with text in it, as Word
+  // or a spreadsheet gives along with a picture of it, pastes as its text.
+  const pasted = (event: TargetedClipboardEvent<HTMLTextAreaElement>): void => {
+    const clipboard = event.clipboardData;
+    if (!clipboard || clipboard.files.length === 0) return;
+    if (clipboard.types.includes('text/plain') && clipboard.types.includes('text/html')) return;
+    const images = Array.from(clipboard.files).filter((file) => isImageType(file.type));
+    if (images.length === 0) return;
+    event.preventDefault();
+    addImages(images);
   };
 
   const submit = (event: TargetedSubmitEvent<HTMLFormElement>): void => {
@@ -220,7 +282,19 @@ export function Composer({ composer, errors }: { composer: ComposerProps; errors
 
   const action = composer.replyTo ? paths.composeReply(composer.replyTo) : paths.compose;
   return (
-    <form class="composer" method="post" enctype="multipart/form-data" action={action} id={reply ? 'reply' : 'compose'} onSubmit={submit}>
+    <form
+      class="composer"
+      method="post"
+      enctype="multipart/form-data"
+      action={action}
+      id={reply ? 'reply' : 'compose'}
+      data-dropping={dropping ? '' : undefined}
+      onSubmit={submit}
+      onDragEnter={dragEnter}
+      onDragOver={dragOver}
+      onDragLeave={dragLeave}
+      onDrop={drop}
+    >
       <input type="hidden" name="ReturnUrl" value={composer.returnUrl} />
       <span class="avatar composer-avatar" aria-hidden="true">
         <img src={viewer.value.avatar ?? undefined} alt="" width={40} height={40} />
@@ -247,6 +321,7 @@ export function Composer({ composer, errors }: { composer: ComposerProps; errors
               onInput={typed}
               onKeyDown={keyDown}
               onKeyUp={keyUp}
+              onPaste={pasted}
               onClick={(event) => findMention(event.currentTarget)}
               onBlur={closeSuggestions}
               onScroll={(event) => {
@@ -288,7 +363,7 @@ export function Composer({ composer, errors }: { composer: ComposerProps; errors
           <label class="composer-images" title={t('Compose.Images', imagesPerBeep)}>
             <Icon name="image" />
             <span class="visually-hidden">{t('Compose.Images', imagesPerBeep)}</span>
-            <input class="composer-file" type="file" name={IMAGES_FIELD} multiple accept={IMAGE_TYPES} onChange={picked} />
+            <input class="composer-file" ref={fileInput} type="file" name={IMAGES_FIELD} multiple accept={IMAGE_TYPES} onChange={picked} />
           </label>
           {/* Only near the limit is the number worth reading out. */}
           <span class="composer-count" aria-live="polite" hidden={left > beepLength * 0.2} data-over={left < 0 ? '' : undefined}>
