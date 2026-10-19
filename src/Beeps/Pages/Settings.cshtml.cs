@@ -13,8 +13,8 @@ using Microsoft.Extensions.Localization;
 namespace Beeps.Pages;
 
 /// <summary>
-/// The account's own settings: avatar, banner, profile, privacy, language, colour scheme, email and password (PLAN 2.2, 3.4,
-/// 5.2, 6.12). As on
+/// The account's own settings: avatar, banner, profile, privacy, language, colour scheme, email, password and the Google
+/// and GitHub accounts it signs in with (PLAN 2.2, 3.4, 5.2, 6.12, 6.14). As on
 /// Twitter, <c>/settings</c> lists the sections and each has a page of its own (<see cref="SettingsSections"/>); a form
 /// comes back to the section it belongs to, whichever address it was sent to.
 /// </summary>
@@ -45,6 +45,9 @@ public sealed class SettingsModel(AccountService accounts, AvatarService avatars
     [BindProperty] public string? NewEmail { get; set; }
 
     [BindProperty] public string? Code { get; set; }
+
+    /// <summary>The provider to unlink (<see cref="ExternalProviders"/>).</summary>
+    [BindProperty] public string? Provider { get; set; }
 
     [BindProperty] public bool HideLikes { get; set; }
 
@@ -103,12 +106,25 @@ public sealed class SettingsModel(AccountService accounts, AvatarService avatars
     public async Task<IActionResult> OnPostThemeAsync(CancellationToken cancellationToken) =>
         await DoneAsync(await this.ChooseThemeAsync(accounts, Theme, cancellationToken), SettingsSections.Display, notice: null, cancellationToken);
 
+    // Sent without the current password only by an account that has none, which this sets the first of.
     public async Task<IActionResult> OnPostPasswordAsync(CancellationToken cancellationToken) =>
         await DoneAsync(
             await accounts.ChangePasswordAsync(User.ActorId(), User.SessionId(), CurrentPassword, NewPassword, cancellationToken),
             SettingsSections.Password,
-            "Settings.PasswordChanged",
+            string.IsNullOrEmpty(CurrentPassword) ? "Settings.PasswordSet" : "Settings.PasswordChanged",
             cancellationToken);
+
+    // Linking goes out to the provider and back (Pages/Account/External); unlinking is done here.
+    public async Task<IActionResult> OnPostUnlinkAsync(CancellationToken cancellationToken)
+    {
+        var result = await accounts.UnlinkExternalAsync(User.ActorId(), Provider, cancellationToken);
+        if (result.IsSuccess && ExternalProviders.Find(Provider) is { } provider)
+        {
+            TempData[Notices.Success] = localizer["Settings.Disconnected", ExternalProviders.DisplayName(provider)].Value;
+        }
+
+        return await DoneAsync(result, SettingsSections.Account, notice: null, cancellationToken);
+    }
 
     // The page then asks for the code sent to the new address.
     public async Task<IActionResult> OnPostEmailAsync(CancellationToken cancellationToken) =>

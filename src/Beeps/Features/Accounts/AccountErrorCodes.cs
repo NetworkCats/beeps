@@ -13,6 +13,15 @@ public static class AccountErrorCodes
     public const string AccountBanned = "account_banned";
     public const string CodeInvalid = "code_invalid";
     public const string AlreadyVerified = "already_verified";
+
+    /// <summary>Signing in with a provider: it gave no verified address to make an account with.</summary>
+    public const string ExternalNoEmail = "external_no_email";
+
+    /// <summary>The provider's account is linked to another account here, or this one has another of that provider.</summary>
+    public const string ExternalLinked = "external_linked";
+
+    /// <summary>The last way left to sign in, which cannot be unlinked before a password is set.</summary>
+    public const string LastSignInMethod = "last_sign_in_method";
 }
 
 /// <summary>Names of unique indexes whose violations the account services translate into errors.</summary>
@@ -20,6 +29,8 @@ public static class AccountIndexes
 {
     public const string UniqueHandle = "ux_actors_normalized_handle";
     public const string UniqueEmail = "ux_users_normalized_email";
+    public const string UniqueLogin = "pk_user_logins";
+    public const string UniqueLoginProvider = "ux_user_logins_user_id_provider";
 }
 
 /// <summary>Form field names used in validation errors; the pages bind inputs with the same names.</summary>

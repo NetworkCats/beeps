@@ -14,6 +14,12 @@ public static class AuthSchemes
 
     /// <summary>Picks one of the two by path; it is the default, so <c>HttpContext.User</c> is always from the right one.</summary>
     public const string ByPath = "BeepsByPath";
+
+    /// <summary>
+    /// Who Google or GitHub said signed in, for the few minutes until <c>/oauth/complete</c> is done with it
+    /// (<see cref="ExternalAuth"/>). Never a session: nothing but that page reads it.
+    /// </summary>
+    public const string External = "External";
 }
 
 public static class AuthPolicies

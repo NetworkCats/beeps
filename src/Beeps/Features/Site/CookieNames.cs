@@ -20,4 +20,13 @@ public static class CookieNames
 
     /// <summary>The one-line notice a redirect leaves for the page it leads to (TempData).</summary>
     public const string Notice = "beeps.notice";
+
+    /// <summary>Who Google or GitHub said signed in, until signing in or up with it is done (Features/Auth/ExternalAuth.cs).</summary>
+    public const string External = "beeps.external";
+
+    /// <summary>
+    /// The start of the cookie that ties the provider's answer to the browser that went there (one per sign-in under
+    /// way, named after it).
+    /// </summary>
+    public const string Correlation = "beeps.correlation.";
 }

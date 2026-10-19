@@ -197,6 +197,19 @@ public sealed partial class IslandSamplesTests : IDisposable
     }
 
     [Fact]
+    public async Task AnAccountWithoutAPasswordMatchesItsSamples()
+    {
+        using var client = await WebAuth.SignInAsync(factory, tom);
+        // Signed up with GitHub: no password to give, and GitHub to unlink only once there is one.
+        tom.PasswordHash = null;
+        factory.Accounts.ListLoginsAsync(tom.Id, Arg.Any<CancellationToken>())
+            .Returns([new ExternalLogin { UserId = tom.Id, Provider = ExternalProviders.GitHub, ProviderKey = "42", Name = "octocat" }]);
+
+        await MatchSampleAsync("settings-linked-account", "/settings/account", await DrawnAsync(client, "/settings/account"));
+        await MatchSampleAsync("settings-linked-password", "/settings/password", await DrawnAsync(client, "/settings/password"));
+    }
+
+    [Fact]
     public async Task ANewKeyMatchesItsSample()
     {
         using var client = await WebAuth.SignInAsync(factory, tom);
@@ -233,7 +246,7 @@ public sealed partial class IslandSamplesTests : IDisposable
     public void EverySampleIsOneThatATestDraws()
     {
         // The facts above draw these; the theories draw their pages.
-        string[] others = ["verify", "compose-refused", "settings-refused", "agents-new-key", "onboarding-key"];
+        string[] others = ["verify", "compose-refused", "settings-refused", "settings-linked-account", "settings-linked-password", "agents-new-key", "onboarding-key"];
         string[] drawn =
         [
             .. Pages.Select(row => row.Data.Item1),

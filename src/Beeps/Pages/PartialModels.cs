@@ -4,6 +4,10 @@ using Beeps.Features.Shared;
 
 namespace Beeps.Pages;
 
+/// <summary>The buttons for signing in or up with Google and GitHub, for <c>_ExternalLogins.cshtml</c>.</summary>
+/// <param name="ReturnUrl">Where signing in leads once done, as the login page was asked for it.</param>
+public sealed record ExternalLoginLinks(string? ReturnUrl = null);
+
 /// <summary>One beep for <c>_Beep.cshtml</c>.</summary>
 /// <param name="Focused">The beep the page is about, within its thread.</param>
 /// <param name="InThread">Shown inside its thread, so a reply needs no link to where it belongs.</param>

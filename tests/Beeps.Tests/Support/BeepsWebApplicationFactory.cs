@@ -44,6 +44,7 @@ public sealed class BeepsWebApplicationFactory : WebApplicationFactory<Program>
         RateLimitStore.TryAcquireAsync(default!, CancellationToken.None).ReturnsForAnyArgs(RateLimitDecision.Allowed);
         Captcha.VerifyAsync(default, default!, CancellationToken.None).ReturnsForAnyArgs(true);
         Accounts.GetRegistrationModeAsync(CancellationToken.None).ReturnsForAnyArgs(RegistrationMode.Open);
+        Accounts.ListLoginsAsync(default, CancellationToken.None).ReturnsForAnyArgs([]);
         Agents.ListAgentsAsync(default, CancellationToken.None).ReturnsForAnyArgs([]);
         Counters.GetAsync(default!, CancellationToken.None).ReturnsForAnyArgs(new Dictionary<Guid, BeepCounts>());
         Beeps.GetMentionsAsync(default!, CancellationToken.None).ReturnsForAnyArgs(new Dictionary<Guid, IReadOnlyList<ActorRow>>());
@@ -117,6 +118,9 @@ public sealed class BeepsWebApplicationFactory : WebApplicationFactory<Program>
     /// <summary>A clock for tests whose pages must come out the same every time (the footer's year, relative times).</summary>
     public TimeProvider? Time { get; init; }
 
+    /// <summary>Configuration on top of the tests' own, such as an app registered with GitHub.</summary>
+    public IReadOnlyDictionary<string, string> Settings { get; init; } = new Dictionary<string, string>();
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Testing");
@@ -148,6 +152,10 @@ public sealed class BeepsWebApplicationFactory : WebApplicationFactory<Program>
         builder.UseSetting("Storage:SecretAccessKey", "test");
         // Tests sharing a factory change mocks between requests; a cached page would hide that. OutputCacheTests turn it on.
         builder.UseSetting("PublicPageCache:Enabled", "false");
+        foreach (var (key, value) in Settings)
+        {
+            builder.UseSetting(key, value);
+        }
 
         builder.ConfigureTestServices(services =>
         {

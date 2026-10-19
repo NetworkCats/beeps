@@ -459,11 +459,14 @@ function onPointerOver(event: PointerEvent): void {
 
 // ---- Links, forms and going back ---------------------------------------------------------------
 
-/** Addresses that are pages of this site, not files, the API or the live connection. */
+/**
+ * Addresses that are pages of this site, not files, the API, the live connection, or the way out to Google and GitHub
+ * (which the browser itself must follow, there and back).
+ */
 function isPage(url: URL): boolean {
   return url.origin === window.location.origin
     && !/\.[a-z0-9]+$/i.test(url.pathname)
-    && !['/api/', '/stream', '/live/', '/page-data'].some((prefix) => url.pathname.startsWith(prefix));
+    && !['/api/', '/stream', '/live/', '/page-data', '/oauth/'].some((prefix) => url.pathname.startsWith(prefix));
 }
 
 /** A column header's back arrow goes back as the browser would, to where that page was left, when there is one to go to. */

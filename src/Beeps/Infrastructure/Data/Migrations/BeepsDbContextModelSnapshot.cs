@@ -149,6 +149,42 @@ namespace Beeps.Infrastructure.Data.Migrations
                     b.ToTable("email_codes", (string)null);
                 });
 
+            modelBuilder.Entity("Beeps.Features.Accounts.ExternalLogin", b =>
+                {
+                    b.Property<string>("Provider")
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("provider");
+
+                    b.Property<string>("ProviderKey")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("provider_key");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(254)
+                        .HasColumnType("character varying(254)")
+                        .HasColumnName("name");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Provider", "ProviderKey")
+                        .HasName("pk_user_logins");
+
+                    b.HasIndex("UserId", "Provider")
+                        .IsUnique()
+                        .HasDatabaseName("ux_user_logins_user_id_provider");
+
+                    b.ToTable("user_logins", (string)null);
+                });
+
             modelBuilder.Entity("Beeps.Features.Accounts.Invite", b =>
                 {
                     b.Property<Guid>("Id")
@@ -264,7 +300,6 @@ namespace Beeps.Infrastructure.Data.Migrations
                         .HasColumnName("normalized_email");
 
                     b.Property<string>("PasswordHash")
-                        .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("password_hash");
 
@@ -1289,6 +1324,16 @@ namespace Beeps.Infrastructure.Data.Migrations
                     b.Navigation("AvatarMedia");
 
                     b.Navigation("BannerMedia");
+                });
+
+            modelBuilder.Entity("Beeps.Features.Accounts.ExternalLogin", b =>
+                {
+                    b.HasOne("Beeps.Features.Accounts.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_user_logins_user_user_id");
                 });
 
             modelBuilder.Entity("Beeps.Features.Accounts.Invite", b =>

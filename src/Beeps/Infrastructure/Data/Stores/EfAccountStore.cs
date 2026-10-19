@@ -34,6 +34,16 @@ public sealed class EfAccountStore(BeepsDbContext db, HybridCache cache, CacheIn
     public Task<User?> FindUserByHandleAsync(string normalizedHandle, CancellationToken cancellationToken) =>
         Users().FirstOrDefaultAsync(u => u.Actor.NormalizedHandle == normalizedHandle, cancellationToken);
 
+    public Task<ExternalLogin?> FindLoginAsync(string provider, string providerKey, CancellationToken cancellationToken) =>
+        db.Set<ExternalLogin>().FirstOrDefaultAsync(l => l.Provider == provider && l.ProviderKey == providerKey, cancellationToken);
+
+    public async Task<IReadOnlyList<ExternalLogin>> ListLoginsAsync(Guid userId, CancellationToken cancellationToken) =>
+        await db.Set<ExternalLogin>().Where(l => l.UserId == userId).OrderBy(l => l.Provider).ToListAsync(cancellationToken);
+
+    public void AddLogin(ExternalLogin login) => db.Set<ExternalLogin>().Add(login);
+
+    public void RemoveLogin(ExternalLogin login) => db.Set<ExternalLogin>().Remove(login);
+
     public async Task<AccountState?> GetAccountStateAsync(Guid userId, CancellationToken cancellationToken) =>
         await cache.GetOrCreateAsync(
             SharedCache.AccountKey(userId),

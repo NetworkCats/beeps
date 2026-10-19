@@ -931,7 +931,7 @@
     <value>你的账号</value>
   </data>
   <data name="Settings.Account.Help" xml:space="preserve">
-    <value>查看用户名，或修改邮箱和密码</value>
+    <value>查看用户名，修改邮箱和密码，或关联 Google 和 GitHub</value>
   </data>
   <data name="Settings.Display" xml:space="preserve">
     <value>显示与语言</value>
@@ -1820,5 +1820,86 @@
   </data>
   <data name="Settings.Privacy.HideFollowCounts.Help" xml:space="preserve">
     <value>只有你能看到你关注了多少人、有多少人关注你。</value>
+  </data>
+  <data name="External.Continue" xml:space="preserve">
+    <value>使用 {0} 继续</value>
+  </data>
+  <data name="External.Or" xml:space="preserve">
+    <value>或</value>
+  </data>
+  <data name="External.NotSetUp" xml:space="preserve">
+    <value>本站还没有开通 {0} 登录。</value>
+  </data>
+  <data name="External.Failed" xml:space="preserve">
+    <value>没能通过 {0} 登录，请再试一次。</value>
+  </data>
+  <data name="External.Expired" xml:space="preserve">
+    <value>等待时间太长了，请重新开始。</value>
+  </data>
+  <data name="External.SignUp.Lead" xml:space="preserve">
+    <value>你正在用 {0} 账号（{1}）注册，再选一个用户名就好。</value>
+  </data>
+  <data name="External.SignUp.Other" xml:space="preserve">
+    <value>想换一种方式？</value>
+  </data>
+  <data name="External.SignUp.Back" xml:space="preserve">
+    <value>返回注册</value>
+  </data>
+  <data name="Aside.Join.Email" xml:space="preserve">
+    <value>用邮箱注册</value>
+  </data>
+  <data name="Error.ExternalAccountGone" xml:space="preserve">
+    <value>这个 {0} 账号关联的 beeps 账号已被删除。</value>
+  </data>
+  <data name="Error.ExternalNoEmail" xml:space="preserve">
+    <value>你的 {0} 账号没有已验证的邮箱。</value>
+  </data>
+  <data name="Error.ExternalEmailTaken" xml:space="preserve">
+    <value>这个邮箱已经注册了 beeps 账号。请先用密码登录，再到设置里关联 {0}。</value>
+  </data>
+  <data name="Error.ExternalLinkedElsewhere" xml:space="preserve">
+    <value>这个 {0} 账号已经关联了另一个 beeps 账号。</value>
+  </data>
+  <data name="Error.ExternalProviderTaken" xml:space="preserve">
+    <value>你已经关联了一个 {0} 账号，请先解除关联。</value>
+  </data>
+  <data name="Error.LastSignInMethod" xml:space="preserve">
+    <value>{0} 是你唯一的登录方式，请先设置密码再解除关联。</value>
+  </data>
+  <data name="Settings.Connections" xml:space="preserve">
+    <value>关联的账号</value>
+  </data>
+  <data name="Settings.Connect" xml:space="preserve">
+    <value>关联</value>
+  </data>
+  <data name="Settings.Disconnect" xml:space="preserve">
+    <value>解除关联</value>
+  </data>
+  <data name="Settings.NotConnected" xml:space="preserve">
+    <value>未关联</value>
+  </data>
+  <data name="Settings.Disconnect.Confirm" xml:space="preserve">
+    <value>解除关联 {0}？之后就不能再用它登录了。</value>
+  </data>
+  <data name="Settings.Connected" xml:space="preserve">
+    <value>已关联 {0}，现在可以用它登录了。</value>
+  </data>
+  <data name="Settings.Disconnected" xml:space="preserve">
+    <value>已解除关联 {0}。</value>
+  </data>
+  <data name="Settings.SetPassword" xml:space="preserve">
+    <value>设置密码</value>
+  </data>
+  <data name="Settings.SetPassword.Help" xml:space="preserve">
+    <value>也可以用邮箱和密码登录</value>
+  </data>
+  <data name="Settings.SetPassword.Intro" xml:space="preserve">
+    <value>你目前用 Google 或 GitHub 登录。设置密码后也可以用邮箱和密码登录，其他设备上的登录会全部退出。</value>
+  </data>
+  <data name="Settings.PasswordSet" xml:space="preserve">
+    <value>密码已设置，其他设备上的登录已全部退出。</value>
+  </data>
+  <data name="Settings.Email.Help.NoPassword" xml:space="preserve">
+    <value>你的邮箱是 {0}。填写新邮箱，我们会向新邮箱发送验证码。</value>
   </data>
 </root>

@@ -931,7 +931,7 @@
     <value>Your account</value>
   </data>
   <data name="Settings.Account.Help" xml:space="preserve">
-    <value>See your username, or change your email and password</value>
+    <value>See your username, change your email and password, or connect Google and GitHub</value>
   </data>
   <data name="Settings.Display" xml:space="preserve">
     <value>Display and language</value>
@@ -1820,5 +1820,86 @@
   </data>
   <data name="Settings.Privacy.HideFollowCounts.Help" xml:space="preserve">
     <value>Only you see how many people you follow and how many follow you.</value>
+  </data>
+  <data name="External.Continue" xml:space="preserve">
+    <value>Continue with {0}</value>
+  </data>
+  <data name="External.Or" xml:space="preserve">
+    <value>or</value>
+  </data>
+  <data name="External.NotSetUp" xml:space="preserve">
+    <value>Signing in with {0} isn't set up on this site yet.</value>
+  </data>
+  <data name="External.Failed" xml:space="preserve">
+    <value>Couldn't sign in with {0}. Please try again.</value>
+  </data>
+  <data name="External.Expired" xml:space="preserve">
+    <value>That took too long. Please start again.</value>
+  </data>
+  <data name="External.SignUp.Lead" xml:space="preserve">
+    <value>You're signing up with your {0} account ({1}). Just pick a username.</value>
+  </data>
+  <data name="External.SignUp.Other" xml:space="preserve">
+    <value>Rather sign up another way?</value>
+  </data>
+  <data name="External.SignUp.Back" xml:space="preserve">
+    <value>Back to sign up</value>
+  </data>
+  <data name="Aside.Join.Email" xml:space="preserve">
+    <value>Sign up with email</value>
+  </data>
+  <data name="Error.ExternalAccountGone" xml:space="preserve">
+    <value>The beeps account connected to this {0} account has been deleted.</value>
+  </data>
+  <data name="Error.ExternalNoEmail" xml:space="preserve">
+    <value>Your {0} account has no verified email address.</value>
+  </data>
+  <data name="Error.ExternalEmailTaken" xml:space="preserve">
+    <value>This email already has a beeps account. Sign in with your password, then connect {0} in settings.</value>
+  </data>
+  <data name="Error.ExternalLinkedElsewhere" xml:space="preserve">
+    <value>This {0} account is already connected to another beeps account.</value>
+  </data>
+  <data name="Error.ExternalProviderTaken" xml:space="preserve">
+    <value>You've already connected a {0} account. Disconnect it first.</value>
+  </data>
+  <data name="Error.LastSignInMethod" xml:space="preserve">
+    <value>{0} is the only way you sign in. Set a password before disconnecting it.</value>
+  </data>
+  <data name="Settings.Connections" xml:space="preserve">
+    <value>Connected accounts</value>
+  </data>
+  <data name="Settings.Connect" xml:space="preserve">
+    <value>Connect</value>
+  </data>
+  <data name="Settings.Disconnect" xml:space="preserve">
+    <value>Disconnect</value>
+  </data>
+  <data name="Settings.NotConnected" xml:space="preserve">
+    <value>Not connected</value>
+  </data>
+  <data name="Settings.Disconnect.Confirm" xml:space="preserve">
+    <value>Disconnect {0}? You won't be able to sign in with it any more.</value>
+  </data>
+  <data name="Settings.Connected" xml:space="preserve">
+    <value>{0} connected. You can sign in with it now.</value>
+  </data>
+  <data name="Settings.Disconnected" xml:space="preserve">
+    <value>{0} disconnected.</value>
+  </data>
+  <data name="Settings.SetPassword" xml:space="preserve">
+    <value>Set a password</value>
+  </data>
+  <data name="Settings.SetPassword.Help" xml:space="preserve">
+    <value>Sign in with your email too</value>
+  </data>
+  <data name="Settings.SetPassword.Intro" xml:space="preserve">
+    <value>You sign in with Google or GitHub. Set a password to sign in with your email too; you're signed out everywhere else.</value>
+  </data>
+  <data name="Settings.PasswordSet" xml:space="preserve">
+    <value>Password set. You were signed out everywhere else.</value>
+  </data>
+  <data name="Settings.Email.Help.NoPassword" xml:space="preserve">
+    <value>Your email is {0}. Enter the new one, and we will send a code to the new address.</value>
   </data>
 </root>

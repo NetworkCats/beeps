@@ -80,6 +80,22 @@ internal sealed class UserSessionConfiguration : IEntityTypeConfiguration<UserSe
     }
 }
 
+internal sealed class ExternalLoginConfiguration : IEntityTypeConfiguration<ExternalLogin>
+{
+    public void Configure(EntityTypeBuilder<ExternalLogin> builder)
+    {
+        builder.ToTable("user_logins");
+        // Signing in looks a login up by the provider's id for it.
+        builder.HasKey(l => new { l.Provider, l.ProviderKey }).HasName(AccountIndexes.UniqueLogin);
+        builder.Property(l => l.Provider).HasMaxLength(ExternalLogin.ProviderMaxLength);
+        builder.Property(l => l.ProviderKey).HasMaxLength(ExternalLogin.KeyMaxLength);
+        builder.Property(l => l.Name).HasMaxLength(ExternalLogin.NameMaxLength);
+        // One of each provider per account; also the settings' list of them.
+        builder.HasIndex(l => new { l.UserId, l.Provider }).IsUnique().HasDatabaseName(AccountIndexes.UniqueLoginProvider);
+        builder.HasOne<User>().WithMany().HasForeignKey(l => l.UserId).OnDelete(DeleteBehavior.Cascade);
+    }
+}
+
 internal sealed class EmailCodeConfiguration : IEntityTypeConfiguration<EmailCode>
 {
     public void Configure(EntityTypeBuilder<EmailCode> builder)

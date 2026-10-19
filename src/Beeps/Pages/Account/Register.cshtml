@@ -13,6 +13,8 @@
     }
     else
     {
+        <partial name="_ExternalLogins" model="new ExternalLoginLinks()" />
+        <p class="auth-or">@L["External.Or"]</p>
         <form class="auth-form" method="post">
             <form-errors />
             <div class="field">

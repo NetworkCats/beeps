@@ -10,7 +10,7 @@ public static class AuthSetup
     public const string LoginPath = "/login";
     public const string VerifyPath = "/onboarding/verify";
 
-    public static IServiceCollection AddBeepsAuth(this IServiceCollection services)
+    public static IServiceCollection AddBeepsAuth(this IServiceCollection services, IConfiguration configuration)
     {
         services.AddAuthentication(AuthSchemes.ByPath)
             .AddPolicyScheme(AuthSchemes.ByPath, null, options =>
@@ -56,7 +56,8 @@ public static class AuthSetup
                     return Task.CompletedTask;
                 };
             })
-            .AddScheme<AuthenticationSchemeOptions, AgentKeyAuthenticationHandler>(AuthSchemes.AgentKey, null);
+            .AddScheme<AuthenticationSchemeOptions, AgentKeyAuthenticationHandler>(AuthSchemes.AgentKey, null)
+            .AddBeepsExternalLogins(configuration);
 
         services.AddAuthorizationBuilder()
             .AddPolicy(AuthPolicies.SignedIn, policy => policy

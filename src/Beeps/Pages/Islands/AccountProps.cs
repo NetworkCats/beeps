@@ -29,6 +29,8 @@ public sealed record ProfileLimits(int DisplayNameMaxLength, int BioMaxLength);
 /// <param name="DisplayName">What the profile form shows: what is saved, or what was just sent and refused.</param>
 /// <param name="PendingEmail">The address a code was sent to, which the email page then asks for.</param>
 /// <param name="ResendAt">When another code may be sent to <paramref name="PendingEmail"/>.</param>
+/// <param name="HasPassword">False for an account that signs in only with Google or GitHub: it sets a password, with none to give first.</param>
+/// <param name="Connections">Google and GitHub, linked or not.</param>
 public sealed record SettingsProps(
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Section,
     LiveProps Live,
@@ -48,7 +50,17 @@ public sealed record SettingsProps(
     int PasswordMinLength,
     int PasswordMaxLength,
     int CodeLength,
-    int CodeLifetimeMinutes);
+    int CodeLifetimeMinutes,
+    bool HasPassword,
+    IReadOnlyList<ConnectionProps> Connections);
+
+/// <summary>A provider to sign in with, and the account linked there, if any.</summary>
+/// <param name="Label">Its own name, the same in every language.</param>
+/// <param name="Name">How the linked account is known there (its address, its username); none when not linked.</param>
+public sealed record ConnectionProps(
+    string Provider,
+    string Label,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Name);
 
 /// <summary>What the account keeps to itself (PLAN 5.1).</summary>
 public sealed record PrivacyProps(bool HideLikes, bool HideFollows, bool HideFollowCounts);

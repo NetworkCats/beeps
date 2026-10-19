@@ -2,7 +2,8 @@
 // has a page of its own, with a way back to the list. Profile is Twitter's "Edit profile" (the banner and avatar, the
 // name and bio, saved from the header); privacy holds a switch for each thing the profile can keep to the account, sent
 // as soon as it is flipped; account shows the username and leads to the email's and the password's pages,
-// the email moving only once the code sent to the new address is entered; display holds the colour scheme, applied as
+// the email moving only once the code sent to the new address is entered, then lists Google and GitHub to link (out to
+// the provider and back, Pages/Account/External) or unlink; display holds the colour scheme, applied as
 // soon as one is picked, and the language. Each form is sent in the background and
 // answered in place; the saved name, bio, avatar and banner follow changes made in another tab, unless they are being
 // edited here. A new language shows the page anew in it.
@@ -34,6 +35,14 @@ interface Privacy {
   hideFollowCounts: boolean;
 }
 
+/** A provider to sign in with: Google or GitHub. */
+interface Connection {
+  provider: string;
+  label: string;
+  /** How the linked account is known there; none when not linked. */
+  name?: string;
+}
+
 export interface ProfileLimits {
   displayNameMaxLength: number;
   bioMaxLength: number;
@@ -62,6 +71,9 @@ interface SettingsProps {
   passwordMaxLength: number;
   codeLength: number;
   codeLifetimeMinutes: number;
+  /** False for an account that signs in only with Google or GitHub: it sets a password, with none to give first. */
+  hasPassword: boolean;
+  connections: Connection[];
 }
 
 interface SectionProps {
@@ -117,7 +129,8 @@ export function SettingsPage({ props, errors }: IslandProps<SettingsProps>) {
       </section>
     );
   }
-  const { title, back } = TITLES[section];
+  const { back } = TITLES[section];
+  const title = section === 'password' && !props.hasPassword ? 'Settings.SetPassword' : TITLES[section].title;
   return (
     <section class="feed">
       <header class="column-header">
@@ -197,7 +210,10 @@ function PrivacySection({ props }: { props: SettingsProps }) {
   );
 }
 
-/** Twitter's "Account information": the username, which never changes, then the ways to the email and the password. */
+/**
+ * Twitter's "Account information": the username, which never changes, then the ways to the email and the password, then
+ * the providers the account signs in with.
+ */
 function AccountSection({ props }: { props: SettingsProps }) {
   return (
     <>
@@ -213,9 +229,57 @@ function AccountSection({ props }: { props: SettingsProps }) {
       </div>
       <nav class="settings-nav" aria-label={t('Settings.Account')}>
         <LinkRow href={paths.settingsSection('email')} icon={<Icon name="mail" />} title={t('Field.Email')} help={props.email} />
-        <LinkRow href={paths.settingsSection('password')} icon={<Icon name="key" />} title={t('Settings.ChangePassword')} help={t('Settings.ChangePassword.Help')} />
+        {props.hasPassword
+          ? <LinkRow href={paths.settingsSection('password')} icon={<Icon name="key" />} title={t('Settings.ChangePassword')} help={t('Settings.ChangePassword.Help')} />
+          : <LinkRow href={paths.settingsSection('password')} icon={<Icon name="key" />} title={t('Settings.SetPassword')} help={t('Settings.SetPassword.Help')} />}
       </nav>
+      <section class="settings-connections" aria-labelledby="connections-title">
+        <h2 class="settings-heading" id="connections-title">{t('Settings.Connections')}</h2>
+        {props.connections.map((connection) => (
+          <div key={connection.provider} class="settings-link">
+            <span class={`brand-logo brand-logo-${connection.provider}`} aria-hidden="true" />
+            <span class="settings-link-text">
+              <span class="settings-link-title">{connection.label}</span>
+              <span class="settings-link-help">{connection.name ?? t('Settings.NotConnected')}</span>
+            </span>
+            {connection.name
+              ? (
+                <form method="post" action={action('account', 'Unlink')} data-confirm={t('Settings.Disconnect.Confirm', connection.label)} onSubmit={sending()}>
+                  <input type="hidden" name="Provider" value={connection.provider} />
+                  <button class="btn btn-sm" type="submit">
+                    {t('Settings.Disconnect')}
+                  </button>
+                  <Antiforgery />
+                </form>
+              )
+              : (
+                // Sent the plain way (the router leaves /oauth/ alone): the browser goes to the provider and back.
+                <form method="post" action={`${paths.external(connection.provider)}?handler=Link`}>
+                  <button class="btn btn-sm" type="submit">
+                    {t('Settings.Connect')}
+                  </button>
+                  <Antiforgery />
+                </form>
+              )}
+          </div>
+        ))}
+      </section>
     </>
+  );
+}
+
+/** The current password, asked again before a change; an account without one has none to give. */
+function CurrentPassword({ props, errors }: SectionProps) {
+  if (!props.hasPassword) return null;
+  return (
+    <div class="settings-field-group">
+      <FloatField errors={errors} name="CurrentPassword" label={t('Field.CurrentPassword')}>
+        <input class="float-field-input" {...field(errors, 'CurrentPassword')} type="password" autocomplete="current-password" required />
+      </FloatField>
+      <a class="settings-aside-link" href={paths.forgotPassword}>
+        {t('Login.Forgot')}
+      </a>
+    </div>
   );
 }
 
@@ -258,20 +322,13 @@ function EmailSection({ props, errors }: SectionProps) {
   }
   return (
     <>
-      <p class="settings-intro">{t('Settings.Email.Help', props.email)}</p>
+      <p class="settings-intro">{props.hasPassword ? t('Settings.Email.Help', props.email) : t('Settings.Email.Help.NoPassword', props.email)}</p>
       <form class="settings-form" method="post" action={action('email', 'Email')} onSubmit={sending()}>
         <input type="hidden" name="username" value={props.handle} autocomplete="username" />
         <FloatField errors={errors} name="NewEmail" label={t('Field.NewEmail')}>
           <input class="float-field-input" {...field(errors, 'NewEmail')} type="email" autocomplete="email" required />
         </FloatField>
-        <div class="settings-field-group">
-          <FloatField errors={errors} name="CurrentPassword" label={t('Field.CurrentPassword')}>
-            <input class="float-field-input" {...field(errors, 'CurrentPassword')} type="password" autocomplete="current-password" required />
-          </FloatField>
-          <a class="settings-aside-link" href={paths.forgotPassword}>
-            {t('Login.Forgot')}
-          </a>
-        </div>
+        <CurrentPassword props={props} errors={errors} />
         <div class="form-actions">
           <button class="btn btn-primary" type="submit">
             {t('Settings.Email.Send')}
@@ -286,17 +343,10 @@ function EmailSection({ props, errors }: SectionProps) {
 function PasswordSection({ props, errors }: SectionProps) {
   return (
     <>
-      <p class="settings-intro">{t('Settings.Password.Help')}</p>
+      <p class="settings-intro">{props.hasPassword ? t('Settings.Password.Help') : t('Settings.SetPassword.Intro')}</p>
       <form class="settings-form" method="post" action={action('password', 'Password')} onSubmit={sending((form) => form.reset())}>
         <input type="hidden" name="username" value={props.handle} autocomplete="username" />
-        <div class="settings-field-group">
-          <FloatField errors={errors} name="CurrentPassword" label={t('Field.CurrentPassword')}>
-            <input class="float-field-input" {...field(errors, 'CurrentPassword')} type="password" autocomplete="current-password" required />
-          </FloatField>
-          <a class="settings-aside-link" href={paths.forgotPassword}>
-            {t('Login.Forgot')}
-          </a>
-        </div>
+        <CurrentPassword props={props} errors={errors} />
         <FloatField errors={errors} name="NewPassword" label={t('Field.NewPassword')} help={t('Field.Password.Help', props.passwordMinLength)}>
           <input
             class="float-field-input"

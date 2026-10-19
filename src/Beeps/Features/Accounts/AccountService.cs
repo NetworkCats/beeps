@@ -62,13 +62,9 @@ public sealed partial class AccountService(
             fields[AccountFields.Email] = [localizer["Validation.Email"]];
         }
 
-        if (!AccountRules.IsValidUsername(request.Username))
+        if (UsernameError(request.Username) is { } usernameError)
         {
-            fields[AccountFields.Username] = [localizer["Validation.Username", AccountRules.UsernameMinLength, AccountRules.UsernameMaxLength]];
-        }
-        else if (AccountRules.IsReservedUsername(request.Username!))
-        {
-            fields[AccountFields.Username] = [localizer["Validation.UsernameReserved"]];
+            fields[AccountFields.Username] = [usernameError];
         }
 
         if (!AccountRules.IsValidPassword(request.Password))
@@ -96,7 +92,7 @@ public sealed partial class AccountService(
         var mode = await store.GetRegistrationModeAsync(cancellationToken);
         if (mode == RegistrationMode.Closed)
         {
-            return Error.Forbidden(AccountErrorCodes.RegistrationClosed, localizer["Error.RegistrationClosed"]);
+            return RegistrationClosed();
         }
 
         if (mode == RegistrationMode.InviteOnly && string.IsNullOrWhiteSpace(request.InviteCode))
@@ -134,65 +130,9 @@ public sealed partial class AccountService(
             return emailLimited.Error;
         }
 
-        var id = Guid.CreateVersion7(now);
-        var user = new User
-        {
-            Id = id,
-            Actor = new Actor
-            {
-                Id = id,
-                Kind = ActorKind.Human,
-                Handle = handle,
-                NormalizedHandle = normalizedHandle,
-                DisplayName = handle,
-                CreatedAt = now,
-            },
-            Email = request.Email!.Trim(),
-            NormalizedEmail = email,
-            PasswordHash = "",
-            Locale = SupportedCultures.Find(origin.Culture) ?? SupportedCultures.Default,
-            CreatedAt = now,
-        };
+        var user = NewUser(handle, handle, request.Email!.Trim(), origin, now);
         user.PasswordHash = passwordHasher.HashPassword(user, request.Password!);
-
-        try
-        {
-            var registered = await unitOfWork.InTransactionAsync<AccountState>(
-                AdvisoryLocks.Admins,
-                async ct =>
-                {
-                    user.IsAdmin = !await store.AnyUsersAsync(ct);
-                    store.AddUser(user);
-                    await IssueCodeAsync(EmailCodePurpose.VerifyEmail, user, ct);
-                    await unitOfWork.SaveChangesAsync(ct);
-                    // After the insert, because the invite records who used it. The check above was only a
-                    // courtesy; this conditional update is what stops two people using one code.
-                    if (mode == RegistrationMode.InviteOnly
-                        && !await store.TryUseInviteAsync(InviteCodes.Hash(request.InviteCode!), id, now, ct))
-                    {
-                        return InviteInvalid();
-                    }
-
-                    LogRegistered(logger, id, user.IsAdmin);
-                    return ToState(user);
-                },
-                cancellationToken);
-            if (registered.IsSuccess)
-            {
-                // The admin user list and the overview's figures.
-                await live.AdminChangedAsync(cancellationToken);
-            }
-
-            return registered;
-        }
-        catch (UniqueViolationException exception) when (exception.IndexName == AccountIndexes.UniqueHandle)
-        {
-            return UsernameTaken();
-        }
-        catch (UniqueViolationException exception) when (exception.IndexName == AccountIndexes.UniqueEmail)
-        {
-            return EmailTaken();
-        }
+        return await CreateAccountAsync(user, mode, request.InviteCode, ct => IssueCodeAsync(EmailCodePurpose.VerifyEmail, user, ct), EmailTaken, cancellationToken);
     }
 
     public async Task<Result> VerifyEmailAsync(Guid userId, string? code, CancellationToken cancellationToken)
@@ -369,6 +309,13 @@ public sealed partial class AccountService(
             return InvalidCredentials();
         }
 
+        if (user.PasswordHash is null)
+        {
+            // Signs in only with Google or GitHub; told apart from a wrong password by nothing, timing included.
+            passwordHasher.VerifyHashedPassword(TimingDummy, TimingDummyHash(), password);
+            return InvalidCredentials();
+        }
+
         var verification = passwordHasher.VerifyHashedPassword(user, user.PasswordHash, password);
         if (verification == PasswordVerificationResult.Failed)
         {
@@ -377,7 +324,7 @@ public sealed partial class AccountService(
 
         if (user.BannedAt is not null)
         {
-            return Error.Forbidden(AccountErrorCodes.AccountBanned, localizer["Error.AccountBanned"]);
+            return Banned();
         }
 
         if (verification == PasswordVerificationResult.SuccessRehashNeeded)
@@ -574,7 +521,9 @@ public sealed partial class AccountService(
             user.Email,
             waiting,
             user.Locale,
-            new ProfilePrivacy(user.HideLikes, user.HideFollows, user.HideFollowCounts));
+            new ProfilePrivacy(user.HideLikes, user.HideFollows, user.HideFollowCounts),
+            user.PasswordHash is not null,
+            [.. (await store.ListLoginsAsync(user.Id, cancellationToken)).Select(l => new LinkedLogin(l.Provider, l.Name))]);
     }
 
     /// <summary>What the human's profile shows others of their likes and follows (PLAN 5.1).</summary>
@@ -645,27 +594,17 @@ public sealed partial class AccountService(
     /// <summary>
     /// Needs the current password. Every other session ends; the one the change was made in stays, since it
     /// just proved it knows the password. Guesses count against the same limit as signing in to the account.
+    /// An account that signs in only with Google or GitHub has none to give: this sets its first.
     /// </summary>
     /// <param name="currentSessionId">The session making the change; null ends every session.</param>
     public async Task<Result> ChangePasswordAsync(Guid userId, Guid? currentSessionId, string? currentPassword, string? newPassword, CancellationToken cancellationToken)
     {
-        var fields = new Dictionary<string, string[]>();
-        if (string.IsNullOrEmpty(currentPassword))
-        {
-            fields[AccountFields.CurrentPassword] = [localizer["Validation.Required"]];
-        }
-
         if (!AccountRules.IsValidPassword(newPassword))
         {
-            fields[AccountFields.NewPassword] = [localizer["Validation.Password", AccountRules.PasswordMinLength, AccountRules.PasswordMaxLength]];
+            return InvalidInput(new() { [AccountFields.NewPassword] = [localizer["Validation.Password", AccountRules.PasswordMinLength, AccountRules.PasswordMaxLength]] });
         }
 
-        if (fields.Count > 0)
-        {
-            return InvalidInput(fields);
-        }
-
-        var checkedPassword = await CheckPasswordAsync(userId, currentPassword!, cancellationToken);
+        var checkedPassword = await CheckPasswordAsync(userId, currentPassword, cancellationToken);
         if (!checkedPassword.IsSuccess)
         {
             return checkedPassword.Error;
@@ -832,6 +771,88 @@ public sealed partial class AccountService(
     public Task<RegistrationMode> GetRegistrationModeAsync(CancellationToken cancellationToken) =>
         store.GetRegistrationModeAsync(cancellationToken);
 
+    /// <summary>A new account's user and actor, not yet staged.</summary>
+    private static User NewUser(string handle, string displayName, string email, RequestOrigin origin, DateTimeOffset now)
+    {
+        var id = Guid.CreateVersion7(now);
+        return new User
+        {
+            Id = id,
+            Actor = new Actor
+            {
+                Id = id,
+                Kind = ActorKind.Human,
+                Handle = handle,
+                NormalizedHandle = AccountRules.NormalizeHandle(handle),
+                DisplayName = displayName,
+                CreatedAt = now,
+            },
+            Email = email,
+            NormalizedEmail = AccountRules.NormalizeEmail(email),
+            Locale = SupportedCultures.Find(origin.Culture) ?? SupportedCultures.Default,
+            CreatedAt = now,
+        };
+    }
+
+    /// <summary>
+    /// Saves a new account with what <paramref name="stage"/> adds to it, using up the invite in invite-only mode. The
+    /// very first account becomes admin: the check and the insert share one transaction under
+    /// <see cref="AdvisoryLocks.Admins"/>, so two simultaneous first sign-ups cannot both win.
+    /// </summary>
+    private async Task<Result<AccountState>> CreateAccountAsync(
+        User user,
+        RegistrationMode mode,
+        string? inviteCode,
+        Func<CancellationToken, Task> stage,
+        Func<Error> emailTaken,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var registered = await unitOfWork.InTransactionAsync<AccountState>(
+                AdvisoryLocks.Admins,
+                async ct =>
+                {
+                    user.IsAdmin = !await store.AnyUsersAsync(ct);
+                    store.AddUser(user);
+                    await stage(ct);
+                    await unitOfWork.SaveChangesAsync(ct);
+                    // After the insert, because the invite records who used it. The check before was only a
+                    // courtesy; this conditional update is what stops two people using one code.
+                    if (mode == RegistrationMode.InviteOnly
+                        && !await store.TryUseInviteAsync(InviteCodes.Hash(inviteCode!), user.Id, user.CreatedAt, ct))
+                    {
+                        return InviteInvalid();
+                    }
+
+                    LogRegistered(logger, user.Id, user.IsAdmin);
+                    return ToState(user);
+                },
+                cancellationToken);
+            if (registered.IsSuccess)
+            {
+                // The admin user list and the overview's figures.
+                await live.AdminChangedAsync(cancellationToken);
+            }
+
+            return registered;
+        }
+        catch (UniqueViolationException exception) when (exception.IndexName == AccountIndexes.UniqueHandle)
+        {
+            return UsernameTaken();
+        }
+        catch (UniqueViolationException exception) when (exception.IndexName == AccountIndexes.UniqueEmail)
+        {
+            return emailTaken();
+        }
+    }
+
+    /// <summary>Why a username cannot be had, by its form alone; null when it may be.</summary>
+    private string? UsernameError(string? username) =>
+        !AccountRules.IsValidUsername(username) ? localizer["Validation.Username", AccountRules.UsernameMinLength, AccountRules.UsernameMaxLength].Value
+        : AccountRules.IsReservedUsername(username!) ? localizer["Validation.UsernameReserved"].Value
+        : null;
+
     private static AccountState ToState(User user) => new(
         user.Id,
         user.Actor.Handle!,
@@ -907,23 +928,12 @@ public sealed partial class AccountService(
     /// </summary>
     private async Task<Result<(User User, string Email)>> CheckNewEmailAsync(Guid userId, string? newEmail, string? currentPassword, CancellationToken cancellationToken)
     {
-        var fields = new Dictionary<string, string[]>();
         if (!AccountRules.IsValidEmail(newEmail?.Trim()))
         {
-            fields[AccountFields.NewEmail] = [localizer["Validation.Email"]];
+            return InvalidInput(new() { [AccountFields.NewEmail] = [localizer["Validation.Email"]] });
         }
 
-        if (string.IsNullOrEmpty(currentPassword))
-        {
-            fields[AccountFields.CurrentPassword] = [localizer["Validation.Required"]];
-        }
-
-        if (fields.Count > 0)
-        {
-            return InvalidInput(fields);
-        }
-
-        var checkedPassword = await CheckPasswordAsync(userId, currentPassword!, cancellationToken);
+        var checkedPassword = await CheckPasswordAsync(userId, currentPassword, cancellationToken);
         if (!checkedPassword.IsSuccess)
         {
             return checkedPassword.Error;
@@ -944,13 +954,27 @@ public sealed partial class AccountService(
         return (user, email);
     }
 
-    /// <summary>The current password, asked again before a change; its guesses count as signing in to the account.</summary>
-    private async Task<Result<User>> CheckPasswordAsync(Guid userId, string currentPassword, CancellationToken cancellationToken)
+    /// <summary>
+    /// The current password, asked again before a change; its guesses count as signing in to the account. An account
+    /// that signs in only with Google or GitHub has none: the session is all there is to go by, as the settings say.
+    /// </summary>
+    private async Task<Result<User>> CheckPasswordAsync(Guid userId, string? currentPassword, CancellationToken cancellationToken)
     {
         var user = await store.FindUserAsync(userId, cancellationToken);
         if (user is null)
         {
             return AccountNotFound();
+        }
+
+        if (user.PasswordHash is null)
+        {
+            var changes = await rateLimits.CheckAsync(RateLimitPolicies.AccountChange, RateLimitPartitions.Account(user.Id), cancellationToken);
+            return changes.IsSuccess ? user : changes.Error;
+        }
+
+        if (string.IsNullOrEmpty(currentPassword))
+        {
+            return InvalidInput(new() { [AccountFields.CurrentPassword] = [localizer["Validation.Required"]] });
         }
 
         var limited = await rateLimits.CheckAsync(RateLimitPolicies.Login, RateLimitPartitions.Account(user.Id), cancellationToken);
@@ -986,6 +1010,10 @@ public sealed partial class AccountService(
         var seconds = (int)Math.Ceiling(wait.TotalSeconds);
         return Error.RateLimited(wait, seconds == 1 ? localizer["Error.ResendTooSoon.One"] : localizer["Error.ResendTooSoon", seconds]);
     }
+
+    private Error Banned() => Error.Forbidden(AccountErrorCodes.AccountBanned, localizer["Error.AccountBanned"]);
+
+    private Error RegistrationClosed() => Error.Forbidden(AccountErrorCodes.RegistrationClosed, localizer["Error.RegistrationClosed"]);
 
     private Error AlreadyVerified() => Error.Conflict(AccountErrorCodes.AlreadyVerified, localizer["Error.AlreadyVerified"]);
 

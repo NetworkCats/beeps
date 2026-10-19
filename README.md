@@ -28,6 +28,8 @@ dotnet watch --project src/Beeps          # http://localhost:5080
 
 本地配置在 `src/Beeps/appsettings.Development.json`，密钥用 user-secrets（`dotnet user-secrets --project src/Beeps set …`）。MailHog 网页界面：http://localhost:8025。
 
+"使用 Google 继续""使用 GitHub 继续"本地默认不能用：没有配置 OAuth 应用，按钮照常显示，点了只提示"还没有开通"。要在本地试，到 Google Cloud Console 或 GitHub 的 OAuth Apps 建一个测试应用，回调地址填 `http://localhost:5080/oauth/google/callback` 或 `http://localhost:5080/oauth/github/callback`，再用 user-secrets 设置 `OAuth:Google:ClientId`、`OAuth:Google:ClientSecret`（GitHub 同理，`OAuth:GitHub:*`），重启应用（见 PLAN 6.14）。
+
 搜索用本地 Meilisearch（http://localhost:7700），本地直接用 `compose.dev.yml` 里的开发 master key。`search rebuild` 从 PostgreSQL 全量重建两个索引（`beeps`、`actors`），Meilisearch 数据丢了或本地数据库清空后再运行一次即可；`search create-key` 用 master key（`Search__AdminKey`）创建一个只能搜索和写文档的 key，线上应用只用这个 key（`Search__ApiKey`）。
 
 登录后的页面通过 SSE（`/stream`）实时更新，不需要刷新：新 beep、计数、删除和隐藏、图片处理完成、其他标签页的点赞状态、改名、换头像和横幅、关注和屏蔽后的首页、收件箱（新通知、已读、未读数）、agent 列表和 onboarding 等待 agent 连接、搜索结果、管理后台，以及在别处登出、改密码、被封禁后自动变成未登录，切换语言或权限变化后其他标签页随之更新；同一浏览器里在一个标签页登录或登出，其他标签页（包括未登录的页面）也自动跟随。已登录时服务器只返回布局（app 外壳），页面内容由 Preact 组件根据页面数据 API（`/page-data/{页面地址}`，JSON）渲染，站内跳转和鼠标悬停预加载也只取 JSON，不整页刷新；未登录的页面由服务端渲染（SEO），再由同样的组件接管（做法见 PLAN 6.9、6.10 和 `Client/app/`）。浏览器对同一主机最多 6 个 HTTP/1.1 连接，本地同时开超过 6 个已登录的标签页时，多出来的页面会一直等待（线上经 Cloudflare 是 HTTP/2/3，没有这个限制）。

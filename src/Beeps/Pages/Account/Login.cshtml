@@ -5,6 +5,8 @@
 }
 <section class="auth">
     <h1>@L["Login.Title"]</h1>
+    <partial name="_ExternalLogins" model="new ExternalLoginLinks(Model.ReturnUrl)" />
+    <p class="auth-or">@L["External.Or"]</p>
     <form class="auth-form" method="post">
         <form-errors />
         <input type="hidden" name="ReturnUrl" value="@Model.ReturnUrl">

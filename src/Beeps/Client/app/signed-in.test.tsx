@@ -129,13 +129,27 @@ test('the settings list the sections, each a page of its own with its forms', as
   assert.match(list, /<a class="settings-link" href="\/settings\/account">/);
   assert.match(list, /<a class="settings-link" href="\/settings\/display">/);
   assert.doesNotMatch(list, /<form/);
-  // The account shows what it is and leads on to the email and the password, a step below it.
+  // The account shows what it is and leads on to the email and the password, a step below it; then Google and GitHub,
+  // linked by going out to them, the plain way.
   const account = await draw('settings-account.json', 'settings');
   assert.match(account, /<a class="column-back" href="\/settings"/);
   assert.match(account, /<a class="settings-link" href="\/settings\/email">/);
   assert.match(account, /tom@example.com/);
   assert.match(account, /<a class="settings-link" href="\/settings\/password">/);
-  assert.doesNotMatch(account, /<form/);
+  assert.match(account, /<form method="post" action="\/oauth\/google\?handler=Link">/);
+  assert.match(account, /<form method="post" action="\/oauth\/github\?handler=Link">/);
+  assert.doesNotMatch(account, /handler=Unlink/);
+  // Signed up with GitHub: it is unlinked here, after asking, and a password is set with none to give first.
+  const linked = await draw('settings-linked-account.json', 'settings');
+  assert.match(linked, /<span class="settings-link-help">octocat<\/span>/);
+  assert.match(linked, /<form method="post" action="\/settings\/account\?handler=Unlink" data-confirm="[^"]*GitHub[^"]*">/);
+  assert.match(linked, /<input type="hidden" name="Provider" value="github"\/>/);
+  assert.match(linked, /action="\/oauth\/google\?handler=Link"/);
+  assert.match(linked, /Set a password/);
+  const setPassword = await draw('settings-linked-password.json', 'settings');
+  assert.match(setPassword, /<h1 class="column-title">Set a password<\/h1>/);
+  assert.match(setPassword, /name="NewPassword"/);
+  assert.doesNotMatch(setPassword, /name="CurrentPassword"/);
   // The email: the new address and the password first, then the code sent there.
   const email = await draw('settings-email.json', 'settings');
   assert.match(email, /<a class="column-back" href="\/settings\/account"/);

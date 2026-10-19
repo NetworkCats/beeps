@@ -11,7 +11,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Beeps.Tests.Features.Accounts;
 
-public sealed class AccountServiceTests
+public sealed partial class AccountServiceTests
 {
     private readonly IAccountStore store = Substitute.For<IAccountStore>();
     private readonly ISessionStore sessions = Substitute.For<ISessionStore>();
@@ -637,11 +637,13 @@ public sealed class AccountServiceTests
         user.Actor.Bio = "hello";
         user.HideFollowCounts = true;
         store.FindUserAsync(user.Id, Arg.Any<CancellationToken>()).Returns(user);
+        store.ListLoginsAsync(user.Id, Arg.Any<CancellationToken>()).Returns([Login(user.Id, ExternalProviders.GitHub, "42", "octocat")]);
 
         var settings = await CreateService().GetSettingsAsync(user.Id, TestSupport.Ct);
         var missing = await CreateService().GetSettingsAsync(Guid.NewGuid(), TestSupport.Ct);
 
-        Assert.Equal(new AccountSettings("tom", "tom", "hello", "tom@example.com", null, "en", new ProfilePrivacy(false, false, true)), settings.Value);
+        Assert.Equal(new AccountSettings("tom", "tom", "hello", "tom@example.com", null, "en", new ProfilePrivacy(false, false, true), true, settings.Value.Logins), settings.Value);
+        Assert.Equal([new LinkedLogin(ExternalProviders.GitHub, "octocat")], settings.Value.Logins);
         Assert.Equal(ErrorKind.NotFound, missing.Error?.Kind);
     }
 
@@ -769,7 +771,50 @@ public sealed class AccountServiceTests
     {
         var result = await CreateService().ChangePasswordAsync(Guid.NewGuid(), null, "", "short", TestSupport.Ct);
 
-        Assert.Equal([AccountFields.CurrentPassword, AccountFields.NewPassword], result.Error!.Fields!.Keys.Order());
+        Assert.Equal([AccountFields.NewPassword], result.Error!.Fields!.Keys);
+        await store.DidNotReceiveWithAnyArgs().FindUserAsync(default, TestSupport.Ct);
+    }
+
+    [Fact]
+    public async Task AnAccountWithAPasswordMustGiveIt()
+    {
+        var user = TestData.User(passwordHash: "hashed:old password");
+        store.FindUserAsync(user.Id, Arg.Any<CancellationToken>()).Returns(user);
+
+        var result = await CreateService().ChangePasswordAsync(user.Id, null, "", "new password!", TestSupport.Ct);
+
+        Assert.Equal([AccountFields.CurrentPassword], result.Error!.Fields!.Keys);
+        Assert.Equal("hashed:old password", user.PasswordHash);
+    }
+
+    [Fact]
+    public async Task AnAccountWithoutAPasswordSetsItsFirstWithoutOne()
+    {
+        var user = TestData.User();
+        user.PasswordHash = null;
+        store.FindUserAsync(user.Id, Arg.Any<CancellationToken>()).Returns(user);
+        var keep = Guid.NewGuid();
+
+        var result = await CreateService().ChangePasswordAsync(user.Id, keep, null, "new password!", TestSupport.Ct);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal("hashed:new password!", user.PasswordHash);
+        await sessions.Received(1).RevokeOthersAsync(user.Id, keep, Arg.Any<DateTimeOffset>(), Arg.Any<CancellationToken>());
+        // Counted as a change to the account; there is no password to guess.
+        await rateLimitStore.Received().TryAcquireAsync(Arg.Is<IReadOnlyList<RateLimitCounter>>(c => c.All(x => x.Key.StartsWith("AccountChange:", StringComparison.Ordinal))), Arg.Any<CancellationToken>());
+        hasher.DidNotReceiveWithAnyArgs().VerifyHashedPassword(default!, default!, default!);
+    }
+
+    [Fact]
+    public async Task AnAccountWithoutAPasswordCannotBeSignedInToWithOne()
+    {
+        var user = TestData.User();
+        user.PasswordHash = null;
+        store.FindUserByHandleAsync("tom", Arg.Any<CancellationToken>()).Returns(user);
+
+        var result = await CreateService().LoginAsync("tom", "anything", TestData.Origin, TestSupport.Ct);
+
+        Assert.Equal(AccountErrorCodes.InvalidCredentials, result.Error?.Code);
     }
 
     // ---- Email change ------------------------------------------------------
@@ -839,15 +884,39 @@ public sealed class AccountServiceTests
         Assert.Null(user.PendingEmail);
     }
 
-    [Theory]
-    [InlineData("not-an-email", "old password", new[] { AccountFields.NewEmail })]
-    [InlineData("new@example.org", "", new[] { AccountFields.CurrentPassword })]
-    public async Task ABadEmailChangeNamesTheBadField(string email, string password, string[] fields)
+    [Fact]
+    public async Task ABadNewAddressIsRefusedBeforeLookingAtTheAccount()
     {
-        var result = await CreateService().RequestEmailChangeAsync(Guid.NewGuid(), email, password, TestData.Origin, TestSupport.Ct);
+        var result = await CreateService().RequestEmailChangeAsync(Guid.NewGuid(), "not-an-email", "old password", TestData.Origin, TestSupport.Ct);
 
-        Assert.Equal(fields, result.Error!.Fields!.Keys.Order());
+        Assert.Equal([AccountFields.NewEmail], result.Error!.Fields!.Keys);
         await store.DidNotReceiveWithAnyArgs().FindUserAsync(default, TestSupport.Ct);
+    }
+
+    [Fact]
+    public async Task AnEmailChangeNeedsThePasswordOfAnAccountThatHasOne()
+    {
+        var user = TestData.User(passwordHash: "hashed:old password");
+        store.FindUserAsync(user.Id, Arg.Any<CancellationToken>()).Returns(user);
+
+        var result = await CreateService().RequestEmailChangeAsync(user.Id, "new@example.org", "", TestData.Origin, TestSupport.Ct);
+
+        Assert.Equal([AccountFields.CurrentPassword], result.Error!.Fields!.Keys);
+        Assert.Empty(sentCodes);
+    }
+
+    [Fact]
+    public async Task AnAccountWithoutAPasswordChangesItsEmailWithoutOne()
+    {
+        var user = TestData.User();
+        user.PasswordHash = null;
+        store.FindUserAsync(user.Id, Arg.Any<CancellationToken>()).Returns(user);
+
+        var result = await CreateService().RequestEmailChangeAsync(user.Id, "new@example.org", null, TestData.Origin, TestSupport.Ct);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal("new@example.org", user.PendingEmail);
+        Assert.Equal("new@example.org", Assert.Single(sentCodes).To);
     }
 
     [Fact]
@@ -1039,6 +1108,9 @@ public sealed class AccountServiceTests
 
     private string Unprotect(AccountCodeEmail email) =>
         dataProtection.CreateProtector(AccountCodeEmail.ProtectorPurpose).Unprotect(email.ProtectedCode);
+
+    private static ExternalLogin Login(Guid userId, string provider, string key, string name) =>
+        new() { UserId = userId, Provider = provider, ProviderKey = key, Name = name, CreatedAt = TestData.Now };
 
     private AccountService CreateService() => new(
         store,

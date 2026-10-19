@@ -1,0 +1,13 @@
+@using Beeps.Features.Accounts
+@model ExternalLoginLinks
+@* The same buttons sign in and sign up: whoever the provider vouches for is signed in, or picks a username
+   (Pages/Account/External, ExternalComplete). Links, not forms, so the signed-out pages with them can be cached. *@
+<div class="oauth-buttons">
+    @foreach (var provider in ExternalProviders.All)
+    {
+        <a class="btn btn-block btn-oauth" asp-page="/Account/External" asp-route-provider="@provider" asp-route-returnUrl="@Model.ReturnUrl">
+            <span class="brand-logo brand-logo-@provider" aria-hidden="true"></span>
+            @L["External.Continue", ExternalProviders.DisplayName(provider)]
+        </a>
+    }
+</div>

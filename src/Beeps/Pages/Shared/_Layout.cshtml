@@ -16,7 +16,7 @@
     var appShell = ViewData[PageShell.AppShell] is true;
     var (notice, alert) = appShell ? (null, null) : Notices.Take(Context, TempData);
     // The pages that are themselves the way in: the shell offers no other sign-in or sign-up there.
-    var offerSignIn = !signedIn && page is not ("/Account/Login" or "/Account/Register" or "/Account/ForgotPassword" or "/Account/ResetPassword");
+    var offerSignIn = !signedIn && page is not ("/Account/Login" or "/Account/Register" or "/Account/ExternalComplete" or "/Account/ForgotPassword" or "/Account/ResetPassword");
     // Light or dark when picked by hand (settings, the footer, the top bar's menu); otherwise the device's.
     var theme = Themes.Scheme(Themes.For(User, Context.Request));
     // What only signed-in people see, and the admin pages, have stylesheets of their own (Client/scss): linked where
@@ -139,7 +139,8 @@
                 <section class="aside-card" aria-labelledby="join-title">
                     <h2 class="aside-title" id="join-title">@L["Login.NoAccount"]</h2>
                     <p class="aside-text">@L["Aside.Join.Text"]</p>
-                    <a class="btn btn-block" asp-page="/Account/Register">@L["Nav.Register"]</a>
+                    <partial name="_ExternalLogins" model="new ExternalLoginLinks()" />
+                    <a class="btn btn-block" asp-page="/Account/Register">@L["Aside.Join.Email"]</a>
                 </section>
             }
             <section class="aside-card" aria-labelledby="about-title" data-part="@PageShell.AboutPart" hidden="@shell.Hide(PageShell.AboutPart)">

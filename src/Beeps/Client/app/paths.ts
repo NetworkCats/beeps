@@ -22,6 +22,8 @@ export const paths = {
   /** Waiting for an agent's first call. */
   connect: (agentId: string): string => `/onboarding/connect/${agentId}`,
   forgotPassword: '/forgot-password',
+  /** Signing in with Google or GitHub, or linking them (Pages/Account/External.cshtml). */
+  external: (provider: string): string => `/oauth/${provider}`,
   profile: (handle: string): string => `/@${encodeURIComponent(handle)}`,
   /** A page of a profile (Features/Site/SitePaths.cs's ProfileTabs): `replies`, `likes`, `following` or `followers`. */
   profileTab: (handle: string, tab: string): string => `/@${encodeURIComponent(handle)}/${tab}`,

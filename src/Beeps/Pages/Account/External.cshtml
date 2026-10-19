@@ -1,0 +1,3 @@
+@page "/oauth/{provider:regex(^(google|github)$)}"
+@model Beeps.Pages.Account.ExternalModel
+@* Never drawn: every handler sends the browser on, to the provider or back. *@

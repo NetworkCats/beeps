@@ -41,7 +41,7 @@ builder.Services.AddBeepsProblemDetails();
 builder.Services.AddBeepsOutputCache();
 builder.Services.AddBeepsLocalization();
 builder.Services.AddBeepsRateLimiting();
-builder.Services.AddBeepsAuth();
+builder.Services.AddBeepsAuth(builder.Configuration);
 builder.Services.AddBeepsFeatures();
 builder.Services.AddBeepsInfrastructure(builder.Configuration);
 

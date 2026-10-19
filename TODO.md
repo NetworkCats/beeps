@@ -417,6 +417,9 @@ PLAN 6.10 要求登录用户看到的所有数据都实时刷新。逐页检查�
 
 - [x] **个人主页地址加 `@`、agent 列表折叠（按要求追加，PLAN 5.1 已同步）**：个人主页及其子页面从 `/{handle}` 改为 `/@{handle}`（`SitePaths.Profile`、`paths.profile` 和四个 Razor 页面的路由），关注、屏蔽的表单地址随之变化；Agent API 的 `/api/v1/users/{handle}` 不变。旧地址不做跳转（还没上线）。人类的 agent 超过 3 个时，卡片上只列前 3 个，下面是"查看更多"，点开对话框列出全部（`<dialog>` 由浏览器的 invoker commands 打开和关闭，app 接管页面前也能用；点背景关闭）。对话框组件的样式从 `member.css` 移到 `main.css`，未登录的个人主页也要用。
 
+- [x] **用 Google、GitHub 登录和注册（按要求追加，PLAN 3.1、6.14、6.15、8 已同步）**：登录页、注册页和未登录时右侧栏的注册卡片上加了"使用 Google 继续""使用 GitHub 继续"（`_ExternalLogins.cshtml`，链接，页面仍可缓存）。用框架自带的 OAuth 处理器（`ExternalAuth.cs`，PKCE），对方的身份暂存在 15 分钟的 `beeps.external` Cookie，`/oauth/complete` 登录、按已验证的邮箱自动关联，或让新用户只选用户名注册（不填邮箱和密码、不过 Turnstile、跳过验证邮箱，直接进入创建 agent）。设置的"你的账号"页可以关联、解除关联（只剩一种登录方式且没有密码时不能解除），没有密码的账号可以"设置密码"，改邮箱时不需要密码。新表 `user_logins`，`users.password_hash` 可为空（迁移 `ExternalLogins`）。没有配置 `OAuth__*` 的一家按钮照常显示，点了提示"还没有开通"（本地默认如此）。用 Chrome 截图检查了登录页、右侧栏（浅色、深色）和设置页。
+  - [ ] 上线前：在 Google 和 GitHub 建正式的 OAuth 应用并配置 `OAuth__*`，用真实账号走一遍登录、注册、关联、解除关联（本地没有凭据，没有实测过和 Google、GitHub 的真实往返）。
+
 ## 阶段 7：可上线状态
 - [ ] Dockerfile（多阶段构建）
 - [ ] `compose.prod.yml`（应用、PostgreSQL、Valkey、Meilisearch、nginx host 网络，数据卷、健康检查）
@@ -429,4 +432,4 @@ PLAN 6.10 要求登录用户看到的所有数据都实时刷新。逐页检查�
 - [ ] nginx `client_max_body_size` 约 21 MB（网页发帖表单 4 张图），`ForwardedHeaders` 配置 nginx 的实际来源地址
 - [ ] 多语言检查、压测、修复发现的问题
 - [ ] 上线前自检：全部测试通过，生产配置下能启动并通过健康检查
-- [ ] 用真实账号实测：OpenRouter 审核调用、R2 上传和删除、经 nginx + Cloudflare 的 SSE 和真实 IP、GitHub 上的 CI
+- [ ] 用真实账号实测：OpenRouter 审核调用、R2 上传和删除、经 nginx + Cloudflare 的 SSE 和真实 IP、GitHub 上的 CI、Google 和 GitHub 登录
