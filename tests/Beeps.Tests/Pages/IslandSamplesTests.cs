@@ -54,7 +54,7 @@ public sealed partial class IslandSamplesTests : IDisposable
         aliceAgent = new ActorRow(Id(2), ActorKind.Agent, "alice.claude", "alice's Claude", alice.Id);
         var tomRow = new ActorRow(tom.Id, ActorKind.Human, "tom", "tom", null);
         question = Beep(10, "Who knows #beeps? @tom", alice, likes: 3, replies: 1);
-        answer = Beep(11, "I do!\nSecond line", aliceAgent, replyTo: question.Id, root: question.Id, liked: true, likes: 1);
+        answer = Beep(11, "I do!\nSecond line, see https://example.com/docs", aliceAgent, replyTo: question.Id, root: question.Id, liked: true, likes: 1);
         pictures = Beep(12, "", alice);
         mine = Beep(13, "<b>mine</b>", tomRow) with { UnderReview = true };
         TestBeeps.Arrange(factory, question, answer, pictures, mine);
@@ -69,7 +69,7 @@ public sealed partial class IslandSamplesTests : IDisposable
         factory.Timelines.ProfileAsync(alice.Id, Arg.Any<ProfileTimeline>(), Arg.Any<PageRequest>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>()).Returns(new CursorPage<BeepRow>([pictures, question], Id(98)));
         factory.Timelines.ProfileAsync(aliceAgent.Id, Arg.Any<ProfileTimeline>(), Arg.Any<PageRequest>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>()).Returns(new CursorPage<BeepRow>([answer], null));
         factory.Beeps.ListThreadAsync(question.Id, Arg.Any<Guid?>(), Arg.Any<int>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>()).Returns(new CursorPage<BeepRow>([question, answer], Id(97)));
-        factory.Profiles.FindByHandleAsync("alice", Arg.Any<CancellationToken>()).Returns(new ProfileRow(alice, "Hello, I am Alice.", null, TestData.Now, null));
+        factory.Profiles.FindByHandleAsync("alice", Arg.Any<CancellationToken>()).Returns(new ProfileRow(alice, "Hello, I am Alice.", null, TestData.Now, null, Website: "https://alice.example/"));
         factory.Profiles.FindByHandleAsync("alice.claude", Arg.Any<CancellationToken>()).Returns(new ProfileRow(aliceAgent, null, "Claude Opus", TestData.Now, alice));
         // More agents than the card lists: the rest are behind "show more".
         factory.Profiles.ListAgentsAsync(alice.Id, Arg.Any<CancellationToken>()).Returns([

@@ -13,11 +13,14 @@ public enum BeepTextTokenKind
 {
     Hashtag,
     Mention,
+
+    /// <summary>An address starting with <c>http://</c>, <c>https://</c> or <c>www.</c>.</summary>
+    Link,
 }
 
-/// <param name="Start">UTF-16 index of the <c>#</c> or <c>@</c>.</param>
+/// <param name="Start">UTF-16 index of the <c>#</c> or <c>@</c>, or of the link.</param>
 /// <param name="Length">Including the <c>#</c> or <c>@</c>.</param>
-/// <param name="Value">What follows the <c>#</c> or <c>@</c>, as written.</param>
+/// <param name="Value">What follows the <c>#</c> or <c>@</c>, as written; the whole link.</param>
 public readonly record struct BeepTextToken(BeepTextTokenKind Kind, int Start, int Length, string Value);
 
 public enum BeepTextProblem
@@ -39,7 +42,7 @@ public sealed record ParsedBeepText(string Text, BeepTextProblem Problem, IReadO
 }
 
 /// <summary>
-/// The only implementation of beep text rules (PLAN 6.19, 12): length, #hashtags, @mentions and HTML
+/// The only implementation of beep text rules (PLAN 6.19, 12): length, #hashtags, @mentions, links and HTML
 /// rendering. Pages, the islands' props and the API all go through here.
 /// </summary>
 public static class BeepText
@@ -58,6 +61,17 @@ public static class BeepText
     public const int MaxHashtagStorageLength = 400;
 
     public const int MaxMentions = 10;
+
+    /// <summary>How much of a link shows after its scheme before it is cut short with an ellipsis, as on Mastodon.</summary>
+    public const int MaxLinkTextLength = 30;
+
+    // What may follow the start of a link (RFC 3986's unreserved and reserved characters, and '%'), ASCII only: a link
+    // ends at a space, and at Chinese text written straight after it.
+    private static readonly SearchValues<char> LinkCharacters =
+        SearchValues.Create("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-._~:/?#[]@!$&'()*+,;=%");
+
+    // Punctuation that ends a sentence rather than the link, as in "see https://example.com."
+    private static readonly SearchValues<char> LinkTrailingPunctuation = SearchValues.Create(".,:;!?'*");
 
     private static readonly HtmlEncoder Encoder = HtmlEncoder.Create(UnicodeRanges.All);
 
@@ -144,10 +158,11 @@ public static class BeepText
     public static IReadOnlyList<string> Hashtags(string text) => Hashtags(Tokenize(text));
 
     /// <summary>
-    /// Finds #hashtags and @mentions. Either must start the text or follow a character that is not part of
-    /// a word (so <c>a@b.com</c> and <c>page#2</c> are neither). A hashtag is letters, digits, marks and
+    /// Finds links, #hashtags and @mentions. A hashtag or mention must start the text or follow a character that is
+    /// not part of a word (so <c>a@b.com</c> and <c>page#2</c> are neither). A hashtag is letters, digits, marks and
     /// underscores with at least one letter, and ends at a space or punctuation; a mention is a username,
-    /// optionally followed by <c>.name</c> for an agent.
+    /// optionally followed by <c>.name</c> for an agent. A link starts with <c>http://</c>, <c>https://</c> or
+    /// <c>www.</c> (see <see cref="LinkLength"/>); the <c>#</c> and <c>@</c> within it are its own.
     /// </summary>
     public static IReadOnlyList<BeepTextToken> Tokenize(string text)
     {
@@ -156,6 +171,13 @@ public static class BeepText
         var i = 0;
         while (i < text.Length)
         {
+            if (StartsLink(text, i) && LinkLength(text, i) is > 0 and var linkLength)
+            {
+                tokens.Add(new BeepTextToken(BeepTextTokenKind.Link, i, linkLength, text.Substring(i, linkLength)));
+                i += linkLength;
+                continue;
+            }
+
             var sigil = text[i];
             if ((sigil == '#' || sigil == '@') && StartsToken(text, i))
             {
@@ -176,7 +198,7 @@ public static class BeepText
     }
 
     /// <summary>
-    /// Safe HTML for a beep: the text is escaped first, then hashtags and the mentions in
+    /// Safe HTML for a beep: the text is escaped first, then links, hashtags and the mentions in
     /// <paramref name="linkedHandles"/> (normalized handles of actors that exist) become links.
     /// </summary>
     public static string RenderHtml(string text, IReadOnlySet<string> linkedHandles)
@@ -188,6 +210,13 @@ public static class BeepText
         foreach (var token in Tokenize(text))
         {
             AppendText(html, text.AsSpan(position, token.Start - position));
+            position = token.Start + token.Length;
+            if (token.Kind == BeepTextTokenKind.Link)
+            {
+                AppendLink(html, token.Value);
+                continue;
+            }
+
             var written = text.AsSpan(token.Start, token.Length);
             var path = token.Kind == BeepTextTokenKind.Hashtag
                 ? SitePaths.Tag(NormalizeHashtag(token.Value))
@@ -203,8 +232,6 @@ public static class BeepText
                 AppendText(html, written);
                 html.Append("</a>");
             }
-
-            position = token.Start + token.Length;
         }
 
         AppendText(html, text.AsSpan(position));
@@ -220,6 +247,38 @@ public static class BeepText
             .Select(m => AccountRules.NormalizeHandle(m.Handle!))
             .ToHashSet(StringComparer.Ordinal);
         return RenderHtml(beep.Text, linked);
+    }
+
+    /// <summary>
+    /// A link off the site (<see cref="UserLinks"/>). It shows without its scheme and <c>www.</c>, and cut short after
+    /// <see cref="MaxLinkTextLength"/> characters; what is not shown is only hidden, so copying the text copies all of it.
+    /// </summary>
+    private static void AppendLink(StringBuilder html, string link)
+    {
+        var href = link.Contains("://", StringComparison.Ordinal) ? link : "https://" + link;
+        var hidden = UserLinks.HiddenPrefixLength(link);
+        html.Append("<a class=\"link\" href=\"").Append(Encoder.Encode(href)).Append("\" target=\"_blank\" rel=\"").Append(UserLinks.Rel).Append("\">");
+        AppendHidden(html, link[..hidden]);
+        var shown = link[hidden..];
+        if (shown.Length > MaxLinkTextLength)
+        {
+            html.Append("<span class=\"link-cut\">").Append(Encoder.Encode(shown[..MaxLinkTextLength])).Append("</span>");
+            AppendHidden(html, shown[MaxLinkTextLength..]);
+        }
+        else
+        {
+            html.Append(Encoder.Encode(shown));
+        }
+
+        html.Append("</a>");
+    }
+
+    private static void AppendHidden(StringBuilder html, string text)
+    {
+        if (text.Length > 0)
+        {
+            html.Append("<span class=\"link-hidden\">").Append(Encoder.Encode(text)).Append("</span>");
+        }
     }
 
     private static ParsedBeepText Rejected(string text, BeepTextProblem problem) => new(text, problem, [], []);
@@ -252,6 +311,63 @@ public static class BeepText
         Rune.DecodeLastFromUtf16(text.AsSpan(0, index), out var previous, out _);
         return !IsWordRune(previous) && previous.Value is not ('&' or '/' or '\\' or '#' or '@');
     }
+
+    // Not straight after a letter or digit ("xhttp://"), or within what may be another address ("a.www.b.c").
+    private static bool StartsLink(string text, int index) =>
+        text[index] is 'h' or 'H' or 'w' or 'W'
+        && (index == 0 || !(char.IsAsciiLetterOrDigit(text[index - 1]) || text[index - 1] is '_' or '.' or '-' or '/' or '@' or '#' or '&'));
+
+    /// <summary>
+    /// The length of the link at <paramref name="start"/>, or 0 for none: <c>http://</c>, <c>https://</c> or
+    /// <c>www.</c> (any case), then the characters a URL may hold, without the punctuation that ends a sentence or an
+    /// unmatched closing bracket at its end, as Twitter reads them. Its host must be a domain name
+    /// (<see cref="UserLinks.IsHost"/>), with no user name in front.
+    /// </summary>
+    private static int LinkLength(string text, int start)
+    {
+        var rest = text.AsSpan(start);
+        var schemeLength = rest.StartsWith("https://", StringComparison.OrdinalIgnoreCase) ? 8
+            : rest.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ? 7
+            : rest.StartsWith("www.", StringComparison.OrdinalIgnoreCase) ? 0
+            : -1;
+        if (schemeLength < 0)
+        {
+            return 0;
+        }
+
+        var length = rest.IndexOfAnyExcept(LinkCharacters) is >= 0 and var stop ? stop : rest.Length;
+        while (length > schemeLength && EndsOutsideLink(rest[..length]))
+        {
+            length--;
+        }
+
+        var authority = rest[schemeLength..length];
+        if (authority.IndexOfAny('/', '?', '#') is >= 0 and var pathStart)
+        {
+            authority = authority[..pathStart];
+        }
+
+        if (authority.LastIndexOf(':') is >= 0 and var colon)
+        {
+            var port = authority[(colon + 1)..];
+            if (port.IsEmpty || port.Length > 5 || port.ContainsAnyExceptInRange('0', '9'))
+            {
+                return 0;
+            }
+
+            authority = authority[..colon];
+        }
+
+        // "www." is not enough of a domain name by itself: "www.example" is no link.
+        return UserLinks.IsHost(schemeLength == 0 ? authority[4..] : authority) ? length : 0;
+    }
+
+    private static bool EndsOutsideLink(ReadOnlySpan<char> link) => link[^1] switch
+    {
+        ')' => link.Count('(') < link.Count(')'),
+        ']' => link.Count('[') < link.Count(']'),
+        var last => LinkTrailingPunctuation.Contains(last),
+    };
 
     private static int HashtagLength(string text, int start)
     {

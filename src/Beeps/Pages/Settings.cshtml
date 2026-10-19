@@ -7,7 +7,7 @@
 @{
     ViewData[PageShell.ImageCrop] = true;
     ViewData["Title"] = L["Settings.Title"];
-    // Shows the saved name, bio, avatar and banner, also when changed in another tab, unless they are being edited here.
+    // Shows the saved name, bio, website, avatar and banner, also when changed in another tab, unless they are being edited here.
     // The forms post to the section they are on, so a refused one comes back to it. The devices page follows sign-ins and
     // sign-outs elsewhere.
     var profile = SitePaths.SettingsSection(SettingsSections.Profile);
@@ -22,11 +22,13 @@
         Model.Settings.PendingEmail?.ResendAt,
         Model.DisplayName,
         Model.Bio,
+        Model.Website,
         new PrivacyProps(Model.Settings.Privacy.HideLikes, Model.Settings.Privacy.HideFollows, Model.Settings.Privacy.HideFollowCounts),
         Model.Settings.Locale,
         SiteOptionsProps.CulturesFor(L),
         SiteOptionsProps.ThemesFor(L),
         new ProfileLimits(Actor.DisplayNameMaxLength, Actor.BioMaxLength),
+        Actor.WebsiteMaxLength,
         AccountRules.PasswordMinLength,
         AccountRules.PasswordMaxLength,
         AccountRules.CodeLength,

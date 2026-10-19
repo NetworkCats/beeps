@@ -595,6 +595,7 @@ public sealed partial class AccountService(
             user.Actor.Handle!,
             user.Actor.DisplayName!,
             user.Actor.Bio,
+            user.Actor.Website,
             user.Email,
             waiting,
             user.Locale,
@@ -627,8 +628,8 @@ public sealed partial class AccountService(
         return Result.Success;
     }
 
-    /// <summary>The human's own display name and bio (PLAN 2.2); the username never changes.</summary>
-    public async Task<Result> UpdateProfileAsync(Guid userId, string? displayName, string? bio, CancellationToken cancellationToken)
+    /// <summary>The human's own display name, bio and website (PLAN 2.2); the username never changes.</summary>
+    public async Task<Result> UpdateProfileAsync(Guid userId, string? displayName, string? bio, string? website, CancellationToken cancellationToken)
     {
         var fields = new Dictionary<string, string[]>();
         var name = ProfileRules.CleanDisplayName(displayName);
@@ -640,6 +641,11 @@ public sealed partial class AccountService(
         if (!ProfileRules.TryCleanBio(bio, out var cleanBio))
         {
             fields[ProfileFields.Bio] = [localizer["Validation.Bio", Actor.BioMaxLength]];
+        }
+
+        if (!ProfileRules.TryCleanWebsite(website, out var cleanWebsite))
+        {
+            fields[ProfileFields.Website] = [localizer["Validation.Website", Actor.WebsiteMaxLength]];
         }
 
         if (fields.Count > 0)
@@ -662,6 +668,7 @@ public sealed partial class AccountService(
 
         user.Actor.DisplayName = name;
         user.Actor.Bio = cleanBio;
+        user.Actor.Website = cleanWebsite;
         outbox.SyncAccountToSearch(user.Id);
         await unitOfWork.SaveChangesAsync(cancellationToken);
         await store.ForgetAccountAsync(user.Id, cancellationToken);

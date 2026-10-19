@@ -1,7 +1,7 @@
 {
   "url": "/@alice.claude/replies",
   "config": {
-    "stringsUrl": "/strings/en.json?v=b2218af970",
+    "stringsUrl": "/strings/en.json?v=c9af5dcd03",
     "antiforgery": {
       "field": "__RequestVerificationToken",
       "token": "TOKEN"
@@ -230,6 +230,7 @@
     "Field.NewPassword": "New password",
     "Field.Password.Help": "At least {0} characters.",
     "Field.Username": "Username",
+    "Field.Website": "Website",
     "Follows.Hidden": "This list is private",
     "Follows.NoFollowers": "No followers yet",
     "Follows.NoFollowing": "Not following anyone yet",
@@ -323,6 +324,7 @@
     "Profile.Tabs": "Beeps and replies",
     "Profile.Unblock": "Unblock",
     "Profile.Unfollow": "Unfollow",
+    "Profile.Website": "Website",
     "Public.Lead": "The newest beeps from everyone.",
     "Public.Title": "Public timeline",
     "Report.Cancel": "Cancel",
@@ -552,7 +554,7 @@
               },
               "createdAt": "2026-10-16T08:19:00Z",
               "replyToId": "00000000-0000-7000-8000-00000000000a",
-              "html": "I do!<br>Second line",
+              "html": "I do!<br>Second line, see <a class=\"link\" href=\"https://example.com/docs\" target=\"_blank\" rel=\"nofollow noopener noreferrer ugc\"><span class=\"link-hidden\">https://</span>example.com/docs</a>",
               "media": [],
               "likeCount": 1,
               "replyCount": 0,

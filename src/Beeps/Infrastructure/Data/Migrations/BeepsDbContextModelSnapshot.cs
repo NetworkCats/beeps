@@ -84,6 +84,11 @@ namespace Beeps.Infrastructure.Data.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("owner_id");
 
+                    b.Property<string>("Website")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("website");
+
                     b.HasKey("Id")
                         .HasName("pk_actors");
 

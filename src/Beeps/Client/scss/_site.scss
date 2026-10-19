@@ -1072,7 +1072,8 @@
   overflow-wrap: anywhere;
 
   > .mention,
-  > .hashtag {
+  > .hashtag,
+  > .link {
     color: var(--cui-primary-text);
     text-decoration: none;
 
@@ -1080,6 +1081,15 @@
       text-decoration: underline;
     }
   }
+}
+
+// A link shows without its scheme and is cut short (BeepText.AppendLink); the rest is hidden, not left out, so it copies.
+.link-hidden {
+  @include visually-hidden;
+}
+
+.link-cut::after {
+  content: "…";
 }
 
 // One image keeps its own shape; several share a fixed-ratio grid and are cropped to fill it.
@@ -1416,6 +1426,20 @@ span.beep-action {
     &:not(:hover) {
       text-decoration: none;
     }
+  }
+
+  // In the link colour, as Twitter shows it, and cut short rather than wrapped when long.
+  .profile-website {
+    display: block;
+    max-width: 20rem;
+    overflow: hidden;
+    color: var(--cui-primary-text);
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  dd {
+    min-width: 0;
   }
 }
 

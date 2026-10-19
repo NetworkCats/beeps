@@ -828,6 +828,7 @@ public sealed partial class AccountServiceTests
     {
         var user = TestData.User();
         user.Actor.Bio = "hello";
+        user.Actor.Website = "https://tom.example";
         user.HideFollowCounts = true;
         store.FindUserAsync(user.Id, Arg.Any<CancellationToken>()).Returns(user);
         store.ListLoginsAsync(user.Id, Arg.Any<CancellationToken>()).Returns([Login(user.Id, ExternalProviders.GitHub, "42", "octocat")]);
@@ -835,7 +836,7 @@ public sealed partial class AccountServiceTests
         var settings = await CreateService().GetSettingsAsync(user.Id, TestSupport.Ct);
         var missing = await CreateService().GetSettingsAsync(Guid.NewGuid(), TestSupport.Ct);
 
-        Assert.Equal(new AccountSettings("tom", "tom", "hello", "tom@example.com", null, "en", new ProfilePrivacy(false, false, true), true, settings.Value.Logins, false), settings.Value);
+        Assert.Equal(new AccountSettings("tom", "tom", "hello", "https://tom.example", "tom@example.com", null, "en", new ProfilePrivacy(false, false, true), true, settings.Value.Logins, false), settings.Value);
         Assert.Equal([new LinkedLogin(ExternalProviders.GitHub, "octocat")], settings.Value.Logins);
         Assert.Equal(ErrorKind.NotFound, missing.Error?.Kind);
     }
@@ -846,10 +847,10 @@ public sealed partial class AccountServiceTests
         var user = TestData.User();
         store.FindUserAsync(user.Id, Arg.Any<CancellationToken>()).Returns(user);
 
-        var result = await CreateService().UpdateProfileAsync(user.Id, "  Tom T.  ", "line 1\r\nline 2", TestSupport.Ct);
+        var result = await CreateService().UpdateProfileAsync(user.Id, "  Tom T.  ", "line 1\r\nline 2", " tom.example/blog ", TestSupport.Ct);
 
         Assert.True(result.IsSuccess);
-        Assert.Equal(("Tom T.", "line 1\nline 2"), (user.Actor.DisplayName, user.Actor.Bio));
+        Assert.Equal(("Tom T.", "line 1\nline 2", "https://tom.example/blog"), (user.Actor.DisplayName, user.Actor.Bio, user.Actor.Website));
         Assert.Equal(1, unitOfWork.Saves);
         await store.Received(1).ForgetAccountAsync(user.Id, Arg.Any<CancellationToken>());
         outbox.Received(1).Enqueue(SearchAccountSyncRequest.MessageType, new SearchAccountSyncRequest(user.Id, false), Arg.Any<System.Text.Json.Serialization.Metadata.JsonTypeInfo<SearchAccountSyncRequest>>());
@@ -873,24 +874,26 @@ public sealed partial class AccountServiceTests
     }
 
     [Fact]
-    public async Task AnEmptyBioClearsIt()
+    public async Task AnEmptyBioOrWebsiteClearsIt()
     {
         var user = TestData.User();
         user.Actor.Bio = "old";
+        user.Actor.Website = "https://old.example";
         store.FindUserAsync(user.Id, Arg.Any<CancellationToken>()).Returns(user);
 
-        await CreateService().UpdateProfileAsync(user.Id, "Tom", "   ", TestSupport.Ct);
+        await CreateService().UpdateProfileAsync(user.Id, "Tom", "   ", " ", TestSupport.Ct);
 
         Assert.Null(user.Actor.Bio);
+        Assert.Null(user.Actor.Website);
     }
 
     [Fact]
     public async Task ABadProfileNamesEveryBadField()
     {
-        var result = await CreateService().UpdateProfileAsync(Guid.NewGuid(), " ", new string('x', 301), TestSupport.Ct);
+        var result = await CreateService().UpdateProfileAsync(Guid.NewGuid(), " ", new string('x', 301), "javascript:alert(1)", TestSupport.Ct);
 
         Assert.Equal(AccountErrorCodes.InvalidInput, result.Error?.Code);
-        Assert.Equal([ProfileFields.Bio, ProfileFields.DisplayName], result.Error!.Fields!.Keys.Order());
+        Assert.Equal([ProfileFields.Bio, ProfileFields.DisplayName, ProfileFields.Website], result.Error!.Fields!.Keys.Order());
         await store.DidNotReceiveWithAnyArgs().FindUserAsync(default, TestSupport.Ct);
     }
 

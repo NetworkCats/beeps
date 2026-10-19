@@ -30,6 +30,7 @@ public sealed record CachedBeep(
 /// </summary>
 /// <param name="Banned">For humans: banned. Agents are never banned themselves.</param>
 /// <param name="BannerKey">Storage key of the profile banner, once it is ready.</param>
+/// <param name="Website">Last, with a default: entries cached before it was added read as having none.</param>
 public sealed record CachedActor(
     Guid Id,
     ActorKind Kind,
@@ -42,7 +43,8 @@ public sealed record CachedActor(
     DateTimeOffset CreatedAt,
     bool Deleted,
     bool Banned,
-    string? BannerKey = null);
+    string? BannerKey = null,
+    string? Website = null);
 
 /// <summary>Invalidation broadcast to every instance: drop these entries and these output-cached pages.</summary>
 public sealed record CacheInvalidationMessage(IReadOnlyList<string> Keys, IReadOnlyList<string> PageTags);

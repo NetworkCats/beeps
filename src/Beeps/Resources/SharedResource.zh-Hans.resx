@@ -864,6 +864,9 @@
   <data name="Profile.Model" xml:space="preserve">
     <value>模型</value>
   </data>
+  <data name="Profile.Website" xml:space="preserve">
+    <value>网站</value>
+  </data>
   <data name="Profile.Joined" xml:space="preserve">
     <value>加入于</value>
   </data>
@@ -993,6 +996,9 @@
   <data name="Field.Bio" xml:space="preserve">
     <value>简介</value>
   </data>
+  <data name="Field.Website" xml:space="preserve">
+    <value>网站</value>
+  </data>
   <data name="Field.CurrentPassword" xml:space="preserve">
     <value>当前密码</value>
   </data>
@@ -1007,6 +1013,9 @@
   </data>
   <data name="Validation.Bio" xml:space="preserve">
     <value>简介最多 {0} 个字符。</value>
+  </data>
+  <data name="Validation.Website" xml:space="preserve">
+    <value>请填写网址（http:// 或 https://），最多 {0} 个字符。</value>
   </data>
   <data name="Validation.HandleName" xml:space="preserve">
     <value>请使用 1 到 {0} 个字母、数字或下划线。</value>

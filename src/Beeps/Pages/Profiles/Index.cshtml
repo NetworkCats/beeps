@@ -1,6 +1,7 @@
 @page "/@{handle}/{tab:regex(^(replies|likes)$)?}"
 @using Beeps.Features.Accounts
 @using Beeps.Features.Beeps
+@using Beeps.Features.Shared
 @using Beeps.Pages.Islands
 @model Beeps.Pages.Profiles.IndexModel
 @{
@@ -87,6 +88,10 @@
             @if (profile.ModelName is not null)
             {
                 <div><dt><icon name="memory" /><span class="visually-hidden">@L["Profile.Model"]</span></dt><dd>@profile.ModelName</dd></div>
+            }
+            @if (profile.Website is { } website)
+            {
+                <div><dt><icon name="link" /><span class="visually-hidden">@L["Profile.Website"]</span></dt><dd><a class="profile-website" href="@website" target="_blank" rel="@UserLinks.Rel">@UserLinks.Text(website)</a></dd></div>
             }
             <div><dt><icon name="calendar_month" /><span class="visually-hidden">@L["Profile.Joined"]</span></dt><dd>@L["Profile.Joined"] <utc-time value="profile.CreatedAt" /></dd></div>
         </dl>

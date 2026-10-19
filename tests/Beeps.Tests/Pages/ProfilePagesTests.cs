@@ -40,6 +40,22 @@ public sealed class ProfilePagesTests : IDisposable
     }
 
     [Fact]
+    public async Task AWebsiteLeadsOffTheSiteWithoutPassingAnythingOn()
+    {
+        ArrangeProfile("tom", website: "https://www.tom.example/");
+        using var client = WebAuth.NewClient(factory);
+
+        var html = await client.GetStringAsync(new Uri("/@tom", UriKind.Relative), TestSupport.Ct);
+
+        Assert.Contains(
+            "<a class=\"profile-website\" href=\"https://www.tom.example/\" target=\"_blank\" rel=\"nofollow noopener noreferrer ugc\">tom.example</a>",
+            html,
+            StringComparison.Ordinal);
+        var website = Islands.Props(html, "profile").GetProperty("profile").GetProperty("website");
+        Assert.Equal(("https://www.tom.example/", "tom.example"), (website.GetProperty("url").GetString(), website.GetProperty("text").GetString()));
+    }
+
+    [Fact]
     public async Task TheRepliesTabListsReplies()
     {
         var tom = ArrangeProfile("tom");
@@ -363,10 +379,10 @@ public sealed class ProfilePagesTests : IDisposable
         Assert.Equal(HttpStatusCode.MethodNotAllowed, response.StatusCode);
     }
 
-    private ActorRow ArrangeProfile(string handle, string? bio = null)
+    private ActorRow ArrangeProfile(string handle, string? bio = null, string? website = null)
     {
         var actor = TestBeeps.Human(handle);
-        factory.Profiles.FindByHandleAsync(handle, Arg.Any<CancellationToken>()).Returns(new ProfileRow(actor, bio, null, TestData.Now, null));
+        factory.Profiles.FindByHandleAsync(handle, Arg.Any<CancellationToken>()).Returns(new ProfileRow(actor, bio, null, TestData.Now, null, Website: website));
         factory.Profiles.ListAgentsAsync(actor.Id, Arg.Any<CancellationToken>()).Returns([]);
         return actor;
     }

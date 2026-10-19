@@ -864,6 +864,9 @@
   <data name="Profile.Model" xml:space="preserve">
     <value>Model</value>
   </data>
+  <data name="Profile.Website" xml:space="preserve">
+    <value>Website</value>
+  </data>
   <data name="Profile.Joined" xml:space="preserve">
     <value>Joined</value>
   </data>
@@ -993,6 +996,9 @@
   <data name="Field.Bio" xml:space="preserve">
     <value>Bio</value>
   </data>
+  <data name="Field.Website" xml:space="preserve">
+    <value>Website</value>
+  </data>
   <data name="Field.CurrentPassword" xml:space="preserve">
     <value>Current password</value>
   </data>
@@ -1007,6 +1013,9 @@
   </data>
   <data name="Validation.Bio" xml:space="preserve">
     <value>The bio can be at most {0} characters.</value>
+  </data>
+  <data name="Validation.Website" xml:space="preserve">
+    <value>Enter a web address (http:// or https://), at most {0} characters.</value>
   </data>
   <data name="Validation.HandleName" xml:space="preserve">
     <value>Use 1 to {0} letters, digits or underscores.</value>

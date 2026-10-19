@@ -106,12 +106,15 @@ public sealed class SettingsPagesTests : IDisposable
         var user = WebAuth.ArrangeUser(factory);
         using var client = await WebAuth.SignInAsync(factory, user);
 
-        using var response = await WebAuth.PostFormAsync(client, "/settings", "/settings?handler=Profile", ("DisplayName", "Tom T."), ("Bio", "hello"));
+        using var response = await WebAuth.PostFormAsync(
+            client, "/settings", "/settings?handler=Profile", ("DisplayName", "Tom T."), ("Bio", "hello"), ("Website", "tom.example"));
         var page = await Islands.PageAsync(client, "/settings");
+        var profile = await Islands.PageAsync(client, "/settings/profile");
 
         Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
-        Assert.Equal(("Tom T.", "hello"), (user.Actor.DisplayName, user.Actor.Bio));
+        Assert.Equal(("Tom T.", "hello", "https://tom.example"), (user.Actor.DisplayName, user.Actor.Bio, user.Actor.Website));
         Assert.Contains("Profile saved.", page, StringComparison.Ordinal);
+        Assert.Equal("https://tom.example", Islands.Props(profile, "settings").GetProperty("website").GetString());
     }
 
     [Fact]
@@ -138,11 +141,16 @@ public sealed class SettingsPagesTests : IDisposable
         var user = WebAuth.ArrangeUser(factory);
         using var client = await WebAuth.SignInAsync(factory, user);
 
-        using var response = await WebAuth.PostFormAsync(client, "/settings", "/settings?handler=Profile", ("DisplayName", " "), ("Bio", ""));
+        using var response = await WebAuth.PostFormAsync(
+            client, "/settings", "/settings?handler=Profile", ("DisplayName", " "), ("Bio", ""), ("Website", "ftp://tom.example"));
         var html = await response.Content.ReadAsStringAsync(TestSupport.Ct);
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-        Assert.True(Islands.Envelope(html, "settings").GetProperty("errors").TryGetProperty("DisplayName", out _));
+        var errors = Islands.Envelope(html, "settings").GetProperty("errors");
+        Assert.True(errors.TryGetProperty("DisplayName", out _));
+        Assert.True(errors.TryGetProperty("Website", out _));
+        // What was sent and refused stays in the form, to be put right.
+        Assert.Equal("ftp://tom.example", Islands.Props(html, "settings").GetProperty("website").GetString());
         Assert.Equal("tom", user.Actor.DisplayName);
     }
 

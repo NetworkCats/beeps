@@ -98,11 +98,13 @@ interface SettingsProps {
   resendAt?: string;
   displayName?: string;
   bio?: string;
+  website?: string;
   privacy: Privacy;
   culture: string;
   cultures: Option[];
   themes: Option[];
   limits: ProfileLimits;
+  websiteMaxLength: number;
   passwordMinLength: number;
   passwordMaxLength: number;
   codeLength: number;
@@ -213,6 +215,19 @@ function ProfileSection({ props, errors }: SectionProps) {
         </FloatField>
         <FloatField errors={errors} name="Bio" label={t('Field.Bio')} max={props.limits.bioMaxLength} initial={props.bio}>
           <textarea class="float-field-input" {...field(errors, 'Bio')} rows={3} maxLength={props.limits.bioMaxLength} defaultValue={props.bio ?? ''} />
+        </FloatField>
+        {/* Text, not type="url", which would refuse an address written without https:// in front: the server adds it. */}
+        <FloatField errors={errors} name="Website" label={t('Field.Website')}>
+          <input
+            class="float-field-input"
+            {...field(errors, 'Website')}
+            defaultValue={props.website ?? ''}
+            maxLength={props.websiteMaxLength}
+            inputMode="url"
+            autoComplete="url"
+            autoCapitalize="off"
+            spellcheck={false}
+          />
         </FloatField>
         <Antiforgery />
       </form>

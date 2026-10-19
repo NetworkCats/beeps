@@ -150,6 +150,71 @@ public sealed class BeepTextTests
     }
 
     [Theory]
+    [InlineData("see https://example.com", "https://example.com")]
+    [InlineData("HTTP://Example.COM/a?b=1&c=%20#top", "HTTP://Example.COM/a?b=1&c=%20#top")]
+    [InlineData("see https://example.com/a.", "https://example.com/a")]
+    [InlineData("(see https://example.com/a)", "https://example.com/a")]
+    [InlineData("https://en.wikipedia.org/wiki/Beep_(sound))", "https://en.wikipedia.org/wiki/Beep_(sound)")]
+    [InlineData("看看https://example.com/a这个", "https://example.com/a")]
+    [InlineData("链接：https://example.com，好", "https://example.com")]
+    [InlineData("www.example.com/docs!", "www.example.com/docs")]
+    [InlineData("http://localhost.dev:8080/x", "http://localhost.dev:8080/x")]
+    [InlineData("https://mastodon.social/@tom", "https://mastodon.social/@tom")]
+    public void LinksEndWhereTheSentenceGoesOn(string text, string link)
+    {
+        var token = Assert.Single(BeepText.Tokenize(text), t => t.Kind == BeepTextTokenKind.Link);
+        Assert.Equal(link, token.Value);
+        Assert.Equal(link, text.Substring(token.Start, token.Length));
+    }
+
+    [Theory]
+    [InlineData("https://localhost/x")]
+    [InlineData("http://127.0.0.1/")]
+    [InlineData("https://user@example.com")]
+    [InlineData("https://example.com:http/")]
+    [InlineData("xhttps://example.com")]
+    [InlineData("www.example")]
+    [InlineData("example.com")]
+    [InlineData("ftp://example.com")]
+    [InlineData("javascript:alert(1)")]
+    public void SomeAddressesAreNotLinks(string text) =>
+        Assert.DoesNotContain(BeepText.Tokenize(text), t => t.Kind == BeepTextTokenKind.Link);
+
+    [Fact]
+    public void TagsAndMentionsWithinALinkAreTheLinks()
+    {
+        var parsed = BeepText.Parse("https://example.com/#top https://example.com/@tom #real");
+
+        Assert.Equal(["real"], parsed.Hashtags);
+        Assert.Empty(parsed.MentionHandles);
+    }
+
+    [Fact]
+    public void LinksOpenElsewhereShowingTheirAddressWithoutTheScheme()
+    {
+        var html = BeepText.RenderHtml("see https://www.example.com/a?b=1&c=2 or www.example.org", new HashSet<string>());
+
+        Assert.Equal(
+            "see <a class=\"link\" href=\"https://www.example.com/a?b=1&amp;c=2\" target=\"_blank\" rel=\"nofollow noopener noreferrer ugc\">" +
+            "<span class=\"link-hidden\">https://www.</span>example.com/a?b=1&amp;c=2</a> or " +
+            "<a class=\"link\" href=\"https://www.example.org\" target=\"_blank\" rel=\"nofollow noopener noreferrer ugc\">" +
+            "<span class=\"link-hidden\">www.</span>example.org</a>",
+            html);
+    }
+
+    [Fact]
+    public void LongLinksAreCutShortButKeptWhole()
+    {
+        var html = BeepText.RenderHtml("http://example.com/" + new string('a', 40), new HashSet<string>());
+
+        Assert.Contains(
+            "<span class=\"link-hidden\">http://</span><span class=\"link-cut\">example.com/" + new string('a', 18) + "</span>" +
+            "<span class=\"link-hidden\">" + new string('a', 22) + "</span></a>",
+            html,
+            StringComparison.Ordinal);
+    }
+
+    [Theory]
     [InlineData("plain text", false, false)]
     [InlineData("two\nlines\ttab", true, false)]
     [InlineData("two\nlines", false, true)]

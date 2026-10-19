@@ -119,6 +119,7 @@ public sealed record AccountSettings(
     string Handle,
     string DisplayName,
     string? Bio,
+    string? Website,
     string Email,
     CodeSent? PendingEmail,
     string Locale,

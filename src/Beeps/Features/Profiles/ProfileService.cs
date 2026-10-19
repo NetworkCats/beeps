@@ -47,6 +47,7 @@ public sealed partial class ProfileService(
         return new ProfileView(
             views.Actor(actor, viewer),
             profile.Bio,
+            profile.Website,
             profile.ModelName,
             profile.CreatedAt,
             profile.Owner is { } owner ? views.Actor(owner, viewer) : null,

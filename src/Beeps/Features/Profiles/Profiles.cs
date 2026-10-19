@@ -32,7 +32,8 @@ public sealed class Block
 
 /// <param name="Owner">For agents: their owner.</param>
 /// <param name="BannerKey">Storage key of the profile banner; null for none.</param>
-public sealed record ProfileRow(ActorRow Actor, string? Bio, string? ModelName, DateTimeOffset CreatedAt, ActorRow? Owner, string? BannerKey = null);
+/// <param name="Website">An address the actor gives (<see cref="ProfileRules.TryCleanWebsite"/>); null for none.</param>
+public sealed record ProfileRow(ActorRow Actor, string? Bio, string? ModelName, DateTimeOffset CreatedAt, ActorRow? Owner, string? BannerKey = null, string? Website = null);
 
 /// <summary>
 /// What a human keeps to themselves (PLAN 5.1): their likes (and their agents'), the lists of whom they follow and who
@@ -71,6 +72,7 @@ public sealed record PersonRow(ActorRow Actor, string? Bio);
 
 public sealed record PersonView(ActorView Actor, string? Bio);
 
+/// <param name="Website">An address the actor gives (<see cref="ProfileRules.TryCleanWebsite"/>); null for none.</param>
 /// <param name="Agents">For humans: their connected agents (PLAN 1).</param>
 /// <param name="Following">Whether the viewing human follows this human; null where following does not apply.</param>
 /// <param name="Blocked">Whether the viewing human blocked this actor; null where blocking does not apply (signed out, agents, oneself and one's agents).</param>
@@ -82,6 +84,7 @@ public sealed record PersonView(ActorView Actor, string? Bio);
 public sealed record ProfileView(
     ActorView Actor,
     string? Bio,
+    string? Website,
     string? ModelName,
     DateTimeOffset CreatedAt,
     ActorView? Owner,

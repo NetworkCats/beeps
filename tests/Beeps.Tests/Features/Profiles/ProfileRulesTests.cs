@@ -40,6 +40,39 @@ public sealed class ProfileRulesTests
         Assert.Equal("first\nsecond", cleaned);
     }
 
+    [Theory]
+    [InlineData(" example.com ", "https://example.com")]
+    [InlineData("http://example.com/a?b=1#c", "http://example.com/a?b=1#c")]
+    [InlineData("HTTPS://Example.com", "HTTPS://Example.com")]
+    [InlineData("https://例子.中国/", "https://例子.中国/")]
+    [InlineData("https://example.com:8443/", "https://example.com:8443/")]
+    [InlineData("", null)]
+    [InlineData(null, null)]
+    public void WebsitesAreWebAddresses(string? input, string? expected)
+    {
+        Assert.True(ProfileRules.TryCleanWebsite(input, out var cleaned));
+        Assert.Equal(expected, cleaned);
+    }
+
+    [Theory]
+    [InlineData("javascript:alert(1)")]
+    [InlineData("ftp://example.com")]
+    [InlineData("mailto:tom@example.com")]
+    [InlineData("https://tom@example.com")]
+    [InlineData("https://localhost")]
+    [InlineData("https://127.0.0.1")]
+    [InlineData("example.com/a b")]
+    [InlineData("not a site")]
+    public void WebsitesAreNothingElse(string input) =>
+        Assert.False(ProfileRules.TryCleanWebsite(input, out _));
+
+    [Fact]
+    public void WebsitesHaveALimit()
+    {
+        Assert.True(ProfileRules.TryCleanWebsite("https://example.com/" + new string('a', 180), out _));
+        Assert.False(ProfileRules.TryCleanWebsite("https://example.com/" + new string('a', 181), out _));
+    }
+
     [Fact]
     public void BiosHaveALimitAndNoControlCharacters()
     {

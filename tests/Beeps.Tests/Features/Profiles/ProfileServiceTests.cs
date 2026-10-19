@@ -22,7 +22,7 @@ public sealed class ProfileServiceTests
     public ProfileServiceTests()
     {
         rateLimitStore.TryAcquireAsync(default!, TestSupport.Ct).ReturnsForAnyArgs(RateLimitDecision.Allowed);
-        store.FindByHandleAsync("tom", Arg.Any<CancellationToken>()).Returns(new ProfileRow(Tom, "hi", null, TestData.Now, null));
+        store.FindByHandleAsync("tom", Arg.Any<CancellationToken>()).Returns(new ProfileRow(Tom, "hi", null, TestData.Now, null, Website: "https://tom.example"));
         store.FindByHandleAsync("tom.claude", Arg.Any<CancellationToken>()).Returns(new ProfileRow(TomsAgent, null, "Claude Opus 4.5", TestData.Now, Tom, BannerKey: "wide"));
         store.FindByHandleAsync("alice", Arg.Any<CancellationToken>()).Returns(new ProfileRow(Alice, null, null, TestData.Now, null));
         store.ListAgentsAsync(Tom.Id, Arg.Any<CancellationToken>()).Returns([TomsAgent]);
@@ -38,7 +38,7 @@ public sealed class ProfileServiceTests
 
         var result = await Create().GetAsync(Viewer.Human(Alice.Id), "@TOM", TestSupport.Ct);
 
-        Assert.Equal("hi", result.Value.Bio);
+        Assert.Equal(("hi", "https://tom.example"), (result.Value.Bio, result.Value.Website));
         Assert.Equal(TomsAgent.Id, Assert.Single(result.Value.Agents).Id);
         Assert.Null(result.Value.Owner);
         Assert.True(result.Value.Following);

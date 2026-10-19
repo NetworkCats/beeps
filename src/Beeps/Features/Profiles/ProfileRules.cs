@@ -40,6 +40,36 @@ public static class ProfileRules
         return true;
     }
 
+    /// <summary>
+    /// An <c>http</c> or <c>https</c> address to a domain name (<see cref="UserLinks.IsHost"/>), as written, trimmed;
+    /// one written without a scheme gets <c>https://</c>. An empty website is no website (<paramref name="cleaned"/> null).
+    /// </summary>
+    /// <returns>False if it is too long, not such an address, or has a user name in front of the host.</returns>
+    public static bool TryCleanWebsite(string? website, out string? cleaned)
+    {
+        cleaned = null;
+        var trimmed = (website ?? "").Trim();
+        if (trimmed.Length == 0)
+        {
+            return true;
+        }
+
+        var url = trimmed.Contains("://", StringComparison.Ordinal) ? trimmed : "https://" + trimmed;
+        if (TextRules.HasForbiddenCharacters(url, allowLineBreaks: false)
+            || url.Any(char.IsWhiteSpace)
+            || CodePoints(url) > Actor.WebsiteMaxLength
+            || !Uri.TryCreate(url, UriKind.Absolute, out var uri)
+            || (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps)
+            || uri.UserInfo.Length > 0
+            || !UserLinks.IsHost(uri.IdnHost))
+        {
+            return false;
+        }
+
+        cleaned = url;
+        return true;
+    }
+
     // Only called on text already checked for lone surrogates, so every rune is a real one.
     private static int CodePoints(string text) => text.EnumerateRunes().Count();
 }
@@ -49,4 +79,5 @@ public static class ProfileFields
 {
     public const string DisplayName = "DisplayName";
     public const string Bio = "Bio";
+    public const string Website = "Website";
 }

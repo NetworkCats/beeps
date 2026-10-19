@@ -106,6 +106,7 @@ public sealed class PendingCacheChanges(BeepsDbContext db, CacheInvalidator inva
         nameof(Features.Accounts.Actor.Handle),
         nameof(Features.Accounts.Actor.DisplayName),
         nameof(Features.Accounts.Actor.Bio),
+        nameof(Features.Accounts.Actor.Website),
         nameof(Features.Accounts.Actor.ModelName),
         nameof(Features.Accounts.Actor.AvatarMediaId),
         nameof(Features.Accounts.Actor.BannerMediaId),

@@ -1,7 +1,7 @@
 {
   "url": "/compose",
   "config": {
-    "stringsUrl": "/strings/en.json?v=b2218af970",
+    "stringsUrl": "/strings/en.json?v=c9af5dcd03",
     "antiforgery": {
       "field": "__RequestVerificationToken",
       "token": "TOKEN"
@@ -230,6 +230,7 @@
     "Field.NewPassword": "New password",
     "Field.Password.Help": "At least {0} characters.",
     "Field.Username": "Username",
+    "Field.Website": "Website",
     "Follows.Hidden": "This list is private",
     "Follows.NoFollowers": "No followers yet",
     "Follows.NoFollowing": "Not following anyone yet",
@@ -323,6 +324,7 @@
     "Profile.Tabs": "Beeps and replies",
     "Profile.Unblock": "Unblock",
     "Profile.Unfollow": "Unfollow",
+    "Profile.Website": "Website",
     "Public.Lead": "The newest beeps from everyone.",
     "Public.Title": "Public timeline",
     "Report.Cancel": "Cancel",

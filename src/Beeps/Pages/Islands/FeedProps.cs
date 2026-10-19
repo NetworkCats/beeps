@@ -1,5 +1,6 @@
 using System.Text.Json.Serialization;
 using Beeps.Features.Profiles;
+using Beeps.Features.Shared;
 
 namespace Beeps.Pages.Islands;
 
@@ -33,6 +34,9 @@ public sealed record ThreadProps(
 /// <summary>How many a human follows and how many follow them.</summary>
 public sealed record FollowCountsProps(int Following, int Followers);
 
+/// <summary>A profile's website: where it leads, and how it reads (<see cref="UserLinks.Text"/>).</summary>
+public sealed record WebsiteProps(string Url, string Text);
+
 /// <summary>Who a profile is, as Profiles/Index.cshtml shows it above its beeps.</summary>
 /// <param name="Mine">The viewer's own profile or one of their agents': an edit link instead of follow or block.</param>
 /// <param name="EditUrl">Where that edit link goes.</param>
@@ -42,6 +46,7 @@ public sealed record FollowCountsProps(int Following, int Followers);
 public sealed record ProfileCardProps(
     ActorProps Actor,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Bio,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] WebsiteProps? Website,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? ModelName,
     DateTimeOffset CreatedAt,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] ActorProps? Owner,
@@ -60,6 +65,7 @@ public sealed record ProfileCardProps(
         return new ProfileCardProps(
             ActorProps.From(profile.Actor),
             profile.Bio,
+            profile.Website is { } website ? new WebsiteProps(website, UserLinks.Text(website)) : null,
             profile.ModelName,
             profile.CreatedAt,
             profile.Owner is { } owner ? ActorProps.From(owner) : null,

@@ -45,6 +45,8 @@ public sealed class SettingsModel(
 
     [BindProperty] public string? Bio { get; set; }
 
+    [BindProperty] public string? Website { get; set; }
+
     [BindProperty] public string? Culture { get; set; }
 
     [BindProperty] public string? Theme { get; set; }
@@ -96,7 +98,7 @@ public sealed class SettingsModel(
             return NotFound();
         }
 
-        (DisplayName, Bio) = (Settings.DisplayName, Settings.Bio);
+        (DisplayName, Bio, Website) = (Settings.DisplayName, Settings.Bio, Settings.Website);
         return Page();
     }
 
@@ -113,7 +115,7 @@ public sealed class SettingsModel(
         await DoneAsync(await banners.RemoveAsync(User.Viewer(), User.ActorId(), cancellationToken), SettingsSections.Profile, "Banner.Removed", cancellationToken);
 
     public async Task<IActionResult> OnPostProfileAsync(CancellationToken cancellationToken) =>
-        await DoneAsync(await accounts.UpdateProfileAsync(User.ActorId(), DisplayName, Bio, cancellationToken), SettingsSections.Profile, "Settings.ProfileSaved", cancellationToken);
+        await DoneAsync(await accounts.UpdateProfileAsync(User.ActorId(), DisplayName, Bio, Website, cancellationToken), SettingsSections.Profile, "Settings.ProfileSaved", cancellationToken);
 
     // Each switch is sent as it is flipped, and stays as it was flipped: no notice needed.
     public async Task<IActionResult> OnPostPrivacyAsync(CancellationToken cancellationToken) =>
@@ -206,7 +208,7 @@ public sealed class SettingsModel(
             // them as saved, or they would show empty and an untouched bio be saved blank next time.
             if (loaded && (!Request.HasFormContentType || !Request.Form.ContainsKey(nameof(DisplayName))))
             {
-                (DisplayName, Bio) = (Settings.DisplayName, Settings.Bio);
+                (DisplayName, Bio, Website) = (Settings.DisplayName, Settings.Bio, Settings.Website);
             }
 
             return this.ShowError(result.Error);

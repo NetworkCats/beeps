@@ -1,6 +1,6 @@
 // A profile (Profiles/Index.cshtml): who it is, how many a human follows and how many follow them, a human's agents or
 // an agent's owner, and its beeps, its replies or its likes. Its card catches up when one of those people changes (name,
-// bio, avatar, banner, agents, privacy), or the viewer follows or blocks.
+// bio, website, avatar, banner, agents, privacy), or the viewer follows or blocks.
 import { useState } from 'preact/hooks';
 import { BeepListView, useBeepFeed, useFeedSnapshot, type FeedSource } from '../components/BeepFeed.tsx';
 import { Antiforgery } from '../components/Forms.tsx';
@@ -19,6 +19,8 @@ import type { ActorProps, BeepListProps, IslandsPage, LiveProps } from '../props
 interface ProfileCardProps {
   actor: ActorProps;
   bio?: string;
+  /** Where it leads, and how it reads: without its scheme. */
+  website?: { url: string; text: string };
   modelName?: string;
   createdAt: string;
   owner?: ActorProps;
@@ -47,6 +49,9 @@ interface ProfileProps {
 function listOf(page: IslandsPage): FeedSource | undefined {
   return (page.islands.profile?.props as ProfileProps | undefined)?.list;
 }
+
+/** A link someone wrote, as the server marks it (UserLinks.Rel): search engines pass it by, and it gets nothing of this page. */
+const USER_LINK_REL = 'nofollow noopener noreferrer ugc';
 
 /** Follow, unfollow, block and unblock are sent in the background; the card catches up with what they did. */
 const send = sending();
@@ -242,6 +247,19 @@ function ProfileCard({ profile }: { profile: ProfileCardProps }) {
               <span class="visually-hidden">{t('Profile.Model')}</span>
             </dt>
             <dd>{profile.modelName}</dd>
+          </div>
+        )}
+        {profile.website && (
+          <div>
+            <dt>
+              <Icon name="link" />
+              <span class="visually-hidden">{t('Profile.Website')}</span>
+            </dt>
+            <dd>
+              <a class="profile-website" href={profile.website.url} target="_blank" rel={USER_LINK_REL}>
+                {profile.website.text}
+              </a>
+            </dd>
           </div>
         )}
         <div>

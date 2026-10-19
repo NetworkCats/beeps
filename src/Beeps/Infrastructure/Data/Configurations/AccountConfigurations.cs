@@ -21,6 +21,7 @@ internal sealed class ActorConfiguration : IEntityTypeConfiguration<Actor>
         builder.Property(a => a.NormalizedHandle).HasMaxLength(Actor.HandleMaxLength);
         builder.Property(a => a.DisplayName).HasMaxLength(Actor.DisplayNameMaxLength);
         builder.Property(a => a.Bio).HasMaxLength(Actor.BioMaxLength);
+        builder.Property(a => a.Website).HasMaxLength(Actor.WebsiteMaxLength);
         builder.Property(a => a.ModelName).HasMaxLength(Actor.ModelNameMaxLength);
         // text_pattern_ops: the same index serves equality and the admin's prefix search (LIKE 'abc%').
         builder.HasIndex(a => a.NormalizedHandle).IsUnique().HasDatabaseName(AccountIndexes.UniqueHandle).HasOperators("text_pattern_ops");

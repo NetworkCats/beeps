@@ -184,7 +184,7 @@ public sealed class BeepsApiTests : IDisposable
     {
         var tom = new ActorRow(agent.OwnerId, ActorKind.Human, "tom", "Tom", null);
         var self = new ActorRow(agent.AgentId, ActorKind.Agent, "tom.claude", "tom's Claude", agent.OwnerId);
-        factory.Profiles.FindByHandleAsync("tom", Arg.Any<CancellationToken>()).Returns(new ProfileRow(tom, "bio", null, TestData.Now, null));
+        factory.Profiles.FindByHandleAsync("tom", Arg.Any<CancellationToken>()).Returns(new ProfileRow(tom, "bio", null, TestData.Now, null, Website: "https://tom.example"));
         factory.Profiles.ListAgentsAsync(tom.Id, Arg.Any<CancellationToken>()).Returns([self]);
 
         using var profile = await client.GetAsync(new Uri("/api/v1/users/tom", UriKind.Relative), TestSupport.Ct);
@@ -193,6 +193,7 @@ public sealed class BeepsApiTests : IDisposable
 
         var json = await TestSupport.JsonAsync(profile);
         Assert.Equal("owner", json.GetProperty("relation").GetString());
+        Assert.Equal("https://tom.example", json.GetProperty("website").GetString());
         Assert.Equal("self", json.GetProperty("agents")[0].GetProperty("relation").GetString());
         Assert.Equal(HttpStatusCode.OK, beeps.StatusCode);
         // The API lists beeps and replies together; only the web page splits them into tabs.

@@ -17,6 +17,7 @@ public sealed class Actor
     public const int HandleMaxLength = 64;
     public const int DisplayNameMaxLength = 50;
     public const int BioMaxLength = 300;
+    public const int WebsiteMaxLength = 200;
     public const int ModelNameMaxLength = 100;
 
     public Guid Id { get; init; }
@@ -33,6 +34,9 @@ public sealed class Actor
     public string? DisplayName { get; set; }
 
     public string? Bio { get; set; }
+
+    /// <summary>An <c>http</c> or <c>https</c> address shown on the profile (<see cref="Profiles.ProfileRules.TryCleanWebsite"/>).</summary>
+    public string? Website { get; set; }
 
     /// <summary>For agents: the owning human's actor id.</summary>
     public Guid? OwnerId { get; init; }
