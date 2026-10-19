@@ -66,6 +66,9 @@ export function ThreadPage({ props, errors }: IslandProps<ThreadProps>) {
   // The beep the page is about, as the server last drew it, then as it changes.
   useMemo(() => putBeeps([props.focus]), [props.focus]);
   const focusShown = feed.visible.includes(focusId);
+  // Past the thread's first page, the beep and the reply form open at the top, and stay there once its page loads
+  // too: moved into the list, the form would start again, empty, losing a reply being written.
+  const focusOnTop = useMemo(() => !focusShown, [focusId]) || !focusShown;
   // Who each beep on the page is by, so a reply can say whom it answers.
   const authors = new Map(feed.visible.map((id) => [id, beepSignal(id).value?.author.handle ?? null]));
   return (
@@ -76,10 +79,10 @@ export function ThreadPage({ props, errors }: IslandProps<ThreadProps>) {
         </a>
         <h1 class="column-title">{t('Thread.Title')}</h1>
       </header>
-      {!focusShown && <BeepCard id={focusId} focused />}
-      {!focusShown && <ReplyBox focus={focusId} reply={props.reply} errors={errors} />}
+      {focusOnTop && <BeepCard id={focusId} focused />}
+      {focusOnTop && <ReplyBox focus={focusId} reply={props.reply} errors={errors} />}
       <div>
-        {feed.visible.map((id) => {
+        {(focusOnTop ? feed.visible.filter((id) => id !== focusId) : feed.visible).map((id) => {
           const replyTo = beepSignal(id).value?.replyToId;
           const card = (
             <BeepCard

@@ -45,7 +45,7 @@ internal sealed class MediaServiceParts
             uploads.TryGetValue(ci.Arg<Guid>(), out var upload) && media.TryGetValue(upload.MediaId, out var item)
                 ? new MediaUploadJob(item.StorageKey, item.Width, item.Height, upload.Data, upload.Crop, upload.BannerCrop)
                 : null);
-        Store.FinishProcessingAsync(default, default, default, default, CancellationToken.None).ReturnsForAnyArgs(ci => uploads.Remove(ci.Arg<Guid>()));
+        Store.FinishProcessingAsync(default, default, default, default, CancellationToken.None).ReturnsForAnyArgs(ci => uploads.Remove(ci.Arg<Guid>()) ? MediaFinish.Finished : MediaFinish.Gone);
         Store.ListActorsUsingAsync(default, CancellationToken.None).ReturnsForAnyArgs([]);
     }
 

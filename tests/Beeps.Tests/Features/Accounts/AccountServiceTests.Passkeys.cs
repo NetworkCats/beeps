@@ -236,6 +236,23 @@ public sealed partial class AccountServiceTests
     }
 
     [Fact]
+    public async Task AnAnswerSentAgainDoesNotSignInASecondTime()
+    {
+        var user = ArrangePasskeyUser();
+        ArrangeSigningPasskey(user);
+        var ticket = await SignInTicketAsync();
+        var later = new FixedTimeProvider(TestData.Now + TimeSpan.FromMinutes(1));
+
+        var first = await CreateService(later).PasskeySignInAsync(Credential, ticket, TestData.Origin, TestSupport.Ct);
+        var replayed = await CreateService(later).PasskeySignInAsync(Credential, ticket, TestData.Origin, TestSupport.Ct);
+        var fresh = await CreateService(later).PasskeySignInAsync(Credential, await SignInTicketAsync(later), TestData.Origin, TestSupport.Ct);
+
+        Assert.True(first.IsSuccess);
+        Assert.Equal(AccountErrorCodes.PasskeyFailed, replayed.Error?.Code);
+        Assert.True(fresh.IsSuccess);
+    }
+
+    [Fact]
     public async Task AnAccountThatKeepsItsPasskeysForTheSecondStepIsNotSignedInByOne()
     {
         var user = ArrangePasskeyUser();
@@ -381,10 +398,10 @@ public sealed partial class AccountServiceTests
         return passkey;
     }
 
-    private async Task<string> SignInTicketAsync()
+    private async Task<string> SignInTicketAsync(TimeProvider? at = null)
     {
         ceremonies.BeginAssertionAsync(null, Arg.Any<IReadOnlyList<Passkey>>()).Returns(new PasskeyChallenge("{}", "state"));
-        return (await CreateService().BeginPasskeySignInAsync()).Ticket;
+        return (await CreateService(at).BeginPasskeySignInAsync()).Ticket;
     }
 
     private static Passkey StoredPasskey(Guid userId, string? userAgent = null) => new()

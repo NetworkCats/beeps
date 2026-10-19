@@ -278,6 +278,7 @@ public sealed class MediaPagesTests : IDisposable
     public async Task ABadAvatarIsReportedOnTheSettingsPage()
     {
         var user = WebAuth.ArrangeUser(factory);
+        user.Actor.Bio = "about me";
         factory.Avatars.FindActorAsync(user.Id, Arg.Any<CancellationToken>()).Returns(new AvatarTarget(user.Id, ActorKind.Human, null));
         using var client = await WebAuth.SignInAsync(factory, user);
 
@@ -286,6 +287,10 @@ public sealed class MediaPagesTests : IDisposable
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         Assert.Contains("An image must be at least 16 pixels on each side.", html, StringComparison.Ordinal);
+        // The name fields, not posted with the avatar, keep what is saved rather than showing empty.
+        var settings = Islands.Props(html, "settings");
+        Assert.Equal("tom", settings.GetProperty("displayName").GetString());
+        Assert.Equal("about me", settings.GetProperty("bio").GetString());
         await factory.Avatars.DidNotReceiveWithAnyArgs().SetAvatarAsync(default, default, TestSupport.Ct);
     }
 

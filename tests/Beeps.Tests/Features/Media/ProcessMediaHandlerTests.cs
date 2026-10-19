@@ -76,11 +76,22 @@ public sealed class ProcessMediaHandlerTests
     public async Task ObjectsWrittenForARowThatWentMeanwhileAreRemoved()
     {
         var media = await UploadAsync(TestImages.Png());
-        parts.Store.FinishProcessingAsync(default, default, default, default, TestSupport.Ct).ReturnsForAnyArgs(false);
+        parts.Store.FinishProcessingAsync(default, default, default, default, TestSupport.Ct).ReturnsForAnyArgs(MediaFinish.Gone);
 
         await parts.ProcessQueuedAsync();
 
         await parts.Storage.Received(1).DeleteAsync(Arg.Is<IReadOnlyCollection<string>>(n => n.SequenceEqual(MediaObjects.All(media.StorageKey))), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task ObjectsOfAnImageAnEarlierDeliveryMadeReadyAreKept()
+    {
+        await UploadAsync(TestImages.Png());
+        parts.Store.FinishProcessingAsync(default, default, default, default, TestSupport.Ct).ReturnsForAnyArgs(MediaFinish.AlreadyReady);
+
+        await parts.ProcessQueuedAsync();
+
+        await parts.Storage.DidNotReceiveWithAnyArgs().DeleteAsync(default!, TestSupport.Ct);
     }
 
     [Fact]
@@ -113,7 +124,7 @@ public sealed class ProcessMediaHandlerTests
     {
         var media = await UploadAsync(TestImages.Png());
         parts.Store.ListBeepsUsingAsync(media.Id, Arg.Any<CancellationToken>()).Returns([Guid.NewGuid()]);
-        parts.Store.FinishProcessingAsync(default, default, default, default, TestSupport.Ct).ReturnsForAnyArgs(false);
+        parts.Store.FinishProcessingAsync(default, default, default, default, TestSupport.Ct).ReturnsForAnyArgs(MediaFinish.Gone);
 
         await parts.ProcessQueuedAsync();
 

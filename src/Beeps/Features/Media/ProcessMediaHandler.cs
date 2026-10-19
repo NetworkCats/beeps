@@ -62,11 +62,15 @@ public sealed partial class ProcessMediaHandler(
         }
 
         await Task.WhenAll(puts);
-        if (!await FinishAsync(mediaId, MediaStatus.Ready, variants.Width, variants.Height, cancellationToken))
+        switch (await FinishAsync(mediaId, MediaStatus.Ready, variants.Width, variants.Height, cancellationToken))
         {
-            // The row went while the objects were written; nothing will ever point at them.
-            await storage.DeleteAsync(MediaObjects.All(upload.StorageKey), cancellationToken);
-            return;
+            case MediaFinish.AlreadyReady:
+                // A second delivery (the lease ran out mid-message) wrote the same bytes over the ones in use.
+                return;
+            case MediaFinish.Gone:
+                // The row went while the objects were written; nothing will ever point at them.
+                await storage.DeleteAsync(MediaObjects.All(upload.StorageKey), cancellationToken);
+                return;
         }
 
         LogProcessed(logger, mediaId, variants.Width, variants.Height);
@@ -82,9 +86,9 @@ public sealed partial class ProcessMediaHandler(
         }
     }
 
-    private async Task<bool> FinishAsync(Guid mediaId, MediaStatus status, int width, int height, CancellationToken cancellationToken)
+    private async Task<MediaFinish> FinishAsync(Guid mediaId, MediaStatus status, int width, int height, CancellationToken cancellationToken)
     {
-        var finished = await unitOfWork.InTransactionAsync<bool>(
+        var finished = await unitOfWork.InTransactionAsync<MediaFinish>(
             null,
             async ct => Result.Of(await store.FinishProcessingAsync(mediaId, status, width, height, ct)),
             cancellationToken);

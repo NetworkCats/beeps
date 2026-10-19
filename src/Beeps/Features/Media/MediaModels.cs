@@ -123,6 +123,18 @@ public interface IMediaStorage
     Task DeleteAsync(IReadOnlyCollection<string> objectNames, CancellationToken cancellationToken);
 }
 
+/// <summary>What <see cref="IMediaStore.FinishProcessingAsync"/> found.</summary>
+public enum MediaFinish
+{
+    Finished,
+
+    /// <summary>An earlier delivery of the same message made it ready: its stored objects are in use.</summary>
+    AlreadyReady,
+
+    /// <summary>Deleted, removed or failed meanwhile: nothing shows it, so objects written for it are orphans.</summary>
+    Gone,
+}
+
 /// <summary>Media data access. Staged writes are committed by <see cref="Shared.IUnitOfWork"/>.</summary>
 public interface IMediaStore
 {
@@ -136,9 +148,9 @@ public interface IMediaStore
 
     /// <summary>
     /// Ends processing: sets the status and the size of the stored image and deletes the original. Runs
-    /// immediately; call inside a transaction. False if the item is gone or was already processed.
+    /// immediately; call inside a transaction.
     /// </summary>
-    Task<bool> FinishProcessingAsync(Guid mediaId, MediaStatus status, int width, int height, CancellationToken cancellationToken);
+    Task<MediaFinish> FinishProcessingAsync(Guid mediaId, MediaStatus status, int width, int height, CancellationToken cancellationToken);
 
     /// <summary>The beeps this media item is attached to.</summary>
     Task<IReadOnlyList<Guid>> ListBeepsUsingAsync(Guid mediaId, CancellationToken cancellationToken);

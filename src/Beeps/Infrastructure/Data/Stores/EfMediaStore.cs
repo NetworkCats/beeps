@@ -26,13 +26,19 @@ public sealed class EfMediaStore(BeepsDbContext db, PendingCacheChanges cacheCha
                 x.u.BannerCropWidth == null ? null : new BannerCrop(x.u.BannerCropX ?? 0, x.u.BannerCropY ?? 0, x.u.BannerCropWidth.Value)))
             .FirstOrDefaultAsync(cancellationToken);
 
-    public async Task<bool> FinishProcessingAsync(Guid mediaId, MediaStatus status, int width, int height, CancellationToken cancellationToken)
+    public async Task<MediaFinish> FinishProcessingAsync(Guid mediaId, MediaStatus status, int width, int height, CancellationToken cancellationToken)
     {
         var updated = await db.Set<MediaItem>()
             .Where(m => m.Id == mediaId && m.Status == MediaStatus.Processing)
             .ExecuteUpdateAsync(s => s.SetProperty(m => m.Status, status).SetProperty(m => m.Width, width).SetProperty(m => m.Height, height), cancellationToken);
         await db.Set<MediaUpload>().Where(u => u.MediaId == mediaId).ExecuteDeleteAsync(cancellationToken);
-        if (updated > 0 && status == MediaStatus.Ready)
+        if (updated == 0)
+        {
+            var current = await db.Set<MediaItem>().Where(m => m.Id == mediaId).Select(m => (MediaStatus?)m.Status).FirstOrDefaultAsync(cancellationToken);
+            return current == MediaStatus.Ready ? MediaFinish.AlreadyReady : MediaFinish.Gone;
+        }
+
+        if (status == MediaStatus.Ready)
         {
             // Beeps, avatars and banners only show ready images, so whatever already uses this one shows it from now on.
             var beeps = await ListBeepsUsingAsync(mediaId, cancellationToken);
@@ -40,7 +46,7 @@ public sealed class EfMediaStore(BeepsDbContext db, PendingCacheChanges cacheCha
             cacheChanges.Add([.. beeps.Select(CacheChange.Beep), .. actors.Select(CacheChange.Actor)]);
         }
 
-        return updated > 0;
+        return MediaFinish.Finished;
     }
 
     public async Task<IReadOnlyList<Guid>> ListBeepsUsingAsync(Guid mediaId, CancellationToken cancellationToken) =>

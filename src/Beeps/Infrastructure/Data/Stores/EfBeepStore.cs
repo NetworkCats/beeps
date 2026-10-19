@@ -72,7 +72,8 @@ public sealed class EfBeepStore(BeepsDbContext db, ContentReads reads, PendingCa
 
     public async Task<IReadOnlyDictionary<string, Guid>> EnsureHashtagsAsync(IReadOnlyCollection<string> names, DateTimeOffset now, CancellationToken cancellationToken)
     {
-        var distinct = names.Distinct(StringComparer.Ordinal).ToArray();
+        // Sorted, so concurrent posts take new tags in one order: "#a #b" and "#b #a" at once would otherwise deadlock.
+        var distinct = names.Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToArray();
         var ids = distinct.Select(_ => Guid.CreateVersion7(now)).ToArray();
         // Concurrent posts with the same new tag: one insert wins, the other waits for it and skips.
         await db.Database.ExecuteSqlAsync(

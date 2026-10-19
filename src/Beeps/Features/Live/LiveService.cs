@@ -144,11 +144,15 @@ public sealed partial class LiveService(
             yield return first with { Retry = options.Value.ReconnectDelay };
 
             var lastId = after?.ToString();
+            // The heartbeat only notices a quiet feed; on a busy one every event may be someone else's, so a
+            // connection that wrote nothing for the interval is pinged too, or proxies drop it as idle.
+            var lastWrite = time.GetTimestamp();
             await foreach (var item in WithHeartbeatAsync(subscription, cancellationToken))
             {
                 if (item is null)
                 {
                     yield return Message(LiveMessages.Ping, new EmptyMessage(), LiveJsonContext.Default.EmptyMessage, lastId);
+                    lastWrite = time.GetTimestamp();
                     continue;
                 }
 
@@ -157,13 +161,25 @@ public sealed partial class LiveService(
                     lastId = item.Id;
                 }
 
+                var wrote = false;
                 foreach (var message in await HandleAsync(connection, item, cancellationToken))
                 {
                     yield return message;
+                    wrote = true;
                     if (message.Type is LiveMessages.Close or LiveMessages.SignedOut)
                     {
                         yield break;
                     }
+                }
+
+                if (wrote)
+                {
+                    lastWrite = time.GetTimestamp();
+                }
+                else if (time.GetElapsedTime(lastWrite) >= options.Value.HeartbeatInterval)
+                {
+                    yield return Message(LiveMessages.Ping, new EmptyMessage(), LiveJsonContext.Default.EmptyMessage, lastId);
+                    lastWrite = time.GetTimestamp();
                 }
             }
         }

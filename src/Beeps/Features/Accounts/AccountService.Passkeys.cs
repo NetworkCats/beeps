@@ -217,12 +217,12 @@ public sealed partial class AccountService
             return limited.Error;
         }
 
-        if (UnprotectTicket(PasskeyTicket.SignIn, null, ticket) is not { } state)
+        if (ReadTicket(PasskeyTicket.SignIn, null, ticket) is not { } challenge)
         {
             return PasskeyFailed();
         }
 
-        var signed = await CheckPasskeyAsync(credentialJson, state, null, cancellationToken);
+        var signed = await CheckPasskeyAsync(credentialJson, challenge, null, cancellationToken);
         if (!signed.IsSuccess)
         {
             return signed.Error;
@@ -286,12 +286,12 @@ public sealed partial class AccountService
             return limited.Error;
         }
 
-        if (UnprotectTicket(PasskeyTicket.SecondStep, userId, ticket) is not { } state)
+        if (ReadTicket(PasskeyTicket.SecondStep, userId, ticket) is not { } challenge)
         {
             return PasskeyFailed();
         }
 
-        var signed = await CheckPasskeyAsync(credentialJson, state, userId, cancellationToken);
+        var signed = await CheckPasskeyAsync(credentialJson, challenge, userId, cancellationToken);
         if (!signed.IsSuccess)
         {
             return signed.Error;
@@ -307,7 +307,7 @@ public sealed partial class AccountService
     /// it. Refused for an account that is gone or banned, and, with <paramref name="userId"/>, for anyone else's passkey.
     /// </summary>
     private async Task<Result<(User User, Passkey Passkey, PasskeyUse Use)>> CheckPasskeyAsync(
-        string? credentialJson, string state, Guid? userId, CancellationToken cancellationToken)
+        string? credentialJson, Ticket challenge, Guid? userId, CancellationToken cancellationToken)
     {
         if (string.IsNullOrEmpty(credentialJson)
             || passkeyCeremonies.CredentialIdOf(credentialJson) is not { } credentialId
@@ -317,7 +317,14 @@ public sealed partial class AccountService
             return PasskeyFailed();
         }
 
-        if (await passkeyCeremonies.FinishAssertionAsync(credentialJson, state, passkey, cancellationToken) is not { } use)
+        // A challenge is answered once: the same answer sent again (from a log, say) is refused, since the passkey has
+        // signed in since the challenge was made. Synced passkeys keep their sign count at 0, so it cannot tell.
+        if (passkey.LastUsedAt > challenge.IssuedAt)
+        {
+            return PasskeyFailed();
+        }
+
+        if (await passkeyCeremonies.FinishAssertionAsync(credentialJson, challenge.Payload, passkey, cancellationToken) is not { } use)
         {
             return PasskeyFailed();
         }
@@ -349,12 +356,15 @@ public sealed partial class AccountService
     /// </summary>
     private string ProtectTicket(PasskeyTicket kind, Guid? userId, string payload)
     {
-        var expires = (time.GetUtcNow() + (kind == PasskeyTicket.FirstStep ? SecondStepLifetime : PasskeyTicketLifetime)).ToUnixTimeMilliseconds();
+        var expires = (time.GetUtcNow() + TicketLifetime(kind)).ToUnixTimeMilliseconds();
         return TicketProtector(kind, userId).Protect($"{expires.ToString(CultureInfo.InvariantCulture)}\n{payload}");
     }
 
     /// <summary>What a ticket of this sort (and account) carries; null if it is not one, or is too old.</summary>
-    private string? UnprotectTicket(PasskeyTicket kind, Guid? userId, string? ticket)
+    private string? UnprotectTicket(PasskeyTicket kind, Guid? userId, string? ticket) => ReadTicket(kind, userId, ticket)?.Payload;
+
+    /// <summary>What a ticket of this sort (and account) carries, and when it was made; null if it is not one, or is too old.</summary>
+    private Ticket? ReadTicket(PasskeyTicket kind, Guid? userId, string? ticket)
     {
         if (string.IsNullOrEmpty(ticket))
         {
@@ -375,9 +385,11 @@ public sealed partial class AccountService
         return split > 0
             && long.TryParse(text.AsSpan(0, split), NumberStyles.None, CultureInfo.InvariantCulture, out var expires)
             && time.GetUtcNow().ToUnixTimeMilliseconds() < expires
-                ? text[(split + 1)..]
+                ? new Ticket(text[(split + 1)..], DateTimeOffset.FromUnixTimeMilliseconds(expires) - TicketLifetime(kind))
                 : null;
     }
+
+    private static TimeSpan TicketLifetime(PasskeyTicket kind) => kind == PasskeyTicket.FirstStep ? SecondStepLifetime : PasskeyTicketLifetime;
 
     private IDataProtector TicketProtector(PasskeyTicket kind, Guid? userId) =>
         userId is { } id
@@ -398,6 +410,8 @@ public sealed partial class AccountService
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Account {UserId} set two-step sign-in with passkeys to {On}")]
     private static partial void LogPasskeyTwoFactor(ILogger logger, Guid userId, bool on);
+
+    private sealed record Ticket(string Payload, DateTimeOffset IssuedAt);
 
     /// <summary>What a ticket stands for: each sort is encrypted for itself, so none passes for another.</summary>
     private enum PasskeyTicket

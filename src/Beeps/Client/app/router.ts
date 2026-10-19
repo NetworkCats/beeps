@@ -500,6 +500,9 @@ async function onSubmit(event: SubmitEvent): Promise<void> {
   const url = new URL(submitter?.getAttribute('formaction') ?? form.action, window.location.href);
   if (method === 'dialog' || !isPage(url)) return;
   event.preventDefault();
+  // Posted once at a time (as sendForm does): Enter again while it is on its way would post it twice, creating a
+  // second agent, say. A search sent again simply replaces the one on its way.
+  if (method !== 'get' && form.getAttribute('aria-busy') === 'true') return;
   const data = new FormData(form, submitter);
   if (form.dataset.confirm && !(await confirmAction(form.dataset.confirm))) return;
   const sent = markSending(form, submitter);

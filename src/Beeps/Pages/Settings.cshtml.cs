@@ -201,7 +201,14 @@ public sealed class SettingsModel(
         if (!result.IsSuccess)
         {
             Section = section;
-            await LoadAsync(cancellationToken);
+            var loaded = await LoadAsync(cancellationToken);
+            // Only the profile form posts the name fields; any other refused form (an avatar too small, say) leaves
+            // them as saved, or they would show empty and an untouched bio be saved blank next time.
+            if (loaded && (!Request.HasFormContentType || !Request.Form.ContainsKey(nameof(DisplayName))))
+            {
+                (DisplayName, Bio) = (Settings.DisplayName, Settings.Bio);
+            }
+
             return this.ShowError(result.Error);
         }
 

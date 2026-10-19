@@ -553,6 +553,31 @@ public sealed class LiveServiceTests : IAsyncDisposable
     }
 
     [Fact]
+    public async Task AConnectionOthersEventsKeepBusyIsStillPinged()
+    {
+        options.HeartbeatInterval = TimeSpan.FromMilliseconds(50);
+        await OpenAsync(new LiveRequest("", null, null, null));
+        using var busy = CancellationTokenSource.CreateLinkedTokenSource(TestSupport.Ct);
+        var publishing = Task.Run(
+            async () =>
+            {
+                while (!busy.IsCancellationRequested)
+                {
+                    feed.Publish(LiveEventTypes.BeepPosted, Json(Posted(Alice)));
+                    await Task.Delay(10, CancellationToken.None);
+                }
+            },
+            CancellationToken.None);
+
+        var message = await NextAsync();
+        await busy.CancelAsync();
+        await publishing;
+
+        Assert.Equal(LiveMessages.Ping, message.Type);
+        Assert.NotNull(message.Id);
+    }
+
+    [Fact]
     public async Task UnreadableEventsAreSkipped()
     {
         await OpenAsync(new LiveRequest("public", null, null, null));
