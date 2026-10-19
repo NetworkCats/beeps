@@ -6,8 +6,8 @@
  *   <li class="step"><span class="step-dot"></span><span class="step-label">Finish</span></li>
  * </ol>
  *
- * Modifier: .steps-sm. The step number comes from a CSS counter; put an .icon inside .step-dot
- * to replace it. (Upstream this file also holds the timeline, which beeps does not use.) */
+ * Modifier: .steps-sm. The step number comes from a CSS counter; a done step shows a tick instead.
+ * (Upstream this file also holds the timeline, which beeps does not use.) */
 @use "../foundation/layers";
 @use "../abstracts" as *;
 
@@ -16,9 +16,6 @@
   .#{$prefix}steps {
     --_dot: 2rem;
     display: flex;
-    margin: 0;
-    padding: 0;
-    list-style: none;
     counter-reset: step;
     min-width: 0;
   }
@@ -65,8 +62,7 @@
     border-radius: 50%;
     transition: background-color var(--cui-transition), border-color var(--cui-transition), color var(--cui-transition);
     &::before { content: counter(step); }
-    &:has(> .#{$prefix}icon)::before, &:not(:empty)::before { display: none; }
-    > .#{$prefix}icon { --cui-icon-size: 1.125rem; }
+    &:not(:empty)::before { display: none; }
   }
   .#{$prefix}step-label {
     font-weight: var(--cui-weight-medium);
@@ -81,7 +77,6 @@
       background: var(--cui-primary-solid);
       border-color: var(--cui-primary-solid);
       &::before { @include icon-glyph("check"); font-size: 1.125rem; display: inline; }
-      > .#{$prefix}icon { display: none; }
     }
     &::before { background: var(--cui-primary); }
   }
@@ -91,6 +86,5 @@
     .#{$prefix}step-label { font-weight: var(--cui-weight-semibold); }
     &::before { background: var(--cui-primary); }
   }
-  a.#{$prefix}step, button.#{$prefix}step { text-decoration: none; cursor: pointer; background: none; border: 0; font: inherit; &:hover .#{$prefix}step-label { color: var(--cui-text); } &:focus-visible { outline: none; .#{$prefix}step-dot { box-shadow: var(--cui-ring); } } }
-  .#{$prefix}steps-sm { --_dot: 1.5rem; .#{$prefix}step-dot { font-size: var(--cui-text-xs); > .#{$prefix}icon { --cui-icon-size: 1rem; } } .#{$prefix}step-done .#{$prefix}step-dot::before { font-size: 1rem; } }
+  .#{$prefix}steps-sm { --_dot: 1.5rem; .#{$prefix}step-dot { font-size: var(--cui-text-xs); } .#{$prefix}step-done .#{$prefix}step-dot::before { font-size: 1rem; } }
 }

@@ -1,4 +1,6 @@
 using System.Text.Json.Serialization;
+using Beeps.Features.Localization;
+using Microsoft.Extensions.Localization;
 
 namespace Beeps.Pages.Islands;
 
@@ -26,6 +28,7 @@ public enum SiteOptionsPlace
 /// <param name="Menu">In a "more" menu, rather than the footer.</param>
 /// <param name="Rail">The menu is the navigation rail's, rather than the top bar's.</param>
 /// <param name="SignedIn">The choice is posted and saved to the account; signed out it is a GET, with no antiforgery token.</param>
+/// <param name="Theme">For the markup without script; the app follows the theme as it is switched in place.</param>
 public sealed record SiteOptionsProps(
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] bool Menu,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] bool Rail,
@@ -33,9 +36,23 @@ public sealed record SiteOptionsProps(
     string ReturnUrl,
     string Culture,
     IReadOnlyList<OptionProps> Cultures,
-    string Theme,
+    [property: JsonIgnore] string Theme,
     IReadOnlyList<OptionProps> Themes,
-    int Year);
+    int Year)
+{
+    /// <summary>The languages on offer, each marked as written in itself; settings offers the same.</summary>
+    public static IReadOnlyList<OptionProps> CulturesFor(IStringLocalizer localizer)
+    {
+        ArgumentNullException.ThrowIfNull(localizer);
+        return [.. SupportedCultures.All.Select(c => new OptionProps(c, localizer[$"Language.{c}"], c))];
+    }
+
+    public static IReadOnlyList<OptionProps> ThemesFor(IStringLocalizer localizer)
+    {
+        ArgumentNullException.ThrowIfNull(localizer);
+        return [.. Beeps.Features.Site.Themes.All.Select(t => new OptionProps(t, localizer[$"Theme.{t}"]))];
+    }
+}
 
 /// <summary>What the last action did, shown as toasts.</summary>
 public sealed record ToastsProps(

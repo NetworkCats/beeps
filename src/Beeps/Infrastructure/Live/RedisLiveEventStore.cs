@@ -1,4 +1,3 @@
-using System.Globalization;
 using Beeps.Features.Live;
 using Beeps.Infrastructure.Redis;
 using Microsoft.Extensions.Options;
@@ -35,15 +34,6 @@ public sealed class RedisLiveEventStore(RedisConnection redis, IOptions<LiveOpti
         return 0
         """;
 
-    // KEYS: set. ARGV: ttl ms, cap, beep ids.
-    private const string MarkScript = """
-        if redis.call('SCARD', KEYS[1]) < tonumber(ARGV[2]) then
-          redis.call('SADD', KEYS[1], unpack(ARGV, 3))
-        end
-        redis.call('PEXPIRE', KEYS[1], ARGV[1])
-        return 0
-        """;
-
     // KEYS: the account's connections. ARGV: connection id, now ms, max, ttl ms. Returns the ids pushed out, oldest first.
     private const string AddConnectionScript = """
         redis.call('ZADD', KEYS[1], ARGV[2], ARGV[1])
@@ -58,10 +48,10 @@ public sealed class RedisLiveEventStore(RedisConnection redis, IOptions<LiveOpti
         """;
 
     public Task AppendAsync(string type, string data, CancellationToken cancellationToken) =>
-        EvaluateAsync(
+        redis.EvaluateAsync(
             AppendScript,
             [StreamKey],
-            [options.Value.StreamMaxLength, Milliseconds(KeyLifetime), type, data, AppendedChannel.ToString()]);
+            [options.Value.StreamMaxLength, RedisCommands.Milliseconds(KeyLifetime), type, data, AppendedChannel.ToString()]);
 
     public async Task SubscribeAppendedAsync(Action appended, CancellationToken cancellationToken)
     {
@@ -119,32 +109,23 @@ public sealed class RedisLiveEventStore(RedisConnection redis, IOptions<LiveOpti
     public Task MarkCountsChangedAsync(IReadOnlyCollection<Guid> beepIds, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(beepIds);
-        return beepIds.Count == 0
-            ? Task.CompletedTask
-            : EvaluateAsync(
-                MarkScript, [ChangedCountsKey], [Milliseconds(KeyLifetime), MaxChangedCounts, .. beepIds.Select(id => (RedisValue)id.ToString("D"))]);
+        return redis.AddIdsCappedAsync(ChangedCountsKey, beepIds, MaxChangedCounts, KeyLifetime);
     }
 
-    public async Task<IReadOnlyList<Guid>> TakeChangedCountsAsync(int max, CancellationToken cancellationToken)
-    {
-        var members = await (await redis.DatabaseAsync()).SetPopAsync(ChangedCountsKey, max);
-        return [.. members.Select(m => Guid.TryParse((string?)m, CultureInfo.InvariantCulture, out var id) ? id : Guid.Empty).Where(id => id != Guid.Empty)];
-    }
+    public Task<IReadOnlyList<Guid>> TakeChangedCountsAsync(int max, CancellationToken cancellationToken) =>
+        redis.PopIdsAsync(ChangedCountsKey, max);
 
-    public async Task<IReadOnlyList<string>> AddConnectionAsync(Guid accountId, string connectionId, DateTimeOffset now, int max, CancellationToken cancellationToken)
+    public async Task<IReadOnlyList<string>> AddConnectionAsync(Guid actorId, string connectionId, DateTimeOffset now, int max, CancellationToken cancellationToken)
     {
-        var evicted = (RedisValue[])(await (await redis.DatabaseAsync()).ScriptEvaluateAsync(
+        var evicted = (RedisValue[])(await redis.EvaluateAsync(
             AddConnectionScript,
-            [ConnectionsKey(accountId)],
-            [connectionId, now.ToUnixTimeMilliseconds(), max, Milliseconds(KeyLifetime)]))!;
+            [ConnectionsKey(actorId)],
+            [connectionId, now.ToUnixTimeMilliseconds(), max, RedisCommands.Milliseconds(KeyLifetime)]))!;
         return [.. evicted.Select(e => (string)e!)];
     }
 
-    public async Task RemoveConnectionAsync(Guid accountId, string connectionId, CancellationToken cancellationToken) =>
-        await (await redis.DatabaseAsync()).SortedSetRemoveAsync(ConnectionsKey(accountId), connectionId);
-
-    private async Task EvaluateAsync(string script, RedisKey[] keys, RedisValue[] values) =>
-        await (await redis.DatabaseAsync()).ScriptEvaluateAsync(script, keys, values);
+    public async Task RemoveConnectionAsync(Guid actorId, string connectionId, CancellationToken cancellationToken) =>
+        await (await redis.DatabaseAsync()).SortedSetRemoveAsync(ConnectionsKey(actorId), connectionId);
 
     private static LiveEvent ToEvent(StreamEntry entry) =>
         new(entry.Id!, (string?)entry[TypeField] ?? "", (string?)entry[DataField] ?? "");
@@ -152,7 +133,5 @@ public sealed class RedisLiveEventStore(RedisConnection redis, IOptions<LiveOpti
     private static LiveEventId? Id(StreamEntry[] entries) =>
         entries.Length == 0 ? null : LiveEventId.Parse(entries[0].Id!);
 
-    private static RedisKey ConnectionsKey(Guid accountId) => $"{RedisSetup.KeyPrefix}sse:{accountId:D}";
-
-    private static RedisValue Milliseconds(TimeSpan span) => ((long)span.TotalMilliseconds).ToString(CultureInfo.InvariantCulture);
+    private static RedisKey ConnectionsKey(Guid actorId) => $"{RedisSetup.KeyPrefix}sse:{actorId:D}";
 }

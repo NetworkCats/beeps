@@ -26,15 +26,7 @@ public sealed class ThemeModel(AccountService accounts) : PageModel
     /// <summary>The app (shell/SiteOptions.tsx) sends the footer's and the menu's choice here in the background, and switches the page itself.</summary>
     public async Task<IActionResult> OnPostAsync(string? theme, string? returnUrl, CancellationToken cancellationToken)
     {
-        if (Themes.Find(theme) is { } supported)
-        {
-            ThemeCookie.Set(Response, supported);
-            if (User.IsHuman())
-            {
-                await accounts.SetThemeAsync(User.ActorId(), supported, cancellationToken);
-            }
-        }
-
+        await this.ChooseThemeAsync(accounts, theme, cancellationToken);
         return LocalRedirect(Url.IsLocalUrl(returnUrl) ? returnUrl : "~/");
     }
 }

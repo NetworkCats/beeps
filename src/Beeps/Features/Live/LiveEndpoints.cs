@@ -81,7 +81,7 @@ public static class LiveEndpoints
         if (user.IsHuman())
         {
             var wait = await rateLimits.WaitAsync(
-                RateLimitPolicies.StreamConnect, RateLimitingMiddleware.AccountPartition(user.ActorId().ToString("D")), cancellationToken);
+                RateLimitPolicies.StreamConnect, RateLimitPartitions.Account(user.ActorId()), cancellationToken);
             context.Response.Headers[StreamWaitHeader] = ((long)wait.TotalMilliseconds).ToString(CultureInfo.InvariantCulture);
         }
 

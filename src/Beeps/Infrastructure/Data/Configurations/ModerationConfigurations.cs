@@ -14,7 +14,7 @@ internal sealed class ModerationJobConfiguration : IEntityTypeConfiguration<Mode
         builder.ToTable("moderation_jobs");
         builder.HasKey(j => j.Id);
         builder.Property(j => j.Id).ValueGeneratedNever();
-        builder.Property(j => j.LastError).HasMaxLength(2000);
+        builder.Property(j => j.LastError).HasMaxLength(FailedAttempts.ErrorMaxLength);
         builder.HasOne<Beep>().WithMany().HasForeignKey(j => j.BeepId).OnDelete(DeleteBehavior.Cascade);
         // One review per beep; also how an admin's decision finds the pending one to drop.
         builder.HasIndex(j => j.BeepId).IsUnique();
@@ -42,7 +42,7 @@ internal sealed class ModerationResultConfiguration : IEntityTypeConfiguration<M
 
 internal sealed class ReportConfiguration : IEntityTypeConfiguration<Report>
 {
-    public const string UniqueOpen = "ux_reports_open";
+    private const string UniqueOpen = "ux_reports_open";
 
     public void Configure(EntityTypeBuilder<Report> builder)
     {

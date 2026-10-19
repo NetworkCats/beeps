@@ -43,7 +43,6 @@ public sealed record SettingsProps(
     PrivacyProps Privacy,
     string Culture,
     IReadOnlyList<OptionProps> Cultures,
-    string Theme,
     IReadOnlyList<OptionProps> Themes,
     ProfileLimits Limits,
     int PasswordMinLength,
@@ -123,7 +122,7 @@ public sealed record AgentEditProps(
     int HandleNameMaxLength);
 
 /// <summary>Onboarding/Agent.cshtml, once the first agent is made: its key handed to the AI.</summary>
-public sealed record OnboardingAgentProps(LiveProps Live, NewKeyProps Created);
+public sealed record OnboardingAgentProps(NewKeyProps Created);
 
 /// <summary>Onboarding/Connect.cshtml: waiting for the agent's first call.</summary>
 public sealed record ConnectProps(LiveProps Live, AgentRowProps Agent);

@@ -1,6 +1,5 @@
 /* Element defaults and typography. Plain HTML should already look like Collection UI. */
 @use "layers";
-@use "../abstracts" as *;
 
 @layer cui.base {
   html {
@@ -35,17 +34,9 @@
     line-height: var(--cui-leading-tight);
     color: var(--cui-text);
   }
-  h1 { font-size: var(--cui-text-4xl); letter-spacing: -0.02em; }
-  h2 { font-size: var(--cui-text-2xl); letter-spacing: var(--cui-tracking-tight); }
-  h3 { font-size: var(--cui-text-xl); letter-spacing: -0.01em; }
-  h4 { font-size: var(--cui-text-lg); }
+  /* h1–h4 are sized by beeps (Client/scss/_theme.scss), which keeps headings small. */
   h5 { font-size: var(--cui-text-base); }
   h6 { font-size: var(--cui-text-sm); }
-
-  @include mq(max-sm) {
-    h1 { font-size: var(--cui-text-3xl); }
-    h2 { font-size: var(--cui-text-xl); }
-  }
 
   /* ---- Inline -------------------------------------------------------------- */
   a:where(:not([class])) {
@@ -62,32 +53,13 @@
   abbr { cursor: help; }
   time { font-variant-numeric: tabular-nums; }
 
-  code, kbd, samp, pre { font-family: var(--cui-font-mono); font-size: 0.9em; }
+  code, samp, pre { font-family: var(--cui-font-mono); font-size: 0.9em; }
   :where(code):not(pre code) {
     padding: 0.125em 0.35em;
     border-radius: var(--cui-radius-sm);
     background: var(--cui-primary-soft);
     color: var(--cui-primary-text);
     font-size: 0.875em;
-  }
-
-  kbd {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 1.6em;
-    padding: 0.05em 0.4em;
-    font-family: var(--cui-font-sans);
-    font-size: 0.75em;
-    font-weight: var(--cui-weight-medium);
-    line-height: 1.4;
-    color: var(--cui-text-2);
-    background: var(--cui-surface);
-    border: var(--cui-border-width) solid var(--cui-control-border);
-    border-radius: var(--cui-radius-sm);
-    box-shadow: var(--cui-shadow-key);
-    vertical-align: middle;
-    white-space: nowrap;
   }
 
   hr {

@@ -21,10 +21,10 @@ public sealed record AdminOverview(
     int OutboxBacklog,
     int DeadJobs);
 
-/// <summary>The counts the overview shows, besides the review queue.</summary>
 /// <summary>See <see cref="ISystemStore.CountUnannouncedAsync"/>.</summary>
 public sealed record UnannouncedCounts(int NewUsers, int ModerationBacklog, int OutboxBacklog, int DeadJobs);
 
+/// <summary>The counts the overview shows, besides the review queue.</summary>
 public sealed record SiteCounts(int Users, int Agents, int Beeps, int NewUsers, int NewAgents, int NewBeeps, int ModerationBacklog, int OutboxBacklog, int DeadJobs);
 
 /// <summary>An outbox message that ran out of attempts. Its payload is not shown: it can hold email addresses.</summary>

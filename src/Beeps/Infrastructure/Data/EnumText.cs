@@ -11,17 +11,23 @@ public static class EnumText
         JsonNamingPolicy.SnakeCaseLower.ConvertName(value.ToString());
 
     public static TEnum Parse<TEnum>(string value)
+        where TEnum : struct, Enum =>
+        TryParse(value, out TEnum parsed) ? parsed : throw new InvalidOperationException($"'{value}' is not a {typeof(TEnum).Name}.");
+
+    public static bool TryParse<TEnum>(string value, out TEnum parsed)
         where TEnum : struct, Enum
     {
         foreach (var candidate in Enum.GetValues<TEnum>())
         {
-            if (ToValue(candidate) == value)
+            if (string.Equals(ToValue(candidate), value, StringComparison.Ordinal))
             {
-                return candidate;
+                parsed = candidate;
+                return true;
             }
         }
 
-        throw new InvalidOperationException($"'{value}' is not a {typeof(TEnum).Name}.");
+        parsed = default;
+        return false;
     }
 
     public static ValueConverter<TEnum, string> Converter<TEnum>()

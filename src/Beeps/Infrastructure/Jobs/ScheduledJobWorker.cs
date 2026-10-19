@@ -10,7 +10,7 @@ public sealed class ScheduledJobOptions
     public bool Enabled { get; set; } = true;
 
     /// <summary>How often to look for due jobs; each job's own interval decides how often it actually runs.</summary>
-    public TimeSpan PollInterval { get; set; } = TimeSpan.FromMinutes(1);
+    public TimeSpan PollInterval { get; set; } = TimeSpan.FromSeconds(15);
 }
 
 /// <summary>Checks for due scheduled jobs on every poll. Every instance runs one; the lock and the recorded last run keep jobs from overlapping or repeating.</summary>

@@ -98,19 +98,17 @@ public sealed partial class ModerationService(
         {
             Id = Guid.CreateVersion7(now),
             BeepId = beepId,
-            Model = Truncate(verdict.Model, ModerationResult.ModelMaxLength),
-            Provider = verdict.Provider is null ? null : Truncate(verdict.Provider, ModerationResult.ProviderMaxLength),
+            Model = TextRules.Truncate(verdict.Model, ModerationResult.ModelMaxLength),
+            Provider = verdict.Provider is null ? null : TextRules.Truncate(verdict.Provider, ModerationResult.ProviderMaxLength),
             Decision = verdict.Decision,
             Categories = [.. verdict.Categories],
             Severity = verdict.Severity,
-            Reason = Truncate(verdict.Reason, ModerationResult.ReasonMaxLength),
+            Reason = TextRules.Truncate(verdict.Reason, ModerationResult.ReasonMaxLength),
             LatencyMs = verdict.LatencyMs,
             Tokens = verdict.Tokens,
             CreatedAt = now,
         };
     }
-
-    private static string Truncate(string value, int maxLength) => value.Length <= maxLength ? value : value[..maxLength];
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "Review of beep {BeepId} skipped: deleted, decided by an admin, or gone")]
     private static partial void LogSkipped(ILogger logger, Guid beepId);

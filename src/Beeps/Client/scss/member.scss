@@ -7,6 +7,7 @@
 @use "../collection-ui/components/copy-box";
 
 @use "../collection-ui/abstracts" as *;
+@use "mixins" as *;
 
 // ---- Tab bar and the button to post (narrow screens) -------------------------------------------
 
@@ -98,7 +99,6 @@
   display: grid;
   grid-template-columns: 2.5rem minmax(0, 1fr);
   gap: var(--cui-space-3);
-  margin: 0;
   padding: var(--cui-space-3) var(--beeps-pad) var(--cui-space-2);
   border-block-end: var(--cui-border-width) solid var(--cui-border);
 }
@@ -179,9 +179,7 @@
   min-width: 0;
   max-width: min(15rem, 100%);
   padding-block: var(--cui-space-1);
-  margin: 0;
   border-radius: var(--cui-radius-lg);
-  list-style: none;
 }
 
 .mention-option {
@@ -199,7 +197,7 @@
   }
 
   &[aria-selected="true"] {
-    background: var(--cui-surface-hover);
+    background: var(--beeps-surface-raised-hover);
   }
 }
 
@@ -227,10 +225,6 @@
   flex-wrap: wrap;
   gap: var(--cui-space-2);
 
-  &[hidden] {
-    display: none;
-  }
-
   > img {
     width: 5rem;
     height: 5rem;
@@ -248,21 +242,11 @@
 
 // An icon button wrapped round the real file input, which stays focusable but out of sight.
 .composer-images {
+  @include round-icon-button(2.125rem);
   position: relative;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 2.125rem;
-  height: 2.125rem;
   margin-inline: calc(-1 * var(--cui-space-2)) auto;
   color: var(--cui-primary-text);
-  border-radius: var(--cui-radius-full);
   cursor: pointer;
-  transition: background-color var(--cui-transition);
-
-  > .icon {
-    --cui-icon-size: 1.375rem;
-  }
 
   &:hover {
     background: var(--cui-primary-soft);
@@ -278,12 +262,7 @@
 }
 
 .composer-file {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
+  @include visually-hidden;
   opacity: 0;
 }
 
@@ -299,12 +278,6 @@
 }
 
 // ---- Inbox -----------------------------------------------------------------------------------------
-
-.notification-list {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
 
 // A reply or a mention is its beep (with the beep's own line under it); likes are an entry of their own.
 .notification {
@@ -348,7 +321,7 @@
 }
 
 .notification-icon-like {
-  color: light-dark(#{palette-color("pink", 600)}, #{palette-color("pink", 400)});
+  color: var(--beeps-like);
 }
 
 .notification-main {
@@ -370,7 +343,6 @@
 }
 
 .notification-text {
-  margin: 0;
   line-height: 1.35;
   overflow-wrap: anywhere;
 }
@@ -477,7 +449,6 @@
 .settings-switches {
   display: flex;
   flex-direction: column;
-  margin: 0;
   padding-block: var(--cui-space-2);
 
   > .switch {
@@ -498,7 +469,6 @@
 
 // What a section's page is for, grey under its header.
 .settings-intro {
-  margin: 0;
   padding: var(--cui-space-3) var(--beeps-pad) var(--cui-space-1);
   color: var(--cui-text-2);
   font-size: var(--cui-text-sm);
@@ -509,7 +479,6 @@
   display: flex;
   flex-direction: column;
   gap: var(--cui-space-5);
-  margin: 0;
   padding: var(--cui-space-4) var(--beeps-pad) var(--cui-space-5);
 
   // Saved at the bottom right, as on Twitter.
@@ -524,7 +493,6 @@ fieldset.settings-group {
   flex-direction: column;
   gap: var(--cui-space-3);
   min-width: 0;
-  margin: 0;
   padding: 0;
   border: 0;
 }
@@ -563,7 +531,6 @@ fieldset.settings-group {
   flex-wrap: wrap;
   align-items: center;
   gap: var(--cui-space-2);
-  margin: 0;
   padding: 0 var(--beeps-pad) var(--cui-space-5);
   color: var(--cui-text-2);
   font-size: var(--cui-text-sm);
@@ -575,7 +542,7 @@ fieldset.settings-group {
   margin-inline-start: auto;
 }
 
-// The colour schemes, each drawn in its own colours. The page's own two (Pages/Shared/_Layout.cshtml's theme-color).
+// The colour schemes to pick from, side by side on wider screens.
 .theme-options {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
@@ -604,7 +571,6 @@ fieldset.settings-group {
     flex-shrink: 0;
     width: 1.25rem;
     height: 1.25rem;
-    margin: 0;
     accent-color: var(--cui-primary);
   }
 
@@ -618,17 +584,14 @@ fieldset.settings-group {
   }
 }
 
-// Their radios drawn for their own colours too, whatever the page's.
+// Each in its scheme's own colours, whatever the page's: the tokens are light-dark() pairs, so the option's
+// color-scheme picks its ink, page colour and hairline (and draws its radio to match).
 .theme-option-light {
-  color: oklch(14.5% 0 0);
   color-scheme: light;
-  background: #fff;
 }
 
 .theme-option-dark {
-  color: oklch(97% 0 0);
   color-scheme: dark;
-  background: #0a0a0a;
 }
 
 // ---- Fields with the label inside the box, as Twitter's ------------------------------------------------
@@ -695,7 +658,6 @@ fieldset.settings-group {
   display: block;
   width: 100%;
   min-width: 0;
-  margin: 0;
   padding: 0;
   color: var(--cui-text);
   font: inherit;
@@ -752,7 +714,6 @@ fieldset.settings-group {
   display: flex;
   flex-direction: column;
   gap: var(--cui-space-5);
-  margin: 0;
   padding: var(--cui-space-5) var(--beeps-pad) var(--cui-space-4);
 
   & + & {
@@ -760,18 +721,12 @@ fieldset.settings-group {
   }
 
   > h2 {
-    margin: 0;
     font-size: var(--cui-text-lg);
     font-weight: 800;
-  }
-
-  > .alert {
-    margin: 0;
   }
 }
 
 fieldset.check-group {
-  margin: 0;
   padding: 0;
   min-width: 0;
   border: 0;
@@ -832,29 +787,14 @@ fieldset.check-group {
 }
 
 .image-action {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 2.75rem;
-  height: 2.75rem;
-  padding: 0;
+  @include round-icon-button(2.75rem);
   color: #fff;
   background: rgb(15 15 15 / 75%);
   border: 0;
-  border-radius: var(--cui-radius-full);
   cursor: pointer;
-  transition: background-color var(--cui-transition);
-
-  > .icon {
-    --cui-icon-size: 1.375rem;
-  }
 
   &:hover {
     background: rgb(40 40 40 / 75%);
-  }
-
-  &:focus-visible {
-    @include focus-ring;
   }
 
   .image-editor-avatar & {
@@ -874,9 +814,7 @@ fieldset.check-group {
 }
 
 .agent-list {
-  margin: var(--cui-space-2) 0 0;
-  padding: 0;
-  list-style: none;
+  margin-block-start: var(--cui-space-2);
 }
 
 .agent-row {
@@ -886,6 +824,7 @@ fieldset.check-group {
   padding: var(--cui-space-3) var(--beeps-pad) var(--cui-space-4);
   border-block-end: var(--cui-border-width) solid var(--cui-border);
 
+  // 40px, as in every list of people, whichever size class the avatar has.
   > .avatar {
     --cui-avatar-size: 2.5rem;
   }
@@ -900,7 +839,6 @@ fieldset.check-group {
   flex-wrap: wrap;
   align-items: center;
   gap: var(--cui-space-2);
-  margin: 0;
   font-size: var(--beeps-text-size);
   font-weight: var(--cui-weight-bold);
   line-height: 1.25rem;
@@ -908,7 +846,6 @@ fieldset.check-group {
 
 .agent-handle,
 .agent-meta {
-  margin: 0;
   color: var(--cui-text-2);
   font-size: var(--beeps-text-size);
 }
@@ -952,35 +889,11 @@ fieldset.check-group {
   flex-wrap: wrap;
   gap: var(--cui-space-2);
   margin-block-start: var(--cui-space-1);
-
-  > form {
-    margin: 0;
-  }
 }
 
-// ---- The confirmation dialog -------------------------------------------------------------------------
-
-.confirm-dialog {
-  // A little above the middle, where the eye expects it: centred exactly, it looks as if it sat low.
-  inset-block: 0 15dvh;
-
-  // A plain dim page behind it: no blur (no glass, see _theme.scss).
-  &::backdrop {
-    backdrop-filter: none;
-  }
-
-  > form {
-    margin: 0;
-  }
-
-  .dialog-footer {
-    border: 0;
-    background: none;
-  }
-}
+// ---- The confirmation dialog (placed with the list dialog, in _site.scss) ----------------------------
 
 .confirm-message {
-  margin: 0;
   font-size: var(--beeps-text-size);
   line-height: var(--beeps-text-leading);
 }

@@ -1,6 +1,6 @@
 {
-  // Type-checks the client sources, their tests and the build script: `npm run typecheck`.
-  // Nothing is emitted: esbuild bundles the client, Node runs the script and tests directly.
+  // Type-checks the client sources, their tests and the scripts in scripts/: `npm run typecheck`.
+  // Nothing is emitted: esbuild bundles the client, Node runs the scripts and tests directly.
   "compilerOptions": {
     "target": "es2022",
     "lib": ["es2023", "dom", "dom.iterable"],

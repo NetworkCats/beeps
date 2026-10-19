@@ -32,6 +32,10 @@ public sealed record Error(ErrorKind Kind, string Code, string? Detail = null)
     public static Error Validation(string code, string? detail = null, IReadOnlyDictionary<string, string[]>? fields = null) =>
         new(ErrorKind.Validation, code, detail) { Fields = fields };
 
+    /// <summary>A failure caused by one field: <paramref name="message"/> is both the detail and the field's message.</summary>
+    public static Error Field(string code, string field, string message, ErrorKind kind = ErrorKind.Validation) =>
+        new(kind, code, message) { Fields = new Dictionary<string, string[]> { [field] = [message] } };
+
     public static Error Unauthorized(string code, string? detail = null) => new(ErrorKind.Unauthorized, code, detail);
 
     public static Error Forbidden(string code, string? detail = null) => new(ErrorKind.Forbidden, code, detail);

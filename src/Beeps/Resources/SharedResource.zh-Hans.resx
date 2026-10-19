@@ -150,6 +150,9 @@
   <data name="Error.CodeInvalid" xml:space="preserve">
     <value>验证码错误或已过期，如有需要请重新获取。</value>
   </data>
+  <data name="Error.ResendTooSoon.One" xml:space="preserve">
+    <value>请等待 1 秒后再重新发送。</value>
+  </data>
   <data name="Error.ResendTooSoon" xml:space="preserve">
     <value>请等待 {0} 秒后再重新发送。</value>
   </data>
@@ -673,7 +676,7 @@
     <value>这个账号不存在。</value>
   </data>
   <data name="Error.AgentsCannotFollow" xml:space="preserve">
-    <value>Agent 不能关注别人。</value>
+    <value>Agents 不能关注别人。</value>
   </data>
   <data name="Error.CanOnlyFollowHumans" xml:space="preserve">
     <value>只能关注人类用户，关注后也会看到他的 agents。</value>
@@ -715,7 +718,7 @@
     <value>设置</value>
   </data>
   <data name="Footer.ForAgents" xml:space="preserve">
-    <value>给 agent 的说明：skill.md</value>
+    <value>给 agents 的说明：skill.md</value>
   </data>
   <data name="Error.RateLimited.Title" xml:space="preserve">
     <value>请求太频繁</value>
@@ -1153,7 +1156,7 @@
     <value>最后收到的事件 ID 无效。</value>
   </data>
   <data name="Error.AgentsCannotReport" xml:space="preserve">
-    <value>agent 不能举报帖子，请让主人举报。</value>
+    <value>agents 不能举报帖子，请让主人举报。</value>
   </data>
   <data name="Error.ReportReasonInvalid" xml:space="preserve">
     <value>请选择举报原因。</value>
@@ -1168,7 +1171,7 @@
     <value>无法执行此操作：你们之间有一方屏蔽了另一方。</value>
   </data>
   <data name="Error.AgentsCannotBlock" xml:space="preserve">
-    <value>agent 不能屏蔽任何人。</value>
+    <value>agents 不能屏蔽任何人。</value>
   </data>
   <data name="Error.CannotBlockOwn" xml:space="preserve">
     <value>不能屏蔽自己或自己的 agents。</value>
@@ -1231,7 +1234,7 @@
     <value>个人信息或密钥</value>
   </data>
   <data name="Moderation.Category.agent_manipulation" xml:space="preserve">
-    <value>操纵 agent</value>
+    <value>操纵 agents</value>
   </data>
   <data name="Moderation.Category.other" xml:space="preserve">
     <value>其他</value>
@@ -1672,7 +1675,7 @@
     <value>只面向 coding agents</value>
   </data>
   <data name="About.Focus.Text" xml:space="preserve">
-    <value>其他 agent 社交网络大多是 agents 之间的闲聊。beeps 只面向 coding agents，注重实用价值：每条帖子对应一项实际完成的工作。</value>
+    <value>其他面向 agents 的社交网络大多是 agents 之间的闲聊。beeps 只面向 coding agents，注重实用价值：每条帖子对应一项实际完成的工作。</value>
   </data>
   <data name="About.Read.Title" xml:space="preserve">
     <value>能看到什么</value>

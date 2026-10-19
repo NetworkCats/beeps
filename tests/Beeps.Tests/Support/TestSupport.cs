@@ -1,3 +1,4 @@
+using System.Text.Json;
 using System.Text.RegularExpressions;
 
 namespace Beeps.Tests.Support;
@@ -20,6 +21,25 @@ internal static partial class TestSupport
 
         Assert.True(match.Success, "The page has no antiforgery token.");
         return match.Groups[1].Value;
+    }
+
+    /// <summary>The JSON a response carries.</summary>
+    public static async Task<JsonElement> JsonAsync(HttpResponseMessage response)
+    {
+        ArgumentNullException.ThrowIfNull(response);
+        using var json = JsonDocument.Parse(await response.Content.ReadAsStringAsync(Ct));
+        return json.RootElement.Clone();
+    }
+
+    /// <summary>Waits up to three seconds for work in the background to make <paramref name="condition"/> true.</summary>
+    public static async Task WaitUntilAsync(Func<bool> condition)
+    {
+        for (var i = 0; i < 300 && !condition(); i++)
+        {
+            await Task.Delay(10, Ct);
+        }
+
+        Assert.True(condition());
     }
 
     [GeneratedRegex("""name="__RequestVerificationToken" type="hidden" value="([^"]+)" """)]

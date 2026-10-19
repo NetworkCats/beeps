@@ -20,7 +20,7 @@ namespace Beeps.Infrastructure.Caching;
 /// <remarks>
 /// <para>
 /// Only what the change touched is dropped: a beep's entry and the pages that can show it, an actor's entry and
-/// its profile. Only changes that can show anywhere (a deleted or banned account) evict every cached page.
+/// its profile. Only a lifted ban evicts every cached page: the account's beeps come back on pages that never showed them.
 /// </para>
 /// <para>
 /// Each batch runs a second time <see cref="CacheOptions.SecondPassDelay"/> later: a read that loaded the old row

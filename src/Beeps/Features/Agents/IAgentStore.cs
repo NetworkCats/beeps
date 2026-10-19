@@ -67,7 +67,6 @@ public sealed record AgentRow(
     DateTimeOffset CreatedAt,
     DateTimeOffset? DisabledAt,
     string? KeyPrefix,
-    DateTimeOffset? KeyCreatedAt,
     DateTimeOffset? KeyLastUsedAt,
     string? Bio = null,
     string? AvatarKey = null);

@@ -1,7 +1,6 @@
-/* Icons: Material Symbols (variable font). Load the font yourself, e.g.
- *   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200">
- * then <span class="icon">search</span>. Size follows the parent's font size (1.25em),
- * so icons inside buttons, lists and headings scale automatically. */
+/* Icons: Material Symbols (variable font, $icon-font). beeps self-hosts Material Symbols Rounded, cut down to the
+ * icons it uses (Client/scss/_icons.scss, Client/icons.json). <span class="icon">search</span>; size follows the
+ * parent's font size (1.25em), so icons inside buttons, lists and headings scale automatically. */
 @use "../foundation/layers";
 @use "../abstracts" as *;
 
@@ -29,7 +28,4 @@
     -webkit-font-smoothing: antialiased;
     font-variation-settings: "FILL" var(--cui-icon-fill, 0), "wght" var(--cui-icon-weight, 400), "GRAD" var(--cui-icon-grade, 0), "opsz" var(--cui-icon-opsz, 24);
   }
-
-  /* Inline SVG icons (any set) get the same box. */
-  svg.#{$prefix}icon { font-family: inherit; fill: currentColor; }
 }

@@ -20,16 +20,7 @@ public sealed class LocalRateLimiter(TimeProvider time)
         var now = time.GetUtcNow();
         lock (gate)
         {
-            var wait = TimeSpan.Zero;
-            foreach (var counter in wanted)
-            {
-                if (counters.TryGetValue(counter.Key, out var window) && window.ResetAt > now && window.Count >= counter.PermitLimit && window.ResetAt - now > wait)
-                {
-                    wait = window.ResetAt - now;
-                }
-            }
-
-            return wait;
+            return WaitLocked(wanted, now);
         }
     }
 
@@ -40,15 +31,7 @@ public sealed class LocalRateLimiter(TimeProvider time)
         var now = time.GetUtcNow();
         lock (gate)
         {
-            var wait = TimeSpan.Zero;
-            foreach (var counter in wanted)
-            {
-                if (counters.TryGetValue(counter.Key, out var window) && window.ResetAt > now && window.Count >= counter.PermitLimit && window.ResetAt - now > wait)
-                {
-                    wait = window.ResetAt - now;
-                }
-            }
-
+            var wait = WaitLocked(wanted, now);
             if (wait > TimeSpan.Zero)
             {
                 return RateLimitDecision.Denied(wait);
@@ -76,6 +59,21 @@ public sealed class LocalRateLimiter(TimeProvider time)
 
             return RateLimitDecision.Allowed;
         }
+    }
+
+    // The caller holds the lock.
+    private TimeSpan WaitLocked(IReadOnlyList<RateLimitCounter> wanted, DateTimeOffset now)
+    {
+        var wait = TimeSpan.Zero;
+        foreach (var counter in wanted)
+        {
+            if (counters.TryGetValue(counter.Key, out var window) && window.ResetAt > now && window.Count >= counter.PermitLimit && window.ResetAt - now > wait)
+            {
+                wait = window.ResetAt - now;
+            }
+        }
+
+        return wait;
     }
 
     private readonly record struct Window(int Count, DateTimeOffset ResetAt);

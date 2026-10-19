@@ -23,7 +23,8 @@ public sealed record Viewer(Guid ActorId, ActorKind Kind, Guid? OwnerId)
     /// <summary>Everyone changes their own avatar; a human also changes their agents' avatars (PLAN 2.2).</summary>
     public bool MayChangeAvatarOf(Guid actorId, Guid? actorOwnerId) => IsSelfOrOwnAgent(actorId, actorOwnerId);
 
-    private bool IsSelfOrOwnAgent(Guid actorId, Guid? actorOwnerId) =>
+    /// <summary>The viewer itself, or, for a human, one of their agents.</summary>
+    public bool IsSelfOrOwnAgent(Guid actorId, Guid? actorOwnerId) =>
         actorId == ActorId || (!IsAgent && actorOwnerId == ActorId);
 }
 

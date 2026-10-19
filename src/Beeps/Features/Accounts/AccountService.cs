@@ -87,7 +87,7 @@ public sealed partial class AccountService(
         }
 
         var email = AccountRules.NormalizeEmail(request.Email!);
-        var limited = await rateLimits.CheckAsync(RateLimitPolicies.Register, IpPartition(origin), cancellationToken);
+        var limited = await rateLimits.CheckAsync(RateLimitPolicies.Register, RateLimitPartitions.Ip(origin.ClientIp), cancellationToken);
         if (!limited.IsSuccess)
         {
             return limited.Error;
@@ -125,8 +125,8 @@ public sealed partial class AccountService(
         // Counted only now that a code email is certain, so a rejected attempt does not block the retry.
         var emailLimited = await rateLimits.CheckAsync(
             [
-                new RateLimitTarget(RateLimitPolicies.EmailCodeIp, IpPartition(origin)),
-                new RateLimitTarget(RateLimitPolicies.EmailCode, EmailPartition(email)),
+                new RateLimitTarget(RateLimitPolicies.EmailCodeIp, RateLimitPartitions.Ip(origin.ClientIp)),
+                new RateLimitTarget(RateLimitPolicies.EmailCode, RateLimitPartitions.Email(email)),
             ],
             cancellationToken);
         if (!emailLimited.IsSuccess)
@@ -346,10 +346,15 @@ public sealed partial class AccountService(
 
         var byEmail = login.Contains('@', StringComparison.Ordinal);
         var normalized = byEmail ? AccountRules.NormalizeEmail(login) : AccountRules.NormalizeHandle(login);
+        var user = byEmail
+            ? await store.FindUserByEmailAsync(normalized, cancellationToken)
+            : await store.FindUserByHandleAsync(normalized, cancellationToken);
+        // An account has one counter, by address or username alike. A name no account has gets its own, so guesses
+        // at it are refused just as soon and the limit does not tell which names exist.
         var limited = await rateLimits.CheckAsync(
             [
-                new RateLimitTarget(RateLimitPolicies.Login, IpPartition(origin)),
-                new RateLimitTarget(RateLimitPolicies.Login, $"login:{normalized}"),
+                new RateLimitTarget(RateLimitPolicies.Login, RateLimitPartitions.Ip(origin.ClientIp)),
+                new RateLimitTarget(RateLimitPolicies.Login, user is null ? RateLimitPartitions.Login(normalized) : RateLimitPartitions.Account(user.Id)),
             ],
             cancellationToken);
         if (!limited.IsSuccess)
@@ -357,9 +362,6 @@ public sealed partial class AccountService(
             return limited.Error;
         }
 
-        var user = byEmail
-            ? await store.FindUserByEmailAsync(normalized, cancellationToken)
-            : await store.FindUserByHandleAsync(normalized, cancellationToken);
         if (user is null)
         {
             // Same work as a wrong password, so response times do not reveal which accounts exist.
@@ -407,10 +409,10 @@ public sealed partial class AccountService(
         var normalized = AccountRules.NormalizeEmail(email!);
         var limited = await rateLimits.CheckAsync(
             [
-                new RateLimitTarget(RateLimitPolicies.PasswordReset, IpPartition(origin)),
-                new RateLimitTarget(RateLimitPolicies.PasswordReset, EmailPartition(normalized)),
-                new RateLimitTarget(RateLimitPolicies.EmailCodeIp, IpPartition(origin)),
-                new RateLimitTarget(RateLimitPolicies.EmailCode, EmailPartition(normalized)),
+                new RateLimitTarget(RateLimitPolicies.PasswordReset, RateLimitPartitions.Ip(origin.ClientIp)),
+                new RateLimitTarget(RateLimitPolicies.PasswordReset, RateLimitPartitions.Email(normalized)),
+                new RateLimitTarget(RateLimitPolicies.EmailCodeIp, RateLimitPartitions.Ip(origin.ClientIp)),
+                new RateLimitTarget(RateLimitPolicies.EmailCode, RateLimitPartitions.Email(normalized)),
             ],
             cancellationToken);
         if (!limited.IsSuccess)
@@ -468,14 +470,20 @@ public sealed partial class AccountService(
         }
 
         // The new password and the end of every old session commit together.
+        var verifies = user.EmailVerifiedAt is null;
         var result = await unitOfWork.InTransactionAsync(
             null,
             async ct =>
             {
                 var now = time.GetUtcNow();
                 user.PasswordHash = passwordHasher.HashPassword(user, request.NewPassword!);
-                // The code proved the address works.
-                user.EmailVerifiedAt ??= now;
+                if (verifies)
+                {
+                    // The code proved the address works, so from now on the person can be found by search.
+                    user.EmailVerifiedAt = now;
+                    outbox.SyncAccountToSearch(user.Id);
+                }
+
                 await sessions.RevokeAllAsync(user.Id, now, ct);
                 await unitOfWork.SaveChangesAsync(ct);
                 return Result.Success;
@@ -489,6 +497,12 @@ public sealed partial class AccountService(
         await sessions.ForgetAllAsync(user.Id, cancellationToken);
         await store.ForgetAccountAsync(user.Id, cancellationToken);
         await live.SessionsEndedAsync(user.Id, cancellationToken);
+        if (verifies)
+        {
+            // The admin user list drops the "unverified" mark.
+            await live.AdminChangedAsync(cancellationToken);
+        }
+
         LogPasswordReset(logger, user.Id);
         return Result.Success;
     }
@@ -573,7 +587,7 @@ public sealed partial class AccountService(
             return AccountNotFound();
         }
 
-        var limited = await rateLimits.CheckAsync(RateLimitPolicies.AccountChange, $"account:{userId}", cancellationToken);
+        var limited = await rateLimits.CheckAsync(RateLimitPolicies.AccountChange, RateLimitPartitions.Account(userId), cancellationToken);
         if (!limited.IsSuccess)
         {
             return limited;
@@ -613,7 +627,7 @@ public sealed partial class AccountService(
         }
 
         // A write that also reindexes and invalidates caches (PLAN 12, 6.16).
-        var limited = await rateLimits.CheckAsync(RateLimitPolicies.AccountChange, $"account:{userId}", cancellationToken);
+        var limited = await rateLimits.CheckAsync(RateLimitPolicies.AccountChange, RateLimitPartitions.Account(userId), cancellationToken);
         if (!limited.IsSuccess)
         {
             return limited;
@@ -651,23 +665,13 @@ public sealed partial class AccountService(
             return InvalidInput(fields);
         }
 
-        var user = await store.FindUserAsync(userId, cancellationToken);
-        if (user is null)
+        var checkedPassword = await CheckPasswordAsync(userId, currentPassword!, cancellationToken);
+        if (!checkedPassword.IsSuccess)
         {
-            return AccountNotFound();
+            return checkedPassword.Error;
         }
 
-        var limited = await rateLimits.CheckAsync(RateLimitPolicies.Login, $"login:{user.Actor.NormalizedHandle}", cancellationToken);
-        if (!limited.IsSuccess)
-        {
-            return limited;
-        }
-
-        if (passwordHasher.VerifyHashedPassword(user, user.PasswordHash, currentPassword!) == PasswordVerificationResult.Failed)
-        {
-            return FieldError(ErrorKind.Validation, AccountErrorCodes.InvalidCredentials, "Error.WrongPassword", AccountFields.CurrentPassword);
-        }
-
+        var user = checkedPassword.Value;
         await unitOfWork.InTransactionAsync(
             null,
             async ct =>
@@ -776,7 +780,7 @@ public sealed partial class AccountService(
         // Someone may have registered or moved to it since; the code is kept for nothing then.
         if (await store.EmailTakenAsync(email, cancellationToken))
         {
-            return FieldError(ErrorKind.Conflict, AccountErrorCodes.EmailTaken, "Error.EmailTaken", AccountFields.Code);
+            return Error.Field(AccountErrorCodes.EmailTaken, AccountFields.Code, localizer["Error.EmailTaken"], ErrorKind.Conflict);
         }
 
         // Outside the save: a wrong guess must stay counted even though nothing else is saved.
@@ -797,7 +801,7 @@ public sealed partial class AccountService(
         }
         catch (UniqueViolationException exception) when (exception.IndexName == AccountIndexes.UniqueEmail)
         {
-            return FieldError(ErrorKind.Conflict, AccountErrorCodes.EmailTaken, "Error.EmailTaken", AccountFields.Code);
+            return Error.Field(AccountErrorCodes.EmailTaken, AccountFields.Code, localizer["Error.EmailTaken"], ErrorKind.Conflict);
         }
 
         // The admin user list shows the address.
@@ -835,12 +839,6 @@ public sealed partial class AccountService(
         user.IsAdmin,
         user.EmailVerifiedAt is not null,
         user.Locale);
-
-    private static string IpPartition(RequestOrigin origin) => $"ip:{origin.ClientIp}";
-
-    private static string AccountPartition(Guid userId) => $"account:{userId}";
-
-    private static string EmailPartition(string normalizedEmail) => $"email:{normalizedEmail}";
 
     private static string HashCode(EmailCodePurpose purpose, string normalizedEmail, string code) =>
         TextHashes.Sha256Hex($"{purpose}:{normalizedEmail}:{code}");
@@ -925,23 +923,13 @@ public sealed partial class AccountService(
             return InvalidInput(fields);
         }
 
-        var user = await store.FindUserAsync(userId, cancellationToken);
-        if (user is null)
+        var checkedPassword = await CheckPasswordAsync(userId, currentPassword!, cancellationToken);
+        if (!checkedPassword.IsSuccess)
         {
-            return AccountNotFound();
+            return checkedPassword.Error;
         }
 
-        var limited = await rateLimits.CheckAsync(RateLimitPolicies.Login, $"login:{user.Actor.NormalizedHandle}", cancellationToken);
-        if (!limited.IsSuccess)
-        {
-            return limited.Error;
-        }
-
-        if (passwordHasher.VerifyHashedPassword(user, user.PasswordHash, currentPassword!) == PasswordVerificationResult.Failed)
-        {
-            return FieldError(ErrorKind.Validation, AccountErrorCodes.InvalidCredentials, "Error.WrongPassword", AccountFields.CurrentPassword);
-        }
-
+        var user = checkedPassword.Value;
         var email = AccountRules.NormalizeEmail(newEmail!);
         if (email == user.NormalizedEmail)
         {
@@ -956,13 +944,33 @@ public sealed partial class AccountService(
         return (user, email);
     }
 
+    /// <summary>The current password, asked again before a change; its guesses count as signing in to the account.</summary>
+    private async Task<Result<User>> CheckPasswordAsync(Guid userId, string currentPassword, CancellationToken cancellationToken)
+    {
+        var user = await store.FindUserAsync(userId, cancellationToken);
+        if (user is null)
+        {
+            return AccountNotFound();
+        }
+
+        var limited = await rateLimits.CheckAsync(RateLimitPolicies.Login, RateLimitPartitions.Account(user.Id), cancellationToken);
+        if (!limited.IsSuccess)
+        {
+            return limited.Error;
+        }
+
+        return passwordHasher.VerifyHashedPassword(user, user.PasswordHash, currentPassword) == PasswordVerificationResult.Failed
+            ? Error.Field(AccountErrorCodes.InvalidCredentials, AccountFields.CurrentPassword, localizer["Error.WrongPassword"])
+            : user;
+    }
+
     /// <summary>The limits on codes sent for an account once it exists: per IP, per address and per account.</summary>
     private Task<Result> CheckCodeLimitsAsync(User user, string normalizedEmail, RequestOrigin origin, CancellationToken cancellationToken) =>
         rateLimits.CheckAsync(
             [
-                new RateLimitTarget(RateLimitPolicies.EmailCodeIp, IpPartition(origin)),
-                new RateLimitTarget(RateLimitPolicies.EmailCode, EmailPartition(normalizedEmail)),
-                new RateLimitTarget(RateLimitPolicies.EmailCodeAccount, AccountPartition(user.Id)),
+                new RateLimitTarget(RateLimitPolicies.EmailCodeIp, RateLimitPartitions.Ip(origin.ClientIp)),
+                new RateLimitTarget(RateLimitPolicies.EmailCode, RateLimitPartitions.Email(normalizedEmail)),
+                new RateLimitTarget(RateLimitPolicies.EmailCodeAccount, RateLimitPartitions.Account(user.Id)),
             ],
             cancellationToken);
 
@@ -970,35 +978,33 @@ public sealed partial class AccountService(
     private Result TooSoon(EmailCode? last)
     {
         var wait = last is null ? TimeSpan.Zero : last.CreatedAt + ResendInterval - time.GetUtcNow();
-        return wait > TimeSpan.Zero
-            ? Error.RateLimited(wait, localizer["Error.ResendTooSoon", (int)Math.Ceiling(wait.TotalSeconds)])
-            : Result.Success;
+        if (wait <= TimeSpan.Zero)
+        {
+            return Result.Success;
+        }
+
+        var seconds = (int)Math.Ceiling(wait.TotalSeconds);
+        return Error.RateLimited(wait, seconds == 1 ? localizer["Error.ResendTooSoon.One"] : localizer["Error.ResendTooSoon", seconds]);
     }
 
     private Error AlreadyVerified() => Error.Conflict(AccountErrorCodes.AlreadyVerified, localizer["Error.AlreadyVerified"]);
 
-    private Error NewEmailTaken() => FieldError(ErrorKind.Conflict, AccountErrorCodes.EmailTaken, "Error.EmailTaken", AccountFields.NewEmail);
+    private Error NewEmailTaken() => Error.Field(AccountErrorCodes.EmailTaken, AccountFields.NewEmail, localizer["Error.EmailTaken"], ErrorKind.Conflict);
 
     private Error InvalidInput(Dictionary<string, string[]> fields) =>
         Error.Validation(AccountErrorCodes.InvalidInput, localizer["Error.InvalidInput"], fields);
 
-    private Error UsernameTaken() => FieldError(ErrorKind.Conflict, AccountErrorCodes.UsernameTaken, "Error.UsernameTaken", AccountFields.Username);
+    private Error UsernameTaken() => Error.Field(AccountErrorCodes.UsernameTaken, AccountFields.Username, localizer["Error.UsernameTaken"], ErrorKind.Conflict);
 
-    private Error EmailTaken() => FieldError(ErrorKind.Conflict, AccountErrorCodes.EmailTaken, "Error.EmailTaken", AccountFields.Email);
+    private Error EmailTaken() => Error.Field(AccountErrorCodes.EmailTaken, AccountFields.Email, localizer["Error.EmailTaken"], ErrorKind.Conflict);
 
-    private Error InviteInvalid() => FieldError(ErrorKind.Validation, AccountErrorCodes.InviteInvalid, "Error.InviteInvalid", AccountFields.InviteCode);
+    private Error InviteInvalid() => Error.Field(AccountErrorCodes.InviteInvalid, AccountFields.InviteCode, localizer["Error.InviteInvalid"]);
 
-    private Error CodeInvalid() => FieldError(ErrorKind.Validation, AccountErrorCodes.CodeInvalid, "Error.CodeInvalid", AccountFields.Code);
+    private Error CodeInvalid() => Error.Field(AccountErrorCodes.CodeInvalid, AccountFields.Code, localizer["Error.CodeInvalid"]);
 
     private Error InvalidCredentials() => Error.Unauthorized(AccountErrorCodes.InvalidCredentials, localizer["Error.InvalidCredentials"]);
 
     private Error AccountNotFound() => Error.NotFound(ErrorCodes.NotFound, localizer["Error.AccountNotFound"]);
-
-    private Error FieldError(ErrorKind kind, string code, string resource, string field)
-    {
-        string message = localizer[resource];
-        return new Error(kind, code, message) { Fields = new Dictionary<string, string[]> { [field] = [message] } };
-    }
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Account {UserId} registered (admin: {IsAdmin})")]
     private static partial void LogRegistered(ILogger logger, Guid userId, bool isAdmin);

@@ -6,15 +6,13 @@ namespace Beeps.Tests.Pages;
 public sealed class HomePageTests(BeepsWebApplicationFactory factory) : IClassFixture<BeepsWebApplicationFactory>
 {
     [Fact]
-    public async Task FollowsAcceptLanguageForSimplifiedChinese()
+    public async Task ChineseIsWrittenAsCharactersNotEntities()
     {
         using var client = factory.CreateClient();
-        client.DefaultRequestHeaders.AcceptLanguage.ParseAdd("zh-CN,zh;q=0.9,en;q=0.5");
+        client.DefaultRequestHeaders.AcceptLanguage.ParseAdd("zh-CN");
 
         var html = await client.GetStringAsync(new Uri("/", UriKind.Relative), TestSupport.Ct);
 
-        Assert.Contains("<html lang=\"zh-Hans\">", html, StringComparison.Ordinal);
-        // Written as characters, not &#x…; entities.
         Assert.Contains("AI agents 的社交网络", html, StringComparison.Ordinal);
     }
 

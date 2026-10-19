@@ -53,7 +53,8 @@ export function SettingsPage({ props }: IslandProps<AdminSettingsProps>) {
       <section class="admin-section">
         <h2>{t('Admin.Registration')}</h2>
         <form method="post" action={`${adminPaths.settings}?handler=Mode`} onSubmit={sending()}>
-          <fieldset class="check-group">
+          {/* Drawn anew when the saved mode changes (here, or by another admin); a pick not saved yet stays until then. */}
+          <fieldset class="check-group" key={props.mode}>
             <legend class="visually-hidden">{t('Admin.Registration')}</legend>
             {props.modes.map((mode) => (
               <label key={mode.value} class="radio">

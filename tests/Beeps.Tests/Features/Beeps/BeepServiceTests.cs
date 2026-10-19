@@ -1,6 +1,5 @@
 using System.Text.Json.Serialization.Metadata;
 using Beeps.Features.Accounts;
-using Beeps.Features.Avatars;
 using Beeps.Features.Beeps;
 using Beeps.Features.Live;
 using Beeps.Features.Media;
@@ -549,14 +548,12 @@ public sealed class BeepServiceTests
 
     private BeepService CreateService()
     {
-        var localizer = new TestLocalizer();
-        var views = new BeepViews(store, counters, TestData.Avatars, TestData.Media, NullLogger<BeepViews>.Instance);
         return new BeepService(
             store,
             counters,
             media.Store,
             media.Create(),
-            views,
+            TestServices.Views(store, counters),
             unitOfWork,
             outbox,
             moderationJobs,
@@ -565,7 +562,7 @@ public sealed class BeepServiceTests
             TestData.Inboxes(liveEvents, notifications),
             Options.Create(new ModerationOptions { Enabled = moderationEnabled }),
             TestData.Time(),
-            localizer,
+            new TestLocalizer(),
             NullLogger<BeepService>.Instance);
     }
 }

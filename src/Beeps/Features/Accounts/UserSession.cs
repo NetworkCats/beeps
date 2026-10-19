@@ -1,3 +1,4 @@
+using System.Buffers.Text;
 using System.Security.Cryptography;
 using Beeps.Features.Shared;
 
@@ -37,14 +38,13 @@ public static class SessionTokens
 {
     private const int TokenBytes = 32;
 
+    private static readonly int TokenLength = Base64Url.GetEncodedLength(TokenBytes);
+
     /// <summary>256 random bits, base64url (43 characters).</summary>
-    public static string Generate() => Base64UrlEncode(RandomNumberGenerator.GetBytes(TokenBytes));
+    public static string Generate() => Base64Url.EncodeToString(RandomNumberGenerator.GetBytes(TokenBytes));
 
     public static bool IsWellFormed(string? token) =>
-        token is { Length: 43 } && token.All(c => char.IsAsciiLetterOrDigit(c) || c is '-' or '_');
+        token?.Length == TokenLength && token.All(c => char.IsAsciiLetterOrDigit(c) || c is '-' or '_');
 
     public static string Hash(string token) => TextHashes.Sha256Hex(token);
-
-    private static string Base64UrlEncode(byte[] bytes) =>
-        Convert.ToBase64String(bytes).TrimEnd('=').Replace('+', '-').Replace('/', '_');
 }

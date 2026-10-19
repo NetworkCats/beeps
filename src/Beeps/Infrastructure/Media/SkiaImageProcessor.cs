@@ -49,6 +49,8 @@ public sealed class SkiaImageProcessor : IImageProcessor
             return null;
         }
 
+        // Nothing writes to the pixels any more; an immutable bitmap lends them to the image instead of having them copied.
+        decoded.SetImmutable();
         using var image = SKImage.FromBitmap(decoded);
         var origin = codec.EncodedOrigin;
         var (width, height) = Upright(image.Width, image.Height, origin);

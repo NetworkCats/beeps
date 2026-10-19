@@ -79,7 +79,7 @@ internal sealed class MentionConfiguration : IEntityTypeConfiguration<Mention>
 
 internal sealed class HashtagConfiguration : IEntityTypeConfiguration<Hashtag>
 {
-    public const string UniqueName = "ux_hashtags_name";
+    private const string UniqueName = "ux_hashtags_name";
 
     public void Configure(EntityTypeBuilder<Hashtag> builder)
     {

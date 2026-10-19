@@ -1,12 +1,94 @@
 // The admin pages' styles (Pages/Admin), on top of main.scss and member.scss. The layout links it on those pages, and
-// every other page fetches it ahead once it has loaded. (The admin nav's component, nav, stays in main.scss: every
-// page's navigation rail is drawn with it.)
+// fetches it ahead for admins elsewhere. The parts of collection-ui only these pages use are here too: the table, and
+// the .nav list and .tag-group (copied out of upstream's _nav.scss and _badge.scss; the rail is .sidenav, in main.scss).
 @use "settings";
 @use "../collection-ui/foundation/layers";
 
 @use "../collection-ui/components/table";
 
 @use "../collection-ui/abstracts" as *;
+
+@layer cui.components {
+  // A list of links (.nav-horizontal: in a row), the current one tinted.
+  .nav {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    min-width: 0;
+  }
+
+  .nav-item {
+    --_fg: var(--cui-nav-fg, var(--cui-text-2));
+    --_radius: var(--cui-nav-radius, var(--cui-radius));
+    --_px: var(--cui-nav-px, var(--cui-space-3));
+    --_py: var(--cui-nav-py, var(--cui-space-2));
+    --_active-bg: var(--cui-nav-active-bg, var(--cui-primary-soft));
+    --_active-fg: var(--cui-nav-active-fg, var(--cui-primary-text));
+    display: flex;
+    align-items: center;
+    gap: var(--cui-space-2-5);
+    width: 100%;
+    min-width: 0;
+    padding: var(--_py) var(--_px);
+    font-size: var(--cui-text-sm);
+    font-weight: var(--cui-weight-medium);
+    line-height: var(--cui-leading-snug);
+    text-align: start;
+    color: var(--_fg);
+    text-decoration: none;
+    background: transparent;
+    border: 0;
+    border-radius: var(--_radius);
+    cursor: pointer;
+    transition: background-color var(--cui-transition), color var(--cui-transition);
+
+    &:hover {
+      background: var(--cui-surface-hover);
+      color: var(--cui-text);
+      text-decoration: none;
+    }
+
+    &:focus-visible {
+      @include focus-ring($inset: true);
+    }
+
+    &[aria-current]:not([aria-current="false"]) {
+      background: var(--_active-bg);
+      color: var(--_active-fg);
+    }
+  }
+
+  .nav-horizontal {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--cui-space-1);
+
+    > .nav-item {
+      width: auto;
+    }
+  }
+
+  // A row of segments, the first one tinted: <span class="tag-group"><span>SDK</span><a>Dart</a></span>.
+  .tag-group {
+    padding: 0;
+    gap: 0;
+    overflow: hidden;
+
+    > * {
+      padding: 0.1rem 0.4rem;
+    }
+
+    > * + * {
+      border-inline-start: var(--cui-border-width) solid color-mix(in oklch, currentColor 25%, transparent);
+    }
+
+    > :first-child,
+    > a:hover {
+      background: color-mix(in oklch, currentColor 12%, transparent);
+    }
+  }
+}
 
 // ---- Admin -------------------------------------------------------------------------------------------
 
@@ -46,10 +128,6 @@
   > h1 {
     margin-block-end: var(--cui-space-5);
   }
-
-  > .section-header > h1 {
-    margin: 0;
-  }
 }
 
 // Whom an admin page is about: avatar, name, handle and badges.
@@ -63,7 +141,6 @@
 .admin-search {
   display: flex;
   gap: var(--cui-space-2);
-  margin: 0;
 }
 
 .admin-section {
@@ -80,10 +157,6 @@
   flex-wrap: wrap;
   gap: var(--cui-space-2);
   margin-block-end: var(--cui-space-8);
-
-  > form {
-    margin: 0;
-  }
 }
 
 // Buttons for one row of a table: they wrap, and add no space below.
@@ -167,9 +240,7 @@
   display: flex;
   flex-wrap: wrap;
   gap: var(--cui-space-2);
-  margin: 0 0 var(--cui-space-6);
-  padding: 0;
-  list-style: none;
+  margin-block-end: var(--cui-space-6);
 
   img {
     display: block;
@@ -192,7 +263,6 @@
   }
 
   > dd {
-    margin: 0;
     min-width: 0;
     overflow-wrap: anywhere;
   }

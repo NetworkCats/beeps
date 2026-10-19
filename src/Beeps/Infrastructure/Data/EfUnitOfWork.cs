@@ -21,20 +21,7 @@ public sealed class EfUnitOfWork(BeepsDbContext db, PendingCacheChanges cacheCha
             cacheChanges.StageDurableCopy();
         }
 
-        try
-        {
-            await db.SaveChangesAsync(cancellationToken);
-        }
-        catch (DbUpdateException exception) when (exception.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation } postgres)
-        {
-            DiscardOutsideTransaction();
-            throw UniqueViolationException.ForIndex(postgres.ConstraintName, exception);
-        }
-        catch
-        {
-            DiscardOutsideTransaction();
-            throw;
-        }
+        await SaveAsync(committing: outsideTransaction, cancellationToken);
 
         // Inside a transaction they wait for the commit.
         if (outsideTransaction)
@@ -43,11 +30,18 @@ public sealed class EfUnitOfWork(BeepsDbContext db, PendingCacheChanges cacheCha
         }
     }
 
-    public async Task<Result<T>> InTransactionAsync<T>(long? lockKey, Func<CancellationToken, Task<Result<T>>> work, CancellationToken cancellationToken)
+    public Task<Result<T>> InTransactionAsync<T>(long? lockKey, Func<CancellationToken, Task<Result<T>>> work, CancellationToken cancellationToken) =>
+        RunInTransactionAsync(lockKey, work, r => r.IsSuccess, cancellationToken);
+
+    public Task<Result> InTransactionAsync(long? lockKey, Func<CancellationToken, Task<Result>> work, CancellationToken cancellationToken) =>
+        RunInTransactionAsync(lockKey, work, r => r.IsSuccess, cancellationToken);
+
+    private async Task<TResult> RunInTransactionAsync<TResult>(
+        long? lockKey, Func<CancellationToken, Task<TResult>> work, Func<TResult, bool> succeeded, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(work);
         await using var transaction = await BeginAsync(lockKey, cancellationToken);
-        Result<T> result;
+        TResult result;
         try
         {
             result = await work(cancellationToken);
@@ -59,26 +53,7 @@ public sealed class EfUnitOfWork(BeepsDbContext db, PendingCacheChanges cacheCha
             throw;
         }
 
-        await EndAsync(transaction, result.IsSuccess, cancellationToken);
-        return result;
-    }
-
-    public async Task<Result> InTransactionAsync(long? lockKey, Func<CancellationToken, Task<Result>> work, CancellationToken cancellationToken)
-    {
-        ArgumentNullException.ThrowIfNull(work);
-        await using var transaction = await BeginAsync(lockKey, cancellationToken);
-        Result result;
-        try
-        {
-            result = await work(cancellationToken);
-        }
-        catch
-        {
-            cacheChanges.Discard();
-            throw;
-        }
-
-        await EndAsync(transaction, result.IsSuccess, cancellationToken);
+        await EndAsync(transaction, succeeded(result), cancellationToken);
         return result;
     }
 
@@ -103,16 +78,8 @@ public sealed class EfUnitOfWork(BeepsDbContext db, PendingCacheChanges cacheCha
             if (cacheChanges.HasPending)
             {
                 cacheChanges.StageDurableCopy();
-                try
-                {
-                    await db.SaveChangesAsync(cancellationToken);
-                }
-                catch
-                {
-                    // Disposing the transaction rolls it back.
-                    cacheChanges.Discard();
-                    throw;
-                }
+                // On failure, disposing the transaction rolls it back.
+                await SaveAsync(committing: true, cancellationToken);
             }
 
             try
@@ -136,11 +103,29 @@ public sealed class EfUnitOfWork(BeepsDbContext db, PendingCacheChanges cacheCha
         db.ChangeTracker.Clear();
     }
 
-    private void DiscardOutsideTransaction()
+    /// <summary>
+    /// Saves the tracked changes. When the save is what commits them, a failure drops their invalidations, which
+    /// never happened, with the outbox copy staged for them.
+    /// </summary>
+    private async Task SaveAsync(bool committing, CancellationToken cancellationToken)
     {
-        if (db.Database.CurrentTransaction is null)
+        try
         {
-            cacheChanges.Discard();
+            await db.SaveChangesAsync(cancellationToken);
+        }
+        catch (Exception exception)
+        {
+            if (committing)
+            {
+                cacheChanges.Discard();
+            }
+
+            if (exception is DbUpdateException { InnerException: PostgresException { SqlState: PostgresErrorCodes.UniqueViolation } postgres })
+            {
+                throw UniqueViolationException.ForIndex(postgres.ConstraintName, exception);
+            }
+
+            throw;
         }
     }
 }

@@ -65,7 +65,7 @@ public sealed class TimelinePagesTests : IDisposable
         var html = await client.GetStringAsync(new Uri("/public", UriKind.Relative), TestSupport.Ct);
         var page = await Islands.PageAsync(client, "/public");
 
-        Assert.Contains("<a class=\"sidenav-item\" data-nav=\"public\" aria-current=\"page\" href=\"/public\"><span class=\"icon\" aria-hidden=\"true\">public</span><span class=\"sidenav-label\">Public</span></a>", html, StringComparison.Ordinal);
+        Assert.Matches("<a class=\"sidenav-item\" data-nav=\"public\" aria-current=\"page\" href=\"/public\">\\s*<span class=\"icon\" aria-hidden=\"true\">public</span><span class=\"sidenav-label\">Public</span>\\s*</a>", html);
         // The account menus (the rail's and the top bar's) are drawn from who is signed in: the profile is tom's, no admin link.
         Assert.Equal(2, Islands.Names(html).Count(name => name == "account-menu"));
         var viewer = Islands.Config(page).GetProperty("viewer");

@@ -1,16 +1,8 @@
-/* Navigation lists.
- *
- * .nav — generic vertical (or .nav-horizontal) list of links for sidebars, settings, filters:
- *   <nav class="nav">
- *     <a class="nav-item" href aria-current="page"><span class="icon">person</span> Profile</a>
- *     <a class="nav-item" href><span class="icon">notifications</span> Notifications <span class="count">3</span></a>
- *   </nav>
- *
- * .sidenav — an app-shell left column of large icon + label links:
+/* Navigation: .sidenav, an app-shell left column of large icon + label links. (Upstream's .nav list is used only by
+ * the admin pages, so it is in Client/scss/admin.scss.)
  *   <nav class="sidenav">
- *     <a class="sidenav-brand" href="/"><span class="icon">hive</span><span class="sidenav-label">Acme</span></a>
+ *     <a class="sidenav-brand" href="/"><img src="logo.png" alt=""><span class="sidenav-label">Acme</span></a>
  *     <a class="sidenav-item" href aria-current="page"><span class="icon">home</span><span class="sidenav-label">Home</span></a>
- *     <a class="sidenav-item" href><span class="icon">mail</span><span class="sidenav-label">Messages</span><span class="count">2</span></a>
  *     <a class="btn btn-primary sidenav-cta" href><span class="icon">edit</span><span class="sidenav-label">Post</span></a>
  *     <div class="sidenav-footer">…user menu…</div>
  *   </nav>
@@ -19,59 +11,6 @@
 @use "../abstracts" as *;
 
 @layer cui.components {
-  /* ---- .nav ---------------------------------------------------------------- */
-  .#{$prefix}nav {
-    display: flex;
-    flex-direction: column;
-    gap: 1px;
-    min-width: 0;
-  }
-  .#{$prefix}nav-item {
-    --_fg: var(--cui-nav-fg, var(--cui-text-2));
-    --_radius: var(--cui-nav-radius, var(--cui-radius));
-    --_px: var(--cui-nav-px, var(--cui-space-3));
-    --_py: var(--cui-nav-py, var(--cui-space-2));
-    --_active-bg: var(--cui-nav-active-bg, var(--cui-primary-soft));
-    --_active-fg: var(--cui-nav-active-fg, var(--cui-primary-text));
-    display: flex;
-    align-items: center;
-    gap: var(--cui-space-2-5);
-    width: 100%;
-    min-width: 0;
-    padding: var(--_py) var(--_px);
-    font-size: var(--cui-text-sm);
-    font-weight: var(--cui-weight-medium);
-    line-height: var(--cui-leading-snug);
-    text-align: start;
-    color: var(--_fg);
-    text-decoration: none;
-    background: transparent;
-    border: 0;
-    border-radius: var(--_radius);
-    cursor: pointer;
-    transition: background-color var(--cui-transition), color var(--cui-transition);
-
-    > .#{$prefix}icon { --cui-icon-size: 1.25rem; color: var(--cui-text-3); flex-shrink: 0; transition: color var(--cui-transition); }
-    > .#{$prefix}count, > .#{$prefix}badge { margin-inline-start: auto; }
-    > .#{$prefix}avatar { flex-shrink: 0; }
-
-    &:hover { background: var(--cui-surface-hover); color: var(--cui-text); text-decoration: none; > .#{$prefix}icon { color: var(--cui-text-2); } }
-    &:focus-visible { @include focus-ring($inset: true); }
-    &[aria-current]:not([aria-current="false"]) {
-      background: var(--_active-bg);
-      color: var(--_active-fg);
-      > .#{$prefix}icon { color: var(--_active-fg); }
-    }
-    &[disabled], &:disabled, &[aria-disabled="true"] { opacity: 0.5; pointer-events: none; }
-  }
-  .#{$prefix}nav-horizontal {
-    flex-direction: row;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: var(--cui-space-1);
-    > .#{$prefix}nav-item { width: auto; }
-  }
-
   /* ---- .sidenav ------------------------------------------------------------ */
   .#{$prefix}sidenav {
     display: flex;
@@ -93,8 +32,7 @@
     color: var(--cui-text);
     text-decoration: none;
     white-space: nowrap;
-    > .#{$prefix}icon { --cui-icon-size: 1.75rem; color: var(--cui-primary); }
-    > img, > svg { height: 1.75rem; width: auto; }
+    > img { height: 1.75rem; width: auto; }
   }
   .#{$prefix}sidenav-item {
     --_height: var(--cui-sidenav-height, 2.75rem);
@@ -123,8 +61,6 @@
 
     > .#{$prefix}icon { --cui-icon-size: 1.5rem; flex-shrink: 0; }
     > .#{$prefix}sidenav-label { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-    > .#{$prefix}count, > .#{$prefix}badge { margin-inline-start: auto; }
-    > .#{$prefix}avatar { flex-shrink: 0; }
 
     &:hover { background: var(--cui-surface-hover); color: var(--cui-text); text-decoration: none; }
     &:focus-visible { @include focus-ring; }
@@ -137,7 +73,7 @@
   }
   /* Big primary action (Post / New). Use with .btn.btn-primary. */
   .#{$prefix}sidenav-cta {
-    --_height: 3rem;
+    --_height: var(--cui-sidenav-cta-height, 3rem);
     --_font: var(--cui-text-base);
     display: flex;
     width: 100%;

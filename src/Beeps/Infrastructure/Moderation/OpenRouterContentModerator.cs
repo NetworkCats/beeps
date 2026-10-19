@@ -3,6 +3,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Beeps.Features.Moderation;
+using Beeps.Infrastructure.Data;
 using Microsoft.Extensions.Options;
 
 namespace Beeps.Infrastructure.Moderation;
@@ -136,30 +137,14 @@ public sealed partial class OpenRouterContentModerator(
         }
 
         if (raw is not { Decision: { } decision, Categories: { } categories, Severity: { } severity, Reason: { } reason }
-            || !TryParse(decision, out ModerationDecision parsedDecision)
-            || !TryParse(severity, out ModerationSeverity parsedSeverity)
+            || !EnumText.TryParse(decision, out ModerationDecision parsedDecision)
+            || !EnumText.TryParse(severity, out ModerationSeverity parsedSeverity)
             || !categories.All(ModerationCategories.IsKnown))
         {
             return null;
         }
 
         return new ModerationVerdict(parsedDecision, [.. categories.Distinct(StringComparer.Ordinal)], parsedSeverity, reason.Trim(), "", null, 0, null);
-    }
-
-    private static bool TryParse<TEnum>(string value, out TEnum parsed)
-        where TEnum : struct, Enum
-    {
-        foreach (var candidate in Enum.GetValues<TEnum>())
-        {
-            if (string.Equals(JsonNamingPolicy.SnakeCaseLower.ConvertName(candidate.ToString()), value, StringComparison.Ordinal))
-            {
-                parsed = candidate;
-                return true;
-            }
-        }
-
-        parsed = default;
-        return false;
     }
 
     private static JsonElement BuildSchema()

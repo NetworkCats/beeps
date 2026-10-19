@@ -38,9 +38,9 @@ public sealed class ActionsModel(BeepService beeps, IStringLocalizer<SharedResou
         }
 
         var back = Url.IsLocalUrl(ReturnUrl) ? ReturnUrl : SitePaths.Beep(id);
+        this.Notify(result, deleted ? localizer["Beep.Deleted"] : null);
         if (!result.IsSuccess)
         {
-            TempData[Notices.Error] = result.Error.Detail;
             return LocalRedirect(back);
         }
 
@@ -49,7 +49,6 @@ public sealed class ActionsModel(BeepService beeps, IStringLocalizer<SharedResou
             return LocalRedirect($"{back}#{SitePaths.BeepAnchor(id)}");
         }
 
-        TempData[Notices.Success] = localizer["Beep.Deleted"].Value;
         // The deleted beep's own page is gone with it.
         return LocalRedirect(back.StartsWith(SitePaths.Beep(id), StringComparison.OrdinalIgnoreCase) ? SitePaths.Home : back);
     }

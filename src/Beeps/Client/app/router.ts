@@ -17,7 +17,7 @@
 // anywhere on it), so following it shows the page without waiting.
 import { signal } from '@preact/signals';
 import { markSending } from './busy.ts';
-import { readConfig } from './config.ts';
+import { keepViewer, readConfig } from './config.ts';
 import { confirmAction } from './dialogs.ts';
 import { pageDataUrl, pageOf } from './http.ts';
 import { loadStrings } from './i18n.ts';
@@ -60,6 +60,9 @@ interface Snapshot {
 const MAX_SNAPSHOTS = 20;
 const snapshots = new Map<string, Snapshot>();
 let current: Entry = { key: '', index: 0 };
+// The address of the page shown, which its snapshot is kept under: going back or forward, the address bar already
+// shows the page gone to by the time this one is saved.
+let shownUrl = '';
 let visiting: AbortController | undefined;
 
 /** From the first page shown in place on, going back is scrolled here, to where the snapshot was taken. */
@@ -88,6 +91,13 @@ function fetchPage(url: string, init: RequestInit = {}): Promise<Response> {
     : fetch(url, { ...init, credentials: 'same-origin', headers: { Accept: 'text/html' } });
 }
 
+/** Whether two addresses are the same page: path and query, whatever their fragments. */
+function samePage(a: string, b: string): boolean {
+  const first = new URL(a);
+  const second = new URL(b);
+  return first.pathname === second.pathname && first.search === second.search;
+}
+
 function isJson(response: Response): boolean {
   return response.headers.get('Content-Type')?.includes('application/json') ?? false;
 }
@@ -109,7 +119,7 @@ export function pageUrl(): string {
 function save(): void {
   snapshots.delete(current.key);
   snapshots.set(current.key, {
-    url: window.location.href,
+    url: shownUrl,
     title: document.title,
     body: document.body.innerHTML,
     bodyAttributes: [...document.body.attributes].map((a) => [a.name, a.value]),
@@ -239,6 +249,7 @@ function restore(snapshot: Snapshot): Promise<void> {
   document.title = snapshot.title;
   setBodyAttributes(snapshot.bodyAttributes);
   document.body.innerHTML = snapshot.body;
+  keepViewer();
   readConfig();
   return mount(document.body, snapshot.islands).then(() => {
     window.scrollTo(0, snapshot.scroll);
@@ -262,6 +273,8 @@ interface ShowOptions {
   /** The first page of the tab, in place of an app shell's skeleton: nothing to move the focus from. */
   first?: boolean;
   hash?: string;
+  /** Failing to fetch it throws for the caller to try again, rather than loading the page in full. */
+  retry?: boolean;
 }
 
 /** Puts what came back in place of this page, given whether it was fetched ahead. */
@@ -315,6 +328,7 @@ async function show(response: Response, options: ShowOptions, signal: AbortSigna
     drawn = swap(options.ahead ?? false);
     window.history.pushState({ beeps: current }, '', url);
   }
+  shownUrl = window.location.href;
   // Scrolled once the islands are drawn: what is scrolled to may be in one.
   await drawn;
   if (signal.aborted) return;
@@ -340,7 +354,7 @@ async function request(url: string, init: RequestInit, options: ShowOptions): Pr
   } catch (error) {
     if (controller.signal.aborted) return;
     // Offline, or the request failed: the browser shows what is wrong.
-    if (init.method !== 'POST') window.location.assign(url);
+    if (init.method !== 'POST' && !options.retry) window.location.assign(url);
     throw error;
   } finally {
     if (visiting === controller) {
@@ -370,7 +384,7 @@ export function visit(url: string, replace = false): Promise<void> {
  * may have been signed out, or their language changed. Throws when it cannot be fetched; the caller tries again.
  */
 export function reload(): Promise<void> {
-  return request(pageUrl(), {}, { replace: true, keepScroll: true });
+  return request(pageUrl(), {}, { replace: true, keepScroll: true, retry: true });
 }
 
 /** Sends a form the plain way and shows the page that comes back: what the browser itself would do. */
@@ -502,19 +516,26 @@ async function onSubmit(event: SubmitEvent): Promise<void> {
 }
 
 function onPop(event: PopStateEvent): void {
-  const entry = entryOf(event.state);
-  // Only the fragment changed (a link within the page): nothing to show.
-  if (!entry) return;
+  let entry = entryOf(event.state);
+  if (!entry) {
+    // A link within the page, or going back or forward to one: the browser scrolls to it.
+    if (samePage(window.location.href, shownUrl)) return;
+    // Gone back to where a link within another page led (that page, its link, another page, then back): that page is
+    // shown again, from the entry that followed it.
+    entry = { key: newKey(), index: Math.max(0, current.index - 1) };
+    window.history.replaceState({ beeps: entry }, '');
+  }
   // A page still on its way was left behind: it must not be shown over the one gone back to.
   visiting?.abort();
   visiting = undefined;
   delete document.documentElement.dataset.loading;
   manual();
   save();
+  shownUrl = window.location.href;
   current = entry;
   const snapshot = snapshots.get(entry.key);
   if (snapshot && snapshot.url === window.location.href) void restore(snapshot);
-  else void request(window.location.href, {}, { replace: true }).catch(() => {});
+  else void request(window.location.href, {}, { replace: true, hash: window.location.hash }).catch(() => {});
 }
 
 export function startRouter(): void {
@@ -523,6 +544,7 @@ export function startRouter(): void {
     window.history.scrollRestoration = 'auto';
   });
   current = entryOf(window.history.state) ?? { key: newKey(), index: 0 };
+  shownUrl = window.location.href;
   window.history.replaceState({ ...(window.history.state as object | null), beeps: current }, '');
   document.addEventListener('click', onClick);
   document.addEventListener('submit', (event) => void onSubmit(event));

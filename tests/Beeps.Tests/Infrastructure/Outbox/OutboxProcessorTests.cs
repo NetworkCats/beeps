@@ -1,4 +1,5 @@
 using Beeps.Features.Shared;
+using Beeps.Infrastructure;
 using Beeps.Infrastructure.Outbox;
 using Beeps.Tests.Support;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -9,11 +10,9 @@ namespace Beeps.Tests.Infrastructure.Outbox;
 
 public sealed class OutboxProcessorTests
 {
-    private static readonly DateTimeOffset Now = new(2026, 10, 16, 8, 30, 0, TimeSpan.Zero);
-
     private readonly IOutboxStore store = Substitute.For<IOutboxStore>();
     private readonly IOutboxHandler handler = Substitute.For<IOutboxHandler>();
-    private readonly TimeProvider time = Substitute.For<TimeProvider>();
+    private readonly TimeProvider time = TestData.Time();
     private readonly OutboxOptions options = new()
     {
         BatchSize = 10,
@@ -26,7 +25,6 @@ public sealed class OutboxProcessorTests
     public OutboxProcessorTests()
     {
         handler.Type.Returns("test.message");
-        time.GetUtcNow().Returns(Now);
     }
 
     [Fact]
@@ -37,7 +35,7 @@ public sealed class OutboxProcessorTests
         var claimed = await CreateProcessor().ProcessBatchAsync(TestSupport.Ct);
 
         Assert.Equal(0, claimed);
-        await store.Received(1).ClaimAsync(10, Now, Now.AddMinutes(5), Arg.Any<CancellationToken>());
+        await store.Received(1).ClaimAsync(10, TestData.Now, TestData.Now.AddMinutes(5), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -65,7 +63,7 @@ public sealed class OutboxProcessorTests
 
         await store.Received(1).RescheduleAsync(
             message.Id,
-            Now.AddSeconds(20),
+            TestData.Now.AddSeconds(20),
             Arg.Is<string>(e => e.Contains("smtp down", StringComparison.Ordinal)),
             Arg.Any<CancellationToken>());
         await store.DidNotReceiveWithAnyArgs().CompleteAsync(default, TestSupport.Ct);
@@ -80,7 +78,7 @@ public sealed class OutboxProcessorTests
 
         await CreateProcessor().ProcessBatchAsync(TestSupport.Ct);
 
-        await store.Received(1).DeadLetterAsync(message.Id, Arg.Is<string>(e => e.Contains("boom", StringComparison.Ordinal)), Now, Arg.Any<CancellationToken>());
+        await store.Received(1).DeadLetterAsync(message.Id, Arg.Is<string>(e => e.Contains("boom", StringComparison.Ordinal)), TestData.Now, Arg.Any<CancellationToken>());
         await store.DidNotReceiveWithAnyArgs().RescheduleAsync(default, default, default!, TestSupport.Ct);
     }
 
@@ -92,7 +90,7 @@ public sealed class OutboxProcessorTests
 
         await CreateProcessor().ProcessBatchAsync(TestSupport.Ct);
 
-        await store.Received(1).RescheduleAsync(message.Id, Now.AddSeconds(10), Arg.Is<string>(e => e.Contains("from.a.newer.release", StringComparison.Ordinal)), Arg.Any<CancellationToken>());
+        await store.Received(1).RescheduleAsync(message.Id, TestData.Now.AddSeconds(10), Arg.Is<string>(e => e.Contains("from.a.newer.release", StringComparison.Ordinal)), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -104,7 +102,7 @@ public sealed class OutboxProcessorTests
         await CreateProcessor().ProcessBatchAsync(TestSupport.Ct);
 
         await handler.DidNotReceiveWithAnyArgs().HandleAsync(default!, TestSupport.Ct);
-        await store.Received(1).DeadLetterAsync(message.Id, Arg.Any<string>(), Now, Arg.Any<CancellationToken>());
+        await store.Received(1).DeadLetterAsync(message.Id, Arg.Any<string>(), TestData.Now, Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -141,10 +139,10 @@ public sealed class OutboxProcessorTests
     [InlineData(4, 60)]
     [InlineData(1000, 60)]
     public void RetryDelayDoublesUpToTheCap(int attempts, int expectedSeconds) =>
-        Assert.Equal(TimeSpan.FromSeconds(expectedSeconds), OutboxProcessor.RetryDelay(attempts, options));
+        Assert.Equal(TimeSpan.FromSeconds(expectedSeconds), FailedAttempts.RetryDelay(attempts, options.RetryBaseDelay, options.RetryMaxDelay));
 
     private static OutboxEnvelope Message(int attempts, string type = "test.message") =>
-        new(Guid.CreateVersion7(Now), type, """{"id":1}""", attempts, Now.AddMinutes(-1));
+        new(Guid.CreateVersion7(TestData.Now), type, """{"id":1}""", attempts, TestData.Now.AddMinutes(-1));
 
     private void Claim(params OutboxEnvelope[] messages) =>
         store.ClaimAsync(default, default, default, TestSupport.Ct).ReturnsForAnyArgs(messages);

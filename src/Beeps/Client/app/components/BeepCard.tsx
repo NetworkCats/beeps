@@ -41,6 +41,17 @@ const liking = new Set<string>();
 // Clicks on these are their own, not the card's.
 const OWN_CONTROLS = 'a, button, input, textarea, select, label, summary, details, form, dialog';
 
+/**
+ * A click anywhere on a card opens `href`, as on other social sites (with Ctrl or ⌘, in a new tab): not one on the
+ * card's own controls, or one that ends a selection of its text.
+ */
+export function openOnClick(event: TargetedMouseEvent<HTMLElement>, href: string): void {
+  if (event.defaultPrevented || event.button !== 0 || !(event.target instanceof Element)) return;
+  if (event.target.closest(OWN_CONTROLS) || window.getSelection()?.toString()) return;
+  if (event.metaKey || event.ctrlKey) window.open(href, '_blank', 'noopener');
+  else void visit(href).catch(() => {});
+}
+
 /** What the actions answer when they are sent in the background (Pages/Beep/Actions): a status code only. */
 async function act(id: string, handler: string): Promise<boolean> {
   try {
@@ -83,12 +94,9 @@ export function BeepCard({ id, focused, inThread, replyingTo, inInbox, entering,
     thumbnail: image.thumbnail,
   }));
 
-  // The whole card opens the beep, as on other social sites; its time is the real link, for keyboards and readers.
+  // The whole card opens the beep; its time is the real link, for keyboards and readers.
   const open = (event: TargetedMouseEvent<HTMLElement>): void => {
-    if (focused || event.defaultPrevented || event.button !== 0 || !(event.target instanceof Element)) return;
-    if (event.target.closest(OWN_CONTROLS) || window.getSelection()?.toString()) return;
-    if (event.metaKey || event.ctrlKey) window.open(permalink, '_blank', 'noopener');
-    else void visit(permalink).catch(() => {});
+    if (!focused) openOnClick(event, permalink);
   };
 
   // Pressed at once, as on other social sites, and let go again if it did not go through.
@@ -170,7 +178,7 @@ export function BeepCard({ id, focused, inThread, replyingTo, inInbox, entering,
             >
               <div class="dropdown-menu menu-panel">
                 {beep.canDelete ? (
-                  <form method="post" action={paths.beepAction(beep.id, 'Delete', returnUrl)} data-confirm={t('Beep.Delete.Confirm')} onSubmit={remove}>
+                  <form method="post" action={paths.beepAction(beep.id, 'Delete', returnUrl)} onSubmit={remove}>
                     <button class="dropdown-item dropdown-item-danger" type="submit">
                       <Icon name="delete" />
                       {t('Beep.Delete')}

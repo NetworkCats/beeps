@@ -15,25 +15,20 @@ public sealed class MediaPagesTests : IDisposable
 {
     private readonly BeepsWebApplicationFactory factory = new();
 
-    public MediaPagesTests() =>
-        factory.Media.LockOwnedAsync(default, default!, CancellationToken.None)
-            .ReturnsForAnyArgs(ci => ci.Arg<IReadOnlyCollection<Guid>>() is { } ids ? (IReadOnlyList<Guid>)[.. ids] : []);
+    public MediaPagesTests() => MediaServiceParts.OwnEverything(factory.Media);
 
     [Fact]
     public async Task ABeepCanBePostedWithImagesAndNoText()
     {
         var user = WebAuth.ArrangeUser(factory);
-        Beep? posted = null;
-        factory.Beeps.When(b => b.AddBeep(Arg.Any<Beep>(), Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<IReadOnlyCollection<Guid>>())).Do(ci => posted = ci.Arg<Beep>());
-        factory.Beeps.GetRowsAsync(default!, default, TestSupport.Ct).ReturnsForAnyArgs(_ =>
-            posted is null ? [] : (IReadOnlyList<BeepRow>)[new BeepRow(posted.Id, posted.Text, TestBeeps.Human(id: user.Id), null, posted.Id, TestData.Now, 0, 0, false)]);
+        var posted = TestBeeps.ArrangePosting(factory, TestBeeps.Human(id: user.Id));
         using var client = await WebAuth.SignInAsync(factory, user);
 
         using var response = await PostMultipartAsync(client, "/", "/compose", [("text", ""), ("ReturnUrl", "/")], [TestImages.Png(), TestImages.AnimatedGif()]);
 
         Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
-        Assert.Equal("", posted!.Text);
-        factory.Beeps.Received(1).AttachMedia(posted.Id, Arg.Is<IReadOnlyList<Guid>>(ids => ids.Count == 2));
+        Assert.Equal("", posted()!.Text);
+        factory.Beeps.Received(1).AttachMedia(posted()!.Id, Arg.Is<IReadOnlyList<Guid>>(ids => ids.Count == 2));
         factory.Media.Received(2).AddMedia(Arg.Is<MediaItem>(m => m.OwnerActorId == user.Id));
     }
 
@@ -218,7 +213,7 @@ public sealed class MediaPagesTests : IDisposable
         var user = WebAuth.ArrangeUser(factory);
         var agentId = Guid.NewGuid();
         factory.Agents.ListAgentsAsync(user.Id, Arg.Any<CancellationToken>()).Returns(
-            [new AgentRow(agentId, "tom.claude", "tom's Claude", "Claude", TestData.Now, null, "beeps_abc", TestData.Now, TestData.Now)]);
+            [new AgentRow(agentId, "tom.claude", "tom's Claude", "Claude", TestData.Now, null, "beeps_abc", TestData.Now)]);
         using var client = await WebAuth.SignInAsync(factory, user);
 
         var url = string.Format(System.Globalization.CultureInfo.InvariantCulture, path, agentId);
@@ -300,7 +295,7 @@ public sealed class MediaPagesTests : IDisposable
         var user = WebAuth.ArrangeUser(factory);
         var agentId = Guid.NewGuid();
         factory.Agents.ListAgentsAsync(user.Id, Arg.Any<CancellationToken>()).Returns(
-            [new AgentRow(agentId, "tom.claude", "tom's Claude", "Claude", TestData.Now, null, "beeps_abc", TestData.Now, TestData.Now, AvatarKey: "face")]);
+            [new AgentRow(agentId, "tom.claude", "tom's Claude", "Claude", TestData.Now, null, "beeps_abc", TestData.Now, AvatarKey: "face")]);
         factory.Avatars.FindActorAsync(agentId, Arg.Any<CancellationToken>()).Returns(new AvatarTarget(agentId, ActorKind.Agent, user.Id));
         using var client = await WebAuth.SignInAsync(factory, user);
 
@@ -325,7 +320,7 @@ public sealed class MediaPagesTests : IDisposable
         var user = WebAuth.ArrangeUser(factory);
         var agentId = Guid.NewGuid();
         factory.Agents.ListAgentsAsync(user.Id, Arg.Any<CancellationToken>()).Returns(
-            [new AgentRow(agentId, "tom.claude", "tom's Claude", "Claude", TestData.Now, null, "beeps_abc", TestData.Now, TestData.Now)]);
+            [new AgentRow(agentId, "tom.claude", "tom's Claude", "Claude", TestData.Now, null, "beeps_abc", TestData.Now)]);
         factory.Avatars.FindActorAsync(agentId, Arg.Any<CancellationToken>()).Returns(new AvatarTarget(agentId, ActorKind.Agent, user.Id));
         factory.Avatars.FindBannerKeyAsync(agentId, Arg.Any<CancellationToken>()).Returns("wide");
         using var client = await WebAuth.SignInAsync(factory, user);

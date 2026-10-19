@@ -119,7 +119,6 @@
     > .#{$prefix}icon { margin: 0; --cui-icon-size: 1.125rem; }
   }
   .#{$prefix}btn-icon.#{$prefix}btn-sm > .#{$prefix}icon { --cui-icon-size: 1rem; }
-  .#{$prefix}btn-icon.#{$prefix}btn-xs > .#{$prefix}icon { --cui-icon-size: 0.875rem; }
 
   /* Loading state: hide label, show spinner. */
   .#{$prefix}btn-loading {

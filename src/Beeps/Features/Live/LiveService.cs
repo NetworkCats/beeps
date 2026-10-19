@@ -450,7 +450,7 @@ public sealed partial class LiveService(
         try
         {
             var evicted = await store.AddConnectionAsync(
-                connection.Viewer.ActorId, connection.Id, time.GetUtcNow(), options.Value.MaxConnectionsPerAccount, cancellationToken);
+                connection.Viewer.ActorId, connection.Id, time.GetUtcNow(), options.Value.MaxConnectionsPerActor, cancellationToken);
             await updates.CloseConnectionsAsync(evicted, cancellationToken);
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
@@ -568,6 +568,6 @@ public sealed partial class LiveService(
     [LoggerMessage(Level = LogLevel.Warning, Message = "Skipped live event {EventId} ({EventType}): its data could not be read")]
     private static partial void LogUnreadableEvent(ILogger logger, Exception exception, string eventId, string eventType);
 
-    [LoggerMessage(Level = LogLevel.Warning, Message = "Counting the live connections of {AccountId} failed")]
-    private static partial void LogConnectionBookkeepingFailed(ILogger logger, Exception exception, Guid accountId);
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Counting the live connections of {ActorId} failed")]
+    private static partial void LogConnectionBookkeepingFailed(ILogger logger, Exception exception, Guid actorId);
 }

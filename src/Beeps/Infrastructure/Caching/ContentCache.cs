@@ -16,7 +16,8 @@ namespace Beeps.Infrastructure.Caching;
 /// fails a read: it is logged, Valkey is skipped for a few seconds, and reads go to the database.
 /// </para>
 /// <para>
-/// Missing rows are not cached, so creating something never has to invalidate anything.
+/// A missing beep, actor, handle or hashtag is not cached, so creating one never has to invalidate anything. Lists
+/// (an owner's agents, whom someone follows) are cached even when empty, so adding to one invalidates it.
 /// </para>
 /// </remarks>
 public sealed partial class ContentCache : IDisposable

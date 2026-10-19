@@ -1,12 +1,10 @@
 using Beeps.Features.Accounts;
-using Beeps.Features.Avatars;
 using Beeps.Features.Beeps;
 using Beeps.Features.Live;
 using Beeps.Features.Profiles;
 using Beeps.Features.RateLimiting;
 using Beeps.Features.Shared;
 using Beeps.Tests.Support;
-using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Beeps.Tests.Features.Profiles;
 
@@ -294,13 +292,6 @@ public sealed class ProfileServiceTests
         await store.DidNotReceiveWithAnyArgs().AddFollowAsync(default, default, default, TestSupport.Ct);
     }
 
-    private ProfileService Create()
-    {
-        var views = new BeepViews(
-            Substitute.For<IBeepStore>(), Substitute.For<IBeepCounterStore>(), TestData.Avatars, TestData.Media, NullLogger<BeepViews>.Instance);
-        return new ProfileService(store, views, TestData.Media, unitOfWork, TestData.RateLimits(rateLimitStore), TestData.Live(liveStore), TestData.Time(), new TestLocalizer(), NullLogger<ProfileService>.Instance);
-    }
-
     [Fact]
     public async Task EachChangedFollowOrBlockTellsBothSidesLive()
     {
@@ -337,8 +328,18 @@ public sealed class ProfileServiceTests
         ];
 
         Assert.All(results, r => Assert.Equal(ErrorKind.RateLimited, r.Error?.Kind));
+        await rateLimitStore.Received(4).TryAcquireAsync(
+            Arg.Is<IReadOnlyList<RateLimitCounter>>(c => TestData.Policies(c).Single() == RateLimitPolicies.Follow), Arg.Any<CancellationToken>());
         await store.DidNotReceiveWithAnyArgs().AddFollowAsync(default, default, default, TestSupport.Ct);
+        await store.DidNotReceiveWithAnyArgs().RemoveFollowAsync(default, default, TestSupport.Ct);
         await store.DidNotReceiveWithAnyArgs().AddBlockAsync(default, default, default, TestSupport.Ct);
         await store.DidNotReceiveWithAnyArgs().RemoveBlockAsync(default, default, TestSupport.Ct);
     }
+
+    private ProfileService Create() => TestServices.Profiles(
+        store,
+        TestServices.Views(Substitute.For<IBeepStore>(), Substitute.For<IBeepCounterStore>()),
+        unitOfWork,
+        TestData.RateLimits(rateLimitStore),
+        liveStore);
 }

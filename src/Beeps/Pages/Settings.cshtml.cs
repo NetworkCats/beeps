@@ -1,7 +1,6 @@
 using Beeps.Features.Accounts;
 using Beeps.Features.Auth;
 using Beeps.Features.Avatars;
-using Beeps.Features.Localization;
 using Beeps.Features.Media;
 using Beeps.Features.Profiles;
 using Beeps.Features.Shared;
@@ -97,28 +96,12 @@ public sealed class SettingsModel(AccountService accounts, AvatarService avatars
             cancellationToken);
 
     // The page then simply shows up in the new language; no notice needed.
-    public async Task<IActionResult> OnPostLanguageAsync(CancellationToken cancellationToken)
-    {
-        var result = await accounts.SetLocaleAsync(User.ActorId(), Culture, cancellationToken);
-        if (result.IsSuccess)
-        {
-            CultureCookie.Append(Response, SupportedCultures.Find(Culture)!);
-        }
-
-        return await DoneAsync(result, SettingsSections.Display, notice: null, cancellationToken);
-    }
+    public async Task<IActionResult> OnPostLanguageAsync(CancellationToken cancellationToken) =>
+        await DoneAsync(await this.ChooseCultureAsync(accounts, Culture, cancellationToken), SettingsSections.Display, notice: null, cancellationToken);
 
     // The page then simply shows up in the new scheme, as do the account's other tabs.
-    public async Task<IActionResult> OnPostThemeAsync(CancellationToken cancellationToken)
-    {
-        var result = await accounts.SetThemeAsync(User.ActorId(), Theme, cancellationToken);
-        if (result.IsSuccess)
-        {
-            ThemeCookie.Set(Response, Theme);
-        }
-
-        return await DoneAsync(result, SettingsSections.Display, notice: null, cancellationToken);
-    }
+    public async Task<IActionResult> OnPostThemeAsync(CancellationToken cancellationToken) =>
+        await DoneAsync(await this.ChooseThemeAsync(accounts, Theme, cancellationToken), SettingsSections.Display, notice: null, cancellationToken);
 
     public async Task<IActionResult> OnPostPasswordAsync(CancellationToken cancellationToken) =>
         await DoneAsync(

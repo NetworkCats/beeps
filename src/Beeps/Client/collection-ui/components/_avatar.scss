@@ -2,7 +2,7 @@
  *
  *   <span class="avatar"><img src="…" alt=""></span>          or initials / an .icon inside
  *
- * Sizes: default (32) .avatar-lg (44) -xl (64). */
+ * Sizes: default (32) .avatar-lg (44) -xl (64), which set --cui-avatar-size (so a page can still set its own). */
 @use "../foundation/layers";
 @use "../abstracts" as *;
 
@@ -30,6 +30,6 @@
     > img { width: 100%; height: 100%; object-fit: cover; }
     > .#{$prefix}icon { --cui-icon-size: calc(var(--_size) * 0.55); }
   }
-  .#{$prefix}avatar-lg { --_size: 2.75rem; }
-  .#{$prefix}avatar-xl { --_size: 4rem; }
+  .#{$prefix}avatar-lg { --cui-avatar-size: 2.75rem; }
+  .#{$prefix}avatar-xl { --cui-avatar-size: 4rem; }
 }

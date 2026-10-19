@@ -31,7 +31,7 @@ public sealed partial class ProfileService(
 
         var actor = profile.Actor;
         var human = actor.Kind == ActorKind.Human;
-        var mine = viewer is { IsAgent: false } && IsOwn(viewer, actor);
+        var mine = viewer is { IsAgent: false } && viewer.IsSelfOrOwnAgent(actor.Id, actor.OwnerId);
         IReadOnlyList<ActorView> agents = human
             ? [.. (await store.ListAgentsAsync(actor.Id, cancellationToken)).Select(a => views.Actor(a, viewer))]
             : [];
@@ -73,6 +73,9 @@ public sealed partial class ProfileService(
     /// <summary>The visible actor with this handle, for features that list its beeps.</summary>
     public async Task<Result<ActorRow>> FindActorAsync(string? handle, CancellationToken cancellationToken) =>
         await FindAsync(handle, cancellationToken) is { } profile ? profile.Actor : NotFound();
+
+    /// <summary>The current handle of a visible actor that has one; for addresses that must survive a rename.</summary>
+    public Task<string?> FindHandleAsync(Guid actorId, CancellationToken cancellationToken) => store.FindHandleAsync(actorId, cancellationToken);
 
     /// <summary>Not while either of the two has blocked the other.</summary>
     public async Task<Result> FollowAsync(Viewer viewer, string? handle, CancellationToken cancellationToken)
@@ -209,7 +212,7 @@ public sealed partial class ProfileService(
             return NotFound();
         }
 
-        return IsOwn(viewer, profile.Actor)
+        return viewer.IsSelfOrOwnAgent(profile.Actor.Id, profile.Actor.OwnerId)
             ? Error.Validation(ProfileErrorCodes.CannotBlockOwn, localizer["Error.CannotBlockOwn"])
             : profile.Actor;
     }
@@ -217,12 +220,9 @@ public sealed partial class ProfileService(
     /// <summary>Follows and blocks are writes, counted more strictly than reading (PLAN 12, 6.16).</summary>
     private async Task<Error?> LimitAsync(Viewer viewer, CancellationToken cancellationToken)
     {
-        var limited = await rateLimits.CheckAsync(RateLimitPolicies.Follow, $"actor:{viewer.ActorId}", cancellationToken);
+        var limited = await rateLimits.CheckAsync(RateLimitPolicies.Follow, RateLimitPartitions.Actor(viewer.ActorId), cancellationToken);
         return limited.IsSuccess ? null : limited.Error;
     }
-
-    /// <summary>Oneself, or one of one's agents: never blocked.</summary>
-    private static bool IsOwn(Viewer viewer, ActorRow actor) => actor.Id == viewer.ActorId || actor.OwnerId == viewer.ActorId;
 
     private async Task<Result<Guid>> FollowTargetAsync(Viewer viewer, string? handle, CancellationToken cancellationToken)
     {

@@ -1,4 +1,3 @@
-using System.Text.Json;
 using Beeps.Features.Accounts;
 using Beeps.Features.Beeps;
 using Beeps.Features.Shared;
@@ -63,8 +62,8 @@ public sealed class PendingCacheChangesTests : IAsyncDisposable
     {
         await StartAsync();
         // What the worker reads to find the owner's profile, which lists the agent.
-        Put(CacheKinds.Actor, Agent, new CachedActor(Agent, ActorKind.Agent, "tom.claude", "tom's Claude", Owner, null, null, "Claude", TestData.Now, false, false));
-        Put(CacheKinds.Actor, Owner, new CachedActor(Owner, ActorKind.Human, "tom", "Tom", null, null, null, null, TestData.Now, false, false));
+        shared.Put(CacheKinds.Actor, Agent, new CachedActor(Agent, ActorKind.Agent, "tom.claude", "tom's Claude", Owner, null, null, "Claude", TestData.Now, false, false));
+        shared.Put(CacheKinds.Actor, Owner, new CachedActor(Owner, ActorKind.Human, "tom", "Tom", null, null, null, null, TestData.Now, false, false));
         var agent = Track(new Actor { Id = Agent, Kind = ActorKind.Agent, OwnerId = Owner, Handle = "tom.claude", NormalizedHandle = "tom.claude", DisplayName = "tom's Claude" });
         agent.Handle = "tom.Helper";
         agent.NormalizedHandle = "tom.helper";
@@ -72,7 +71,7 @@ public sealed class PendingCacheChangesTests : IAsyncDisposable
         changes.CaptureTracked();
         changes.Flush();
 
-        var message = await PublishedAsync();
+        var message = await shared.PublishedAsync();
         Assert.Equal([CacheKinds.Actor.Key(Agent), CacheKinds.Handle.Key("tom.claude")], message.Keys.Order(StringComparer.Ordinal));
         Assert.Equal([PageTags.Shows(Agent)], message.PageTags);
     }
@@ -100,23 +99,22 @@ public sealed class PendingCacheChangesTests : IAsyncDisposable
         changes.CaptureTracked();
         changes.Flush();
 
-        Assert.Equal([CacheKinds.Agents.Key(Owner)], (await PublishedAsync()).Keys);
+        Assert.Equal([CacheKinds.Agents.Key(Owner)], (await shared.PublishedAsync()).Keys);
     }
 
-    [Fact]
-    public async Task ABanDropsTheActorAndThePagesShowingIt()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ABanHidesTheActorAndLiftingItShowsThemAgain(bool lifting)
     {
-        await StartAsync();
-        Put(CacheKinds.Agents, Owner, (IReadOnlyList<Guid>)[]);
-        var user = Track(new User { Id = Owner, Actor = new Actor { Id = Owner, Kind = ActorKind.Human, Handle = "tom", DisplayName = "Tom" }, Email = "t@x.test", NormalizedEmail = "t@x.test", PasswordHash = "x", Locale = "en" });
-        user.BannedAt = TestData.Now;
+        var user = Track(new User
+        {
+            Id = Owner, Actor = new Actor { Id = Owner, Kind = ActorKind.Human, Handle = "tom", DisplayName = "Tom" },
+            Email = "t@x.test", NormalizedEmail = "t@x.test", PasswordHash = "x", Locale = "en", BannedAt = lifting ? TestData.Now : null,
+        });
+        user.BannedAt = lifting ? null : TestData.Now;
 
-        changes.CaptureTracked();
-        changes.Flush();
-
-        var message = await PublishedAsync();
-        Assert.Equal([CacheKinds.Actor.Key(Owner)], message.Keys);
-        Assert.Equal([PageTags.Shows(Owner)], message.PageTags);
+        Assert.Equal([lifting ? CacheChange.ActorRestored(Owner) : CacheChange.ActorVisibility(Owner)], Captured());
     }
 
     [Fact]
@@ -142,20 +140,11 @@ public sealed class PendingCacheChangesTests : IAsyncDisposable
     }
 
     [Fact]
-    public async Task ANewBeepEvictsThePagesItBelongsOn()
+    public void ANewBeepIsInvalidatedAsPosted()
     {
-        await StartAsync();
-        var beep = new Beep { Id = Agent, AuthorId = Owner, RootId = Agent, Text = "hello #news", CreatedAt = TestData.Now };
-        db.Add(beep);
-        Put(CacheKinds.Beep, beep.Id, new CachedBeep(beep.Id, beep.Text, Owner, null, beep.Id, TestData.Now, 0, 0, [], []));
-        Put(CacheKinds.Actor, Owner, new CachedActor(Owner, ActorKind.Human, "tom", "Tom", null, null, null, null, TestData.Now, false, false));
+        db.Add(new Beep { Id = Agent, AuthorId = Owner, RootId = Agent, Text = "hello #news", CreatedAt = TestData.Now });
 
-        changes.CaptureTracked();
-        changes.Flush();
-
-        var message = await PublishedAsync();
-        Assert.Empty(message.Keys);
-        Assert.Equal([PageTags.Actor(Owner), PageTags.Public, PageTags.Hashtag("news"), PageTags.Thread(beep.Id)], message.PageTags.Order(StringComparer.Ordinal));
+        Assert.Equal([CacheChange.BeepPosted(Agent)], Captured());
     }
 
     [Fact]
@@ -191,17 +180,11 @@ public sealed class PendingCacheChangesTests : IAsyncDisposable
 
     private Task StartAsync() => invalidator.StartAsync(stop.Token);
 
-    private void Put<TKey, TValue>(CacheKind<TKey, TValue> kind, TKey id, TValue value)
-        where TKey : notnull =>
-        shared.Entries[kind.Key(id)] = JsonSerializer.SerializeToUtf8Bytes(value, kind.Type);
-
-    private async Task<CacheInvalidationMessage> PublishedAsync()
+    /// <summary>What the tracked changes invalidate, from the durable copy staged for them.</summary>
+    private IReadOnlyList<CacheChange> Captured()
     {
-        for (var i = 0; i < 300 && shared.Published.Count == 0; i++)
-        {
-            await Task.Delay(10, TestSupport.Ct);
-        }
-
-        return JsonSerializer.Deserialize(Assert.Single(shared.Published), ContentCacheJsonContext.Default.CacheInvalidationMessage)!;
+        changes.CaptureTracked();
+        changes.StageDurableCopy();
+        return ((CacheInvalidationRequest)Assert.Single(outbox.ReceivedCalls()).GetArguments()[1]!).Changes;
     }
 }

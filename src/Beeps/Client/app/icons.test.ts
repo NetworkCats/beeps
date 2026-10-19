@@ -27,13 +27,18 @@ function names(paths: string[], pattern: RegExp): Set<string> {
 // here), and glyphs the styles draw themselves (the stepper's tick, the close button).
 const inPages = new Set([...names(files(pages, '.cshtml'), /<icon name="([^"]+)"/g), ...names(files(join(client, 'app'), '.tsx'), /<Icon name="([^"]+)"/g)]);
 
-test('the app names its icons literally', () => {
+test('the app and the pages name their icons literally', () => {
   assert.deepEqual([...names(files(join(client, 'app'), '.tsx'), /<Icon (name=\{[^}]*\})/g)], []);
+  assert.deepEqual([...names(files(pages, '.cshtml'), /<icon (name="@[^"]*")/g)], []);
 });
 const inStyles = names(files(client, '.scss'), /icon-glyph\("([^"]+)"\)/g);
 
 test('every icon a page uses is in the font', () => {
   assert.deepEqual([...inPages].filter((name) => !listed.includes(name)), []);
+});
+
+test('every glyph the styles draw is in the font', () => {
+  assert.deepEqual([...inStyles].filter((name) => !listed.includes(name)), []);
 });
 
 test('the font holds no icon that nothing uses', () => {

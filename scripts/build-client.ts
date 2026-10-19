@@ -1,7 +1,7 @@
 // Builds the client assets into src/Beeps/wwwroot/dist. Node runs this file directly.
 //
 //   node scripts/build-client.ts           one-shot production build (minified, no source maps)
-//   node scripts/build-client.ts --watch   rebuild on change, with source maps
+//   node scripts/build-client.ts --watch   rebuild on change, with source maps (and Client/strings.json, build-strings.ts)
 //
 // File names stay stable (app.js, main.css): MapStaticAssets fingerprints them at `dotnet build`,
 // so cache busting is not this script's job. Chunks carry a hash of their content in their names.
@@ -13,12 +13,11 @@
 // server gives to admins only (Pages/Islands/ClientAssetsMiddleware.cs).
 import * as esbuild from 'esbuild';
 import * as sass from 'sass';
-import { globSync, mkdirSync, readFileSync, rmSync, watch, writeFileSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import { mkdirSync, readFileSync, rmSync, watch, writeFileSync } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { appSources, client, isAppSource, root } from './client-sources.ts';
 
-const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const client = join(root, 'src/Beeps/Client');
 const out = join(root, 'src/Beeps/wwwroot/dist');
 const watchMode = process.argv.includes('--watch');
 
@@ -48,9 +47,8 @@ interface LazyIsland {
 /** Each lazy island's module, and whether it is an admin page's. */
 function lazyIslands(): Map<string, LazyIsland> {
   const islands = new Map<string, LazyIsland>();
-  for (const file of globSync('app/**/*.{ts,tsx}', { cwd: client })) {
-    if (/\.test\.tsx?$/.test(file)) continue;
-    const path = join(client, file);
+  for (const path of appSources()) {
+    const file = relative(client, path);
     const source = readFileSync(path, 'utf8');
     const calls = source.match(/\b(lazyIsland|adminIsland)\(\s*'/g)?.length ?? 0;
     let found = 0;
@@ -157,15 +155,24 @@ function buildStyles(): boolean {
 rmSync(out, { recursive: true, force: true });
 mkdirSync(out, { recursive: true });
 
+/** Lists the resource keys again (scripts/build-strings.ts), so the server sends a new string as soon as it is used. */
+function buildStrings(): void {
+  spawnSync(process.execPath, [join(root, 'scripts/build-strings.ts')], { stdio: 'inherit' });
+}
+
 if (watchMode) {
   const context = await esbuild.context(scriptOptions);
   await context.watch();
+  buildStrings();
   buildStyles();
-  let pending: NodeJS.Timeout | undefined;
+  const pending = new Map<() => unknown, NodeJS.Timeout>();
+  const soon = (step: () => unknown): void => {
+    clearTimeout(pending.get(step));
+    pending.set(step, setTimeout(step, 50));
+  };
   watch(client, { recursive: true }, (_event, file) => {
-    if (!file?.endsWith('.scss')) return;
-    clearTimeout(pending);
-    pending = setTimeout(buildStyles, 50);
+    if (file?.endsWith('.scss')) soon(buildStyles);
+    else if (file && isAppSource(file)) soon(buildStrings);
   });
   console.log('Watching src/Beeps/Client for changes…');
 } else {

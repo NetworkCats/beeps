@@ -13,6 +13,7 @@ import { t } from '../i18n.ts';
 import { useSnapshot, type IslandProps } from '../islands.tsx';
 import { appendPage, mergeFresh } from '../lists.ts';
 import { useLive } from '../page.ts';
+import { paths } from '../paths.ts';
 import type { BeepProps, LiveProps } from '../props.ts';
 
 interface SearchResults {
@@ -48,9 +49,11 @@ function useResults(results: SearchResults | undefined, people: boolean): Result
   if (results !== state.source) {
     state.source = results;
     putBeeps(results?.beeps ?? []);
-    const beeps = mergeFresh({ ids: state.ids.value, next: state.next.value }, { ids: (results?.beeps ?? []).map((beep) => beep.id), next: results?.next });
+    // With no next page the fresh results are all there are: nothing shown past them stays.
+    const kept = (ids: string[]): string[] => (results?.next ? ids : []);
+    const beeps = mergeFresh({ ids: kept(state.ids.value), next: state.next.value }, { ids: (results?.beeps ?? []).map((beep) => beep.id), next: results?.next });
     const userIds = state.users.value.map((user) => user.actor.id);
-    const users = mergeFresh({ ids: userIds, next: state.next.value }, { ids: (results?.users ?? []).map((user) => user.actor.id), next: results?.next });
+    const users = mergeFresh({ ids: kept(userIds), next: state.next.value }, { ids: (results?.users ?? []).map((user) => user.actor.id), next: results?.next });
     const byId = new Map([...state.users.value, ...(results?.users ?? [])].map((user) => [user.actor.id, user]));
     state.ids.value = beeps.ids;
     state.users.value = users.ids.flatMap((id) => byId.get(id) ?? []);
@@ -90,7 +93,7 @@ export function SearchPage({ props, errors }: IslandProps<SearchProps>) {
     <section class="feed">
       <header class="column-header column-header-search">
         <h1 class="visually-hidden">{t('Search.Title')}</h1>
-        <form class="search search-pill" role="search" method="get" action="/search">
+        <form class="search search-pill" role="search" method="get" action={paths.search}>
           <input type="hidden" name="type" value={props.users ? 'users' : 'beeps'} />
           <Icon name="search" />
           <label class="visually-hidden" for="q">

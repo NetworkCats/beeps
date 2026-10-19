@@ -22,7 +22,7 @@ public sealed partial class LiveEventHub(
     /// <summary>Events a slow connection may have waiting before it is dropped (it reconnects and replays).</summary>
     public const int SubscriberCapacity = 1000;
 
-    public const int BatchSize = 500;
+    private const int BatchSize = 500;
 
     private static readonly TimeSpan ErrorDelay = TimeSpan.FromSeconds(2);
 
@@ -156,7 +156,7 @@ public sealed partial class LiveEventHub(
                 if (!events.All(subscription.Offer))
                 {
                     subscriptions.RemoveAt(i);
-                    subscription.Overflow();
+                    subscription.End();
                     LogOverflow(logger);
                 }
             }
@@ -211,8 +211,7 @@ public sealed partial class LiveEventHub(
 
         public bool Offer(LiveEvent item) => channel.Writer.TryWrite(item);
 
-        public void Overflow() => channel.Writer.TryComplete();
-
+        /// <summary>Ends the connection's stream; the client reconnects and replays what it missed.</summary>
         public void End() => channel.Writer.TryComplete();
 
         public async IAsyncEnumerable<LiveEvent> ReadAllAsync([EnumeratorCancellation] CancellationToken cancellationToken)

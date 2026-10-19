@@ -42,7 +42,7 @@ public sealed class DetailsModel(AdminService admin, IStringLocalizer<SharedReso
 
     private RedirectToPageResult Done(Result result, string notice)
     {
-        TempData[result.IsSuccess ? Notices.Success : Notices.Error] = result.IsSuccess ? localizer[notice].Value : result.Error.Detail;
+        this.Notify(result, localizer[notice]);
         return RedirectToPage();
     }
 }

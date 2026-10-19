@@ -71,7 +71,7 @@ export function ThreadPage({ props, errors }: IslandProps<ThreadProps>) {
   return (
     <section class="feed">
       <header class="column-header">
-        <a class="column-back" href="/" aria-label={t('Nav.Back')}>
+        <a class="column-back" href={paths.home} aria-label={t('Nav.Back')}>
           <Icon name="arrow_back" />
         </a>
         <h1 class="column-title">{t('Thread.Title')}</h1>

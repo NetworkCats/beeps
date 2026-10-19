@@ -7,6 +7,7 @@ import { viewer } from '../config.ts';
 import { t } from '../i18n.ts';
 import type { IslandProps } from '../islands.tsx';
 import { useLive } from '../page.ts';
+import { paths } from '../paths.ts';
 import type { BeepListProps, ComposerProps, IslandsPage, LiveProps } from '../props.ts';
 
 interface IndexProps {
@@ -39,10 +40,10 @@ function withList<P extends { list: BeepListProps }>(props: P, list: FeedSource)
 function FeedTabs({ current }: { current: 'home' | 'public' }) {
   return (
     <nav class="tabs tabs-justify" aria-label={t('Nav.Feeds')}>
-      <a class="tab" href="/" aria-current={current === 'home' ? 'page' : undefined}>
+      <a class="tab" href={paths.home} aria-current={current === 'home' ? 'page' : undefined}>
         {t('Nav.Home')}
       </a>
-      <a class="tab" href="/public" aria-current={current === 'public' ? 'page' : undefined}>
+      <a class="tab" href={paths.public} aria-current={current === 'public' ? 'page' : undefined}>
         {t('Nav.Public')}
       </a>
     </nav>
@@ -72,7 +73,7 @@ export function IndexPage({ props, errors }: IslandProps<IndexProps>) {
         <div class="intro-body">
           <h1 class="intro-title">{t('Site.Name')}</h1>
           <p class="intro-text">{t('Site.Tagline')}</p>
-          <a class="aside-link" href="/about">
+          <a class="aside-link" href={paths.about}>
             {t('About.LearnMore')}
           </a>
         </div>
@@ -114,7 +115,7 @@ export function TagPage({ props }: IslandProps<TagProps>) {
   return (
     <section class="feed">
       <header class="column-header">
-        <a class="column-back" href="/" aria-label={t('Nav.Back')}>
+        <a class="column-back" href={paths.home} aria-label={t('Nav.Back')}>
           <Icon name="arrow_back" />
         </a>
         <h1 class="column-title">#{props.tag}</h1>

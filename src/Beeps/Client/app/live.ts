@@ -3,7 +3,8 @@
 // say goes into the beeps every card draws from (beeps.ts), or to the islands that follow it (page.ts).
 import { effect } from '@preact/signals';
 import { isShown, redraw, removeAuthors, removeBeep, setCounts, setLiked, shownChanged, shownIds, shownWith } from './beeps.ts';
-import { viewer } from './config.ts';
+import { viewer, type Viewer } from './config.ts';
+import { getJson } from './http.ts';
 import { liveStreamUrl, nextRetryDelay } from './live-url.ts';
 import { emit, pageLive, refreshPage, showAnew } from './page.ts';
 import { PAGE_SHOWN, type PageShown } from './router.ts';
@@ -11,13 +12,12 @@ import { schedule } from './schedule.ts';
 import { theme, unread } from './state.ts';
 
 const AUTH_STATE = '/stream/auth';
+const LIVE_VIEWER = '/live/viewer';
 // Search results are asked again at most this often (searching has its own rate limit).
 const SEARCH_INTERVAL = 10_000;
 // Admin pages: drawn again at most this often. Figures that change with no event of their own (backlogs, dead jobs)
 // are watched by the server while an admin page is open (AdminFiguresWorker), which then sends `admin`.
 const ADMIN_INTERVAL = 3_000;
-// After a resync, a page about a beep checks it is still there at most this often (each check draws the whole page).
-const SUBJECT_INTERVAL = 5_000;
 
 let source: EventSource | undefined;
 let lastEventId: string | undefined;
@@ -104,8 +104,6 @@ function connect(): void {
       void showAnew();
       return;
     }
-    // Blocking either way hides a beep, with no event about the beep itself.
-    if (subject()?.startsWith('beep:')) schedule(checkSubject, SUBJECT_INTERVAL);
     resync();
   });
   on(events, 'search', () => {
@@ -158,7 +156,13 @@ function on<T>(events: EventSource, type: string, handle: (data: T) => void): vo
 /** An actor changed (profile, avatar, agents): islands that show them catch up, and so does the viewer's own avatar. */
 function actorChanged(id: string): void {
   if (pageLive.value.actors?.includes(id)) refreshPage();
-  if (id === viewer.value.id) emit('viewer');
+  // Only members may ask (/live).
+  if (id === viewer.value.id && viewer.value.member) schedule(refreshViewer);
+}
+
+/** The viewer as the server has them now: the account menu and the composer show their new avatar. */
+async function refreshViewer(): Promise<void> {
+  viewer.value = await getJson<Viewer>(LIVE_VIEWER);
 }
 
 /** Something changed that no single event describes: the lists, the inbox and every island catch up. */
@@ -195,11 +199,6 @@ async function checkSignedIn(): Promise<void> {
   window.clearTimeout(retryTimer);
   retryDelay = wait + Math.round(Math.random() * 500);
   retryTimer = window.setTimeout(connect, retryDelay);
-}
-
-/** Is what the page is about still there for this viewer? Only when it is gone is the page shown anew. */
-async function checkSubject(): Promise<void> {
-  refreshPage();
 }
 
 async function showWhole(events: EventSource): Promise<void> {

@@ -35,7 +35,7 @@ public sealed class EfMediaStore(BeepsDbContext db, PendingCacheChanges cacheCha
         if (updated > 0 && status == MediaStatus.Ready)
         {
             // Beeps, avatars and banners only show ready images, so whatever already uses this one shows it from now on.
-            var beeps = await db.Set<BeepMedia>().Where(bm => bm.MediaId == mediaId).Select(bm => bm.BeepId).ToListAsync(cancellationToken);
+            var beeps = await ListBeepsUsingAsync(mediaId, cancellationToken);
             var actors = await ListActorsUsingAsync(mediaId, cancellationToken);
             cacheChanges.Add([.. beeps.Select(CacheChange.Beep), .. actors.Select(CacheChange.Actor)]);
         }

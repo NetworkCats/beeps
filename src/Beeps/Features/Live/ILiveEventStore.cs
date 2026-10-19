@@ -31,12 +31,12 @@ public interface ILiveEventStore
     Task<IReadOnlyList<Guid>> TakeChangedCountsAsync(int max, CancellationToken cancellationToken);
 
     /// <summary>
-    /// Counts an open connection of the account. Returns the ids of its oldest connections beyond
+    /// Counts an open connection of the human or agent. Returns the ids of its oldest connections beyond
     /// <paramref name="max"/>, which stop being counted and should be closed.
     /// </summary>
-    Task<IReadOnlyList<string>> AddConnectionAsync(Guid accountId, string connectionId, DateTimeOffset now, int max, CancellationToken cancellationToken);
+    Task<IReadOnlyList<string>> AddConnectionAsync(Guid actorId, string connectionId, DateTimeOffset now, int max, CancellationToken cancellationToken);
 
-    Task RemoveConnectionAsync(Guid accountId, string connectionId, CancellationToken cancellationToken);
+    Task RemoveConnectionAsync(Guid actorId, string connectionId, CancellationToken cancellationToken);
 }
 
 /// <summary>This instance's view of the stream: every connection subscribes here instead of reading Valkey itself.</summary>

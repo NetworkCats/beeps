@@ -10,8 +10,9 @@ import { sendForm } from '../forms.ts';
 import { getJson } from '../http.ts';
 import { t } from '../i18n.ts';
 import { completeMention, mentionAt, mentionRanges, type MentionAt } from '../mention.ts';
+import { paths } from '../paths.ts';
 import type { ActorProps, ComposerProps, Errors } from '../props.ts';
-import { checkImages, countCharacters } from '../text.ts';
+import { checkImages, countCharacters, IMAGE_TYPES } from '../text.ts';
 import { Antiforgery, FieldError, field } from './Forms.tsx';
 import { Icon } from './Icon.tsx';
 
@@ -217,7 +218,7 @@ export function Composer({ composer, errors }: { composer: ComposerProps; errors
     });
   };
 
-  const action = composer.replyTo ? `/compose?replyTo=${composer.replyTo}` : '/compose';
+  const action = composer.replyTo ? paths.composeReply(composer.replyTo) : paths.compose;
   return (
     <form class="composer" method="post" enctype="multipart/form-data" action={action} id={reply ? 'reply' : 'compose'} onSubmit={submit}>
       <input type="hidden" name="ReturnUrl" value={composer.returnUrl} />
@@ -287,7 +288,7 @@ export function Composer({ composer, errors }: { composer: ComposerProps; errors
           <label class="composer-images" title={t('Compose.Images', imagesPerBeep)}>
             <Icon name="image" />
             <span class="visually-hidden">{t('Compose.Images', imagesPerBeep)}</span>
-            <input class="composer-file" type="file" name={IMAGES_FIELD} multiple accept="image/jpeg,image/png,image/webp,image/gif" onChange={picked} />
+            <input class="composer-file" type="file" name={IMAGES_FIELD} multiple accept={IMAGE_TYPES} onChange={picked} />
           </label>
           {/* Only near the limit is the number worth reading out. */}
           <span class="composer-count" aria-live="polite" hidden={left > beepLength * 0.2} data-over={left < 0 ? '' : undefined}>

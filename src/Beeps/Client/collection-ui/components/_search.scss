@@ -3,18 +3,17 @@
 @use "../abstracts" as *;
 
 @layer cui.components {
-  /* <form class="search"><span class="icon">search</span><input class="search-input"><kbd>/</kbd><button class="btn btn-primary">Search</button></form>
+  /* <form class="search"><span class="icon">search</span><input class="search-input"></form>
    *
-   * A two-column grid: the input, icon and kbd share column 1 (icon at its start, kbd at its
-   * end), the optional button is column 2. So the hint always sits at the input's own end,
-   * whatever the button's width. Every child but the input is optional. */
+   * The icon and the input share one grid cell, the icon at the input's start. (Upstream's hint key and
+   * attached button are not used.) */
   .#{$prefix}search {
     --_height: var(--cui-search-height, var(--cui-control-height));
     --_radius: var(--cui-search-radius, var(--cui-control-radius));
     --_icon-x: 0.75rem;   /* icon inset from the start */
     --_pad: 2.5rem;       /* input start padding that clears the icon */
     display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-columns: minmax(0, 1fr);
     align-items: stretch;
     width: 100%;
     min-width: 0;
@@ -30,25 +29,6 @@
       z-index: 1;
       transition: color var(--cui-transition);
     }
-    > kbd {
-      grid-area: 1 / 1;
-      align-self: center;
-      justify-self: end;
-      margin-inline-end: 0.625rem;
-      pointer-events: none;
-      z-index: 1;
-    }
-    > .#{$prefix}btn {
-      grid-area: 1 / 2;
-      min-height: var(--_height);
-      border-start-start-radius: 0;
-      border-end-start-radius: 0;
-      margin-inline-start: calc(-1 * var(--cui-border-width));
-      &:active { translate: none; }
-      &:focus-visible { z-index: 1; }
-    }
-    &:has(> .#{$prefix}btn) > .#{$prefix}search-input { border-start-end-radius: 0; border-end-end-radius: 0; }
-    &:has(> kbd) > .#{$prefix}search-input { padding-inline-end: 3rem; }
     &:focus-within > .#{$prefix}icon { color: var(--cui-primary); }
   }
   .#{$prefix}search-input {
@@ -73,7 +53,6 @@
     &:focus { outline: none; --_border: var(--cui-primary); box-shadow: var(--cui-shadow-well), var(--_ring); }
     &:disabled { background: var(--cui-surface-2); color: var(--cui-text-2); box-shadow: none; opacity: 0.7; cursor: not-allowed; }
   }
-  .#{$prefix}search:not(:has(> .#{$prefix}icon)) > .#{$prefix}search-input { padding-inline-start: var(--cui-control-padding-x); }
 
-  .#{$prefix}search-pill { --_radius: var(--cui-radius-full); > .#{$prefix}btn { border-radius: 0 var(--cui-radius-full) var(--cui-radius-full) 0; padding-inline-end: var(--cui-space-5); } }
+  .#{$prefix}search-pill { --_radius: var(--cui-radius-full); }
 }

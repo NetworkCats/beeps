@@ -1,6 +1,6 @@
 /* Toasts, in a fixed .toast-stack:
  *
- *   <div class="toast-stack" data-position="bottom-end" role="region" aria-label="Notifications">
+ *   <div class="toast-stack" data-position="bottom-center" role="region" aria-label="Notifications">
  *     <div class="toast toast-danger" role="alert">
  *       <span class="icon toast-icon" aria-hidden="true">error</span>
  *       <div class="toast-content"><p class="toast-message">Could not save.</p></div>
@@ -8,8 +8,8 @@
  *     </div>
  *   </div>
  *
- * Positions: data-position="bottom-end" (default) | bottom-start | bottom-center | top-end | top-start | top-center.
- * .toast-danger sets the accent stripe + icon colour; .toast-dark is a solid dark toast in both themes.
+ * Positions: data-position="bottom-center", or bottom-end without it (upstream's other positions are not used).
+ * .toast-danger sets the icon colour; .toast-dark is a solid dark toast in both themes.
  * Add .toast-leaving to play the way out before removing the element.
  *
  * Hooks: .toast-stack[data-position], .toast (+ -danger / -dark, .toast-leaving), .toast-icon,
@@ -20,7 +20,7 @@
 @layer cui.components {
   .#{$prefix}toast-stack {
     position: fixed;
-    /* start / end are logical, so they swap sides in RTL; centre is physical (symmetric). */
+    /* end is logical, so it swaps sides in RTL; centre is physical (symmetric). */
     inset-block: auto 0;
     inset-inline: auto 0;
     z-index: var(--cui-z-toast);
@@ -34,9 +34,7 @@
     pointer-events: none;
     > * { pointer-events: auto; }
 
-    &[data-position$="-start"] { inset-inline: 0 auto; }
-    &[data-position$="-center"] { inset-inline: auto; left: 50%; translate: -50% 0; align-items: center; }
-    &[data-position^="top"] { inset-block: 0 auto; flex-direction: column-reverse; --_enter-y: -0.75rem; }
+    &[data-position="bottom-center"] { inset-inline: auto; left: 50%; translate: -50% 0; align-items: center; }
 
     @include mq(max-sm) {
       width: 100vw;
@@ -44,7 +42,7 @@
       translate: none;
       align-items: stretch;
       padding: var(--cui-space-3);
-      &[data-position$="-center"] { left: 0; }
+      &[data-position="bottom-center"] { left: 0; }
     }
   }
 
@@ -66,12 +64,10 @@
     background: var(--_bg);
     border: var(--cui-border-width) solid var(--_border);
     border-radius: var(--_radius);
-    box-shadow: inset 3px 0 0 var(--_accent), var(--cui-shadow-lg);
-    &:dir(rtl) { box-shadow: inset -3px 0 0 var(--_accent), var(--cui-shadow-lg); }
+    box-shadow: var(--cui-shadow-lg);
     /* Rises in from the stack's edge and settles. */
     transform-origin: 50% 100%;
     animation: cui-toast-in var(--cui-duration-slower) var(--cui-ease-out) both;
-    [data-position^="top"] > & { transform-origin: 50% 0; }
 
     &.#{$prefix}toast-leaving {
       animation: cui-toast-out var(--cui-duration) var(--cui-ease-in) forwards;
@@ -101,7 +97,7 @@
   }
 
   @keyframes cui-toast-in {
-    from { opacity: 0; translate: 0 var(--_enter-y, 0.75rem); scale: 0.96; }
+    from { opacity: 0; translate: 0 0.75rem; scale: 0.96; }
     40% { opacity: 1; }
     to { opacity: 1; translate: 0 0; scale: 1; }
   }

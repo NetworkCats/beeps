@@ -8,7 +8,6 @@ using Beeps.Tests.Support;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Logging.Abstractions;
-using Microsoft.Extensions.Options;
 
 namespace Beeps.Tests.Features.Accounts;
 
@@ -307,6 +306,18 @@ public sealed class AccountServiceTests
     }
 
     [Fact]
+    public async Task OneSecondLeftIsSaidInTheSingular()
+    {
+        var user = TestData.User(verified: false);
+        var (_, stored) = await IssueVerificationCodeAsync(user);
+        stored.CreatedAt = TestData.Now - AccountService.ResendInterval + TimeSpan.FromMilliseconds(500);
+
+        var result = await CreateService().ResendVerificationAsync(user.Id, TestData.Origin, TestSupport.Ct);
+
+        Assert.Equal("Error.ResendTooSoon.One", result.Error?.Detail);
+    }
+
+    [Fact]
     public async Task TheVerificationPageKnowsWhenAnotherCodeMayBeSent()
     {
         var user = TestData.User(verified: false);
@@ -423,6 +434,26 @@ public sealed class AccountServiceTests
         await CreateService().LoginAsync("Tom", "x", TestData.Origin, TestSupport.Ct);
 
         await rateLimitStore.Received(1).TryAcquireAsync(Arg.Is<IReadOnlyList<RateLimitCounter>>(c => c.Count == 2 && c[0].Key != c[1].Key), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task SigningInByEmailOrUsernameCountsAgainstOneLimit()
+    {
+        var user = TestData.User(passwordHash: "hashed:correct horse");
+        store.FindUserByEmailAsync("tom@example.com", Arg.Any<CancellationToken>()).Returns(user);
+        store.FindUserByHandleAsync("tom", Arg.Any<CancellationToken>()).Returns(user);
+        var calls = new List<IReadOnlyList<RateLimitCounter>>();
+        rateLimitStore.TryAcquireAsync(Arg.Do<IReadOnlyList<RateLimitCounter>>(calls.Add), Arg.Any<CancellationToken>()).Returns(RateLimitDecision.Allowed);
+        var service = CreateService();
+
+        await service.LoginAsync("tom@example.com", "x", TestData.Origin, TestSupport.Ct);
+        await service.LoginAsync("Tom", "x", TestData.Origin, TestSupport.Ct);
+        await service.LoginAsync("nobody", "x", TestData.Origin, TestSupport.Ct);
+
+        Assert.Equal(AccountCounterKey(user), calls[0][1].Key);
+        Assert.Equal(AccountCounterKey(user), calls[1][1].Key);
+        // A name no account has is still counted, on a counter of its own.
+        Assert.NotEqual(AccountCounterKey(user), calls[2][1].Key);
     }
 
     [Fact]
@@ -728,10 +759,8 @@ public sealed class AccountServiceTests
         var result = await CreateService().ChangePasswordAsync(user.Id, Guid.NewGuid(), "old password", "new password!", TestSupport.Ct);
 
         Assert.Equal(ErrorKind.RateLimited, result.Error?.Kind);
-        Assert.Equal([RateLimitPolicies.Login], TestData.Policies(counted!));
-        // The same counter a sign-in to "tom" uses (keys hold a hash of the partition).
-        var partition = Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData("login:tom"u8).AsSpan(0, 16));
-        Assert.EndsWith($":{partition}", Assert.Single(counted!).Key, StringComparison.Ordinal);
+        // The same counter a sign-in to the account uses, by address or username.
+        Assert.Equal(AccountCounterKey(user), Assert.Single(counted!).Key);
         hasher.DidNotReceiveWithAnyArgs().VerifyHashedPassword(default!, default!, default!);
     }
 
@@ -789,7 +818,7 @@ public sealed class AccountServiceTests
         var result = await CreateService().RequestEmailChangeAsync(user.Id, "new@example.org", "old password", TestData.Origin, TestSupport.Ct);
 
         Assert.Equal(ErrorKind.RateLimited, result.Error?.Kind);
-        Assert.Equal([RateLimitPolicies.Login], TestData.Policies(counted!));
+        Assert.Equal(AccountCounterKey(user), Assert.Single(counted!).Key);
         hasher.DidNotReceiveWithAnyArgs().VerifyHashedPassword(default!, default!, default!);
     }
 
@@ -1001,29 +1030,27 @@ public sealed class AccountServiceTests
         return (Unprotect(sentCodes[^1]), stored!);
     }
 
+    /// <summary>The account's sign-in counter, as the store sees it (keys hold a hash of the partition).</summary>
+    private static string AccountCounterKey(User user)
+    {
+        var partition = System.Text.Encoding.UTF8.GetBytes(RateLimitPartitions.Account(user.Id));
+        return $"{RateLimitPolicies.Login}:60:{Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(partition).AsSpan(0, 16))}";
+    }
+
     private string Unprotect(AccountCodeEmail email) =>
         dataProtection.CreateProtector(AccountCodeEmail.ProtectorPurpose).Unprotect(email.ProtectedCode);
 
-    private AccountService CreateService()
-    {
-        var limits = Substitute.For<IOptionsMonitor<RateLimitOptions>>();
-        limits.CurrentValue.Returns(new RateLimitOptions
-        {
-            Policies = RateLimitPolicies.All.ToDictionary(p => p, _ => new RateLimitPolicyOptions { Rules = [new RateLimitRuleOptions { PermitLimit = 1, Window = TimeSpan.FromMinutes(1) }] }),
-        });
-        var localizer = new TestLocalizer();
-        return new AccountService(
-            store,
-            sessions,
-            unitOfWork,
-            outbox,
-            captcha,
-            hasher,
-            new RateLimitService(rateLimitStore, new LocalRateLimiter(TimeProvider.System), limits, localizer, NullLogger<RateLimitService>.Instance),
-            TestData.Live(liveEvents),
-            dataProtection,
-            TestData.Time(),
-            localizer,
-            NullLogger<AccountService>.Instance);
-    }
+    private AccountService CreateService() => new(
+        store,
+        sessions,
+        unitOfWork,
+        outbox,
+        captcha,
+        hasher,
+        TestData.RateLimits(rateLimitStore),
+        TestData.Live(liveEvents),
+        dataProtection,
+        TestData.Time(),
+        new TestLocalizer(),
+        NullLogger<AccountService>.Instance);
 }

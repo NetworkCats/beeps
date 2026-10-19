@@ -1,14 +1,10 @@
-using Beeps.Features.Accounts;
 using Beeps.Features.Beeps;
 using Beeps.Features.Live;
 using Beeps.Features.Media;
-using Beeps.Features.Moderation;
 using Beeps.Features.Profiles;
 using Beeps.Features.Shared;
 using Beeps.Features.Timelines;
 using Beeps.Tests.Support;
-using Microsoft.Extensions.Logging.Abstractions;
-using Microsoft.Extensions.Options;
 
 namespace Beeps.Tests.Features.Live;
 
@@ -110,26 +106,11 @@ public sealed class LiveFeedServiceTests
 
     private LiveFeedService Create()
     {
-        var localizer = new TestLocalizer();
-        var views = new BeepViews(beeps, counters, TestData.Avatars, TestData.Media, NullLogger<BeepViews>.Instance);
-        var profiles = new ProfileService(Substitute.For<IProfileStore>(), views, TestData.Media, new ImmediateUnitOfWork(), TestData.AllowingRateLimits(), TestData.Live(Substitute.For<ILiveEventStore>()), TestData.Time(), localizer, NullLogger<ProfileService>.Instance);
-        var media = new MediaServiceParts();
-        var beepService = new BeepService(
-            beeps,
-            counters,
-            media.Store,
-            media.Create(),
-            views,
-            new ImmediateUnitOfWork(),
-            Substitute.For<IOutbox>(),
-            Substitute.For<IModerationJobs>(),
-            TestData.RateLimits(media.RateLimits),
-            TestData.Live(Substitute.For<ILiveEventStore>()),
-            TestData.Inboxes(Substitute.For<ILiveEventStore>()),
-            Options.Create(new ModerationOptions()),
-            TestData.Time(),
-            localizer,
-            NullLogger<BeepService>.Instance);
-        return new LiveFeedService(new TimelineService(timelines, profiles, views, localizer), beepService, localizer);
+        var views = TestServices.Views(beeps, counters);
+        var profiles = TestServices.Profiles(Substitute.For<IProfileStore>(), views);
+        return new LiveFeedService(
+            new TimelineService(timelines, profiles, views, new TestLocalizer()),
+            TestServices.Beeps(beeps, counters, Substitute.For<ILiveEventStore>()),
+            new TestLocalizer());
     }
 }

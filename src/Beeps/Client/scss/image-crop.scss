@@ -1,15 +1,12 @@
 // The avatar and banner croppers (app/components/ProfileImageEditor.tsx), loaded only by the pages with those forms.
 // Cropper.js's own styles first, then beeps' look on top: an avatar's selection is round, as avatars are shown as circles.
 @use "cropperjs/dist/cropper";
+@use "mixins" as *;
 
-// Twitter's "Edit media": a header with the way out, the title and the button that applies, then the image.
+// Twitter's "Edit media": a header with the way out, the title and the button that applies, then the image. As wide
+// as the content column (its .dialog-lg would be wider).
 .crop-dialog {
   --cui-dialog-width: min(37.5rem, calc(100vw - 2rem));
-
-  // A plain dim page behind it, as behind the confirmation (no glass, see _theme.scss).
-  &::backdrop {
-    backdrop-filter: none;
-  }
 }
 
 .crop-dialog-header {
@@ -21,14 +18,11 @@
 }
 
 .crop-dialog-title {
+  @include title;
   flex: 1 1 auto;
-  margin: 0;
-  font-size: var(--cui-text-xl);
-  font-weight: 800;
 }
 
 .crop-dialog-help {
-  margin: 0;
   padding: var(--cui-space-3) var(--cui-space-4) var(--cui-space-4);
 }
 

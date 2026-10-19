@@ -6,7 +6,10 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 
 namespace Beeps.Pages.Onboarding;
 
-/// <summary>Step 5: waits for the agent's first API call. The page reloads itself when the agent connects (SSE); without script, "check again" does.</summary>
+/// <summary>
+/// Step 5: waits for the agent's first API call. Members only, so drawn by the app from its props, which it fetches
+/// again and draws anew as soon as the agent connects (its LiveProps); "check again" reloads the page.
+/// </summary>
 [AppShell]
 public sealed class ConnectModel(AgentService agents) : PageModel
 {

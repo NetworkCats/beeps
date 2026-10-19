@@ -15,15 +15,7 @@ public sealed partial class IdempotencyCleanupJob(IIdempotencyStore store, TimeP
     public async Task RunAsync(CancellationToken cancellationToken)
     {
         var now = time.GetUtcNow();
-        var total = 0;
-        int deleted;
-        do
-        {
-            deleted = await store.DeleteExpiredAsync(now, BatchSize, cancellationToken);
-            total += deleted;
-        }
-        while (deleted >= BatchSize);
-
+        var total = await Batches.DrainAsync(BatchSize, ct => store.DeleteExpiredAsync(now, BatchSize, ct), cancellationToken);
         LogCleaned(logger, total);
     }
 

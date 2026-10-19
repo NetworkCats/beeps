@@ -96,7 +96,7 @@ public sealed record BeepListProps(
         ArgumentNullException.ThrowIfNull(list);
         return new BeepListProps(
             [.. list.Page.Items.Select(BeepProps.From)],
-            list.Page.NextCursor is { } next ? $"{list.PagerPath ?? path}?{list.CursorName}={next}" : null,
+            list.NextPath(path),
             list.EmptyTitle,
             list.EmptyText);
     }

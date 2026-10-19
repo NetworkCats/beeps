@@ -39,7 +39,6 @@ export interface Feed {
   /** The beeps shown, in order, without those that went. */
   visible: string[];
   next?: string;
-  watch?: string;
   loadMore: () => Promise<boolean>;
   /** The list as it is now, as props to draw it again from. */
   snapshot: () => FeedSource;
@@ -189,7 +188,7 @@ export function useBeepFeed(options: FeedOptions): Feed {
     state.entering.delete(id);
   };
 
-  return { visible, next: state.next.value, watch: state.watch.value, loadMore, snapshot, entering, entered };
+  return { visible, next: state.next.value, loadMore, snapshot, entering, entered };
 }
 
 export interface BeepListViewProps {

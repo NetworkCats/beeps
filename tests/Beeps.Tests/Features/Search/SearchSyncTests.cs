@@ -1,4 +1,3 @@
-using System.Text.Json;
 using Beeps.Features.Accounts;
 using Beeps.Features.Live;
 using Beeps.Features.Search;
@@ -95,8 +94,8 @@ public sealed class SearchSyncTests
     private static BeepDocument Beep(Guid author) => new(Guid.CreateVersion7(), "hi", author, [], TestData.Now);
 
     private static OutboxEnvelope Envelope(SearchBeepSyncRequest payload) =>
-        new(Guid.NewGuid(), SearchBeepSyncRequest.MessageType, JsonSerializer.Serialize(payload, SearchJsonContext.Default.SearchBeepSyncRequest), 1, TestData.Now);
+        TestData.Envelope(SearchBeepSyncRequest.MessageType, payload, SearchJsonContext.Default.SearchBeepSyncRequest);
 
     private static OutboxEnvelope Envelope(SearchAccountSyncRequest payload) =>
-        new(Guid.NewGuid(), SearchAccountSyncRequest.MessageType, JsonSerializer.Serialize(payload, SearchJsonContext.Default.SearchAccountSyncRequest), 1, TestData.Now);
+        TestData.Envelope(SearchAccountSyncRequest.MessageType, payload, SearchJsonContext.Default.SearchAccountSyncRequest);
 }

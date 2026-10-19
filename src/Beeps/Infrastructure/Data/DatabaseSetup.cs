@@ -10,7 +10,7 @@ public static class DatabaseSetup
 
     public static IServiceCollection AddBeepsDatabase(this IServiceCollection services)
     {
-        // One data source (connection pool) shared by EF Core and the raw-SQL users (Outbox worker).
+        // One data source (connection pool) shared by EF Core and the raw-SQL users (the outbox, moderation jobs, scheduled jobs and idempotency stores).
         services.AddSingleton(sp =>
         {
             var connectionString = sp.GetRequiredService<IConfiguration>().GetConnectionString(ConnectionStringName);
@@ -27,7 +27,7 @@ public static class DatabaseSetup
 
     // Some limits are caps on a count or a list of anyone (the unread count stops at 100), where any rows will do: an
     // ORDER BY there would read every row to sort them, so the warning about a limit without one is off.
-    public static void Configure(DbContextOptionsBuilder options, NpgsqlDataSource dataSource) =>
+    private static void Configure(DbContextOptionsBuilder options, NpgsqlDataSource dataSource) =>
         options
             .UseNpgsql(dataSource, npgsql => npgsql.MigrationsHistoryTable("ef_migrations_history"))
             .UseSnakeCaseNamingConvention()

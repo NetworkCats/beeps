@@ -2,7 +2,6 @@ using System.Net;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using Beeps.Features.Admin;
-using Beeps.Features.Beeps;
 using Beeps.Features.Shared;
 using Beeps.Tests.Support;
 using Microsoft.AspNetCore.Hosting;
@@ -14,9 +13,6 @@ namespace Beeps.Tests.Pages;
 public sealed partial class ClientAssetsTests : IDisposable
 {
     private readonly BeepsWebApplicationFactory factory = new();
-
-    public ClientAssetsTests() =>
-        factory.Timelines.PublicAsync(default!, default, TestSupport.Ct).ReturnsForAnyArgs(new CursorPage<BeepRow>([], null));
 
     [Fact]
     public async Task SignedOutPagesLinkTheMainStylesheetAndFetchTheOthersAhead()

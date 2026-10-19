@@ -1,7 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
-using Beeps.Features.Beeps;
 using Beeps.Features.Shared;
+using Beeps.Features.Shared.Http;
 using Beeps.Tests.Support;
 
 namespace Beeps.Tests.Api;
@@ -74,13 +74,26 @@ public sealed class IdempotencyTests : IDisposable
         await factory.Notifications.DidNotReceiveWithAnyArgs().MarkReadAsync(default, default, default, TestSupport.Ct);
     }
 
-    [Fact]
-    public async Task KeysMustBeShortVisibleAscii()
+    public static TheoryData<string> BadKeys => [new string('k', IdempotencyMiddleware.MaxKeyLength + 1), "key with spaces", "clé"];
+
+    [Theory]
+    [MemberData(nameof(BadKeys))]
+    public async Task KeysMustBeShortVisibleAscii(string key)
     {
-        using var response = await PostAsync(new string('k', 256));
+        using var response = await PostAsync(key);
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         Assert.Equal("idempotency_key_invalid", await CodeAsync(response));
+        await factory.Notifications.DidNotReceiveWithAnyArgs().MarkReadAsync(default, default, default, TestSupport.Ct);
+    }
+
+    [Fact]
+    public async Task AKeyAsLongAsAllowedIsKept()
+    {
+        using var response = await PostAsync(new string('k', IdempotencyMiddleware.MaxKeyLength));
+
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+        await factory.Idempotency.ReceivedWithAnyArgs(1).CompleteAsync(default!, default!, default, TestSupport.Ct);
     }
 
     [Fact]
@@ -107,7 +120,6 @@ public sealed class IdempotencyTests : IDisposable
     [Fact]
     public async Task ReadsIgnoreTheHeader()
     {
-        factory.Timelines.PublicAsync(default!, default, TestSupport.Ct).ReturnsForAnyArgs(new CursorPage<BeepRow>([], null));
         using var request = new HttpRequestMessage(HttpMethod.Get, "/api/v1/timelines/public") { Headers = { { "Idempotency-Key", "key-6" } } };
 
         using var response = await client.SendAsync(request, TestSupport.Ct);
@@ -125,7 +137,7 @@ public sealed class IdempotencyTests : IDisposable
     private async Task<HttpResponseMessage> PostAsync(string key)
     {
         using var request = new HttpRequestMessage(HttpMethod.Post, Path) { Content = JsonContent.Create(new { up_to_id = (Guid?)null }) };
-        request.Headers.Add("Idempotency-Key", key);
+        request.Headers.TryAddWithoutValidation("Idempotency-Key", key);
         return await client.SendAsync(request, TestSupport.Ct);
     }
 

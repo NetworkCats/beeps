@@ -14,8 +14,8 @@ public sealed partial class OutboxWorker(
     TimeProvider time,
     ILogger<OutboxWorker> logger) : BackgroundService
 {
-    /// <summary>The channel the <c>outbox_notify</c> trigger signals (see the AddOutbox migration).</summary>
-    public const string Channel = "beeps_outbox";
+    /// <summary>The channel the <c>outbox_notify</c> trigger signals (created in the Initial migration).</summary>
+    private const string Channel = "beeps_outbox";
 
     private const string ListenSql = $"LISTEN {Channel}";
 

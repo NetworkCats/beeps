@@ -49,7 +49,7 @@ public sealed partial class MediaService(
     {
         ArgumentNullException.ThrowIfNull(uploader);
         ArgumentNullException.ThrowIfNull(content);
-        var limited = await rateLimits.CheckAsync(RateLimitPolicies.MediaUpload, $"actor:{uploader.ActorId}", cancellationToken);
+        var limited = await rateLimits.CheckAsync(RateLimitPolicies.MediaUpload, RateLimitPartitions.Actor(uploader.ActorId), cancellationToken);
         if (!limited.IsSuccess)
         {
             return limited.Error;
@@ -116,18 +116,10 @@ public sealed partial class MediaService(
     }
 
     /// <summary>The error for more images than a beep can have; the field is the API's or the web form's.</summary>
-    public Error TooMany(string field)
-    {
-        string message = localizer["Error.TooManyMedia", MediaRules.MaxImagesPerBeep];
-        return Error.Validation(MediaErrorCodes.TooMany, message, new Dictionary<string, string[]> { [field] = [message] });
-    }
+    public Error TooMany(string field) => Error.Field(MediaErrorCodes.TooMany, field, localizer["Error.TooManyMedia", MediaRules.MaxImagesPerBeep]);
 
     /// <summary>The error for media ids that are unknown or were uploaded by someone else: both look the same.</summary>
-    public Error NotFound(string field)
-    {
-        string message = localizer["Error.MediaNotFound"];
-        return Error.Validation(MediaErrorCodes.NotFound, message, new Dictionary<string, string[]> { [field] = [message] });
-    }
+    public Error NotFound(string field) => Error.Field(MediaErrorCodes.NotFound, field, localizer["Error.MediaNotFound"]);
 
     /// <summary>The error for an API upload sent as a form instead of the raw image bytes.</summary>
     public Error RawBodyRequired() => Error.Validation(MediaErrorCodes.RawBodyRequired, localizer["Error.MediaRawBodyRequired"]);

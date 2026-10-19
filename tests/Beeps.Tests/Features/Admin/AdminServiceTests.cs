@@ -87,7 +87,7 @@ public sealed class AdminServiceTests
     {
         var user = Row(Guid.NewGuid());
         store.GetUserAsync(user.Id, Arg.Any<CancellationToken>()).Returns(user);
-        agents.ListAgentsAsync(user.Id, Arg.Any<CancellationToken>()).Returns([new AgentRow(Guid.NewGuid(), null, null, null, TestData.Now, null, null, null, null)]);
+        agents.ListAgentsAsync(user.Id, Arg.Any<CancellationToken>()).Returns([new AgentRow(Guid.NewGuid(), null, null, null, TestData.Now, null, null, null)]);
 
         var result = await CreateService().GetUserAsync(AdminId, user.Id, TestSupport.Ct);
         var missing = await CreateService().GetUserAsync(AdminId, Guid.NewGuid(), TestSupport.Ct);

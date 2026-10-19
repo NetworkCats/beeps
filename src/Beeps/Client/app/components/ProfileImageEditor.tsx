@@ -10,9 +10,9 @@ import { useEffect, useRef, useState } from 'preact/hooks';
 import type Cropper from 'cropperjs';
 import { BANNER_ASPECT, toBannerCropFields, toCropFields, type CropBox } from '../crop-fields.ts';
 import { config } from '../config.ts';
-import { sendForm } from '../forms.ts';
+import { sendForm, sending } from '../forms.ts';
 import { t } from '../i18n.ts';
-import { checkImages } from '../text.ts';
+import { checkImages, IMAGE_TYPES } from '../text.ts';
 import { showToast } from '../toasts.ts';
 import { Antiforgery } from './Forms.tsx';
 import { Icon } from './Icon.tsx';
@@ -30,8 +30,6 @@ export interface BannerEditorProps {
   /** The page the forms post to, with its Banner and RemoveBanner handlers. */
   action: string;
 }
-
-const ACCEPT = 'image/jpeg,image/png,image/webp,image/gif';
 
 interface UploadFormProps {
   /** The file input's name, which is also what its ids start with. */
@@ -125,8 +123,8 @@ function UploadForm(props: UploadFormProps) {
       <button class="image-action" type="button" aria-label={props.label} title={props.label} onClick={() => input.current?.click()}>
         <Icon name="add_a_photo" />
       </button>
-      <input class="visually-hidden" ref={input} id={props.field} type="file" name={props.field} accept={ACCEPT} tabIndex={-1} onChange={picked} />
-      <dialog class="dialog dialog-lg dialog-plain crop-dialog" ref={dialog} aria-labelledby={titleId} onClose={closed}>
+      <input class="visually-hidden" ref={input} id={props.field} type="file" name={props.field} accept={IMAGE_TYPES} tabIndex={-1} onChange={picked} />
+      <dialog class="dialog dialog-plain crop-dialog" ref={dialog} aria-labelledby={titleId} onClose={closed}>
         <div class="crop-dialog-header">
           <button class="column-back" type="button" aria-label={t('Confirm.Cancel')} onClick={() => dialog.current?.close()}>
             <Icon name="close" />
@@ -152,12 +150,8 @@ function UploadForm(props: UploadFormProps) {
 }
 
 function RemoveForm({ action, confirm, label }: { action: string; confirm: string; label: string }) {
-  const remove = (event: TargetedSubmitEvent<HTMLFormElement>): void => {
-    event.preventDefault();
-    void sendForm(event.currentTarget, event.submitter ?? null);
-  };
   return (
-    <form class="image-upload" method="post" action={action} data-confirm={confirm} onSubmit={remove}>
+    <form class="image-upload" method="post" action={action} data-confirm={confirm} onSubmit={sending()}>
       <button class="image-action" type="submit" aria-label={label} title={label}>
         <Icon name="close" />
       </button>

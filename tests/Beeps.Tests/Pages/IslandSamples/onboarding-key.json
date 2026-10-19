@@ -389,7 +389,6 @@
             "lang": "zh-Hans"
           }
         ],
-        "theme": "system",
         "themes": [
           {
             "value": "system",
@@ -435,7 +434,6 @@
             "lang": "zh-Hans"
           }
         ],
-        "theme": "system",
         "themes": [
           {
             "value": "system",
@@ -466,11 +464,6 @@
     {
       "name": "handoff",
       "props": {
-        "live": {
-          "actors": [
-            "10000000-0000-7000-8000-000000000001"
-          ]
-        },
         "created": {
           "agentId": "10000000-0000-7000-8000-000000000002",
           "keyPrefix": "beeps_NEW",
@@ -498,7 +491,6 @@
             "lang": "zh-Hans"
           }
         ],
-        "theme": "system",
         "themes": [
           {
             "value": "system",

@@ -57,9 +57,6 @@
 /// light-dark() pair for the brand or a status: the hue's light and dark brand steps.
 @function brand-color($hue) {
   $hue: hue-name($hue);
-  @if $hue == "neutral" {
-    @return string.unquote("light-dark(var(--cui-neutral-800), var(--cui-neutral-200))");
-  }
   $light: map.get($brand-steps, light);
   $dark: map.get($brand-steps, dark);
   @return string.unquote("light-dark(var(--cui-#{$hue}-#{$light}), var(--cui-#{$hue}-#{$dark}))");

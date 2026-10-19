@@ -1,7 +1,6 @@
 using System.Text.Json;
 using Beeps.Features.Accounts;
 using Beeps.Features.Email;
-using Beeps.Features.Shared;
 using Beeps.Tests.Support;
 using Microsoft.AspNetCore.DataProtection;
 
@@ -17,7 +16,7 @@ public sealed class AccountCodeEmailHandlerTests
     {
         var handler = CreateHandler();
         var payload = new AccountCodeEmail("tom@example.com", "en", EmailCodePurpose.VerifyEmail, Protect("123456"));
-        var message = new OutboxEnvelope(Guid.NewGuid(), handler.Type, JsonSerializer.Serialize(payload, AccountsJsonContext.Default.AccountCodeEmail), 1, TestData.Now);
+        var message = TestData.Envelope(handler.Type, payload, AccountsJsonContext.Default.AccountCodeEmail);
 
         await handler.HandleAsync(message, TestSupport.Ct);
 

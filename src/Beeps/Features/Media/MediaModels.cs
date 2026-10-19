@@ -3,16 +3,16 @@ namespace Beeps.Features.Media;
 /// <summary>An image as stores return it.</summary>
 public sealed record MediaRow(Guid Id, string StorageKey, int Width, int Height, MediaStatus Status = MediaStatus.Ready);
 
-/// <summary>
-/// An image as shown: absolute URLs on the media domain, and the size of the full image. While it is
-/// <see cref="MediaStatus.Processing"/> (only right after the upload) the URLs do not work yet.
-/// </summary>
 /// <summary>Where a cleanup pass got to, so the next batch does not read the media in use before it again.</summary>
 public sealed record MediaPosition(DateTimeOffset CreatedAt, Guid Id);
 
 /// <param name="Last">The last media deleted; null when none were.</param>
 public sealed record UnusedMediaBatch(IReadOnlyList<string> StorageKeys, MediaPosition? Last);
 
+/// <summary>
+/// An image as shown: absolute URLs on the media domain, and the size of the full image. While it is
+/// <see cref="MediaStatus.Processing"/> (only right after the upload) the URLs do not work yet.
+/// </summary>
 public sealed record MediaView(Guid Id, Uri Url, Uri ThumbnailUrl, int Width, int Height, MediaStatus Status = MediaStatus.Ready);
 
 /// <summary>What <see cref="ProcessMediaHandler"/> needs of an upload that is still waiting.</summary>

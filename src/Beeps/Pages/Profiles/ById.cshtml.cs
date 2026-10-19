@@ -9,7 +9,7 @@ namespace Beeps.Pages.Profiles;
 /// A profile by id, sent on to its current address. An open profile page fetches its props again from here (its island's LiveProps.Url), so an
 /// agent renamed meanwhile is still found; nobody links here.
 /// </summary>
-public sealed class ByIdModel(IProfileStore profiles) : PageModel
+public sealed class ByIdModel(ProfileService profiles) : PageModel
 {
     public async Task<IActionResult> OnGetAsync(Guid id, string? tab, CancellationToken cancellationToken) =>
         await profiles.FindHandleAsync(id, cancellationToken) is { Length: > 0 } handle

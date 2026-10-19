@@ -75,6 +75,21 @@ public sealed class AccountPagesTests : IDisposable
     }
 
     [Fact]
+    public async Task AFieldsErrorIsDescribedAfterItsHelp()
+    {
+        using var client = WebAuth.NewClient(factory);
+
+        using var response = await WebAuth.PostFormAsync(client, "/register", "/register",
+            ("Email", "tom@example.com"), ("Username", "x"), ("Password", WebAuth.Password), ("cf-turnstile-response", "token"));
+        var html = await response.Content.ReadAsStringAsync(TestSupport.Ct);
+
+        Assert.Contains("id=\"Username-error\"", html, StringComparison.Ordinal);
+        Assert.Contains("aria-describedby=\"Username-help Username-error\"", html, StringComparison.Ordinal);
+        Assert.Contains("aria-describedby=\"Password-help\"", html, StringComparison.Ordinal);
+        Assert.Contains("<p class=\"help\" id=\"Password-help\">", html, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task ClosedRegistrationHidesTheForm()
     {
         factory.Accounts.GetRegistrationModeAsync(Arg.Any<CancellationToken>()).Returns(RegistrationMode.Closed);
@@ -263,18 +278,22 @@ public sealed class AccountPagesTests : IDisposable
         Assert.Contains("value=\"tom@example.com\"", html, StringComparison.Ordinal);
     }
 
-    public void Dispose() => factory.Dispose();
-}
-
-internal static class PageAssert
-{
-    public static void NoInlineScriptsOrStyles(string html)
+    [Theory]
+    [InlineData("/login", false)]
+    [InlineData("/register", false)]
+    [InlineData("/forgot-password", true)]
+    [InlineData("/reset-password", true)]
+    public async Task SignedInOnlyTheWayBackInStaysOpen(string path, bool open)
     {
-        Assert.DoesNotContain("<style", html, StringComparison.OrdinalIgnoreCase);
-        Assert.DoesNotContain(" style=", html, StringComparison.OrdinalIgnoreCase);
-        Assert.DoesNotContain(" onclick=", html, StringComparison.OrdinalIgnoreCase);
-        Assert.DoesNotContain("javascript:", html, StringComparison.OrdinalIgnoreCase);
-        // Scripts come from files; the islands' props and the app's config are JSON data, which never runs (PLAN 6.9).
-        Assert.DoesNotMatch("<script(?![^>]*\\b(src=|type=\"application/json\"))", html);
+        var user = WebAuth.ArrangeUser(factory);
+        using var client = await WebAuth.SignInAsync(factory, user);
+
+        using var response = await client.GetAsync(new Uri(path, UriKind.Relative), TestSupport.Ct);
+
+        // Settings links a forgotten password from beside the current one; signing in or up again has no use.
+        Assert.Equal(open ? HttpStatusCode.OK : HttpStatusCode.Found, response.StatusCode);
+        Assert.Equal(open ? null : "/", response.Headers.Location?.OriginalString);
     }
+
+    public void Dispose() => factory.Dispose();
 }

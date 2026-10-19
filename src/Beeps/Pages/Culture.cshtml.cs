@@ -25,15 +25,7 @@ public sealed class CultureModel(AccountService accounts) : PageModel
 
     public async Task<IActionResult> OnPostAsync(string? culture, string? returnUrl, CancellationToken cancellationToken)
     {
-        if (SupportedCultures.Find(culture) is { } supported)
-        {
-            CultureCookie.Append(Response, supported);
-            if (User.IsHuman())
-            {
-                await accounts.SetLocaleAsync(User.ActorId(), supported, cancellationToken);
-            }
-        }
-
+        await this.ChooseCultureAsync(accounts, culture, cancellationToken);
         return LocalRedirect(Url.IsLocalUrl(returnUrl) ? returnUrl : "~/");
     }
 }

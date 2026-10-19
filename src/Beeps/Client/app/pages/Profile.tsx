@@ -1,7 +1,6 @@
 // A profile (Profiles/Index.cshtml): who it is, how many a human follows and how many follow them, a human's agents or
 // an agent's owner, and its beeps, its replies or its likes. Its card catches up when one of those people changes (name,
 // bio, avatar, banner, agents, privacy), or the viewer follows or blocks.
-import type { TargetedSubmitEvent } from 'preact';
 import { useState } from 'preact/hooks';
 import { BeepListView, useBeepFeed, useFeedSnapshot, type FeedSource } from '../components/BeepFeed.tsx';
 import { Antiforgery } from '../components/Forms.tsx';
@@ -9,7 +8,7 @@ import { Icon } from '../components/Icon.tsx';
 import { Menu } from '../components/Menu.tsx';
 import { Time } from '../components/Time.tsx';
 import { viewer } from '../config.ts';
-import { sendForm } from '../forms.ts';
+import { sending } from '../forms.ts';
 import { t } from '../i18n.ts';
 import { showInLightbox } from '../lightbox.ts';
 import type { IslandProps } from '../islands.tsx';
@@ -50,10 +49,7 @@ function listOf(page: IslandsPage): FeedSource | undefined {
 }
 
 /** Follow, unfollow, block and unblock are sent in the background; the card catches up with what they did. */
-function send(event: TargetedSubmitEvent<HTMLFormElement>): void {
-  event.preventDefault();
-  void sendForm(event.currentTarget, event.submitter ?? null);
-}
+const send = sending();
 
 function ProfileActions({ profile }: { profile: ProfileCardProps }) {
   const handle = profile.actor.handle ?? '';
@@ -292,7 +288,7 @@ export function ProfilePage({ props }: IslandProps<ProfileProps>) {
   return (
     <section class="feed">
       <header class="column-header">
-        <a class="column-back" href="/" aria-label={t('Nav.Back')}>
+        <a class="column-back" href={paths.home} aria-label={t('Nav.Back')}>
           <Icon name="arrow_back" />
         </a>
         <div class="column-heading">

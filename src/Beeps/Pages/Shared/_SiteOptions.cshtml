@@ -1,6 +1,4 @@
 @using System.Globalization
-@using Beeps.Features.Localization
-@using Beeps.Features.Site
 @using Beeps.Pages.Islands
 @model SiteOptionsPlace
 @inject TimeProvider Time
@@ -10,21 +8,16 @@
 @{
     var inMenu = Model != SiteOptionsPlace.Footer;
     var rail = Model == SiteOptionsPlace.Rail;
-    var currentCulture = CultureInfo.CurrentUICulture.Name;
-    var returnUrl = $"{Context.Request.PathBase}{Context.Request.Path}{Context.Request.QueryString}";
-    var signedIn = User.IsHuman();
-    var theme = Themes.For(User, Context.Request);
-    var year = Time.GetUtcNow().Year;
     var props = new SiteOptionsProps(
         inMenu,
         rail,
-        signedIn,
-        returnUrl,
-        currentCulture,
-        [.. SupportedCultures.All.Select(c => new OptionProps(c, L[$"Language.{c}"], c))],
-        theme,
-        [.. Themes.All.Select(t => new OptionProps(t, L[$"Theme.{t}"]))],
-        year);
+        User.IsHuman(),
+        $"{Context.Request.PathBase}{Context.Request.Path}{Context.Request.QueryString}",
+        CultureInfo.CurrentUICulture.Name,
+        SiteOptionsProps.CulturesFor(L),
+        Themes.For(User, Context.Request),
+        SiteOptionsProps.ThemesFor(L),
+        Time.GetUtcNow().Year);
 }
 <island name="site-options" props="props">
 @if (inMenu)
@@ -39,12 +32,12 @@
             <summary class="topbar-more-toggle" aria-label="@L["Nav.More"]"><icon name="more_horiz" /></summary>
         }
         <div class="dropdown-menu menu-panel site-menu">
-            <partial name="_SiteOptionsList" />
+            <partial name="_SiteOptionsList" model="props" />
         </div>
     </details>
 }
 else
 {
-    <partial name="_SiteOptionsList" />
+    <partial name="_SiteOptionsList" model="props" />
 }
 </island>

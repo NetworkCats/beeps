@@ -8,6 +8,7 @@ using Beeps.Features.Moderation;
 using Beeps.Features.Notifications;
 using Beeps.Features.Profiles;
 using Beeps.Features.RateLimiting;
+using Beeps.Features.Search;
 using Beeps.Features.Shared;
 using Beeps.Features.Timelines;
 using Beeps.Infrastructure.Caching;
@@ -59,6 +60,7 @@ public static class InfrastructureSetup
         services.AddScoped<INotificationStore, EfNotificationStore>();
         services.AddScoped<IModerationStore, EfModerationStore>();
         services.AddScoped<ISystemStore, EfSystemStore>();
+        services.AddScoped<ISearchStore, EfSearchStore>();
         services.AddScoped<EfMediaStore>();
         services.AddScoped<IMediaStore>(sp => sp.GetRequiredService<EfMediaStore>());
         services.AddScoped<IAvatarStore>(sp => sp.GetRequiredService<EfMediaStore>());

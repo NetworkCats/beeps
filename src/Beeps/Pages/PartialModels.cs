@@ -11,9 +11,12 @@ namespace Beeps.Pages;
 public sealed record BeepCard(BeepView Beep, bool Focused = false, bool InThread = false, string? ReplyingTo = null);
 
 /// <summary>A page of beeps for <c>_BeepList.cshtml</c>, with an empty state and a link to the next page.</summary>
-/// <param name="CursorName">The query parameter the next page is asked for with: <c>before</c>, or <c>after</c> for threads.</param>
 /// <param name="PagerPath">Where older pages are asked for; the page's own address when null.</param>
-public sealed record BeepList(CursorPage<BeepView> Page, string EmptyTitle, string? EmptyText = null, string CursorName = "before", string? PagerPath = null);
+public sealed record BeepList(CursorPage<BeepView> Page, string EmptyTitle, string? EmptyText = null, string? PagerPath = null)
+{
+    /// <summary>The address of the next, older page, from a page at <paramref name="path"/>; null on the last.</summary>
+    public string? NextPath(string? path) => Page.NextCursor is { } next ? $"{PagerPath ?? path}?before={next}" : null;
+}
 
 /// <summary>
 /// The square picked in the avatar cropper, posted as the hidden fields <c>Crop.X</c>, <c>Crop.Y</c> and

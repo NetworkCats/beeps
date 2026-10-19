@@ -37,7 +37,7 @@ $media-features: (
 // ---- Palette ---------------------------------------------------------------
 // Quote hue names ("blue", not blue): unquoted, Sass reads them as colour literals.
 // Ten hues × eleven steps on ONE shared OKLCH lightness ladder, so any hue can be swapped for
-// another (data-brand="teal") without re-tuning contrast. Chroma is shaped per hue so saturated
+// another ($brand: "teal") without re-tuning contrast. Chroma is shaped per hue so saturated
 // hues (blue, red) and gentle hues (teal) read with similar intensity. Step 600 is the
 // light-mode brand step, 400 the dark-mode one (tokens derive a deeper `-solid` fill from it).
 $ladder: (
@@ -97,11 +97,12 @@ $brand-steps: (light: 600, dark: 400) !default;
 // ---- Status colours --------------------------------------------------------
 // Each one gets the scale its `tokens` list names (-soft, -text, -solid, -contrast, -ring, -edge…;
 // all of them when it names none), so only what the components read is emitted.
-// `soft` / `soft-hover` are how much of the colour is mixed into transparent.
+// `soft` / `soft-hover` are how much of the colour is mixed into transparent. (No -edge for danger: it is
+// only the solid button's border, which beeps' buttons do not have, Client/scss/_theme.scss.)
 $statuses: (
   success: (hue: "green", soft: 12%, tokens: (soft, text)),
   warning: (hue: "amber", soft: 14%, tokens: (soft, text)),
-  danger: (hue: "red", soft: 10%, soft-hover: 16%, tokens: (soft, soft-hover, text, ring, solid, contrast, edge)),
+  danger: (hue: "red", soft: 10%, soft-hover: 16%, tokens: (soft, soft-hover, text, ring, solid, contrast)),
   info: (hue: "cyan", tokens: ()),
 ) !default;
 
@@ -117,8 +118,6 @@ $font-sizes: (
   lg: 1.125rem,   // 18
   xl: 1.25rem,    // 20
   2xl: 1.5rem,    // 24
-  3xl: 1.875rem,  // 30
-  4xl: 2.25rem,   // 36
 ) !default;
 
 $spacers: (
@@ -139,7 +138,7 @@ $spacers: (
 
 // Tight corners, registry-style.
 $radii: (
-  sm: 3px,    // badges, tags, kbd, small controls
+  sm: 3px,    // badges, tags, small controls
   default: 5px,  // --cui-radius: buttons, inputs, menu items
   lg: 8px,    // cards, lists, menus
   xl: 12px,   // dialogs, drawers

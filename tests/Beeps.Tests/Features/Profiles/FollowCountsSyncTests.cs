@@ -1,4 +1,3 @@
-using System.Text.Json;
 using Beeps.Features.Profiles;
 using Beeps.Features.Shared;
 using Beeps.Tests.Support;
@@ -47,5 +46,5 @@ public sealed class FollowCountsSyncTests
     }
 
     private static OutboxEnvelope Envelope(FollowCountsRequest payload) =>
-        new(Guid.NewGuid(), FollowCountsRequest.MessageType, JsonSerializer.Serialize(payload, ProfilesJsonContext.Default.FollowCountsRequest), 1, TestData.Now);
+        TestData.Envelope(FollowCountsRequest.MessageType, payload, ProfilesJsonContext.Default.FollowCountsRequest);
 }

@@ -1,7 +1,7 @@
 /* Empty state: centred icon, title, short text and actions.
  *
  *   <div class="empty">
- *     <div class="empty-icon"><span class="icon">inbox</span></div>        or an <img>/<svg> illustration
+ *     <div class="empty-icon"><span class="icon">inbox</span></div>
  *     <h3 class="empty-title">No notifications yet</h3>
  *     <p class="empty-text">When someone follows you or mentions you, it shows up here.</p>
  *     <div class="empty-actions"><a class="btn btn-primary">Find people</a><a class="btn">Learn more</a></div>
@@ -36,7 +36,6 @@
     line-height: 1;
     color: var(--_icon-fg);
     margin-block-end: var(--cui-space-1);
-    > img, > svg { width: auto; max-width: 12rem; max-height: 8rem; height: auto; }
   }
   .#{$prefix}empty-icon-circle {
     --cui-icon-size: 2.25rem;

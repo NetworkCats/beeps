@@ -40,7 +40,7 @@ public sealed class BeepModel(ReviewService review, IStringLocalizer<SharedResou
     /// <summary>A decision moves on to the rest of the queue; taking images down leaves the decision still to make.</summary>
     private RedirectToPageResult Done(Result result, string notice, bool toQueue)
     {
-        TempData[result.IsSuccess ? Notices.Success : Notices.Error] = result.IsSuccess ? localizer[notice].Value : result.Error.Detail;
+        this.Notify(result, localizer[notice]);
         return result.IsSuccess && toQueue ? RedirectToPage("/Admin/Review/Index") : RedirectToPage();
     }
 }

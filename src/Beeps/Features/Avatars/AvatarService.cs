@@ -81,7 +81,7 @@ public sealed partial class AvatarService(
             return Error.NotFound(ErrorCodes.NotFound, localizer["Error.ProfileNotFound"]);
         }
 
-        var limited = await rateLimits.CheckAsync(RateLimitPolicies.AvatarChange, $"actor:{viewer.ActorId}", cancellationToken);
+        var limited = await rateLimits.CheckAsync(RateLimitPolicies.AvatarChange, RateLimitPartitions.Actor(viewer.ActorId), cancellationToken);
         return limited.IsSuccess ? target : limited.Error;
     }
 

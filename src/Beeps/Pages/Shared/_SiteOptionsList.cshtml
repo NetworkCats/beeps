@@ -1,35 +1,28 @@
-@using System.Globalization
-@using Beeps.Features.Localization
-@using Beeps.Features.Site
-@inject TimeProvider Time
+@using Beeps.Pages.Islands
+@model SiteOptionsProps
 @* The options themselves (_SiteOptions.cshtml), as signed-out visitors get them (signed in, the island draws them, and
    saves the choice to the account). GET forms: public pages are output-cached, so they carry no antiforgery token. *@
-@{
-    var currentCulture = CultureInfo.CurrentUICulture.Name;
-    var returnUrl = $"{Context.Request.PathBase}{Context.Request.Path}{Context.Request.QueryString}";
-    var theme = Themes.For(User, Context.Request);
-}
 <a class="footer-link" href="@SitePaths.About">@L["Footer.About"]</a>
 <form class="footer-switch" method="get" asp-page="/Culture">
-    <input type="hidden" name="returnUrl" value="@returnUrl">
+    <input type="hidden" name="returnUrl" value="@Model.ReturnUrl">
     <icon name="language" />
     <select class="footer-select" name="culture" aria-label="@L["Footer.Language"]">
-        @foreach (var culture in SupportedCultures.All)
+        @foreach (var option in Model.Cultures)
         {
-            <option value="@culture" lang="@culture" selected="@(culture == currentCulture)">@L[$"Language.{culture}"]</option>
+            <option value="@option.Value" lang="@option.Lang" selected="@(option.Value == Model.Culture)">@option.Label</option>
         }
     </select>
     <button class="footer-apply" type="submit">@L["Footer.Apply"]</button>
 </form>
 <form class="footer-switch" method="get" asp-page="/Theme">
-    <input type="hidden" name="returnUrl" value="@returnUrl">
+    <input type="hidden" name="returnUrl" value="@Model.ReturnUrl">
     <icon name="contrast" />
     <select class="footer-select" name="theme" aria-label="@L["Footer.Theme"]">
-        @foreach (var option in Themes.All)
+        @foreach (var option in Model.Themes)
         {
-            <option value="@option" selected="@(option == theme)">@L[$"Theme.{option}"]</option>
+            <option value="@option.Value" selected="@(option.Value == Model.Theme)">@option.Label</option>
         }
     </select>
     <button class="footer-apply" type="submit">@L["Footer.Apply"]</button>
 </form>
-<p class="footer-note">© @Time.GetUtcNow().Year @L["Site.Name"]</p>
+<p class="footer-note">© @Model.Year @L["Site.Name"]</p>

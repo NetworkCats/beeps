@@ -9,8 +9,6 @@ public sealed partial class ScheduledJobRunner(
     TimeProvider time,
     ILogger<ScheduledJobRunner> logger)
 {
-    private const int MaxStoredErrorLength = 2000;
-
     public async Task RunDueAsync(CancellationToken cancellationToken)
     {
         foreach (var job in jobs)
@@ -47,11 +45,7 @@ public sealed partial class ScheduledJobRunner(
         catch (Exception exception)
         {
             LogFailed(logger, exception, job.Name);
-            error = $"{exception.GetType().Name}: {exception.Message}";
-            if (error.Length > MaxStoredErrorLength)
-            {
-                error = error[..MaxStoredErrorLength];
-            }
+            error = FailedAttempts.Describe(exception);
         }
 
         await lease.MarkFinishedAsync(time.GetUtcNow(), error, cancellationToken);

@@ -39,6 +39,21 @@ public static class PageModelExtensions
         return page.LocalRedirect("~/");
     }
 
+    /// <summary>The one-line message a redirect leaves for the next page: the notice (if any) when it worked, otherwise the error.</summary>
+    public static void Notify(this PageModel page, Result result, LocalizedString? notice)
+    {
+        ArgumentNullException.ThrowIfNull(page);
+        ArgumentNullException.ThrowIfNull(result);
+        if (!result.IsSuccess)
+        {
+            page.TempData[Notices.Error] = result.Error.Detail ?? result.Error.Code;
+        }
+        else if (notice is not null)
+        {
+            page.TempData[Notices.Success] = notice.Value;
+        }
+    }
+
     /// <summary>
     /// Shows a Service error on the re-rendered form: field errors next to their inputs, anything else at
     /// the top. The status code follows the error, so a rate-limited form answers 429 with Retry-After.

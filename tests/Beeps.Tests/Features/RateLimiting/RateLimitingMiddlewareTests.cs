@@ -2,14 +2,9 @@ using System.Net;
 using System.Security.Claims;
 using Beeps.Features.RateLimiting;
 using Beeps.Features.Shared.Http;
-using Beeps;
+using Beeps.Tests.Support;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Localization;
-using Microsoft.Extensions.Logging.Abstractions;
-using Microsoft.Extensions.Options;
-
-using Beeps.Tests.Support;
 
 namespace Beeps.Tests.Features.RateLimiting;
 
@@ -36,7 +31,7 @@ public sealed class RateLimitingMiddlewareTests
     public async Task SignedInRequestsUseTheBrowsePolicy()
     {
         var context = NewContext();
-        context.User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, "user-1")], "test"));
+        context.User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, Guid.NewGuid().ToString("D"))], "test"));
 
         await InvokeAsync(context);
 
@@ -91,23 +86,11 @@ public sealed class RateLimitingMiddlewareTests
 
     private Task InvokeAsync(HttpContext context)
     {
-        var options = new RateLimitOptions();
-        foreach (var policy in RateLimitPolicies.All)
-        {
-            options.Policies[policy] = new RateLimitPolicyOptions { Rules = [new RateLimitRuleOptions { PermitLimit = 1, Window = TimeSpan.FromMinutes(1) }] };
-        }
-
-        var monitor = Substitute.For<IOptionsMonitor<RateLimitOptions>>();
-        monitor.CurrentValue.Returns(options);
-        var localizer = Substitute.For<IStringLocalizer<SharedResource>>();
-        localizer[Arg.Any<string>()].Returns(call => new LocalizedString(call.Arg<string>(), call.Arg<string>()));
-        var service = new RateLimitService(store, new LocalRateLimiter(TimeProvider.System), monitor, localizer, NullLogger<RateLimitService>.Instance);
-
         var middleware = new RateLimitingMiddleware(_ =>
         {
             nextCalled = true;
             return Task.CompletedTask;
         });
-        return middleware.InvokeAsync(context, service);
+        return middleware.InvokeAsync(context, TestData.RateLimits(store));
     }
 }

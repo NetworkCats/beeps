@@ -1,4 +1,3 @@
-using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -64,11 +63,9 @@ public sealed partial class IslandSamplesTests : IDisposable
         {
             [pictures.Id] = [new MediaRow(Id(20), "pic/one", 800, 600), new MediaRow(Id(21), "pic/two", 600, 800)],
         });
-        factory.Counters.GetAsync(default!, TestSupport.Ct).ReturnsForAnyArgs(new Dictionary<Guid, BeepCounts>());
         var all = new CursorPage<BeepRow>([mine, pictures, answer, question], Id(99));
         factory.Timelines.HomeAsync(tom.Id, Arg.Any<PageRequest>(), tom.Id, Arg.Any<CancellationToken>()).Returns(all);
         factory.Timelines.PublicAsync(Arg.Any<PageRequest>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>()).Returns(new CursorPage<BeepRow>([pictures, question], null));
-        factory.Timelines.HashtagAsync("beeps", Arg.Any<PageRequest>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>()).Returns(new CursorPage<BeepRow>([], null));
         factory.Timelines.ProfileAsync(alice.Id, Arg.Any<ProfileTimeline>(), Arg.Any<PageRequest>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>()).Returns(new CursorPage<BeepRow>([pictures, question], Id(98)));
         factory.Timelines.ProfileAsync(aliceAgent.Id, Arg.Any<ProfileTimeline>(), Arg.Any<PageRequest>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>()).Returns(new CursorPage<BeepRow>([answer], null));
         factory.Beeps.ListThreadAsync(question.Id, Arg.Any<Guid?>(), Arg.Any<int>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>()).Returns(new CursorPage<BeepRow>([question, answer], Id(97)));
@@ -99,8 +96,8 @@ public sealed partial class IslandSamplesTests : IDisposable
             .Returns([new ActorSearchRow(alice, "Hello, I am Alice."), new ActorSearchRow(aliceAgent, null)]);
         factory.Agents.ListAgentsAsync(tom.Id, Arg.Any<CancellationToken>()).Returns(
         [
-            new AgentRow(Id(40), "tom.claude", "tom's Claude", "Claude Opus", TestData.Now, null, "beeps_abc123", TestData.Now, TestData.Now.AddHours(-3), "I help."),
-            new AgentRow(Id(41), null, null, null, TestData.Now, null, "beeps_def456", TestData.Now, null),
+            new AgentRow(Id(40), "tom.claude", "tom's Claude", "Claude Opus", TestData.Now, null, "beeps_abc123", TestData.Now.AddHours(-3), "I help."),
+            new AgentRow(Id(41), null, null, null, TestData.Now, null, "beeps_def456", null),
             new AgentRow(Id(42), "tom.gpt", "tom's GPT", "GPT", TestData.Now, TestData.Now, null, null, null),
         ]);
     }
@@ -232,6 +229,24 @@ public sealed partial class IslandSamplesTests : IDisposable
         await MatchSampleAsync($"admin-{page}", url, html);
     }
 
+    [Fact]
+    public void EverySampleIsOneThatATestDraws()
+    {
+        // The facts above draw these; the theories draw their pages.
+        string[] others = ["verify", "compose-refused", "settings-refused", "agents-new-key", "onboarding-key"];
+        string[] drawn =
+        [
+            .. Pages.Select(row => row.Data.Item1),
+            .. SignedOutPages.Select(row => row.Data.Item1),
+            .. AdminPages.Select(row => $"admin-{row.Data}"),
+            .. others,
+        ];
+
+        Assert.Equal(
+            drawn.Select(name => $"{name}.json").Order(StringComparer.Ordinal),
+            Directory.GetFiles(SamplesPath).Select(Path.GetFileName).Order(StringComparer.Ordinal));
+    }
+
     public void Dispose() => factory.Dispose();
 
     private void ArrangeAdmin()
@@ -331,7 +346,8 @@ public sealed partial class IslandSamplesTests : IDisposable
 
         Assert.True(File.Exists(path), $"No sample {name}.json: run the tests with BEEPS_UPDATE_SAMPLES=1.");
         var saved = await File.ReadAllTextAsync(path, TestSupport.Ct);
-        Assert.True(saved == text, $"The page's islands changed ({name}.json): run the tests with BEEPS_UPDATE_SAMPLES=1, check the difference, then npm test.");
+        // A difference: run the tests with BEEPS_UPDATE_SAMPLES=1, check it, then npm test.
+        Assert.Equal(saved, text);
     }
 
     /// <summary>Each island: its name, its envelope, and the markup the server drew inside it.</summary>

@@ -28,7 +28,7 @@ public sealed class LiveFeedService(TimelineService timelines, BeepService beeps
 
         if (topic.Kind == LiveTopicKind.Thread)
         {
-            return Ok((await beeps.ListThreadAsync(viewer, topic.Id, cursor, Limit, cancellationToken)).Items);
+            return Result.Of((await beeps.ListThreadAsync(viewer, topic.Id, cursor, Limit, cancellationToken)).Items);
         }
 
         var since = PageRequest.Create(before: before, sinceId: cursor, limit: Limit);
@@ -40,7 +40,7 @@ public sealed class LiveFeedService(TimelineService timelines, BeepService beeps
             LiveTopicKind.ProfileReplies => await timelines.GetProfileAsync(viewer, topic.Id, ProfileTimeline.Replies, since, cancellationToken),
             _ => (await timelines.GetHashtagAsync(viewer, topic.Tag, since, cancellationToken)).Value,
         };
-        return Ok(page.Items);
+        return Result.Of(page.Items);
     }
 
     /// <summary>
@@ -56,8 +56,6 @@ public sealed class LiveFeedService(TimelineService timelines, BeepService beeps
             return Error.Validation(LiveErrorCodes.InvalidBeeps, localizer["Error.LiveBeepsInvalid", LiveService.MaxWatchedBeeps]);
         }
 
-        return Ok(await beeps.GetManyAsync(viewer, ids, cancellationToken));
+        return Result.Of(await beeps.GetManyAsync(viewer, ids, cancellationToken));
     }
-
-    private static Result<IReadOnlyList<BeepView>> Ok(IReadOnlyList<BeepView> beeps) => Result<IReadOnlyList<BeepView>>.FromValue(beeps);
 }

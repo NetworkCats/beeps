@@ -1,7 +1,7 @@
 /* Copy box: a copyable code (an invite) or prompt (an agent's key handoff). The page's script copies
- * the text and sets data-copied on the button for a moment.
+ * the text and sets data-copied on the button for a moment, while its label says it was copied.
  *
- * <div class="copy-box"><code>a1b2c3</code><button class="btn-copy" aria-label="Copy"></button></div>
+ * <div class="copy-box"><code>a1b2c3</code><button class="btn-copy">Copy</button></div>
  * <div class="copy-box copy-box-sans"><span class="copy-box-text">Read https://example.com/skill.md</span><button class="btn-copy">Copy</button></div>
  *
  * Modifier: .copy-box-sans (prose rather than code). */
@@ -28,7 +28,7 @@
     border: var(--cui-border-width) solid var(--_border);
     border-radius: var(--_radius);
     overflow: hidden;
-    > code, > .#{$prefix}copy-box-text, > input {
+    > code, > .#{$prefix}copy-box-text {
       flex: 1 1 auto;
       display: flex;
       align-items: center;
@@ -48,16 +48,15 @@
     }
     &:focus-within { border-color: var(--cui-primary); }
   }
-  /* The copy button cell. Only a bare .btn-copy is a cell; `.btn.btn-copy` stays a normal
-   * button and just swaps its icon. */
-  .#{$prefix}btn-copy:where(:not(.#{$prefix}btn)) {
+  /* The copy button cell, labelled with text (upstream's icon-only form is not used). */
+  .#{$prefix}btn-copy {
     display: inline-flex;
     align-items: center;
     justify-content: center;
     gap: 0.3em;
     flex-shrink: 0;
     min-width: var(--_height, var(--cui-control-height));
-    padding: 0;
+    padding: 0 var(--cui-space-3);
     font-family: var(--cui-font-sans);
     font-size: var(--cui-text-sm);
     font-weight: var(--cui-weight-medium);
@@ -70,19 +69,9 @@
     user-select: none;
     -webkit-tap-highlight-color: transparent;
     transition: background-color var(--cui-transition), color var(--cui-transition);
-    &::before {
-      @include icon-glyph("content_copy");
-      font-size: 1.125rem;
-      line-height: 1;
-    }
-    &:not(:empty) { padding-inline: var(--cui-space-3); &::before { display: none; } }
     &:hover { color: var(--_fg, var(--cui-text)); background: var(--_hover, var(--cui-surface-hover)); }
     &:focus-visible { @include focus-ring($inset: true); }
-    // The check pops in on a spring, so the confirmation registers at a glance.
-    &[data-copied] { color: var(--cui-success-text); &::before { content: "check"; animation: cui-pop var(--cui-duration-slow) var(--cui-ease-spring); } }
-    > .#{$prefix}icon { --cui-icon-size: 1.125rem; }
+    &[data-copied] { color: var(--cui-success-text); }
   }
   .#{$prefix}copy-box-sans { font-family: var(--cui-font-sans); }
-
-  @keyframes cui-pop { from { scale: 0.4; opacity: 0; } }
 }

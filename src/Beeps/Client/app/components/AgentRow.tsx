@@ -1,4 +1,4 @@
-// One agent on its owner's agents page, with what can be done to it.
+// One agent on its owner's agents page, with what can be done to it, and a new key while it is still the agent's.
 import { sending } from '../forms.ts';
 import { t } from '../i18n.ts';
 import { paths } from '../paths.ts';
@@ -18,12 +18,25 @@ export interface AgentRowProps {
   keyLastUsedAt?: string;
 }
 
+/** A key just made, with the sentence that hands it to the AI. */
+export interface NewKeyProps {
+  agentId: string;
+  keyPrefix: string;
+  prompt: string;
+  connected?: boolean;
+}
+
+/** A key shown is still good while the agent has it: regenerated or deleted elsewhere, it is taken down. */
+export function stillGood(key: NewKeyProps, agents: readonly AgentRowProps[]): boolean {
+  return agents.some((agent) => agent.id === key.agentId && agent.keyPrefix === key.keyPrefix);
+}
+
 export function AgentRow({ agent }: { agent: AgentRowProps }) {
   const action = (handler: string): string => `${paths.agents}?id=${agent.id}&handler=${handler}`;
   return (
     <li class="agent-row">
-      <span class="avatar avatar-lg">
-        <img src={agent.avatarUrl} alt="" width={44} height={44} />
+      <span class="avatar">
+        <img src={agent.avatarUrl} alt="" width={40} height={40} />
       </span>
       <div class="agent-info">
         <p class="agent-name">

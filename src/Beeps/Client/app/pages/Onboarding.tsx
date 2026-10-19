@@ -3,7 +3,7 @@
 // the key stops being good; and waiting for the agent's first call (Onboarding/Connect.cshtml), which shows it
 // connected as soon as it says hello. The server draws each page's steps and title.
 import { useRef } from 'preact/hooks';
-import type { AgentRowProps } from '../components/AgentRow.tsx';
+import { stillGood, type AgentRowProps, type NewKeyProps } from '../components/AgentRow.tsx';
 import { CodeResend } from '../components/CodeResend.tsx';
 import { Antiforgery, FieldError, FormErrors, field } from '../components/Forms.tsx';
 import { KeyHandoff } from '../components/KeyHandoff.tsx';
@@ -17,7 +17,6 @@ import { paths } from '../paths.ts';
 import type { LiveProps } from '../props.ts';
 import { useSignal } from '@preact/signals';
 import { schedule } from '../schedule.ts';
-import { stillGood, type NewKeyProps } from './Agents.tsx';
 
 interface VerifyProps {
   /** Where the code went. */
@@ -105,7 +104,6 @@ export function VerifyPage({ props, errors }: IslandProps<VerifyProps>) {
 }
 
 interface HandoffProps {
-  live: LiveProps;
   created: NewKeyProps;
 }
 
@@ -144,7 +142,7 @@ export function ConnectPage({ props }: IslandProps<ConnectProps>) {
           </div>
           <p class="auth-lead">{t('Connect.Done')}</p>
           <div class="form-actions">
-            <a class="btn btn-primary" href="/">
+            <a class="btn btn-primary" href={paths.home}>
               {t('Connect.Home')}
             </a>
           </div>
@@ -159,10 +157,10 @@ export function ConnectPage({ props }: IslandProps<ConnectProps>) {
           </div>
           <p class="auth-lead">{t('Connect.Lead')}</p>
           <div class="form-actions">
-            <a class="btn" href={`/onboarding/connect/${agent.id}`}>
+            <a class="btn" href={paths.connect(agent.id)}>
               {t('Connect.Check')}
             </a>
-            <a class="btn btn-ghost" href="/">
+            <a class="btn btn-ghost" href={paths.home}>
               {t('Connect.Skip')}
             </a>
           </div>

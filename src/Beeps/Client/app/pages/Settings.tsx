@@ -56,7 +56,6 @@ interface SettingsProps {
   privacy: Privacy;
   culture: string;
   cultures: Option[];
-  theme: string;
   themes: Option[];
   limits: ProfileLimits;
   passwordMinLength: number;

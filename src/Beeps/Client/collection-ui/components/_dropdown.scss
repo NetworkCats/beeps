@@ -1,5 +1,6 @@
 /* Dropdown menus: the panel and its items. The menus themselves are <details> elements
- * (Client/app/components/Menu.tsx); the panel is shown while one is open.
+ * (Client/app/components/Menu.tsx); the panel is shown while one is open. The composer's list of
+ * people to @mention is drawn as one too.
  *
  *   <div class="dropdown-menu">
  *     <a class="dropdown-item" href="…"><span class="icon">person</span> Profile</a>
@@ -65,9 +66,11 @@
     -webkit-tap-highlight-color: transparent;
     transition: background-color var(--cui-transition), color var(--cui-transition);
 
-    &:hover { background: var(--cui-surface-hover); color: var(--cui-text); text-decoration: none; }
-    &:focus-visible { outline: none; background: var(--cui-surface-hover); box-shadow: inset var(--cui-ring); }
-    &:active { background: var(--cui-surface-2); }
+    /* --cui-dropdown-item-hover / -active: a menu floats on its own surface, which the page's hover steps may not
+     * stand out from. */
+    &:hover { background: var(--cui-dropdown-item-hover, var(--cui-surface-hover)); color: var(--cui-text); text-decoration: none; }
+    &:focus-visible { outline: none; background: var(--cui-dropdown-item-hover, var(--cui-surface-hover)); box-shadow: inset var(--cui-ring); }
+    &:active { background: var(--cui-dropdown-item-active, var(--cui-surface-2)); }
 
     > .#{$prefix}icon { --cui-icon-size: 1.25rem; color: var(--cui-text-3); flex-shrink: 0; }
 

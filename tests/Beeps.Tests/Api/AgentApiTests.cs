@@ -14,24 +14,23 @@ public sealed class AgentApiTests : IDisposable
     [Fact]
     public async Task MeReturnsTheAgentAndItsOwner()
     {
-        var (key, agentId, ownerId) = ArrangeAgent();
-        using var client = factory.CreateClient();
-        client.DefaultRequestHeaders.Authorization = new("Bearer", key);
+        var agent = ArrangeAgent();
+        using var client = agent.Client(factory);
 
         using var response = await client.GetAsync(new Uri("/api/v1/agent/me", UriKind.Relative), TestSupport.Ct);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         using var json = JsonDocument.Parse(await response.Content.ReadAsStringAsync(TestSupport.Ct));
         var me = json.RootElement;
-        Assert.Equal(agentId, me.GetProperty("id").GetGuid());
+        Assert.Equal(agent.AgentId, me.GetProperty("id").GetGuid());
         Assert.Equal("agent", me.GetProperty("kind").GetString());
         Assert.Equal("tom.claude", me.GetProperty("handle").GetString());
         Assert.Equal("Claude Opus 4.5", me.GetProperty("model_name").GetString());
         Assert.True(me.GetProperty("connected").GetBoolean());
         Assert.Equal("2026-10-16T08:30:00Z", me.GetProperty("created_at").GetString());
-        Assert.Equal($"https://beeps.test/avatars/{agentId:D}.svg", me.GetProperty("avatar_url").GetString());
+        Assert.Equal($"https://beeps.test/avatars/{agent.AgentId:D}.svg", me.GetProperty("avatar_url").GetString());
         var owner = me.GetProperty("owner");
-        Assert.Equal(ownerId, owner.GetProperty("id").GetGuid());
+        Assert.Equal(agent.OwnerId, owner.GetProperty("id").GetGuid());
         Assert.Equal("owner", owner.GetProperty("relation").GetString());
         Assert.Equal("human", owner.GetProperty("kind").GetString());
     }
@@ -39,16 +38,22 @@ public sealed class AgentApiTests : IDisposable
     [Fact]
     public async Task MeIsLimitedPerAgent()
     {
-        var (key, agentId, _) = ArrangeAgent();
-        using var client = factory.CreateClient();
-        client.DefaultRequestHeaders.Authorization = new("Bearer", key);
+        var first = ArrangeAgent();
+        var second = ArrangeAgent(first.OwnerId);
 
-        using var response = await client.GetAsync(new Uri("/api/v1/agent/me", UriKind.Relative), TestSupport.Ct);
+        foreach (var agent in (TestAgent[])[first, first, second])
+        {
+            using var client = agent.Client(factory);
+            using var response = await client.GetAsync(new Uri("/api/v1/agent/me", UriKind.Relative), TestSupport.Ct);
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        }
 
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        await factory.RateLimitStore.Received(1).TryAcquireAsync(
-            Arg.Is<IReadOnlyList<RateLimitCounter>>(c => c.Single().Key.StartsWith(RateLimitPolicies.AgentRead + ":", StringComparison.Ordinal)),
-            Arg.Any<CancellationToken>());
+        // From the same address, for the same owner: only the agent tells the counters apart.
+        var keys = factory.RateLimitStore.ReceivedCalls().Select(c => Assert.Single((IReadOnlyList<RateLimitCounter>)c.GetArguments()[0]!).Key).ToList();
+        Assert.Equal(3, keys.Count);
+        Assert.All(keys, k => Assert.StartsWith(RateLimitPolicies.AgentRead + ":", k, StringComparison.Ordinal));
+        Assert.Equal(keys[0], keys[1]);
+        Assert.NotEqual(keys[0], keys[2]);
     }
 
     [Theory]
@@ -85,9 +90,9 @@ public sealed class AgentApiTests : IDisposable
     [Fact]
     public async Task AnAgentKeyCannotOpenPages()
     {
-        var (key, _, _) = ArrangeAgent();
+        var agent = TestAgent.Arrange(factory);
         using var client = WebAuth.NewClient(factory);
-        client.DefaultRequestHeaders.Authorization = new("Bearer", key);
+        client.DefaultRequestHeaders.Authorization = new("Bearer", agent.Key);
 
         using var response = await client.GetAsync(new Uri("/agents", UriKind.Relative), TestSupport.Ct);
 
@@ -97,15 +102,11 @@ public sealed class AgentApiTests : IDisposable
 
     public void Dispose() => factory.Dispose();
 
-    private (string Key, Guid AgentId, Guid OwnerId) ArrangeAgent()
+    private TestAgent ArrangeAgent(Guid? ownerId = null)
     {
-        var key = AgentKeys.Generate();
-        var agentId = Guid.NewGuid();
-        var ownerId = Guid.NewGuid();
-        factory.Agents.FindActiveKeyAsync(AgentKeys.Hash(key), Arg.Any<CancellationToken>())
-            .Returns(new AgentKeyMatch(Guid.NewGuid(), AgentKeys.Hash(key), agentId, ownerId, DateTimeOffset.UtcNow, Connected: true));
-        factory.Agents.GetAgentWithOwnerAsync(agentId, Arg.Any<CancellationToken>())
-            .Returns(new AgentWithOwnerRow(agentId, "tom.claude", "tom's Claude", "Claude Opus 4.5", TestData.Now, ownerId, "tom", "Tom"));
-        return (key, agentId, ownerId);
+        var agent = TestAgent.Arrange(factory, ownerId: ownerId);
+        factory.Agents.GetAgentWithOwnerAsync(agent.AgentId, Arg.Any<CancellationToken>())
+            .Returns(new AgentWithOwnerRow(agent.AgentId, "tom.claude", "tom's Claude", "Claude Opus 4.5", TestData.Now, agent.OwnerId, "tom", "Tom"));
+        return agent;
     }
 }

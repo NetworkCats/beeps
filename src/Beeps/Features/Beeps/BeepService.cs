@@ -207,16 +207,14 @@ public sealed partial class BeepService(
             return NotFound();
         }
 
-        var page = await store.ListThreadAsync(beep.RootId, after, PageRequest.ClampLimit(limit), viewer?.ActorId, cancellationToken);
-        return await views.BuildPageAsync(page, viewer, cancellationToken);
+        return await ListThreadAsync(viewer, beep.RootId, after, limit, cancellationToken);
     }
 
     /// <summary>The thread of a beep just shown to the viewer (<see cref="GetAsync"/>), which needs no second look for it.</summary>
     public async Task<CursorPage<BeepView>> GetThreadOfAsync(Viewer? viewer, BeepView shown, Guid? after, int? limit, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(shown);
-        var page = await store.ListThreadAsync(shown.RootId, after, PageRequest.ClampLimit(limit), viewer?.ActorId, cancellationToken);
-        return await views.BuildPageAsync(page, viewer, cancellationToken);
+        return await ListThreadAsync(viewer, shown.RootId, after, limit, cancellationToken);
     }
 
     /// <summary>Authors delete their own beeps; a human also deletes their agents' beeps (PLAN 2.2).</summary>
@@ -283,7 +281,7 @@ public sealed partial class BeepService(
             return Blocked();
         }
 
-        var limited = await rateLimits.CheckAsync(RateLimitPolicies.Like, ActorPartition(viewer.ActorId), cancellationToken);
+        var limited = await rateLimits.CheckAsync(RateLimitPolicies.Like, RateLimitPartitions.Actor(viewer.ActorId), cancellationToken);
         if (!limited.IsSuccess)
         {
             return limited;
@@ -367,7 +365,7 @@ public sealed partial class BeepService(
         }
 
         // Same quota as liking, so flipping a like on and off is not free.
-        var limited = await rateLimits.CheckAsync(RateLimitPolicies.Like, ActorPartition(viewer.ActorId), cancellationToken);
+        var limited = await rateLimits.CheckAsync(RateLimitPolicies.Like, RateLimitPartitions.Actor(viewer.ActorId), cancellationToken);
         if (!limited.IsSuccess)
         {
             return limited;
@@ -418,24 +416,22 @@ public sealed partial class BeepService(
     /// </summary>
     private static List<RateLimitTarget> PostLimits(Viewer author, BeepRef? parent)
     {
-        var self = ActorPartition(author.ActorId);
+        var self = RateLimitPartitions.Actor(author.ActorId);
         if (!author.IsAgent)
         {
             return [new RateLimitTarget(RateLimitPolicies.HumanPost, self)];
         }
 
-        var owner = new RateLimitTarget(RateLimitPolicies.OwnerAgentsPost, $"owner:{author.OwnerId}");
+        var owner = new RateLimitTarget(RateLimitPolicies.OwnerAgentsPost, RateLimitPartitions.Owner(author.AccountId));
         return parent is null
             ? [new RateLimitTarget(RateLimitPolicies.AgentPost, self), owner]
             :
             [
                 new RateLimitTarget(RateLimitPolicies.AgentReply, self),
-                new RateLimitTarget(RateLimitPolicies.AgentThreadReply, $"{self}:thread:{parent.RootId}"),
+                new RateLimitTarget(RateLimitPolicies.AgentThreadReply, RateLimitPartitions.Thread(author.ActorId, parent.RootId)),
                 owner,
             ];
     }
-
-    private static string ActorPartition(Guid actorId) => $"actor:{actorId}";
 
     // The change is committed by now. Without Valkey the beep is not marked for write-back either, so a recount is
     // stored instead: it puts the column right now and the live count once Valkey is back.
@@ -468,7 +464,7 @@ public sealed partial class BeepService(
             BeepTextProblem.TooManyMentions => (BeepErrorCodes.TooManyMentions, localizer["Error.TooManyMentions", BeepText.MaxMentions]),
             _ => throw new ArgumentOutOfRangeException(nameof(problem), problem, null),
         };
-        return Error.Validation(code, detail, new Dictionary<string, string[]> { [BeepFields.Text] = [detail] });
+        return Error.Field(code, BeepFields.Text, detail);
     }
 
     private Error NotFound() => Error.NotFound(ErrorCodes.NotFound, localizer["Error.BeepNotFound"]);

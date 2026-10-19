@@ -64,7 +64,7 @@ public sealed class CacheInvalidatorTests : IAsyncDisposable
     [Fact]
     public async Task DropsThisInstancesCopyBeforeReturning()
     {
-        Put(CacheKinds.Actor, Owner, Human(Owner));
+        shared.Put(CacheKinds.Actor, Owner, Human(Owner));
         await ReadActorAsync(Owner);
         var reads = shared.Gets.Count;
 
@@ -79,11 +79,11 @@ public sealed class CacheInvalidatorTests : IAsyncDisposable
     public async Task DeletesTheEntriesFromValkeyAndTellsEveryInstance()
     {
         await invalidator.StartAsync(stop.Token);
-        Put(CacheKinds.Following, Owner, (IReadOnlyList<Guid>)[Agent]);
+        shared.Put(CacheKinds.Following, Owner, (IReadOnlyList<Guid>)[Agent]);
 
         invalidator.Invalidate([CacheChange.Following(Owner), CacheChange.Handle("tom.claude")]);
 
-        var message = await PublishedAsync();
+        var message = await shared.PublishedAsync();
         Assert.Equal([CacheKinds.Following.Key(Owner), CacheKinds.Handle.Key("tom.claude")], message.Keys.Order());
         Assert.Empty(message.PageTags);
         Assert.False(shared.Entries.ContainsKey(CacheKinds.Following.Key(Owner)));
@@ -96,20 +96,20 @@ public sealed class CacheInvalidatorTests : IAsyncDisposable
 
         invalidator.Invalidate([CacheChange.Beep(Root)]);
 
-        await WaitUntilAsync(() => shared.Deletes.Count(d => d.Contains(CacheKinds.Beep.Key(Root))) == 2);
+        await TestSupport.WaitUntilAsync(() => shared.Deletes.Count(d => d.Contains(CacheKinds.Beep.Key(Root))) == 2);
     }
 
     [Fact]
     public async Task ANewBeepEvictsThePagesItBelongsOnItsThreadItsAuthorsAndOwnersProfilesItsHashtagsAndThePublicTimeline()
     {
         await invalidator.StartAsync(stop.Token);
-        Put(CacheKinds.Beep, Root, Beep(Root, Agent, null, "hello #Weather and #天气"));
-        Put(CacheKinds.Actor, Agent, AgentOf(Owner));
-        Put(CacheKinds.Actor, Owner, Human(Owner));
+        shared.Put(CacheKinds.Beep, Root, Beep(Root, Agent, null, "hello #Weather and #天气"));
+        shared.Put(CacheKinds.Actor, Agent, AgentOf(Owner));
+        shared.Put(CacheKinds.Actor, Owner, Human(Owner));
 
         invalidator.Invalidate([CacheChange.BeepPosted(Root)]);
 
-        var message = await PublishedAsync();
+        var message = await shared.PublishedAsync();
         Assert.Empty(message.Keys);
         Assert.Equal(
             [PageTags.Actor(Owner), PageTags.Actor(Agent), PageTags.Public, PageTags.Hashtag("weather"), PageTags.Hashtag("天气"), PageTags.Thread(Root)],
@@ -125,7 +125,7 @@ public sealed class CacheInvalidatorTests : IAsyncDisposable
 
         invalidator.Invalidate([CacheChange.BeepRemoved(Root)]);
 
-        var message = await PublishedAsync();
+        var message = await shared.PublishedAsync();
         Assert.Equal([CacheKinds.Beep.Key(Root)], message.Keys);
         Assert.Equal([PageTags.Beep(Root)], message.PageTags);
         Assert.Empty(shared.Gets);
@@ -135,11 +135,11 @@ public sealed class CacheInvalidatorTests : IAsyncDisposable
     public async Task AHiddenBeepEvictsThePagesShowingItButKeepsItsEntry()
     {
         await invalidator.StartAsync(stop.Token);
-        Put(CacheKinds.Beep, Reply, Beep(Reply, Owner, Root, "a reply"));
+        shared.Put(CacheKinds.Beep, Reply, Beep(Reply, Owner, Root, "a reply"));
 
         invalidator.Invalidate([CacheChange.BeepHidden(Reply)]);
 
-        var message = await PublishedAsync();
+        var message = await shared.PublishedAsync();
         Assert.Empty(message.Keys);
         Assert.Equal([PageTags.Beep(Reply)], message.PageTags);
         Assert.True(shared.Entries.ContainsKey(CacheKinds.Beep.Key(Reply)));
@@ -152,7 +152,7 @@ public sealed class CacheInvalidatorTests : IAsyncDisposable
 
         invalidator.Invalidate([CacheChange.BeepCounts(Root)]);
 
-        var message = await PublishedAsync();
+        var message = await shared.PublishedAsync();
         Assert.Empty(message.Keys);
         Assert.Equal([PageTags.Beep(Root)], message.PageTags);
     }
@@ -164,7 +164,7 @@ public sealed class CacheInvalidatorTests : IAsyncDisposable
 
         invalidator.Invalidate([CacheChange.Actor(Agent)]);
 
-        var message = await PublishedAsync();
+        var message = await shared.PublishedAsync();
         Assert.Equal([CacheKinds.Actor.Key(Agent)], message.Keys);
         Assert.Equal([PageTags.Shows(Agent)], message.PageTags);
         Assert.Empty(shared.Gets);
@@ -179,7 +179,7 @@ public sealed class CacheInvalidatorTests : IAsyncDisposable
         await invalidator.ForgetSharedAsync(["session:abc"]);
 
         await hybrid.Received(1).RemoveAsync(Arg.Is<IEnumerable<string>>(keys => keys.Single() == "session:abc"), Arg.Any<CancellationToken>());
-        await WaitUntilAsync(() => RemovalsOf("session:abc") == 2);
+        await TestSupport.WaitUntilAsync(() => RemovalsOf("session:abc") == 2);
         // Nothing for the other instances: no instance holds a copy of these.
         Assert.Empty(shared.Published);
     }
@@ -201,7 +201,7 @@ public sealed class CacheInvalidatorTests : IAsyncDisposable
         // The revocation is committed: the caller is not failed for the cache.
         await invalidator.ForgetSharedAsync(["agentkey:abc"]);
 
-        await WaitUntilAsync(() => RemovalsOf("agentkey:abc") >= 3);
+        await TestSupport.WaitUntilAsync(() => RemovalsOf("agentkey:abc") >= 3);
         // And stored, in case this instance stops before Valkey is back.
         outbox.Received(1).Enqueue(
             SharedCacheForgetRequest.MessageType,
@@ -212,9 +212,9 @@ public sealed class CacheInvalidatorTests : IAsyncDisposable
     [Fact]
     public async Task TheStoredRetryOfASignInEntryDropsIt()
     {
-        var payload = JsonSerializer.Serialize(new SharedCacheForgetRequest(["session:abc"]), ContentCacheJsonContext.Default.SharedCacheForgetRequest);
+        var message = TestData.Envelope(SharedCacheForgetRequest.MessageType, new SharedCacheForgetRequest(["session:abc"]), ContentCacheJsonContext.Default.SharedCacheForgetRequest);
 
-        await new SharedCacheForgetHandler(hybrid).HandleAsync(new OutboxEnvelope(Guid.NewGuid(), SharedCacheForgetRequest.MessageType, payload, 1, TestData.Now), TestSupport.Ct);
+        await new SharedCacheForgetHandler(hybrid).HandleAsync(message, TestSupport.Ct);
 
         await hybrid.Received(1).RemoveAsync(Arg.Is<IEnumerable<string>>(keys => keys.Single() == "session:abc"), Arg.Any<CancellationToken>());
     }
@@ -223,12 +223,12 @@ public sealed class CacheInvalidatorTests : IAsyncDisposable
     public async Task AConnectedAgentEvictsItsOwnersProfileWhereItNowAppears()
     {
         await invalidator.StartAsync(stop.Token);
-        Put(CacheKinds.Actor, Agent, AgentOf(Owner));
-        Put(CacheKinds.Actor, Owner, Human(Owner));
+        shared.Put(CacheKinds.Actor, Agent, AgentOf(Owner));
+        shared.Put(CacheKinds.Actor, Owner, Human(Owner));
 
         invalidator.Invalidate([CacheChange.AgentConnected(Agent)]);
 
-        var message = await PublishedAsync();
+        var message = await shared.PublishedAsync();
         Assert.Equal([CacheKinds.Actor.Key(Agent)], message.Keys);
         Assert.Equal([PageTags.Actor(Owner)], message.PageTags);
     }
@@ -237,11 +237,11 @@ public sealed class CacheInvalidatorTests : IAsyncDisposable
     public async Task ABanEvictsThePagesShowingTheHumanOrTheirAgents()
     {
         await invalidator.StartAsync(stop.Token);
-        Put(CacheKinds.Agents, Owner, (IReadOnlyList<Guid>)[Agent]);
+        shared.Put(CacheKinds.Agents, Owner, (IReadOnlyList<Guid>)[Agent]);
 
         invalidator.Invalidate([CacheChange.ActorVisibility(Owner)]);
 
-        var message = await PublishedAsync();
+        var message = await shared.PublishedAsync();
         Assert.Equal([CacheKinds.Actor.Key(Owner)], message.Keys);
         Assert.Equal([PageTags.Shows(Owner), PageTags.Shows(Agent)], message.PageTags.Order(StringComparer.Ordinal));
     }
@@ -253,7 +253,7 @@ public sealed class CacheInvalidatorTests : IAsyncDisposable
 
         invalidator.Invalidate([CacheChange.ActorRestored(Owner)]);
 
-        var message = await PublishedAsync();
+        var message = await shared.PublishedAsync();
         Assert.Equal([PageTags.All], message.PageTags);
         Assert.Empty(shared.Gets);
     }
@@ -262,12 +262,8 @@ public sealed class CacheInvalidatorTests : IAsyncDisposable
     public async Task TheOutboxCopyRunsAtOnceAndFailsForARetry()
     {
         var handler = new CacheInvalidationHandler(invalidator);
-        var message = new OutboxEnvelope(
-            Guid.NewGuid(),
-            CacheInvalidationRequest.MessageType,
-            JsonSerializer.Serialize(new CacheInvalidationRequest([CacheChange.Following(Owner)]), ContentCacheJsonContext.Default.CacheInvalidationRequest),
-            1,
-            TestData.Now);
+        var message = TestData.Envelope(
+            CacheInvalidationRequest.MessageType, new CacheInvalidationRequest([CacheChange.Following(Owner)]), ContentCacheJsonContext.Default.CacheInvalidationRequest);
 
         // Not started: the handler does the work itself.
         await handler.HandleAsync(message, TestSupport.Ct);
@@ -288,7 +284,7 @@ public sealed class CacheInvalidatorTests : IAsyncDisposable
         await Task.Delay(100, TestSupport.Ct);
         shared.Failure = null;
 
-        await WaitUntilAsync(() => shared.Deletes.Any(d => d.Contains(CacheKinds.Agents.Key(Owner))));
+        await TestSupport.WaitUntilAsync(() => shared.Deletes.Any(d => d.Contains(CacheKinds.Agents.Key(Owner))));
     }
 
     [Fact]
@@ -296,8 +292,8 @@ public sealed class CacheInvalidatorTests : IAsyncDisposable
     {
         var listener = new CacheInvalidationListener(shared, cache, pages, TimeProvider.System, NullLogger<CacheInvalidationListener>.Instance);
         await listener.StartAsync(stop.Token);
-        await WaitUntilAsync(() => shared.Subscribers == 1);
-        Put(CacheKinds.Actor, Owner, Human(Owner));
+        await TestSupport.WaitUntilAsync(() => shared.Subscribers == 1);
+        shared.Put(CacheKinds.Actor, Owner, Human(Owner));
         await ReadActorAsync(Owner);
         var reads = shared.Gets.Count;
 
@@ -308,7 +304,7 @@ public sealed class CacheInvalidatorTests : IAsyncDisposable
         await ReadActorAsync(Owner);
 
         Assert.Equal(reads + 1, shared.Gets.Count);
-        await WaitUntilAsync(() => pages.ReceivedCalls().Any());
+        await TestSupport.WaitUntilAsync(() => pages.ReceivedCalls().Any());
         await pages.Received(1).EvictByTagAsync(PageTags.Actor(Owner), Arg.Any<CancellationToken>());
         await listener.StopAsync(CancellationToken.None);
         listener.Dispose();
@@ -324,26 +320,6 @@ public sealed class CacheInvalidatorTests : IAsyncDisposable
     private static CachedBeep Beep(Guid id, Guid author, Guid? replyTo, string text) =>
         new(id, text, author, replyTo, replyTo ?? id, TestData.Now, 0, 0, [], Array.Empty<MediaRow>());
 
-    private void Put<TKey, TValue>(CacheKind<TKey, TValue> kind, TKey id, TValue value)
-        where TKey : notnull =>
-        shared.Entries[kind.Key(id)] = JsonSerializer.SerializeToUtf8Bytes(value, kind.Type);
-
     private Task<IReadOnlyDictionary<Guid, CachedActor>> ReadActorAsync(Guid id) =>
         cache.GetManyAsync(CacheKinds.Actor, [id], (_, _) => throw new InvalidOperationException("Not in the cache."), TestSupport.Ct);
-
-    private async Task<CacheInvalidationMessage> PublishedAsync()
-    {
-        await WaitUntilAsync(() => shared.Published.Count > 0);
-        return JsonSerializer.Deserialize(shared.Published[0], ContentCacheJsonContext.Default.CacheInvalidationMessage)!;
-    }
-
-    private static async Task WaitUntilAsync(Func<bool> condition)
-    {
-        for (var i = 0; i < 300 && !condition(); i++)
-        {
-            await Task.Delay(10, TestSupport.Ct);
-        }
-
-        Assert.True(condition());
-    }
 }

@@ -1,6 +1,4 @@
 using System.Net;
-using Beeps.Features.Beeps;
-using Beeps.Features.Shared;
 using Beeps.Tests.Support;
 
 namespace Beeps.Tests.Pages;
@@ -8,9 +6,6 @@ namespace Beeps.Tests.Pages;
 public sealed class ThemePageTests : IDisposable
 {
     private readonly BeepsWebApplicationFactory factory = new();
-
-    public ThemePageTests() =>
-        factory.Timelines.PublicAsync(default!, default, TestSupport.Ct).ReturnsForAnyArgs(new CursorPage<BeepRow>([], null));
 
     [Fact]
     public async Task PagesFollowTheSystemUntilASchemeIsPicked()
@@ -74,10 +69,8 @@ public sealed class ThemePageTests : IDisposable
         Assert.Equal("dark", user.Theme);
         // Another browser, with no cookie of its own.
         Assert.Contains("<html lang=\"en\" data-theme=\"dark\">", html, StringComparison.Ordinal);
-        // The scheme switch posts it to the account, with dark chosen.
-        var options = Islands.Props(html, "site-options");
-        Assert.True(options.GetProperty("signedIn").GetBoolean());
-        Assert.Equal("dark", options.GetProperty("theme").GetString());
+        // The scheme switch posts it to the account; the app shows dark chosen, as the page is.
+        Assert.True(Islands.Props(html, "site-options").GetProperty("signedIn").GetBoolean());
     }
 
     [Fact]
@@ -116,7 +109,6 @@ public sealed class ThemePageTests : IDisposable
         using var response = await WebAuth.PostFormAsync(client, "/settings", "/settings?handler=Theme", ("Theme", "light"));
 
         var settings = Islands.Props(page, "settings");
-        Assert.Equal("system", settings.GetProperty("theme").GetString());
         Assert.Equal(["system", "light", "dark"], settings.GetProperty("themes").EnumerateArray().Select(t => t.GetProperty("value").GetString()));
         Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
         Assert.Equal("light", user.Theme);

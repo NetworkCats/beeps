@@ -5,8 +5,6 @@ public static class SitePaths
 {
     public const string Home = "/";
 
-    public const string Notifications = "/notifications";
-
     public const string About = "/about";
 
     public const string Settings = "/settings";

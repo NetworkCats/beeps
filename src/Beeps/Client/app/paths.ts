@@ -2,13 +2,25 @@
 
 export const paths = {
   home: '/',
+  public: '/public',
+  about: '/about',
+  search: '/search',
   notifications: '/notifications',
   compose: '/compose',
+  /** The compose page for a reply to the beep. */
+  composeReply: (id: string): string => `/compose?replyTo=${id}`,
   settings: '/settings',
   settingsSection: (section: string): string => `/settings/${section}`,
   agents: '/agents',
+  admin: '/admin',
   login: '/login',
+  logout: '/logout',
+  /** Where the language and the colour scheme are picked (Culture.cshtml, Theme.cshtml). */
+  culture: '/culture',
+  theme: '/theme',
   verify: '/onboarding/verify',
+  /** Waiting for an agent's first call. */
+  connect: (agentId: string): string => `/onboarding/connect/${agentId}`,
   forgotPassword: '/forgot-password',
   profile: (handle: string): string => `/@${encodeURIComponent(handle)}`,
   /** A page of a profile (Features/Site/SitePaths.cs's ProfileTabs): `replies`, `likes`, `following` or `followers`. */

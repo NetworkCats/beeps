@@ -61,19 +61,15 @@ public static class RedisSetup
     {
         services.AddSingleton<RedisConnection>();
 
-        // HybridCache: short-lived in-process L1 in front of the shared Valkey L2. L1 TTL stays short
-        // because instances must not drift apart (PLAN 12, 无状态).
+        // HybridCache over Valkey. Every entry passes its own options (see SharedCache and EfSystemStore); the
+        // ones that decide who a request is skip the in-process copy, because instances must not drift apart (PLAN 12).
         services.AddStackExchangeRedisCache(_ => { });
         services.AddOptions<RedisCacheOptions>().Configure<IServiceProvider>((options, sp) =>
         {
             options.InstanceName = $"{KeyPrefix}cache:";
             options.ConnectionMultiplexerFactory = () => sp.GetRequiredService<RedisConnection>().GetAsync();
         });
-        services.AddHybridCache(options => options.DefaultEntryOptions = new HybridCacheEntryOptions
-        {
-            Expiration = TimeSpan.FromMinutes(5),
-            LocalCacheExpiration = TimeSpan.FromSeconds(30),
-        }).AddBeepsCacheSerializers();
+        services.AddHybridCache().AddBeepsCacheSerializers();
         return services;
     }
 }

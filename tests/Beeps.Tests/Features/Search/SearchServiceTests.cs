@@ -169,5 +169,5 @@ public sealed class SearchServiceTests
     }
 
     private SearchService Create() =>
-        new(index, store, beeps, new BeepViews(beeps, counters, TestData.Avatars, TestData.Media, NullLogger<BeepViews>.Instance), new TestLocalizer(), NullLogger<SearchService>.Instance);
+        new(index, store, beeps, TestServices.Views(beeps, counters), new TestLocalizer(), NullLogger<SearchService>.Instance);
 }

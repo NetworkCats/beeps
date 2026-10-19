@@ -1,14 +1,12 @@
 @page "/settings/{section:regex(^(profile|privacy|account|email|password|display)$)?}"
 @using Beeps.Features.Accounts
 @using Beeps.Features.Avatars
-@using Beeps.Features.Localization
 @using Beeps.Pages.Islands
 @model SettingsModel
 @inject AvatarUrls Avatars
 @{
     ViewData[PageShell.ImageCrop] = true;
     ViewData["Title"] = L["Settings.Title"];
-    var theme = Themes.For(User, ViewContext.HttpContext.Request);
     // Shows the saved name, bio, avatar and banner, also when changed in another tab, unless they are being edited here.
     // The forms post to the section they are on, so a refused one comes back to it.
     var profile = SitePaths.SettingsSection(SettingsSections.Profile);
@@ -25,9 +23,8 @@
         Model.Bio,
         new PrivacyProps(Model.Settings.Privacy.HideLikes, Model.Settings.Privacy.HideFollows, Model.Settings.Privacy.HideFollowCounts),
         Model.Settings.Locale,
-        [.. SupportedCultures.All.Select(c => new OptionProps(c, L[$"Language.{c}"], c))],
-        theme,
-        [.. Themes.All.Select(t => new OptionProps(t, L[$"Theme.{t}"]))],
+        SiteOptionsProps.CulturesFor(L),
+        SiteOptionsProps.ThemesFor(L),
         new ProfileLimits(Actor.DisplayNameMaxLength, Actor.BioMaxLength),
         AccountRules.PasswordMinLength,
         AccountRules.PasswordMaxLength,

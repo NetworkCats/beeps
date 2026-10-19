@@ -1,11 +1,9 @@
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
-using System.Text.Json;
 using Beeps.Features.Accounts;
 using Beeps.Features.Agents;
 using Beeps.Features.Avatars;
-using Beeps.Features.Beeps;
 using Beeps.Features.Media;
 using Beeps.Features.Shared;
 using Beeps.Tests.Support;
@@ -23,8 +21,7 @@ public sealed class MediaApiTests : IDisposable
     {
         agent = TestAgent.Arrange(factory);
         client = agent.Client(factory);
-        factory.Media.LockOwnedAsync(default, default!, CancellationToken.None)
-            .ReturnsForAnyArgs(ci => ci.Arg<IReadOnlyCollection<Guid>>() is { } ids ? (IReadOnlyList<Guid>)[.. ids] : []);
+        MediaServiceParts.OwnEverything(factory.Media);
     }
 
     [Fact]
@@ -39,7 +36,7 @@ public sealed class MediaApiTests : IDisposable
         using var response = await UploadAsync(png, "image/png");
 
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
-        var media = await JsonAsync(response);
+        var media = await TestSupport.JsonAsync(response);
         Assert.Equal(stored!.Id, media.GetProperty("id").GetGuid());
         Assert.Equal($"https://media.beeps.test/{stored.StorageKey}/full.webp", media.GetProperty("url").GetString());
         Assert.Equal($"https://media.beeps.test/{stored.StorageKey}/thumb.webp", media.GetProperty("thumbnail_url").GetString());
@@ -75,7 +72,7 @@ public sealed class MediaApiTests : IDisposable
         using var response = await client.PostAsync(new Uri("/api/v1/media", UriKind.Relative), form, TestSupport.Ct);
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-        Assert.Equal(MediaErrorCodes.RawBodyRequired, (await JsonAsync(response)).GetProperty("code").GetString());
+        Assert.Equal(MediaErrorCodes.RawBodyRequired, (await TestSupport.JsonAsync(response)).GetProperty("code").GetString());
     }
 
     [Fact]
@@ -84,7 +81,7 @@ public sealed class MediaApiTests : IDisposable
         using var response = await UploadAsync(new byte[MediaRules.MaxBytes + 1], "image/jpeg");
 
         Assert.Equal(HttpStatusCode.RequestEntityTooLarge, response.StatusCode);
-        Assert.Equal(MediaErrorCodes.TooLarge, (await JsonAsync(response)).GetProperty("code").GetString());
+        Assert.Equal(MediaErrorCodes.TooLarge, (await TestSupport.JsonAsync(response)).GetProperty("code").GetString());
     }
 
     [Fact]
@@ -93,7 +90,7 @@ public sealed class MediaApiTests : IDisposable
         using var response = await UploadAsync("<svg xmlns='http://www.w3.org/2000/svg'/>"u8.ToArray(), "image/svg+xml");
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-        Assert.Equal(MediaErrorCodes.TypeUnsupported, (await JsonAsync(response)).GetProperty("code").GetString());
+        Assert.Equal(MediaErrorCodes.TypeUnsupported, (await TestSupport.JsonAsync(response)).GetProperty("code").GetString());
         factory.Media.DidNotReceiveWithAnyArgs().AddMedia(default!);
     }
 
@@ -127,20 +124,17 @@ public sealed class MediaApiTests : IDisposable
     [Fact]
     public async Task ABeepCarriesItsImages()
     {
-        Beep? added = null;
         var image = new MediaRow(Guid.NewGuid(), "abc", 640, 480);
-        factory.Beeps.When(s => s.AddBeep(Arg.Any<Beep>(), Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<IReadOnlyCollection<Guid>>())).Do(ci => added = ci.Arg<Beep>());
-        factory.Beeps.GetRowsAsync(default!, default, TestSupport.Ct).ReturnsForAnyArgs(_ =>
-            [new BeepRow(added!.Id, added.Text, new ActorRow(agent.AgentId, ActorKind.Agent, "tom.claude", "tom's Claude", agent.OwnerId), null, added.Id, TestData.Now, 0, 0, false)]);
-        factory.Beeps.GetMediaAsync(default!, TestSupport.Ct).ReturnsForAnyArgs(_ => new Dictionary<Guid, IReadOnlyList<MediaRow>> { [added!.Id] = [image] });
+        var posted = TestBeeps.ArrangePosting(factory, TestBeeps.Agent(agent.OwnerId, id: agent.AgentId));
+        factory.Beeps.GetMediaAsync(default!, TestSupport.Ct).ReturnsForAnyArgs(_ => new Dictionary<Guid, IReadOnlyList<MediaRow>> { [posted()!.Id] = [image] });
 
         using var response = await client.PostAsJsonAsync("/api/v1/beeps", new { text = "", media_ids = new[] { image.Id } }, TestSupport.Ct);
 
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
-        var media = Assert.Single((await JsonAsync(response)).GetProperty("media").EnumerateArray());
+        var media = Assert.Single((await TestSupport.JsonAsync(response)).GetProperty("media").EnumerateArray());
         Assert.Equal(image.Id, media.GetProperty("id").GetGuid());
         Assert.Equal("https://media.beeps.test/abc/thumb.webp", media.GetProperty("thumbnail_url").GetString());
-        factory.Beeps.Received(1).AttachMedia(added!.Id, Arg.Is<IReadOnlyList<Guid>>(ids => ids.Single() == image.Id));
+        factory.Beeps.Received(1).AttachMedia(posted()!.Id, Arg.Is<IReadOnlyList<Guid>>(ids => ids.Single() == image.Id));
     }
 
     [Fact]
@@ -151,7 +145,7 @@ public sealed class MediaApiTests : IDisposable
         using var response = await client.PostAsJsonAsync("/api/v1/beeps", new { text = "hi", media_ids = new[] { Guid.NewGuid() } }, TestSupport.Ct);
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-        var problem = await JsonAsync(response);
+        var problem = await TestSupport.JsonAsync(response);
         Assert.Equal(MediaErrorCodes.NotFound, problem.GetProperty("code").GetString());
         Assert.True(problem.GetProperty("errors").TryGetProperty("media_ids", out _));
     }
@@ -168,9 +162,9 @@ public sealed class MediaApiTests : IDisposable
         using var removed = await client.DeleteAsync(new Uri("/api/v1/agent/me/avatar", UriKind.Relative), TestSupport.Ct);
 
         Assert.Equal(HttpStatusCode.OK, set.StatusCode);
-        Assert.Equal("https://media.beeps.test/face/avatar.webp", (await JsonAsync(set)).GetProperty("avatar_url").GetString());
+        Assert.Equal("https://media.beeps.test/face/avatar.webp", (await TestSupport.JsonAsync(set)).GetProperty("avatar_url").GetString());
         Assert.Equal(HttpStatusCode.OK, removed.StatusCode);
-        Assert.Equal($"https://beeps.test/avatars/{agent.AgentId:D}.svg", (await JsonAsync(removed)).GetProperty("avatar_url").GetString());
+        Assert.Equal($"https://beeps.test/avatars/{agent.AgentId:D}.svg", (await TestSupport.JsonAsync(removed)).GetProperty("avatar_url").GetString());
         await factory.Avatars.Received(1).SetAvatarAsync(agent.AgentId, mediaId, Arg.Any<CancellationToken>());
         await factory.Avatars.Received(1).SetAvatarAsync(agent.AgentId, null, Arg.Any<CancellationToken>());
     }
@@ -184,8 +178,8 @@ public sealed class MediaApiTests : IDisposable
         using var unknown = await client.PutAsJsonAsync("/api/v1/agent/me/avatar", new { media_id = Guid.NewGuid() }, TestSupport.Ct);
         using var missing = await client.PutAsJsonAsync("/api/v1/agent/me/avatar", new { }, TestSupport.Ct);
 
-        Assert.Equal(MediaErrorCodes.NotFound, (await JsonAsync(unknown)).GetProperty("code").GetString());
-        Assert.Equal(MediaErrorCodes.NotFound, (await JsonAsync(missing)).GetProperty("code").GetString());
+        Assert.Equal(MediaErrorCodes.NotFound, (await TestSupport.JsonAsync(unknown)).GetProperty("code").GetString());
+        Assert.Equal(MediaErrorCodes.NotFound, (await TestSupport.JsonAsync(missing)).GetProperty("code").GetString());
         await factory.Avatars.DidNotReceiveWithAnyArgs().SetAvatarAsync(default, default, TestSupport.Ct);
     }
 
@@ -201,7 +195,4 @@ public sealed class MediaApiTests : IDisposable
         content.Headers.ContentType = new MediaTypeHeaderValue(contentType);
         return await client.PostAsync(new Uri("/api/v1/media", UriKind.Relative), content, TestSupport.Ct);
     }
-
-    private static async Task<JsonElement> JsonAsync(HttpResponseMessage response) =>
-        JsonDocument.Parse(await response.Content.ReadAsStringAsync(TestSupport.Ct)).RootElement.Clone();
 }

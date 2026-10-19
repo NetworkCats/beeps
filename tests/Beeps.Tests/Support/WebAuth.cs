@@ -35,6 +35,15 @@ internal static class WebAuth
     public static async Task<HttpClient> SignInAsync(BeepsWebApplicationFactory factory, User user)
     {
         var client = NewClient(factory);
+        await SignInAsync(client, user);
+        return client;
+    }
+
+    /// <summary>Signs in on a client of any host of the app; it must not follow redirects.</summary>
+    public static async Task SignInAsync(HttpClient client, User user)
+    {
+        ArgumentNullException.ThrowIfNull(client);
+        ArgumentNullException.ThrowIfNull(user);
         var html = await client.GetStringAsync(new Uri("/login", UriKind.Relative), TestSupport.Ct);
         using var form = new FormUrlEncodedContent(
         [
@@ -44,7 +53,6 @@ internal static class WebAuth
         ]);
         using var response = await client.PostAsync(new Uri("/login", UriKind.Relative), form, TestSupport.Ct);
         Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
-        return client;
     }
 
     /// <summary>A form posted the plain way, without the app, with the antiforgery token of the page it is on.</summary>

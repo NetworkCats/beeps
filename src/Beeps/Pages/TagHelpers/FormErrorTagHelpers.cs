@@ -38,11 +38,10 @@ public sealed class FieldErrorTagHelper : TagHelper
 }
 
 /// <summary>
-/// Names an input (or textarea) after its field and adds <c>aria-invalid</c> and <c>aria-describedby</c>
-/// when the field has errors: <c>&lt;input beeps-field="Email"&gt;</c>.
+/// Names an input after its field and, when the field has errors, adds <c>aria-invalid</c> and the errors to its
+/// <c>aria-describedby</c>, after any help it names there: <c>&lt;input beeps-field="Email"&gt;</c>.
 /// </summary>
 [HtmlTargetElement("input", Attributes = "beeps-field", TagStructure = TagStructure.WithoutEndTag)]
-[HtmlTargetElement("textarea", Attributes = "beeps-field")]
 public sealed class FieldInputTagHelper : TagHelper
 {
     [HtmlAttributeName("beeps-field")]
@@ -60,7 +59,10 @@ public sealed class FieldInputTagHelper : TagHelper
         if (ViewContext.ModelState.TryGetValue(Field, out var entry) && entry.Errors.Count > 0)
         {
             output.Attributes.SetAttribute("aria-invalid", "true");
-            output.Attributes.SetAttribute("aria-describedby", FieldErrorTagHelper.ErrorId(Field));
+            var error = FieldErrorTagHelper.ErrorId(Field);
+            output.Attributes.SetAttribute(
+                "aria-describedby",
+                output.Attributes.TryGetAttribute("aria-describedby", out var help) ? $"{help.Value} {error}" : error);
         }
     }
 }

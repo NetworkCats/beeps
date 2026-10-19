@@ -12,9 +12,6 @@ namespace Beeps.Features.RateLimiting;
 /// </summary>
 public sealed class RateLimitingMiddleware(RequestDelegate next)
 {
-    /// <summary>What a signed-in request is counted under, by the id in its principal.</summary>
-    public static string AccountPartition(string accountId) => $"account:{accountId}";
-
     public async Task InvokeAsync(HttpContext context, RateLimitService rateLimits)
     {
         ArgumentNullException.ThrowIfNull(context);
@@ -29,10 +26,12 @@ public sealed class RateLimitingMiddleware(RequestDelegate next)
             return;
         }
 
-        var accountId = context.User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var signedIn = context.User.FindFirstValue(ClaimTypes.NameIdentifier) is not null;
         var policy = metadata?.GetMetadata<RateLimitPolicyAttribute>()?.Policy
-            ?? (accountId is null ? RateLimitPolicies.AnonymousBrowse : RateLimitPolicies.Browse);
-        var partition = accountId is null ? $"ip:{context.Connection.RemoteIpAddress}" : AccountPartition(accountId);
+            ?? (signedIn ? RateLimitPolicies.Browse : RateLimitPolicies.AnonymousBrowse);
+        var partition = signedIn
+            ? RateLimitPartitions.Account(context.User.ActorId())
+            : RateLimitPartitions.Ip(context.Connection.RemoteIpAddress?.ToString());
 
         var result = await rateLimits.CheckAsync(policy, partition, context.RequestAborted);
         if (!result.IsSuccess)

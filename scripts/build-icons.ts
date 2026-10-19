@@ -6,7 +6,7 @@
 // Run it after changing icons.json and commit the font; the build does not touch the network.
 // One weight (300: thin strokes that sit well next to the text) and the FILL axis (outlined, and filled for
 // the current page), so the file stays small.
-// `npm test` checks that icons.json lists exactly the icons the pages and styles use.
+// `npm test` checks that icons.json lists exactly the icons the pages and styles use (Client/app/icons.test.ts).
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';

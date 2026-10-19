@@ -68,7 +68,7 @@ public sealed partial class AgentService(
                 store.AddKey(record);
                 await unitOfWork.SaveChangesAsync(ct);
                 LogCreated(logger, agent.Id, ownerId);
-                return new AgentWithKey(ToSummary(agent, record), key);
+                return new AgentWithKey(NewSummary(agent, record), key);
             },
             cancellationToken);
         if (created.IsSuccess)
@@ -94,7 +94,7 @@ public sealed partial class AgentService(
         }
 
         // One at a time, as creating is: two at once would each revoke only the old key, leaving both new ones working.
-        var result = await unitOfWork.InTransactionAsync<AgentWithKey>(
+        var result = await unitOfWork.InTransactionAsync<string>(
             AdvisoryLocks.OwnerAgents(ownerId),
             async ct =>
             {
@@ -103,17 +103,20 @@ public sealed partial class AgentService(
                 var (key, record) = NewKey(agent.Id, now);
                 store.AddKey(record);
                 await unitOfWork.SaveChangesAsync(ct);
-                return new AgentWithKey(ToSummary(agent, record), key);
+                return key;
             },
             cancellationToken);
         await store.ForgetKeysAsync([agent.Id], cancellationToken);
-        if (result.IsSuccess)
+        if (!result.IsSuccess)
         {
-            // The agents page of another tab shows the key's prefix.
-            await live.AgentsChangedAsync(ownerId, cancellationToken);
+            return result.Error;
         }
 
-        return result;
+        // The agents page of another tab shows the key's prefix.
+        await live.AgentsChangedAsync(ownerId, cancellationToken);
+        // Read back, for the avatar the agent may have along with its new key.
+        var summary = await GetAsync(ownerId, agentId, cancellationToken);
+        return summary.IsSuccess ? new AgentWithKey(summary.Value, result.Value) : summary.Error;
     }
 
     public Task<Result> DisableAsync(Guid ownerId, Guid agentId, CancellationToken cancellationToken) =>
@@ -280,8 +283,7 @@ public sealed partial class AgentService(
         var model = AgentNames.CleanModelName(modelName);
         if (model is null)
         {
-            string message = localizer["Validation.ModelName", Actor.ModelNameMaxLength];
-            return Error.Validation(AccountErrorCodes.InvalidInput, message, new Dictionary<string, string[]> { [AgentFields.ModelName] = [message] });
+            return Error.Field(AccountErrorCodes.InvalidInput, AgentFields.ModelName, localizer["Validation.ModelName", Actor.ModelNameMaxLength]);
         }
 
         var agent = await store.GetAgentWithOwnerAsync(agentId, cancellationToken);
@@ -351,7 +353,7 @@ public sealed partial class AgentService(
     /// <summary>Every change to the owner's agents writes, and most also reindex and invalidate caches (PLAN 12, 6.16).</summary>
     private async Task<Error?> LimitAsync(Guid ownerId, CancellationToken cancellationToken)
     {
-        var limited = await rateLimits.CheckAsync(RateLimitPolicies.AccountChange, $"account:{ownerId}", cancellationToken);
+        var limited = await rateLimits.CheckAsync(RateLimitPolicies.AccountChange, RateLimitPartitions.Account(ownerId), cancellationToken);
         return limited.IsSuccess ? null : limited.Error;
     }
 
@@ -408,16 +410,13 @@ public sealed partial class AgentService(
         row.Bio,
         row.AvatarKey is not null);
 
-    private AgentSummary ToSummary(Actor agent, AgentKey key) => new(
+    /// <summary>An agent just created: no name, no avatar of its own and an unused key.</summary>
+    private AgentSummary NewSummary(Actor agent, AgentKey key) => new(
         agent.Id, agent.Handle, agent.DisplayName, agent.ModelName, avatars.For(agent.Id, null), agent.CreatedAt, agent.DisabledAt is not null, key.KeyPrefix, key.LastUsedAt, agent.Bio);
 
     private Error NotFound() => Error.NotFound(ErrorCodes.NotFound, localizer["Error.AgentNotFound"]);
 
-    private Error HandleTaken()
-    {
-        string message = localizer["Error.HandleTaken"];
-        return new Error(ErrorKind.Conflict, AgentErrorCodes.HandleTaken, message) { Fields = new Dictionary<string, string[]> { [AgentFields.HandleName] = [message] } };
-    }
+    private Error HandleTaken() => Error.Field(AgentErrorCodes.HandleTaken, AgentFields.HandleName, localizer["Error.HandleTaken"], ErrorKind.Conflict);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Agent {AgentId} created by {OwnerId}")]
     private static partial void LogCreated(ILogger logger, Guid agentId, Guid ownerId);

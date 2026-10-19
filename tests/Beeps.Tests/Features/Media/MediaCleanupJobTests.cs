@@ -3,7 +3,6 @@ using Beeps.Features.Media;
 using Beeps.Features.Shared;
 using Beeps.Tests.Support;
 using Microsoft.Extensions.Logging.Abstractions;
-using Microsoft.Extensions.Options;
 
 namespace Beeps.Tests.Features.Media;
 
@@ -47,9 +46,9 @@ public sealed class MediaCleanupJobTests
     public async Task TheHandlerDeletesEverySizeOfEveryKey()
     {
         var storage = Substitute.For<IMediaStorage>();
-        var payload = System.Text.Json.JsonSerializer.Serialize(new DeleteMediaObjectsRequest(["a", "b"]), MediaJsonContext.Default.DeleteMediaObjectsRequest);
+        var message = TestData.Envelope(DeleteMediaObjectsRequest.MessageType, new DeleteMediaObjectsRequest(["a", "b"]), MediaJsonContext.Default.DeleteMediaObjectsRequest);
 
-        await new DeleteMediaObjectsHandler(storage).HandleAsync(new OutboxEnvelope(Guid.NewGuid(), DeleteMediaObjectsRequest.MessageType, payload, 1, TestData.Now), TestSupport.Ct);
+        await new DeleteMediaObjectsHandler(storage).HandleAsync(message, TestSupport.Ct);
 
         await storage.Received(1).DeleteAsync(
             Arg.Is<IReadOnlyCollection<string>>(names => names.SequenceEqual(AllSizesOfAAndB)),

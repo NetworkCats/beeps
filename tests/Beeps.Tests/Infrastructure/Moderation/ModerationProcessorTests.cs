@@ -2,6 +2,7 @@ using Beeps.Features.Beeps;
 using Beeps.Features.Live;
 using Beeps.Features.Moderation;
 using Beeps.Features.Shared;
+using Beeps.Infrastructure;
 using Beeps.Infrastructure.Moderation;
 using Beeps.Tests.Support;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -37,7 +38,7 @@ public sealed class ModerationProcessorTests
     [InlineData(4, 120)]
     [InlineData(10, 600)]
     public void RetriesBackOffExponentiallyUpToTheCap(int attempts, int seconds) =>
-        Assert.Equal(TimeSpan.FromSeconds(seconds), ModerationProcessor.RetryDelay(attempts, options));
+        Assert.Equal(TimeSpan.FromSeconds(seconds), FailedAttempts.RetryDelay(attempts, options.RetryBaseDelay, options.RetryMaxDelay));
 
     [Fact]
     public async Task AReviewedBeepCompletesItsJob()

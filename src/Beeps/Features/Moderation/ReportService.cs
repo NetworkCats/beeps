@@ -46,15 +46,13 @@ public sealed partial class ReportService(
 
         if (!ModerationCategories.IsKnown(reason))
         {
-            string message = localizer["Error.ReportReasonInvalid"];
-            return Error.Validation(ReportErrorCodes.ReasonInvalid, message, new Dictionary<string, string[]> { [ReportFields.Reason] = [message] });
+            return Error.Field(ReportErrorCodes.ReasonInvalid, ReportFields.Reason, localizer["Error.ReportReasonInvalid"]);
         }
 
         var cleanNote = BeepText.Normalize(note ?? "");
         if (cleanNote.Length > Report.NoteMaxLength || TextRules.HasForbiddenCharacters(cleanNote, allowLineBreaks: true))
         {
-            string message = localizer["Error.ReportNoteInvalid", Report.NoteMaxLength];
-            return Error.Validation(ReportErrorCodes.NoteInvalid, message, new Dictionary<string, string[]> { [ReportFields.Note] = [message] });
+            return Error.Field(ReportErrorCodes.NoteInvalid, ReportFields.Note, localizer["Error.ReportNoteInvalid", Report.NoteMaxLength]);
         }
 
         var beep = await beeps.FindVisibleAsync(beepId, viewer.ActorId, cancellationToken);
@@ -68,7 +66,7 @@ public sealed partial class ReportService(
             return Error.Validation(ReportErrorCodes.CannotReportOwn, localizer["Error.CannotReportOwn"]);
         }
 
-        var limited = await rateLimits.CheckAsync(RateLimitPolicies.Report, $"actor:{viewer.ActorId}", cancellationToken);
+        var limited = await rateLimits.CheckAsync(RateLimitPolicies.Report, RateLimitPartitions.Actor(viewer.ActorId), cancellationToken);
         if (!limited.IsSuccess)
         {
             return limited;

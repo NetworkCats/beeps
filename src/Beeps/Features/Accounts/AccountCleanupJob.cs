@@ -37,9 +37,9 @@ public sealed partial class AccountCleanupJob(
     {
         var now = time.GetUtcNow();
         var cutoff = now - EndedSessionRetention;
-        var sessionCount = await DrainAsync(ct => sessions.DeleteEndedAsync(cutoff, BatchSize, ct), cancellationToken);
-        var codeCount = await DrainAsync(ct => accounts.DeleteExpiredEmailCodesAsync(now, BatchSize, ct), cancellationToken);
-        var released = await DrainAsync(ct => ReleaseUnverifiedAsync(now, ct), cancellationToken);
+        var sessionCount = await Batches.DrainAsync(BatchSize, ct => sessions.DeleteEndedAsync(cutoff, BatchSize, ct), cancellationToken);
+        var codeCount = await Batches.DrainAsync(BatchSize, ct => accounts.DeleteExpiredEmailCodesAsync(now, BatchSize, ct), cancellationToken);
+        var released = await Batches.DrainAsync(BatchSize, ct => ReleaseUnverifiedAsync(now, ct), cancellationToken);
         LogCleaned(logger, sessionCount, codeCount, released);
     }
 
@@ -59,20 +59,6 @@ public sealed partial class AccountCleanupJob(
         }
 
         return released.Value.Count;
-    }
-
-    private static async Task<int> DrainAsync(Func<CancellationToken, Task<int>> deleteBatch, CancellationToken cancellationToken)
-    {
-        var total = 0;
-        int deleted;
-        do
-        {
-            deleted = await deleteBatch(cancellationToken);
-            total += deleted;
-        }
-        while (deleted >= BatchSize);
-
-        return total;
     }
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Account cleanup deleted {Sessions} ended sessions and {Codes} expired email codes, and released {Unverified} unverified accounts")]

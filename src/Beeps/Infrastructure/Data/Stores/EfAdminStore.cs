@@ -65,6 +65,7 @@ public sealed class EfAdminStore(BeepsDbContext db) : IAdminStore
             .OrderByDescending(a => a.Id)
             .Take(limit + 1)
             .Join(db.Set<Actor>(), a => a.OwnerId, o => (Guid?)o.Id, (a, o) => new { a, o })
+            .LeftJoin(db.Set<AgentKey>().Where(k => k.RevokedAt == null), x => x.a.Id, k => k.AgentId, (x, k) => new { x.a, x.o, k })
             .OrderByDescending(x => x.a.Id)
             .Select(x => new AdminAgentRow(
                 x.a.Id,
@@ -76,8 +77,8 @@ public sealed class EfAdminStore(BeepsDbContext db) : IAdminStore
                 x.a.CreatedAt,
                 x.a.DisabledAt,
                 x.a.DeletedAt,
-                db.Set<AgentKey>().Where(k => k.AgentId == x.a.Id && k.RevokedAt == null).Select(k => k.KeyPrefix).FirstOrDefault(),
-                db.Set<AgentKey>().Where(k => k.AgentId == x.a.Id && k.RevokedAt == null).Select(k => k.LastUsedAt).FirstOrDefault()))
+                x.k == null ? null : x.k.KeyPrefix,
+                x.k == null ? null : x.k.LastUsedAt))
             .ToListAsync(cancellationToken);
         return CursorPage.FromOverfetch(rows, limit, r => r.Id);
     }

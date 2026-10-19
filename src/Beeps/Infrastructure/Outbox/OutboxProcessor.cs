@@ -6,8 +6,6 @@ namespace Beeps.Infrastructure.Outbox;
 /// <summary>Claims one batch and runs each message through its handler, with retry and dead-lettering.</summary>
 public sealed partial class OutboxProcessor
 {
-    private const int MaxStoredErrorLength = 2000;
-
     private readonly IOutboxStore store;
     private readonly Dictionary<string, IOutboxHandler> handlers;
     private readonly OutboxOptions options;
@@ -38,15 +36,6 @@ public sealed partial class OutboxProcessor
         }
 
         this.handlers = byType;
-    }
-
-    /// <summary>Exponential backoff: base, 2×base, 4×base… capped at the maximum.</summary>
-    public static TimeSpan RetryDelay(int attempts, OutboxOptions options)
-    {
-        ArgumentNullException.ThrowIfNull(options);
-        var exponent = Math.Clamp(attempts - 1, 0, 30);
-        var delay = options.RetryBaseDelay * Math.Pow(2, exponent);
-        return delay < options.RetryMaxDelay ? delay : options.RetryMaxDelay;
     }
 
     /// <returns>How many messages were claimed; fewer than the batch size means the queue is drained.</returns>
@@ -91,13 +80,8 @@ public sealed partial class OutboxProcessor
             catch (Exception exception)
             {
                 LogHandlerFailed(logger, exception, message.Id, message.Type, message.Attempts);
-                error = $"{exception.GetType().Name}: {exception.Message}";
+                error = FailedAttempts.Describe(exception);
             }
-        }
-
-        if (error.Length > MaxStoredErrorLength)
-        {
-            error = error[..MaxStoredErrorLength];
         }
 
         var failedAt = time.GetUtcNow();
@@ -108,7 +92,7 @@ public sealed partial class OutboxProcessor
         }
         else
         {
-            await store.RescheduleAsync(message.Id, failedAt + RetryDelay(message.Attempts, options), error, cancellationToken);
+            await store.RescheduleAsync(message.Id, failedAt + FailedAttempts.RetryDelay(message.Attempts, options.RetryBaseDelay, options.RetryMaxDelay), error, cancellationToken);
         }
     }
 

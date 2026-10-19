@@ -1,6 +1,7 @@
 using Beeps.Features.Accounts;
 using Beeps.Features.Admin;
 using Beeps.Features.Agents;
+using Beeps.Features.Auth;
 using Beeps.Features.Avatars;
 using Beeps.Features.Beeps;
 using Beeps.Features.Email;
@@ -14,6 +15,7 @@ using Beeps.Features.Search;
 using Beeps.Features.Shared;
 using Beeps.Features.Timelines;
 using Beeps.Infrastructure.Caching;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.DataProtection.KeyManagement;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -31,6 +33,12 @@ namespace Beeps.Tests.Support;
 /// </summary>
 public sealed class BeepsWebApplicationFactory : WebApplicationFactory<Program>
 {
+    // Replaced so nothing is sent or queued for real; no test looks at them.
+    private readonly IEmailSender email = Substitute.For<IEmailSender>();
+    private readonly IModerationJobs moderationJobs = Substitute.For<IModerationJobs>();
+    private readonly IContentModerator moderator = Substitute.For<IContentModerator>();
+    private readonly ImmediateUnitOfWork unitOfWork = new();
+
     public BeepsWebApplicationFactory()
     {
         RateLimitStore.TryAcquireAsync(default!, CancellationToken.None).ReturnsForAnyArgs(RateLimitDecision.Allowed);
@@ -67,8 +75,6 @@ public sealed class BeepsWebApplicationFactory : WebApplicationFactory<Program>
 
     public ICaptchaVerifier Captcha { get; } = Substitute.For<ICaptchaVerifier>();
 
-    public IEmailSender Email { get; } = Substitute.For<IEmailSender>();
-
     public IOutbox Outbox { get; } = Substitute.For<IOutbox>();
 
     public IBeepStore Beeps { get; } = Substitute.For<IBeepStore>();
@@ -101,16 +107,10 @@ public sealed class BeepsWebApplicationFactory : WebApplicationFactory<Program>
 
     public IModerationStore Moderation { get; } = Substitute.For<IModerationStore>();
 
-    public IModerationJobs ModerationJobs { get; } = Substitute.For<IModerationJobs>();
-
-    public IContentModerator Moderator { get; } = Substitute.For<IContentModerator>();
-
     public ISystemStore System { get; } = Substitute.For<ISystemStore>();
 
     /// <summary>The content cache's Valkey side; the real stores that use it are mocked, so it mostly stays empty.</summary>
     internal InMemorySharedContentCache SharedCache { get; } = new();
-
-    internal ImmediateUnitOfWork UnitOfWork { get; } = new();
 
     internal InMemorySessionStore Sessions { get; } = new();
 
@@ -156,7 +156,7 @@ public sealed class BeepsWebApplicationFactory : WebApplicationFactory<Program>
             Replace(services, Agents);
             Replace(services, Admin);
             Replace(services, Captcha);
-            Replace(services, Email);
+            Replace(services, email);
             Replace(services, Outbox);
             Replace(services, Beeps);
             Replace(services, Counters);
@@ -172,10 +172,10 @@ public sealed class BeepsWebApplicationFactory : WebApplicationFactory<Program>
             Replace(services, SearchIndex);
             Replace(services, SearchStore);
             Replace(services, Moderation);
-            Replace(services, ModerationJobs);
-            Replace(services, Moderator);
+            Replace(services, moderationJobs);
+            Replace(services, moderator);
             Replace(services, System);
-            Replace<IUnitOfWork>(services, UnitOfWork);
+            Replace<IUnitOfWork>(services, unitOfWork);
             Replace<ISessionStore>(services, Sessions);
             Replace<ISharedContentCache>(services, SharedCache);
             if (Time is not null)
@@ -183,6 +183,7 @@ public sealed class BeepsWebApplicationFactory : WebApplicationFactory<Program>
                 Replace(services, Time);
             }
 
+            services.PostConfigure<CookieAuthenticationOptions>(AuthSchemes.Cookie, options => options.CookieManager = new BrowserSessionCookieManager());
             services.Configure<KeyManagementOptions>(options => options.XmlRepository = new InMemoryXmlRepository());
             services.RemoveAll<IDistributedCache>();
             services.AddDistributedMemoryCache();

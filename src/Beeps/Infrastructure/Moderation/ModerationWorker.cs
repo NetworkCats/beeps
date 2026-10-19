@@ -18,8 +18,8 @@ public sealed partial class ModerationWorker(
     TimeProvider time,
     ILogger<ModerationWorker> logger) : BackgroundService
 {
-    /// <summary>The channel the <c>moderation_jobs_notify</c> trigger signals (see the AddModeration migration).</summary>
-    public const string Channel = "beeps_moderation";
+    /// <summary>The channel the <c>moderation_jobs_notify</c> trigger signals (created in the Initial migration).</summary>
+    private const string Channel = "beeps_moderation";
 
     private const string ListenSql = $"LISTEN {Channel}";
 

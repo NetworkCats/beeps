@@ -2,8 +2,8 @@ using System.Globalization;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using Beeps.Features.Accounts;
 using Beeps.Features.Search;
+using Beeps.Infrastructure.Data;
 using Meilisearch;
 using Microsoft.Extensions.Options;
 
@@ -164,7 +164,7 @@ public sealed class MeilisearchIndex : ISearchIndex
 
     private static string ActorsJson(IReadOnlyCollection<ActorDocument> actors) =>
         JsonSerializer.Serialize(
-            actors.Select(a => new ActorJson(a.Id.ToString("D"), a.Handle, a.DisplayName, a.Bio, a.Kind == ActorKind.Agent ? "agent" : "human")).ToList(),
+            actors.Select(a => new ActorJson(a.Id.ToString("D"), a.Handle, a.DisplayName, a.Bio, EnumText.ToValue(a.Kind))).ToList(),
             SearchDocumentJsonContext.Default.ListActorJson);
 
     private static IEnumerable<string> Ids(IEnumerable<Guid> ids) => ids.Select(id => id.ToString("D"));

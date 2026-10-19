@@ -54,10 +54,10 @@ test('a liked beep shows the like pressed and posts the unlike', async () => {
   assert.match(html, /00000000000a\/actions\?returnUrl=%2F&amp;handler=Like"/);
 });
 
-test('one\'s own beep can be deleted, after asking, and someone else\'s reported', async () => {
+test('one\'s own beep can be deleted, and someone else\'s reported', async () => {
   const html = await draw('home.json', 'index');
   // 0d is the member's own (under review), the rest are alice's.
-  assert.match(html, /00000000000d\/actions\?returnUrl=%2F&amp;handler=Delete" data-confirm="[^"]+"/);
+  assert.match(html, /00000000000d\/actions\?returnUrl=%2F&amp;handler=Delete"/);
   assert.match(html, /href="\/beeps\/00000000-0000-7000-8000-00000000000a\/report"/);
   assert.doesNotMatch(html, /00000000000d\/report/);
   assert.match(html, /<span class="badge badge-warning" title="[^"]+">Under review<\/span>/);

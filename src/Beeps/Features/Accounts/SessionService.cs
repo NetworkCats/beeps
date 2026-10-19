@@ -1,4 +1,5 @@
 using Beeps.Features.Live;
+using Beeps.Features.Shared;
 
 namespace Beeps.Features.Accounts;
 
@@ -88,6 +89,5 @@ public sealed class SessionService(
         }
     }
 
-    private static string? Truncate(string? value, int maxLength) =>
-        value is { Length: > 0 } && value.Length > maxLength ? value[..maxLength] : value;
+    private static string? Truncate(string? value, int maxLength) => value is null ? null : TextRules.Truncate(value, maxLength);
 }

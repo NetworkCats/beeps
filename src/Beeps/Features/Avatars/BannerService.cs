@@ -60,7 +60,7 @@ public sealed partial class BannerService(
             return Error.NotFound(ErrorCodes.NotFound, localizer["Error.ProfileNotFound"]);
         }
 
-        var limited = await rateLimits.CheckAsync(RateLimitPolicies.BannerChange, $"actor:{viewer.ActorId}", cancellationToken);
+        var limited = await rateLimits.CheckAsync(RateLimitPolicies.BannerChange, RateLimitPartitions.Actor(viewer.ActorId), cancellationToken);
         return limited.IsSuccess ? target : limited.Error;
     }
 

@@ -25,6 +25,6 @@ internal sealed class ScheduledJobStateConfiguration : IEntityTypeConfiguration<
         builder.ToTable("scheduled_jobs");
         builder.HasKey(j => j.Name);
         builder.Property(j => j.Name).HasMaxLength(ScheduledJobState.NameMaxLength);
-        builder.Property(j => j.LastError).HasMaxLength(2000);
+        builder.Property(j => j.LastError).HasMaxLength(FailedAttempts.ErrorMaxLength);
     }
 }

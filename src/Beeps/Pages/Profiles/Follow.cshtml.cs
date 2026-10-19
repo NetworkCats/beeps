@@ -21,7 +21,7 @@ public sealed class FollowModel(ProfileService profiles, IStringLocalizer<Shared
 
     private LocalRedirectResult Done(Result result, string handle, string notice)
     {
-        TempData[result.IsSuccess ? Notices.Success : Notices.Error] = result.IsSuccess ? localizer[notice].Value : result.Error.Detail;
+        this.Notify(result, localizer[notice]);
         return LocalRedirect(SitePaths.Profile(handle));
     }
 }

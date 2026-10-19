@@ -14,17 +14,6 @@ public sealed partial class ModerationProcessor(
     TimeProvider time,
     ILogger<ModerationProcessor> logger)
 {
-    private const int MaxStoredErrorLength = 2000;
-
-    /// <summary>Exponential backoff: base, 2×base, 4×base… capped at the maximum.</summary>
-    public static TimeSpan RetryDelay(int attempts, ModerationOptions options)
-    {
-        ArgumentNullException.ThrowIfNull(options);
-        var exponent = Math.Clamp(attempts - 1, 0, 30);
-        var delay = options.RetryBaseDelay * Math.Pow(2, exponent);
-        return delay < options.RetryMaxDelay ? delay : options.RetryMaxDelay;
-    }
-
     public async Task ProcessAsync(ClaimedModerationJob job, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(job);
@@ -51,13 +40,8 @@ public sealed partial class ModerationProcessor(
             catch (Exception exception)
             {
                 LogAttemptFailed(logger, exception, job.BeepId, job.Attempts);
-                error = $"{exception.GetType().Name}: {exception.Message}";
+                error = FailedAttempts.Describe(exception);
             }
-        }
-
-        if (error.Length > MaxStoredErrorLength)
-        {
-            error = error[..MaxStoredErrorLength];
         }
 
         if (job.Attempts >= settings.MaxAttempts)
@@ -67,7 +51,7 @@ public sealed partial class ModerationProcessor(
         }
         else
         {
-            await store.RescheduleAsync(job.Id, time.GetUtcNow() + RetryDelay(job.Attempts, settings), error, cancellationToken);
+            await store.RescheduleAsync(job.Id, time.GetUtcNow() + FailedAttempts.RetryDelay(job.Attempts, settings.RetryBaseDelay, settings.RetryMaxDelay), error, cancellationToken);
         }
     }
 

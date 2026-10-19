@@ -68,6 +68,7 @@ public sealed class AgentServiceTests
     public async Task RegeneratingRevokesTheOldKeyAndForgetsItsCache()
     {
         var agent = Agent();
+        store.ListAgentsAsync(OwnerId, Arg.Any<CancellationToken>()).Returns([new AgentRow(agent.Id, "tom.claude", "Claude", "Claude", TestData.Now, null, "beeps_new", null)]);
         var result = await CreateService().RegenerateKeyAsync(OwnerId, agent.Id, TestSupport.Ct);
 
         Assert.True(result.IsSuccess);
@@ -77,6 +78,19 @@ public sealed class AgentServiceTests
             store.AddKey(Arg.Is<AgentKey>(k => k.AgentId == agent.Id && k.KeyHash == AgentKeys.Hash(result.Value.Key)));
             store.ForgetKeysAsync(Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Single() == agent.Id), Arg.Any<CancellationToken>());
         });
+    }
+
+    [Fact]
+    public async Task ANewKeyComesWithTheAgentsOwnAvatar()
+    {
+        var agent = Agent();
+        store.ListAgentsAsync(OwnerId, Arg.Any<CancellationToken>()).Returns(
+            [new AgentRow(agent.Id, "tom.claude", "Claude", "Claude", TestData.Now, null, "beeps_new", null, AvatarKey: "avatars/abc")]);
+
+        var result = await CreateService().RegenerateKeyAsync(OwnerId, agent.Id, TestSupport.Ct);
+
+        Assert.True(result.Value.Agent.HasCustomAvatar);
+        Assert.Equal(TestData.Avatars.For(agent.Id, "avatars/abc"), result.Value.Agent.AvatarUrl);
     }
 
     [Fact]
@@ -197,7 +211,7 @@ public sealed class AgentServiceTests
     [Fact]
     public async Task ListAndGetOnlyShowTheOwnersAgents()
     {
-        var row = new AgentRow(Guid.NewGuid(), "tom.claude", "tom's Claude", "Claude Opus 4.5", TestData.Now, null, "beeps_abcdef", TestData.Now, null);
+        var row = new AgentRow(Guid.NewGuid(), "tom.claude", "tom's Claude", "Claude Opus 4.5", TestData.Now, null, "beeps_abcdef", null);
         store.ListAgentsAsync(OwnerId, Arg.Any<CancellationToken>()).Returns([row]);
         var service = CreateService();
 
@@ -300,7 +314,7 @@ public sealed class AgentServiceTests
     {
         var agent = ConnectedAgent();
         store.ListAgentsAsync(OwnerId, Arg.Any<CancellationToken>()).Returns(
-            [new AgentRow(agent.Id, "tom.helper", "Helper", "Claude", TestData.Now, null, "beeps_abc", TestData.Now, null, "bio")]);
+            [new AgentRow(agent.Id, "tom.helper", "Helper", "Claude", TestData.Now, null, "beeps_abc", null, "bio")]);
 
         var result = await CreateService().UpdateProfileAsync(OwnerId, agent.Id, new AgentProfileRequest(" Helper ", "helper", " I help.\r\nMore. "), TestSupport.Ct);
 
@@ -317,7 +331,7 @@ public sealed class AgentServiceTests
     public async Task KeepingTheHandleDoesNotCheckIt()
     {
         var agent = ConnectedAgent();
-        store.ListAgentsAsync(OwnerId, Arg.Any<CancellationToken>()).Returns([new AgentRow(agent.Id, "tom.claude", "x", "Claude", TestData.Now, null, null, null, null)]);
+        store.ListAgentsAsync(OwnerId, Arg.Any<CancellationToken>()).Returns([new AgentRow(agent.Id, "tom.claude", "x", "Claude", TestData.Now, null, null, null)]);
 
         var result = await CreateService().UpdateProfileAsync(OwnerId, agent.Id, new AgentProfileRequest("New name", "claude", null), TestSupport.Ct);
 

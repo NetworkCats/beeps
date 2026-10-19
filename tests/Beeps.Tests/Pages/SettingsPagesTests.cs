@@ -10,7 +10,11 @@ namespace Beeps.Tests.Pages;
 
 public sealed class SettingsPagesTests : IDisposable
 {
-    private readonly BeepsWebApplicationFactory factory = new();
+    // Fixed, but at the real time: the sign-in cookie expires by the test client's own clock.
+    private readonly FixedTimeProvider time = new(DateTimeOffset.UtcNow);
+    private readonly BeepsWebApplicationFactory factory;
+
+    public SettingsPagesTests() => factory = new() { Time = time };
 
     [Fact]
     public async Task SettingsShowTheProfileAndTheLanguage()
@@ -237,15 +241,19 @@ public sealed class SettingsPagesTests : IDisposable
     {
         var user = WebAuth.ArrangeUser(factory);
         user.PendingEmail = "new@example.org";
-        var code = new EmailCode { Purpose = EmailCodePurpose.ChangeEmail, NormalizedEmail = "tom@example.com", CodeHash = "x", CreatedAt = TestData.Now, ExpiresAt = DateTimeOffset.MaxValue };
+        var sentAt = time.Now;
+        var code = new EmailCode { Purpose = EmailCodePurpose.ChangeEmail, NormalizedEmail = "tom@example.com", CodeHash = "x", CreatedAt = sentAt, ExpiresAt = DateTimeOffset.MaxValue };
         factory.Accounts.FindEmailCodeAsync(EmailCodePurpose.ChangeEmail, "tom@example.com", Arg.Any<CancellationToken>()).Returns(code);
         using var client = await WebAuth.SignInAsync(factory, user);
 
         var page = Islands.Props(await Islands.PageAsync(client, "/settings/email"), "settings");
-        code.CreatedAt = DateTimeOffset.UtcNow - TimeSpan.FromMinutes(2);
+        time.Now = sentAt + AccountService.ResendInterval - TimeSpan.FromSeconds(1);
+        using var early = await WebAuth.PostFormAsync(client, "/settings/email", "/settings/email?handler=ResendEmail");
+        time.Now = sentAt + AccountService.ResendInterval;
         using var resent = await WebAuth.PostFormAsync(client, "/settings/email", "/settings/email?handler=ResendEmail");
 
-        Assert.Equal(TestData.Now + AccountService.ResendInterval, page.GetProperty("resendAt").GetDateTimeOffset());
+        Assert.Equal(sentAt + AccountService.ResendInterval, page.GetProperty("resendAt").GetDateTimeOffset());
+        Assert.Equal(HttpStatusCode.TooManyRequests, early.StatusCode);
         Assert.Equal("/settings/email", resent.Headers.Location?.OriginalString);
         Assert.Equal("new@example.org", SentCode().To);
     }

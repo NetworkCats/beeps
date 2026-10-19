@@ -3,6 +3,7 @@ using Beeps.Features.Beeps;
 using Beeps.Features.Profiles;
 using Beeps.Features.Shared;
 using Beeps.Infrastructure.Data;
+using Beeps.Infrastructure.Outbox;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 
@@ -188,8 +189,16 @@ public sealed class PendingCacheChanges(BeepsDbContext db, CacheInvalidator inva
         pending.Clear();
     }
 
-    /// <summary>After a rollback: nothing changed.</summary>
-    public void Discard() => pending.Clear();
+    /// <summary>After a rollback or a failed save: nothing changed.</summary>
+    public void Discard()
+    {
+        pending.Clear();
+        // A failed save leaves the staged copy tracked as added, and the next save would commit it.
+        foreach (var entry in db.ChangeTracker.Entries<OutboxMessage>().Where(e => e.State == EntityState.Added && e.Entity.Type == CacheInvalidationRequest.MessageType).ToList())
+        {
+            entry.State = EntityState.Detached;
+        }
+    }
 
     private void Capture(EntityEntry entry, Actor actor)
     {

@@ -36,13 +36,14 @@ public sealed class StreamApiTests : IDisposable
         var agent = TestAgent.Arrange(factory);
         using var client = agent.Client(factory);
         using var request = new HttpRequestMessage(HttpMethod.Get, "/api/v1/stream");
-        request.Headers.Add("Last-Event-ID", "1760603400000-4");
+        var seen = new LiveEventId(TestData.Now.ToUnixTimeMilliseconds(), 4);
+        request.Headers.Add("Last-Event-ID", seen.ToString());
 
         using var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, TestSupport.Ct);
         using var events = new SseReader(await response.Content.ReadAsStreamAsync(TestSupport.Ct));
         await events.NextAsync();
 
-        Assert.Equal(LiveEventId.Parse("1760603400000-4"), Assert.Single(factory.LiveFeed.Starts));
+        Assert.Equal(seen, Assert.Single(factory.LiveFeed.Starts));
     }
 
     [Fact]

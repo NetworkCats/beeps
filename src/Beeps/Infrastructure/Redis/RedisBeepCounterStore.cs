@@ -79,17 +79,6 @@ public sealed class RedisBeepCounterStore(RedisConnection redis) : IBeepCounterS
         return 0
         """;
 
-    // KEYS: dirty set. ARGV: ttl ms, cap, beep ids…
-    private const string MarkDirtyScript = """
-        for i = 3, #ARGV do
-          if redis.call('SCARD', KEYS[1]) < tonumber(ARGV[2]) then
-            redis.call('SADD', KEYS[1], ARGV[i])
-          end
-        end
-        redis.call('PEXPIRE', KEYS[1], ARGV[1])
-        return 0
-        """;
-
     // KEYS: count hashes. ARGV: ttl ms, then likes, replies for each key.
     private const string SetScript = """
         for i, key in ipairs(KEYS) do
@@ -109,7 +98,7 @@ public sealed class RedisBeepCounterStore(RedisConnection redis) : IBeepCounterS
         }
 
         var ids = beepIds.ToArray();
-        var values = (RedisValue[])(await (await redis.DatabaseAsync()).ScriptEvaluateAsync(GetScript, [.. ids.Select(CountsKey)]))!;
+        var values = (RedisValue[])(await redis.EvaluateAsync(GetScript, [.. ids.Select(CountsKey)]))!;
         for (var i = 0; i < ids.Length; i++)
         {
             if (values[i * 2].TryParse(out int likes) && values[(i * 2) + 1].TryParse(out int replies))
@@ -122,20 +111,20 @@ public sealed class RedisBeepCounterStore(RedisConnection redis) : IBeepCounterS
     }
 
     public Task AddAsync(Guid beepId, BeepCounts baseline, BeepCounts delta, CancellationToken cancellationToken) =>
-        EvaluateAsync(
+        redis.EvaluateAsync(
             AddScript,
             [CountsKey(beepId), DirtyKey],
             [
                 baseline.Likes, baseline.Replies, delta.Likes, delta.Replies,
-                Milliseconds(CountsLifetime), Milliseconds(DirtyLifetime), MaxDirty, beepId.ToString("D"),
+                RedisCommands.Milliseconds(CountsLifetime), RedisCommands.Milliseconds(DirtyLifetime), MaxDirty, beepId.ToString("D"),
             ]);
 
     public async Task<bool> AddViewAsync(Guid beepId, CancellationToken cancellationToken) =>
-        (int)await (await redis.DatabaseAsync()).ScriptEvaluateAsync(AddViewScript, [ViewsKey], [Milliseconds(DirtyLifetime), MaxDirty, beepId.ToString("D")]) == 1;
+        (int)await redis.EvaluateAsync(AddViewScript, [ViewsKey], [RedisCommands.Milliseconds(DirtyLifetime), MaxDirty, beepId.ToString("D")]) == 1;
 
     public async Task<IReadOnlyDictionary<Guid, long>> TakeViewsAsync(CancellationToken cancellationToken)
     {
-        var values = (RedisValue[])(await (await redis.DatabaseAsync()).ScriptEvaluateAsync(TakeViewsScript, [ViewsKey]))!;
+        var values = (RedisValue[])(await redis.EvaluateAsync(TakeViewsScript, [ViewsKey]))!;
         var views = new Dictionary<Guid, long>(values.Length / 2);
         for (var i = 0; i + 1 < values.Length; i += 2)
         {
@@ -153,27 +142,19 @@ public sealed class RedisBeepCounterStore(RedisConnection redis) : IBeepCounterS
         ArgumentNullException.ThrowIfNull(views);
         return views.Count == 0
             ? Task.CompletedTask
-            : EvaluateAsync(
+            : redis.EvaluateAsync(
                 ReturnViewsScript,
                 [ViewsKey],
-                [Milliseconds(DirtyLifetime), .. views.SelectMany(v => new RedisValue[] { v.Key.ToString("D"), v.Value })]);
+                [RedisCommands.Milliseconds(DirtyLifetime), .. views.SelectMany(v => new RedisValue[] { v.Key.ToString("D"), v.Value })]);
     }
 
-    public async Task<IReadOnlyList<Guid>> TakeDirtyAsync(int max, CancellationToken cancellationToken)
-    {
-        var members = await (await redis.DatabaseAsync()).SetPopAsync(DirtyKey, max);
-        return [.. members.Select(m => Guid.TryParse((string?)m, CultureInfo.InvariantCulture, out var id) ? id : Guid.Empty).Where(id => id != Guid.Empty)];
-    }
+    public Task<IReadOnlyList<Guid>> TakeDirtyAsync(int max, CancellationToken cancellationToken) =>
+        redis.PopIdsAsync(DirtyKey, max);
 
     public Task MarkDirtyAsync(IReadOnlyCollection<Guid> beepIds, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(beepIds);
-        return beepIds.Count == 0
-            ? Task.CompletedTask
-            : EvaluateAsync(
-                MarkDirtyScript,
-                [DirtyKey],
-                [Milliseconds(DirtyLifetime), MaxDirty, .. beepIds.Select(id => (RedisValue)id.ToString("D"))]);
+        return redis.AddIdsCappedAsync(DirtyKey, beepIds, MaxDirty, DirtyLifetime);
     }
 
     public Task SetAsync(IReadOnlyDictionary<Guid, BeepCounts> counts, CancellationToken cancellationToken)
@@ -185,16 +166,11 @@ public sealed class RedisBeepCounterStore(RedisConnection redis) : IBeepCounterS
         }
 
         var entries = counts.ToArray();
-        return EvaluateAsync(
+        return redis.EvaluateAsync(
             SetScript,
             [.. entries.Select(e => CountsKey(e.Key))],
-            [Milliseconds(CountsLifetime), .. entries.SelectMany(e => new RedisValue[] { e.Value.Likes, e.Value.Replies })]);
+            [RedisCommands.Milliseconds(CountsLifetime), .. entries.SelectMany(e => new RedisValue[] { e.Value.Likes, e.Value.Replies })]);
     }
 
-    private async Task EvaluateAsync(string script, RedisKey[] keys, RedisValue[] values) =>
-        await (await redis.DatabaseAsync()).ScriptEvaluateAsync(script, keys, values);
-
     private static RedisKey CountsKey(Guid beepId) => $"{RedisSetup.KeyPrefix}counts:{beepId:D}";
-
-    private static RedisValue Milliseconds(TimeSpan span) => ((long)span.TotalMilliseconds).ToString(CultureInfo.InvariantCulture);
 }

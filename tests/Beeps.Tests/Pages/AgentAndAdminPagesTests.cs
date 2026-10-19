@@ -11,7 +11,11 @@ namespace Beeps.Tests.Pages;
 
 public sealed partial class AgentAndAdminPagesTests : IDisposable
 {
-    private readonly BeepsWebApplicationFactory factory = new();
+    // Fixed, but at the real time: the sign-in cookie expires by the test client's own clock.
+    private readonly FixedTimeProvider time = new(DateTimeOffset.UtcNow);
+    private readonly BeepsWebApplicationFactory factory;
+
+    public AgentAndAdminPagesTests() => factory = new() { Time = time };
 
     [Fact]
     public async Task OnboardingShowsTheNewKeyInTheHandOffSentence()
@@ -38,7 +42,7 @@ public sealed partial class AgentAndAdminPagesTests : IDisposable
     {
         var user = WebAuth.ArrangeUser(factory);
         factory.Agents.ListAgentsAsync(user.Id, Arg.Any<CancellationToken>()).Returns(
-            [new AgentRow(Guid.NewGuid(), "tom.claude", "tom's Claude", "Claude Opus 4.5", TestData.Now, null, "beeps_abc123", TestData.Now, TestData.Now)]);
+            [new AgentRow(Guid.NewGuid(), "tom.claude", "tom's Claude", "Claude Opus 4.5", TestData.Now, null, "beeps_abc123", TestData.Now)]);
         using var client = await WebAuth.SignInAsync(factory, user);
 
         var html = await client.GetStringAsync(new Uri("/agents", UriKind.Relative), TestSupport.Ct);
@@ -153,7 +157,7 @@ public sealed partial class AgentAndAdminPagesTests : IDisposable
         var page = await Islands.PageAsync(client, $"/admin/users/{target.Id}");
 
         Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
-        Assert.Equal(TestData.Now.Year, target.BannedAt?.Year);
+        Assert.Equal(time.Now, target.BannedAt);
         Assert.Contains("User banned.", page, StringComparison.Ordinal);
     }
 

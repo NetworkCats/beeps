@@ -9,6 +9,7 @@
 // Rhythm: 15px text on a ~20px line, 16px column padding, 12px between an avatar and its text, 40px
 // avatars, 20px icons in 34px round hit areas; secondary text is one gray (--cui-text-2).
 @use "../collection-ui/abstracts" as *;
+@use "mixins" as *;
 
 // ---- Shell -------------------------------------------------------------------------------------
 
@@ -185,7 +186,7 @@
   }
 
   .sidenav-cta {
-    --cui-btn-height: 3.25rem;
+    --cui-sidenav-cta-height: 3.25rem;
     width: 90%;
     margin-block: var(--cui-space-4) 0;
     font-size: 1.0625rem;
@@ -227,9 +228,6 @@
   inset-block-start: 0.375rem;
   inset-inline-start: 1.75rem;
   min-width: 1.125rem;
-  height: 1.125rem;
-  padding-inline: 0.3rem;
-  font-size: 0.6875rem;
   font-weight: var(--cui-weight-bold);
   box-shadow: 0 0 0 2px var(--cui-bg);
 }
@@ -295,14 +293,8 @@
   position: relative;
 
   > summary {
-    list-style: none;
-    cursor: pointer;
     user-select: none;
     -webkit-tap-highlight-color: transparent;
-
-    &::-webkit-details-marker {
-      display: none;
-    }
   }
 }
 
@@ -358,10 +350,6 @@
   border-radius: var(--cui-radius-xl);
   box-shadow: 0 0 15px oklch(0% 0 0 / 0.1), 0 0 3px 1px oklch(0% 0 0 / 0.06);
 
-  > form {
-    margin: 0;
-  }
-
   .dropdown-item {
     gap: var(--cui-space-3);
     padding: var(--cui-space-3) var(--cui-space-4);
@@ -386,7 +374,6 @@
 }
 
 .menu-header {
-  margin: 0;
   padding: var(--cui-space-2) var(--cui-space-4);
   color: var(--cui-text-2);
   font-size: var(--beeps-text-size);
@@ -457,25 +444,11 @@
 }
 
 .topbar-more-toggle {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 2.25rem;
-  height: 2.25rem;
+  @include round-icon-button(2.25rem, $display: flex);
   color: var(--cui-text);
-  border-radius: var(--cui-radius-full);
-  transition: background-color var(--cui-transition);
-
-  > .icon {
-    --cui-icon-size: 1.375rem;
-  }
 
   &:hover {
     background: var(--beeps-hover-strong);
-  }
-
-  &:focus-visible {
-    @include focus-ring;
   }
 }
 
@@ -505,19 +478,14 @@
   display: none;
 }
 
-// The side column's search sits where the column headers sit, and stays there.
-.aside-search {
+// The search in the side column and on the search page: a grey pill that turns the page colour while typed in.
+.aside-search,
+.column-header-search > .search {
   --cui-search-height: 2.75rem;
   --cui-search-bg: var(--cui-surface-2);
   --cui-search-border: transparent;
-  position: sticky;
-  inset-block-start: 0;
-  z-index: 1;
-  padding-block: var(--cui-space-1);
-  background: var(--cui-bg);
 
   > .icon {
-    --cui-icon-size: 1.375rem;
     margin-inline-start: var(--cui-space-4);
     color: var(--cui-text-2);
   }
@@ -529,10 +497,23 @@
     &:focus {
       --_bg: var(--cui-bg);
     }
+  }
+}
 
-    &::placeholder {
-      color: var(--cui-text-2);
-    }
+// The side column's one sits where the column headers sit, and stays there.
+.aside-search {
+  position: sticky;
+  inset-block-start: 0;
+  z-index: 1;
+  padding-block: var(--cui-space-1);
+  background: var(--cui-bg);
+
+  > .icon {
+    --cui-icon-size: 1.375rem;
+  }
+
+  > .search-input::placeholder {
+    color: var(--cui-text-2);
   }
 }
 
@@ -546,13 +527,10 @@
 }
 
 .aside-title {
-  margin: 0;
-  font-size: var(--cui-text-xl);
-  font-weight: 800;
+  @include title;
 }
 
 .aside-text {
-  margin: 0;
   color: var(--cui-text-2);
   font-size: var(--beeps-text-size);
   line-height: var(--beeps-text-leading);
@@ -600,7 +578,6 @@
   display: inline-flex;
   align-items: center;
   gap: var(--cui-space-1);
-  margin: 0;
 
   > .icon {
     --cui-icon-size: 1rem;
@@ -612,7 +589,6 @@
 .footer-select {
   appearance: none;
   min-width: 0;
-  margin: 0;
   padding: 0 var(--cui-space-4) 0 var(--cui-space-1);
   color: var(--cui-text-2);
   font: inherit;
@@ -646,10 +622,6 @@
   @media (scripting: enabled) {
     display: none;
   }
-}
-
-.footer-note {
-  margin: 0;
 }
 
 // The same options in the top bar's menu: one row each, with room to tap.
@@ -719,27 +691,6 @@
 
 .column-header-search {
   padding-block: var(--cui-space-1-5);
-
-  > .search {
-    --cui-search-height: 2.75rem;
-    --cui-search-bg: var(--cui-surface-2);
-    --cui-search-border: transparent;
-
-    > .icon {
-      --cui-icon-size: 1.25rem;
-      margin-inline-start: var(--cui-space-4);
-      color: var(--cui-text-2);
-    }
-
-    > .search-input {
-      padding-inline-start: 3rem;
-      font-size: var(--beeps-text-size);
-
-      &:focus {
-        --_bg: var(--cui-bg);
-      }
-    }
-  }
 }
 
 .column-heading {
@@ -748,18 +699,14 @@
 }
 
 .column-title {
-  margin: 0;
+  @include title;
   overflow: hidden;
-  font-size: var(--cui-text-xl);
-  font-weight: 800;
-  line-height: 1.2;
   letter-spacing: -0.01em;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .column-subtitle {
-  margin: 0;
   overflow: hidden;
   color: var(--cui-text-2);
   font-size: 0.8125rem;
@@ -779,7 +726,6 @@
 
 // A sentence about the page, under its header.
 .column-lead {
-  margin: 0;
   padding: var(--cui-space-3) var(--beeps-pad) 0;
   color: var(--cui-text-2);
   font-size: var(--beeps-text-size);
@@ -787,27 +733,12 @@
 }
 
 .column-back {
-  display: inline-flex;
-  flex-shrink: 0;
-  align-items: center;
-  justify-content: center;
-  width: 2.25rem;
-  height: 2.25rem;
+  @include round-icon-button(2.25rem);
   margin-inline: calc(-1 * var(--cui-space-2)) var(--cui-space-2);
   color: var(--cui-text);
-  border-radius: var(--cui-radius-full);
-  transition: background-color var(--cui-transition);
-
-  > .icon {
-    --cui-icon-size: 1.375rem;
-  }
 
   &:hover {
     background: var(--beeps-hover-strong);
-  }
-
-  &:focus-visible {
-    @include focus-ring;
   }
 }
 
@@ -817,10 +748,6 @@
 }
 
 // ---- Tabs: a short brand bar under the current one, the way feeds switch ------------------------
-
-.tabs {
-  box-shadow: inset 0 calc(-1 * var(--cui-border-width)) 0 var(--cui-border);
-}
 
 .column-header > .tabs {
   flex: 1 1 auto;
@@ -895,14 +822,12 @@
 }
 
 .intro-title {
-  margin: 0;
   font-size: var(--cui-text-2xl);
   font-weight: 800;
   letter-spacing: -0.02em;
 }
 
 .intro-text {
-  margin: 0;
   color: var(--cui-text-2);
   font-size: var(--beeps-text-size);
   line-height: var(--beeps-text-leading);
@@ -951,14 +876,8 @@
       border: 3px solid var(--cui-primary);
       border-inline-end-color: transparent;
       border-radius: 50%;
-      animation: beeps-spin 0.75s linear infinite;
+      animation: cui-spin 0.75s linear infinite;
     }
-  }
-}
-
-@keyframes beeps-spin {
-  to {
-    transform: rotate(360deg);
   }
 }
 
@@ -974,15 +893,6 @@
   justify-content: space-between;
   gap: var(--cui-space-3);
   margin-block-end: var(--cui-space-4);
-
-  > h1,
-  > h2 {
-    margin: 0;
-  }
-
-  > form {
-    margin: 0;
-  }
 }
 
 .section-lead {
@@ -1123,26 +1033,12 @@
 
 .beep-menu-toggle,
 .menu-toggle-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 2.125rem;
-  height: 2.125rem;
+  @include round-icon-button(2.125rem, $display: flex);
   color: var(--cui-text-2);
-  border-radius: var(--cui-radius-full);
-  transition: background-color var(--cui-transition), color var(--cui-transition);
-
-  > .icon {
-    --cui-icon-size: 1.375rem;
-  }
 
   &:hover {
     color: var(--cui-primary-text);
     background: var(--cui-primary-soft);
-  }
-
-  &:focus-visible {
-    @include focus-ring;
   }
 }
 
@@ -1252,7 +1148,6 @@
 
   > form {
     display: flex;
-    margin: 0;
   }
 }
 
@@ -1316,7 +1211,7 @@
 }
 
 .beep-action-like {
-  --_tone: light-dark(#{palette-color("pink", 600)}, #{palette-color("pink", 400)});
+  --_tone: var(--beeps-like);
   --_tone-soft: color-mix(in oklch, #{palette-color("pink", 500)} 12%, transparent);
 
   &[aria-pressed="true"] {
@@ -1348,18 +1243,11 @@ span.beep-action {
 
 // In place of the reply form under a thread (Pages/Shared/_ReplyBox.cshtml); members get the composer (member.scss).
 .reply-signin {
-  margin: 0;
   padding: var(--cui-space-3) var(--beeps-pad);
   border-block-end: var(--cui-border-width) solid var(--cui-border);
 }
 
 // ---- People rows (search results, a person's agents) ---------------------------------------------
-
-.actor-list {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
 
 .actor-row {
   display: flex;
@@ -1468,10 +1356,6 @@ span.beep-action {
   justify-content: flex-end;
   gap: var(--cui-space-2);
 
-  > form {
-    margin: 0;
-  }
-
   .menu-panel {
     inset-inline: auto 0;
   }
@@ -1482,10 +1366,7 @@ span.beep-action {
 }
 
 .profile-name {
-  margin: 0;
-  font-size: var(--cui-text-xl);
-  font-weight: 800;
-  line-height: 1.2;
+  @include title;
   overflow-wrap: anywhere;
 }
 
@@ -1527,10 +1408,6 @@ span.beep-action {
     > .icon {
       --cui-icon-size: 1.125rem;
     }
-  }
-
-  dd {
-    margin: 0;
   }
 
   a {
@@ -1601,14 +1478,11 @@ span.beep-action {
 
 // ---- A list of people in a dialog (all of a human's agents) ----------------------------------------
 
-.list-dialog {
-  // A little above the middle, as the confirmation (member.scss): centred exactly, it looks as if it sat low.
+// This one and the confirmation (member.scss) sit a little above the middle, where the eye expects them: centred
+// exactly, a small dialog looks as if it sat low.
+.list-dialog,
+.confirm-dialog {
   inset-block: 0 15dvh;
-
-  // A plain dim page behind it, as behind the confirmation (no glass, see _theme.scss).
-  &::backdrop {
-    backdrop-filter: none;
-  }
 }
 
 .list-dialog-header {
@@ -1620,10 +1494,7 @@ span.beep-action {
 }
 
 .list-dialog-title {
-  margin: 0;
-  font-size: var(--cui-text-xl);
-  font-weight: 800;
-  line-height: 1.2;
+  @include title;
 }
 
 .list-dialog-body {
@@ -1635,7 +1506,6 @@ span.beep-action {
 // ---- About ----------------------------------------------------------------------------------------
 
 .about-lead {
-  margin: 0;
   padding: var(--cui-space-5) var(--beeps-pad) 0;
   font-size: var(--cui-text-lg);
   line-height: 1.5;
@@ -1655,15 +1525,8 @@ span.beep-action {
   }
 
   > h2 {
-    margin: 0;
     font-size: var(--cui-text-lg);
     font-weight: 800;
-  }
-
-  > p,
-  > ul,
-  > ol {
-    margin: 0;
   }
 
   > ul,
@@ -1792,19 +1655,15 @@ span.beep-action {
   border: var(--cui-border-width) solid var(--cui-border);
   border-radius: var(--cui-radius-xl);
 
-  > div > p {
-    margin: 0;
-  }
-
   &.waiting > p {
-    margin: 0;
     color: var(--cui-text-2);
   }
 }
 
 // ---- Toasts ------------------------------------------------------------------------------------------
 
-.toast-stack {
+// Above the tab bar, where there is one (signed in).
+:root:has(.tabbar) .toast-stack {
   @include mq(max-sm) {
     inset-block-end: calc(var(--beeps-tabbar-height) + env(safe-area-inset-bottom));
   }
@@ -1812,8 +1671,6 @@ span.beep-action {
 
 .toast {
   align-items: center;
-  border-radius: var(--cui-radius-lg);
-  box-shadow: var(--cui-shadow-lg);
 }
 
 // Already in: drawn again on the next page, it stays put instead of rising in once more.
@@ -1822,7 +1679,6 @@ span.beep-action {
 }
 
 .toast-message {
-  margin: 0;
   color: var(--cui-text);
   font-size: var(--beeps-text-size);
 }

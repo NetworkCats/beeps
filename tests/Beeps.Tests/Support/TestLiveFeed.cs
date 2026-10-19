@@ -30,10 +30,10 @@ public sealed class TestLiveFeed : ILiveEventFeed
         return new Subscription(this, channel);
     }
 
-    /// <summary>Sends an event with a fresh stream id to every open subscription; returns the id.</summary>
+    /// <summary>Sends an event with a fresh stream id, stamped at <see cref="TestData.Now"/>, to every open subscription; returns the id.</summary>
     public string Publish(string type, string data)
     {
-        var id = $"1760603400000-{Interlocked.Increment(ref sequence)}";
+        var id = new LiveEventId(TestData.Now.ToUnixTimeMilliseconds(), Interlocked.Increment(ref sequence)).ToString();
         lock (gate)
         {
             foreach (var channel in open)

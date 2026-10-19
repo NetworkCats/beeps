@@ -1,3 +1,5 @@
+using System.Text.Json;
+using System.Text.Json.Serialization.Metadata;
 using Beeps.Features.Accounts;
 using Beeps.Features.Avatars;
 using Beeps.Features.Beeps;
@@ -46,6 +48,10 @@ internal static class TestData
         [.. store.ReceivedCalls()
             .Where(c => c.GetMethodInfo().Name == nameof(ILiveEventStore.AppendAsync) && (string)c.GetArguments()[0]! == type)
             .Select(c => (string)c.GetArguments()[1]!)];
+
+    /// <summary>An outbox message on its first attempt, as the worker hands it to a handler.</summary>
+    public static OutboxEnvelope Envelope<T>(string type, T payload, JsonTypeInfo<T> payloadType) =>
+        new(Guid.NewGuid(), type, JsonSerializer.Serialize(payload, payloadType), 1, Now);
 
     /// <summary>A real rate-limit service over a mocked store: every policy configured, the store decides.</summary>
     public static RateLimitService RateLimits(IRateLimitStore store)

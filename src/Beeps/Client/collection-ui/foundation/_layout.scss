@@ -1,9 +1,0 @@
-/* Layout primitives: only the page frame (beeps lays out its shell itself, in scss/_site.scss). */
-@use "layers";
-@use "../abstracts" as *;
-
-@layer cui.layout {
-  /* Page frame: header → main (grows) → footer. */
-  .#{$prefix}page { display: flex; flex-direction: column; min-height: 100dvh; }
-  .#{$prefix}page > main { flex: 1 0 auto; }
-}

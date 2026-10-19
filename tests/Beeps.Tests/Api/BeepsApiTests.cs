@@ -39,7 +39,7 @@ public sealed class BeepsApiTests : IDisposable
         using var response = await newcomerClient.PostAsJsonAsync("/api/v1/agent/hello", new { model_name = "Claude Opus 4.5" }, TestSupport.Ct);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var me = await JsonAsync(response);
+        var me = await TestSupport.JsonAsync(response);
         Assert.Equal("tom.claude", me.GetProperty("handle").GetString());
         Assert.True(me.GetProperty("connected").GetBoolean());
     }
@@ -52,22 +52,19 @@ public sealed class BeepsApiTests : IDisposable
         using var response = await newcomer.GetAsync(new Uri("/api/v1/timelines/public", UriKind.Relative), TestSupport.Ct);
 
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
-        Assert.Equal("agent_not_connected", (await JsonAsync(response)).GetProperty("code").GetString());
+        Assert.Equal("agent_not_connected", (await TestSupport.JsonAsync(response)).GetProperty("code").GetString());
     }
 
     [Fact]
     public async Task PostingReturnsTheNewBeep()
     {
-        Beep? added = null;
-        factory.Beeps.When(s => s.AddBeep(Arg.Any<Beep>(), Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<IReadOnlyCollection<Guid>>()))
-            .Do(ci => added = ci.Arg<Beep>());
-        factory.Beeps.GetRowsAsync(default!, default, TestSupport.Ct).ReturnsForAnyArgs(_ => [Row(added!.Id, agent.AgentId, added.Text)]);
+        var posted = TestBeeps.ArrangePosting(factory, TestBeeps.Agent(agent.OwnerId, id: agent.AgentId));
 
         using var response = await client.PostAsJsonAsync("/api/v1/beeps", new { text = "hello #beeps" }, TestSupport.Ct);
 
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
-        Assert.Equal($"/api/v1/beeps/{added!.Id:D}", response.Headers.Location?.ToString());
-        var beep = await JsonAsync(response);
+        Assert.Equal($"/api/v1/beeps/{posted()!.Id:D}", response.Headers.Location?.ToString());
+        var beep = await TestSupport.JsonAsync(response);
         Assert.Equal("hello #beeps", beep.GetProperty("text").GetString());
         Assert.Equal("self", beep.GetProperty("author").GetProperty("relation").GetString());
         Assert.Equal("beeps", beep.GetProperty("hashtags")[0].GetString());
@@ -83,7 +80,7 @@ public sealed class BeepsApiTests : IDisposable
         using var response = await client.GetAsync(new Uri($"/api/v1/beeps/{id:D}", UriKind.Relative), TestSupport.Ct);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        Assert.True((await JsonAsync(response)).GetProperty("under_review").GetBoolean());
+        Assert.True((await TestSupport.JsonAsync(response)).GetProperty("under_review").GetBoolean());
     }
 
     [Fact]
@@ -97,7 +94,7 @@ public sealed class BeepsApiTests : IDisposable
         using var response = await client.PostAsJsonAsync("/api/v1/beeps", new { text = "hi", reply_to_id = parent }, TestSupport.Ct);
 
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
-        Assert.Equal("blocked", (await JsonAsync(response)).GetProperty("code").GetString());
+        Assert.Equal("blocked", (await TestSupport.JsonAsync(response)).GetProperty("code").GetString());
     }
 
     [Fact]
@@ -106,7 +103,7 @@ public sealed class BeepsApiTests : IDisposable
         using var response = await client.PostAsJsonAsync("/api/v1/beeps", new { text = new string('a', 501) }, TestSupport.Ct);
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-        var problem = await JsonAsync(response);
+        var problem = await TestSupport.JsonAsync(response);
         Assert.Equal("text_too_long", problem.GetProperty("code").GetString());
         Assert.True(problem.GetProperty("errors").TryGetProperty("text", out _));
     }
@@ -122,7 +119,7 @@ public sealed class BeepsApiTests : IDisposable
         using var missing = await client.GetAsync(new Uri($"/api/v1/beeps/{Guid.NewGuid()}", UriKind.Relative), TestSupport.Ct);
 
         Assert.Equal(HttpStatusCode.OK, found.StatusCode);
-        Assert.Equal("owner", (await JsonAsync(found)).GetProperty("author").GetProperty("relation").GetString());
+        Assert.Equal("owner", (await TestSupport.JsonAsync(found)).GetProperty("author").GetProperty("relation").GetString());
         Assert.Equal(HttpStatusCode.NotFound, missing.StatusCode);
     }
 
@@ -138,7 +135,7 @@ public sealed class BeepsApiTests : IDisposable
         using var response = await client.GetAsync(new Uri($"/api/v1/beeps/{root}/thread?after={after}&limit=5", UriKind.Relative), TestSupport.Ct);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var page = await JsonAsync(response);
+        var page = await TestSupport.JsonAsync(response);
         Assert.Equal(1, page.GetProperty("items").GetArrayLength());
         Assert.Equal(root, page.GetProperty("next_cursor").GetGuid());
     }
@@ -179,7 +176,7 @@ public sealed class BeepsApiTests : IDisposable
         await factory.Timelines.Received(1).PublicAsync(page, agent.AgentId, Arg.Any<CancellationToken>());
         await factory.Timelines.Received(1).HomeAsync(agent.OwnerId, page, agent.AgentId, Arg.Any<CancellationToken>());
         await factory.Timelines.Received(1).HashtagAsync("天气", page, agent.AgentId, Arg.Any<CancellationToken>());
-        Assert.Equal(JsonValueKind.Null, (await JsonAsync(publicTimeline)).GetProperty("next_cursor").ValueKind);
+        Assert.Equal(JsonValueKind.Null, (await TestSupport.JsonAsync(publicTimeline)).GetProperty("next_cursor").ValueKind);
     }
 
     [Fact]
@@ -189,13 +186,12 @@ public sealed class BeepsApiTests : IDisposable
         var self = new ActorRow(agent.AgentId, ActorKind.Agent, "tom.claude", "tom's Claude", agent.OwnerId);
         factory.Profiles.FindByHandleAsync("tom", Arg.Any<CancellationToken>()).Returns(new ProfileRow(tom, "bio", null, TestData.Now, null));
         factory.Profiles.ListAgentsAsync(tom.Id, Arg.Any<CancellationToken>()).Returns([self]);
-        factory.Timelines.ProfileAsync(default, default, default!, default, TestSupport.Ct).ReturnsForAnyArgs(new CursorPage<BeepRow>([], null));
 
         using var profile = await client.GetAsync(new Uri("/api/v1/users/tom", UriKind.Relative), TestSupport.Ct);
         using var beeps = await client.GetAsync(new Uri("/api/v1/users/tom/beeps", UriKind.Relative), TestSupport.Ct);
         using var missing = await client.GetAsync(new Uri("/api/v1/users/nobody", UriKind.Relative), TestSupport.Ct);
 
-        var json = await JsonAsync(profile);
+        var json = await TestSupport.JsonAsync(profile);
         Assert.Equal("owner", json.GetProperty("relation").GetString());
         Assert.Equal("self", json.GetProperty("agents")[0].GetProperty("relation").GetString());
         Assert.Equal(HttpStatusCode.OK, beeps.StatusCode);
@@ -220,7 +216,7 @@ public sealed class BeepsApiTests : IDisposable
 
         using var response = await client.GetAsync(new Uri("/api/v1/notifications?unread_only=true", UriKind.Relative), TestSupport.Ct);
 
-        var items = (await JsonAsync(response)).GetProperty("items");
+        var items = (await TestSupport.JsonAsync(response)).GetProperty("items");
         var item = items[0];
         Assert.Equal("mention", item.GetProperty("type").GetString());
         Assert.Equal("owner", item.GetProperty("from").GetProperty("relation").GetString());
@@ -251,7 +247,4 @@ public sealed class BeepsApiTests : IDisposable
 
     internal static BeepRow Row(Guid id, Guid authorId, string text) =>
         new(id, text, new ActorRow(authorId, ActorKind.Human, "tom", "Tom", null), null, id, TestData.Now, 0, 0, false);
-
-    private static async Task<JsonElement> JsonAsync(HttpResponseMessage response) =>
-        JsonDocument.Parse(await response.Content.ReadAsStringAsync(TestSupport.Ct)).RootElement.Clone();
 }

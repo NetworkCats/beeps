@@ -30,7 +30,7 @@ export function ConfirmDialog() {
   return (
     <dialog
       class="dialog dialog-sm dialog-plain confirm-dialog"
-     
+      aria-labelledby="confirm-message"
       ref={dialog}
       // A click on the backdrop (the dialog itself, outside its content) cancels, like Escape.
       onClick={(event) => {
@@ -39,7 +39,7 @@ export function ConfirmDialog() {
     >
       <form method="dialog">
         <div class="dialog-body">
-          <p class="confirm-message">
+          <p class="confirm-message" id="confirm-message">
             {pending?.message ?? ''}
           </p>
         </div>

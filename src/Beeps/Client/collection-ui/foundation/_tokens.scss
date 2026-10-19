@@ -173,7 +173,6 @@
      * below), inputs are wells (sunk), pressing flattens the keycap. */
     --cui-highlight: light-dark(oklch(100% 0 0 / 0.8), oklch(100% 0 0 / 0.07));
     --cui-edge: light-dark(color-mix(in oklch, var(--cui-shadow-color) 16%, transparent), oklch(0% 0 0 / 0.55));
-    --cui-shadow-key: inset 0 1px 0 var(--cui-highlight), 0 1px 0 var(--cui-edge);
     --cui-shadow-well: inset 0 1px 2px color-mix(in oklch, var(--cui-shadow-color) 7%, transparent);
     --cui-shadow-pressed: inset 0 1px 2px color-mix(in oklch, var(--cui-shadow-color) 18%, transparent);
     @each $name, $status in $all-statuses {

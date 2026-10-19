@@ -26,7 +26,7 @@ public static class CacheKinds
     public static readonly CacheKind<Guid, CachedActor> Actor =
         new("actor2", Id, ContentCacheJsonContext.Default.CachedActor, o => o.ActorExpiration);
 
-    /// <summary>Normalized handle → actor id. Handles are never freed, so only an agent's rename changes one.</summary>
+    /// <summary>Normalized handle → actor id. Only an agent's rename, or an unverified sign-up giving its handle up, changes one.</summary>
     public static readonly CacheKind<string, Guid> Handle =
         new("handle", h => h, ContentCacheJsonContext.Default.Guid, o => o.ListExpiration);
 

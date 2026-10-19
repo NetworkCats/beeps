@@ -1,12 +1,13 @@
-// The rows of an admin table that loads its next pages as it is scrolled. When the page's
+// The rows of a list that loads its next pages as it is scrolled (an admin table, whom someone follows). When the page's
 // props come again (the site changed, an action was answered) the first page is taken in as it is now; once more
-// pages were loaded, those past it stay, so the table does not shrink back under the admin's eyes.
+// pages were loaded, those past it stay, so the list does not shrink back under the reader's eyes, unless the first page
+// is now the whole list.
 import { useRef } from 'preact/hooks';
 import { signal, type Signal } from '@preact/signals';
-import { getIslands } from '../../http.ts';
-import { useSnapshot } from '../../islands.tsx';
-import { appendPage, mergeFresh } from '../../lists.ts';
-import type { PageProps } from '../../props.ts';
+import { getIslands } from './http.ts';
+import { useSnapshot } from './islands.tsx';
+import { appendPage, mergeFresh } from './lists.ts';
+import type { PageProps } from './props.ts';
 
 interface RowsState<T> {
   rows: Signal<T[]>;
@@ -18,7 +19,7 @@ interface RowsState<T> {
 export interface Rows<T> {
   rows: T[];
   next?: string;
-  /** Loads the next page into the table, for the Pager. */
+  /** Loads the next page into the list, for the Pager. */
   loadMore: () => Promise<boolean>;
 }
 
@@ -27,9 +28,9 @@ export interface RowsOptions<P, T> {
   island: string;
   /** Each row's key. */
   key: (row: T) => string;
-  /** The table's page in the island's props. */
+  /** The list's page in the island's props. */
   pick: (props: P) => PageProps<T>;
-  /** The island's props with the table as it is drawn now, for going back to the page. */
+  /** The island's props with the list as it is drawn now, for going back to the page. */
   snapshot: (page: PageProps<T>) => P;
 }
 
@@ -40,7 +41,7 @@ export function useRows<P, T>(props: P, { island, key, pick, snapshot }: RowsOpt
   const state = ref.current;
   if (page !== state.source) {
     state.source = page;
-    if (state.more) {
+    if (state.more && page.next) {
       const byKey = new Map([...state.rows.value, ...page.items].map((row) => [key(row), row]));
       const merged = mergeFresh({ ids: state.rows.value.map(key), next: state.next.value }, { ids: page.items.map(key), next: page.next });
       state.rows.value = merged.ids.flatMap((id) => byKey.get(id) ?? []);

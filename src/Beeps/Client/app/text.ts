@@ -1,5 +1,5 @@
-// What the composer checks before posting: the server checks the same, this only saves a round trip. No browser here,
-// so Node can test it.
+// What the composer checks before posting, and the images a file input offers: the server checks the same, this only
+// saves a round trip. No browser here, so Node can test it.
 
 const segmenter = new Intl.Segmenter(undefined, { granularity: 'grapheme' });
 
@@ -9,6 +9,9 @@ export function countCharacters(text: string): number {
   for (const _ of segmenter.segment(text.replace(/\r\n?/g, '\n').trim())) count++;
   return count;
 }
+
+/** The image types the site takes, for a file input's `accept`. */
+export const IMAGE_TYPES = 'image/jpeg,image/png,image/webp,image/gif';
 
 export type ImagesProblem = 'too-many' | 'too-large' | null;
 

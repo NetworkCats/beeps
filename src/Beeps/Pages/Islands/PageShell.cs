@@ -44,8 +44,7 @@ public static class PageShell
     public static PageShellProps For(ViewContext view)
     {
         ArgumentNullException.ThrowIfNull(view);
-        var context = view.HttpContext;
-        var user = context.User;
+        var user = view.HttpContext.User;
         var signedIn = user.IsHuman();
         var page = view.RouteData.Values["page"] as string;
         var adminPage = page?.StartsWith("/Admin/", StringComparison.Ordinal) == true;
@@ -58,7 +57,7 @@ public static class PageShell
             "/Notifications" => "notifications",
             "/Agents/Index" or "/Agents/Edit" => "agents",
             "/Settings" => "settings",
-            "/Profiles/Index" when signedIn && OnOwnProfile(context) => "profile",
+            "/Profiles/Index" when signedIn && OnOwnProfile(view) => "profile",
             _ => null,
         };
         // The search page has a search box of its own, the about page says all the side column's card does, and the
@@ -105,6 +104,7 @@ public static class PageShell
         };
     }
 
-    private static bool OnOwnProfile(HttpContext context) =>
-        string.Equals(context.Request.Path.Value?.TrimStart('/').Split('/')[0], context.User.Identity?.Name, StringComparison.OrdinalIgnoreCase);
+    /// <summary>The route's handle comes without the <c>@</c> of the address (<c>/@{handle}</c>).</summary>
+    private static bool OnOwnProfile(ViewContext view) =>
+        string.Equals(view.RouteData.Values["handle"] as string, view.HttpContext.User.Identity?.Name, StringComparison.OrdinalIgnoreCase);
 }

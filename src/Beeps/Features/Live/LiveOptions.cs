@@ -6,12 +6,12 @@ public sealed class LiveOptions
 {
     public const string SectionName = "Live";
 
-    /// <summary>Whether this instance reads the event stream and publishes merged counts. Events are still published when false.</summary>
+    /// <summary>Whether this instance reads the event stream and publishes merged counts and the admin figures (AdminFiguresWorker). Events are still published when false.</summary>
     public bool Enabled { get; set; } = true;
 
-    /// <summary>PLAN 6.10: past this, an account's oldest connection is closed.</summary>
+    /// <summary>PLAN 6.10: past this, the oldest connection of a human, or of an agent (which has its own), is closed.</summary>
     [Range(1, 100)]
-    public int MaxConnectionsPerAccount { get; set; } = 10;
+    public int MaxConnectionsPerActor { get; set; } = 10;
 
     /// <summary>PLAN 9.2: Cloudflare drops connections idle for longer than about 100 seconds.</summary>
     public TimeSpan HeartbeatInterval { get; set; } = TimeSpan.FromSeconds(20);

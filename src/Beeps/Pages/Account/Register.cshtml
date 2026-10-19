@@ -28,16 +28,16 @@
             </div>
             <div class="field">
                 <label class="label" for="Password">@L["Field.Password"]</label>
-                <input class="input" beeps-field="Password" type="password" autocomplete="new-password" minlength="@AccountRules.PasswordMinLength" maxlength="@AccountRules.PasswordMaxLength" required>
-                <p class="help">@L["Field.Password.Help", AccountRules.PasswordMinLength]</p>
+                <input class="input" beeps-field="Password" type="password" autocomplete="new-password" minlength="@AccountRules.PasswordMinLength" maxlength="@AccountRules.PasswordMaxLength" required aria-describedby="Password-help">
+                <p class="help" id="Password-help">@L["Field.Password.Help", AccountRules.PasswordMinLength]</p>
                 <field-error name="Password" />
             </div>
             @if (Model.Mode == RegistrationMode.InviteOnly)
             {
                 <div class="field">
                     <label class="label" for="InviteCode">@L["Field.InviteCode"]</label>
-                    <input class="input input-mono" beeps-field="InviteCode" value="@Model.InviteCode" autocomplete="off" required>
-                    <p class="help">@L["Field.InviteCode.Help"]</p>
+                    <input class="input input-mono" beeps-field="InviteCode" value="@Model.InviteCode" autocomplete="off" required aria-describedby="InviteCode-help">
+                    <p class="help" id="InviteCode-help">@L["Field.InviteCode.Help"]</p>
                     <field-error name="InviteCode" />
                 </div>
             }

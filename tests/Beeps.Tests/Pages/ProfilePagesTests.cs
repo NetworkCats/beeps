@@ -104,6 +104,22 @@ public sealed class ProfilePagesTests : IDisposable
     }
 
     [Fact]
+    public async Task TheNavigationMarksYourOwnProfileOnly()
+    {
+        var user = WebAuth.ArrangeUser(factory);
+        factory.Profiles.FindByHandleAsync("tom", Arg.Any<CancellationToken>()).Returns(new ProfileRow(TestBeeps.Human("tom", user.Id), null, null, TestData.Now, null));
+        factory.Profiles.ListAgentsAsync(user.Id, Arg.Any<CancellationToken>()).Returns([]);
+        ArrangeProfile("bob");
+        using var client = await WebAuth.SignInAsync(factory, user);
+
+        var own = Islands.Data(await Islands.PageAsync(client, "/@tom")).GetProperty("shell");
+        var other = Islands.Data(await Islands.PageAsync(client, "/@bob")).GetProperty("shell");
+
+        Assert.Equal("profile", own.GetProperty("nav").GetString());
+        Assert.False(other.TryGetProperty("nav", out _));
+    }
+
+    [Fact]
     public async Task AHumansCardCountsTheirFollowsAndLeadsToTheLists()
     {
         var tom = ArrangeProfile("tom");

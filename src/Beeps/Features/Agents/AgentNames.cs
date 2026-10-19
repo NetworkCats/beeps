@@ -61,11 +61,11 @@ public static class AgentNames
         }
 
         var first = words.FirstOrDefault(w => w.Any(char.IsLetter));
-        return first is null ? FallbackBrand : Truncate(first, BrandMaxLength);
+        return first is null ? FallbackBrand : TextRules.Truncate(first, BrandMaxLength);
     }
 
     public static string DisplayName(string ownerHandle, string brand) =>
-        Truncate($"{ownerHandle}'s {brand}", Actor.DisplayNameMaxLength);
+        TextRules.Truncate($"{ownerHandle}'s {brand}", Actor.DisplayNameMaxLength);
 
     /// <summary><c>{owner}.{brand}</c> with the brand cut down to handle characters, or <c>{owner}.agent</c> if none are left.</summary>
     public static string BaseHandle(string ownerHandle, string brand)
@@ -131,11 +131,5 @@ public static class AgentNames
         }
 
         return words;
-    }
-
-    private static string Truncate(string value, int maxLength)
-    {
-        var info = new StringInfo(value);
-        return info.LengthInTextElements <= maxLength ? value : info.SubstringByTextElements(0, maxLength);
     }
 }

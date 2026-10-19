@@ -3,8 +3,9 @@
 // Direction: a modern social feed, restrained and content-first. Hierarchy comes from type and
 // whitespace; no gradients, glass or decorative motion. Concretely:
 // - Colour: the page is one flat, pure colour (white, or near-black in dark mode) with no hue in it.
-//   Upstream washes every neutral with the brand ("tinted neutrals"); beeps turns that off and uses
-//   pure grays (the $neutral ladder in _settings.scss), so only the brand accent carries colour.
+//   Upstream washes every neutral with --cui-tint ("tinted neutrals"); beeps sets every one of those
+//   tokens itself, in pure grays (and the $neutral ladder in _settings.scss is pure gray too), so only
+//   the brand accent carries colour.
 // - Brand: indigo (set in _settings.scss). Calm, readable as link colour on both themes, and distinct
 //   from the status colours (green/amber/red/cyan).
 // - Surfaces are flat: cards, inputs and menus sit on the page colour and are told apart by hairlines,
@@ -25,7 +26,6 @@
     --cui-font-mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, "Liberation Mono", monospace;
 
     // ---- Colour: pure neutrals, no tint ------------------------------------------------------
-    --cui-tint: var(--cui-neutral-500);
     --cui-bg: light-dark(#fff, oklch(14.5% 0 0));
     --cui-surface: var(--cui-bg);
     --cui-surface-2: light-dark(oklch(97% 0 0), oklch(20.5% 0 0));
@@ -33,8 +33,11 @@
     --cui-surface-hover: light-dark(oklch(97.6% 0 0), oklch(18% 0 0));
     // The hover pill behind navigation and icon buttons: a clearer wash than a row's.
     --beeps-hover-strong: light-dark(oklch(94% 0 0), oklch(22% 0 0));
-    // Menus and other things that float above the page.
+    // Menus and other things that float above the page, and a row's hover and press on them: the page's own
+    // steps would hardly show on white, and in dark mode would be darker than the menu.
     --beeps-surface-raised: light-dark(#fff, oklch(20.5% 0 0));
+    --beeps-surface-raised-hover: light-dark(oklch(95.5% 0 0), oklch(25% 0 0));
+    --beeps-surface-raised-active: light-dark(oklch(92.2% 0 0), oklch(28.5% 0 0));
     --cui-overlay: oklch(0% 0 0 / 0.45);
     // Dark bands (the dark toast): neutral too.
     --cui-band: light-dark(oklch(20.5% 0 0), oklch(26.9% 0 0));
@@ -53,12 +56,13 @@
     --cui-text-4: light-dark(oklch(70% 0 0), oklch(48% 0 0));
     // Navigation reads quieter than content; the current page is in full ink.
     --beeps-nav-fg: light-dark(oklch(32% 0 0), oklch(86% 0 0));
+    // A liked beep's heart, and the likes in the inbox.
+    --beeps-like: light-dark(#{palette-color("pink", 600)}, #{palette-color("pink", 400)});
 
     // Flat: no keycap highlight, no sunken wells, neutral shadows only where something floats.
     --cui-shadow-color: oklch(0% 0 0);
     --cui-highlight: transparent;
     --cui-edge: transparent;
-    --cui-shadow-key: none;
     --cui-shadow-well: none;
     --cui-shadow-pressed: none;
     --cui-shadow-lg: 0 12px 32px -6px oklch(0% 0 0 / 0.16), 0 2px 6px oklch(0% 0 0 / 0.06);
@@ -82,6 +86,8 @@
     --cui-tabs-active-bg: transparent;
     --cui-card-radius: var(--cui-radius-xl);
     --cui-dropdown-bg: var(--beeps-surface-raised);
+    --cui-dropdown-item-hover: var(--beeps-surface-raised-hover);
+    --cui-dropdown-item-active: var(--beeps-surface-raised-active);
 
     // ---- Layout --------------------------------------------------------------------------------
     // The app shell: a navigation rail, the content column and, on wide screens, a side column.
@@ -101,15 +107,9 @@
 // Headings are kept small: the page title is a 20px column header, sections are 16–17px.
 // In cui.base, after upstream's element defaults, so components (card titles, empty states) still win.
 @layer cui.base {
-  html {
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-    text-rendering: optimizeLegibility;
-  }
-
   h1 { font-size: var(--cui-text-xl); font-weight: 800; letter-spacing: -0.01em; }
   h2 { font-size: 1.0625rem; font-weight: var(--cui-weight-bold); letter-spacing: -0.005em; }
-  h3 { font-size: var(--cui-text-base); letter-spacing: 0; }
+  h3 { font-size: var(--cui-text-base); }
   h4 { font-size: var(--cui-text-sm); }
 
   @include mq(max-sm) {
@@ -125,8 +125,8 @@
 
 // Component tuning that only touches collection-ui's own knobs, in its own layer so page CSS still wins.
 @layer cui.components {
-  .btn-sm { --_height: var(--cui-control-height-sm); --_font: 0.875rem; --_px: 1rem; }
+  .btn-sm { --_font: 0.875rem; --_px: 1rem; }
   .btn:active { translate: none; }
   .btn-primary, .btn-danger { --_border: transparent; }
-  .input, .select, .textarea { font-size: var(--cui-text-base); }
+  .input, .textarea { font-size: var(--cui-text-base); }
 }

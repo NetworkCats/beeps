@@ -25,7 +25,7 @@ public sealed class VerifyModel(AccountService accounts, IStringLocalizer<Shared
 
     public async Task<IActionResult> OnGetAsync(CancellationToken cancellationToken)
     {
-        if (User.FindFirst(BeepsClaims.EmailVerified)?.Value == "true")
+        if (User.IsMember())
         {
             return RedirectToPage("/Onboarding/Agent");
         }

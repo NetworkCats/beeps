@@ -1,14 +1,12 @@
 // What several admin pages draw the same way: a person's badges, a beep's moderation status, an admin's buttons for
 // an agent, and the admin addresses.
-import { useEffect, useRef, useState } from 'preact/hooks';
-import { copyText } from '../../clipboard.ts';
+import { CopyButton } from '../../components/CopyButton.tsx';
 import { Antiforgery } from '../../components/Forms.tsx';
 import { sending } from '../../forms.ts';
 import { t } from '../../i18n.ts';
 
 /** The admin pages' addresses, as Url.Page builds them for the Razor templates. */
 export const adminPaths = {
-  users: '/admin/users',
   user: (id: string): string => `/admin/users/${id}`,
   agents: '/admin/agents',
   review: '/admin/review',
@@ -95,25 +93,12 @@ export function AgentActions({ id, disabled, hasKey, returnUrl }: { id: string; 
   );
 }
 
-const COPIED_MS = 1500;
-
 /** A code with a button that copies it (<div class="copy-box">). */
 export function CopyBox({ text }: { text: string }) {
-  const [copied, setCopied] = useState(false);
-  const timer = useRef<number | undefined>(undefined);
-  useEffect(() => () => window.clearTimeout(timer.current), []);
-  const copy = async (): Promise<void> => {
-    if (!(await copyText(text))) return;
-    setCopied(true);
-    window.clearTimeout(timer.current);
-    timer.current = window.setTimeout(() => setCopied(false), COPIED_MS);
-  };
   return (
     <div class="copy-box">
       <code>{text}</code>
-      <button class="btn-copy" type="button" data-copied={copied ? '' : undefined} onClick={() => void copy()}>
-        {copied ? t('Copy.Done') : t('Copy.Action')}
-      </button>
+      <CopyButton text={text} />
     </div>
   );
 }

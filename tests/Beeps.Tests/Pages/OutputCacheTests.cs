@@ -1,4 +1,3 @@
-using Beeps.Features.Accounts;
 using Beeps.Features.Beeps;
 using Beeps.Features.Profiles;
 using Beeps.Features.Shared;
@@ -6,7 +5,6 @@ using Beeps.Features.Shared.Http;
 using Microsoft.AspNetCore.OutputCaching;
 using Microsoft.Extensions.DependencyInjection;
 using Beeps.Tests.Support;
-using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace Beeps.Tests.Pages;
@@ -57,7 +55,7 @@ public sealed class OutputCacheTests : IDisposable
         var user = WebAuth.ArrangeUser(factory);
         Show("first");
         using var client = cached.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
-        await SignInAsync(client, user);
+        await WebAuth.SignInAsync(client, user);
         await client.GetStringAsync(Islands.DataUrl("/public"), TestSupport.Ct);
 
         Show("second");
@@ -143,17 +141,5 @@ public sealed class OutputCacheTests : IDisposable
         var row = TestBeeps.Row(text, TestBeeps.Human());
         factory.Timelines.PublicAsync(default!, default, TestSupport.Ct).ReturnsForAnyArgs(new CursorPage<BeepRow>([row], null));
         return row;
-    }
-
-    private static async Task SignInAsync(HttpClient client, User user)
-    {
-        var html = await client.GetStringAsync(new Uri("/login", UriKind.Relative), TestSupport.Ct);
-        using var form = new FormUrlEncodedContent(
-        [
-            KeyValuePair.Create("Login", user.Actor.Handle!),
-            KeyValuePair.Create("Password", WebAuth.Password),
-            KeyValuePair.Create("__RequestVerificationToken", TestSupport.AntiforgeryToken(html)),
-        ]);
-        using var response = await client.PostAsync(new Uri("/login", UriKind.Relative), form, TestSupport.Ct);
     }
 }

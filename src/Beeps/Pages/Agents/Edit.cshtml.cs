@@ -58,19 +58,19 @@ public sealed class EditModel(AgentService agents, AvatarService avatars, Banner
     }
 
     public async Task<IActionResult> OnPostAvatarAsync(Guid id, CancellationToken cancellationToken) =>
-        await AvatarDoneAsync(id, await avatars.UploadAsync(User.Viewer(), id, Avatar.ToMediaContent(), Crop.ToCrop(), cancellationToken), "Avatar.Saved", cancellationToken);
+        await ImageDoneAsync(id, await avatars.UploadAsync(User.Viewer(), id, Avatar.ToMediaContent(), Crop.ToCrop(), cancellationToken), "Avatar.Saved", cancellationToken);
 
     public async Task<IActionResult> OnPostRemoveAvatarAsync(Guid id, CancellationToken cancellationToken) =>
-        await AvatarDoneAsync(id, await avatars.RemoveAsync(User.Viewer(), id, cancellationToken), "Avatar.Removed", cancellationToken);
+        await ImageDoneAsync(id, await avatars.RemoveAsync(User.Viewer(), id, cancellationToken), "Avatar.Removed", cancellationToken);
 
     public async Task<IActionResult> OnPostBannerAsync(Guid id, CancellationToken cancellationToken) =>
-        await AvatarDoneAsync(id, await banners.UploadAsync(User.Viewer(), id, Banner.ToMediaContent(), BannerCrop.ToCrop(), cancellationToken), "Banner.Saved", cancellationToken);
+        await ImageDoneAsync(id, await banners.UploadAsync(User.Viewer(), id, Banner.ToMediaContent(), BannerCrop.ToCrop(), cancellationToken), "Banner.Saved", cancellationToken);
 
     public async Task<IActionResult> OnPostRemoveBannerAsync(Guid id, CancellationToken cancellationToken) =>
-        await AvatarDoneAsync(id, await banners.RemoveAsync(User.Viewer(), id, cancellationToken), "Banner.Removed", cancellationToken);
+        await ImageDoneAsync(id, await banners.RemoveAsync(User.Viewer(), id, cancellationToken), "Banner.Removed", cancellationToken);
 
     // Stays on this page: the avatar and banner are shown here, and the name fields keep what is saved.
-    private async Task<IActionResult> AvatarDoneAsync(Guid id, Result result, string notice, CancellationToken cancellationToken)
+    private async Task<IActionResult> ImageDoneAsync(Guid id, Result result, string notice, CancellationToken cancellationToken)
     {
         if (!await LoadAsync(id, cancellationToken))
         {

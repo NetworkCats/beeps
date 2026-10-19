@@ -27,7 +27,7 @@ public sealed partial class LivePagesTests : IDisposable
 
         Assert.Matches("<script type=\"module\" src=\"/dist/app\\.[^\"]+\"></script>", html);
         // The render time lets the stream replay what happened before the script connected.
-        Assert.Matches($"<body class=\"page\" data-auth=\"member:{user.Id:D}\" data-live-stream=\"/stream\" data-live-from=\"[0-9]{{13}}\">", html);
+        Assert.Matches($"<body data-auth=\"member:{user.Id:D}\" data-live-stream=\"/stream\" data-live-from=\"[0-9]{{13}}\">", html);
         Assert.Equal("home", Islands.Props(page, "index").GetProperty("live").GetProperty("watch").GetString());
         PageAssert.NoInlineScriptsOrStyles(html);
     }
@@ -58,7 +58,7 @@ public sealed partial class LivePagesTests : IDisposable
         var page = await Islands.PageAsync(client, "/public");
 
         // Connected, so the tab follows its verification elsewhere, but nothing on the page is followed.
-        Assert.Matches($"<body class=\"page\" data-auth=\"unverified:{newbie.Id:D}\" data-live-stream=\"/stream\" data-live-from=\"[0-9]{{13}}\">", html);
+        Assert.Matches($"<body data-auth=\"unverified:{newbie.Id:D}\" data-live-stream=\"/stream\" data-live-from=\"[0-9]{{13}}\">", html);
         Assert.Contains("/dist/app.", html, StringComparison.Ordinal);
         Assert.False(Islands.Props(page, "public").GetProperty("live").TryGetProperty("watch", out _));
     }
@@ -78,7 +78,7 @@ public sealed partial class LivePagesTests : IDisposable
         Assert.Contains("worth finding <a class=\"hashtag\" href=\"/tags/beeps\">#beeps</a>", markup, StringComparison.Ordinal);
         Assert.Contains($"<article class=\"beep\" id=\"beep-{beep.Id:D}\">", markup, StringComparison.Ordinal);
         // No live connection, nobody signed in, nothing that would keep the page out of the output cache.
-        Assert.Contains("<body class=\"page\">", html, StringComparison.Ordinal);
+        Assert.Contains("<body>", html, StringComparison.Ordinal);
         Assert.DoesNotContain("data-live", html, StringComparison.Ordinal);
         Assert.DoesNotContain("data-auth", html, StringComparison.Ordinal);
         Assert.DoesNotContain("__RequestVerificationToken", html, StringComparison.Ordinal);
@@ -500,7 +500,7 @@ public sealed partial class LivePagesTests : IDisposable
         Assert.DoesNotContain("data-island=\"public\"", html, StringComparison.Ordinal);
         Assert.DoesNotContain("id=\"app-config\"", html, StringComparison.Ordinal);
         // The layout is there as ever, its islands with their props.
-        Assert.Matches($"<body class=\"page\" data-auth=\"member:{user.Id:D}\" data-live-stream=\"/stream\" data-live-from=\"[0-9]{{13}}\">", html);
+        Assert.Matches($"<body data-auth=\"member:{user.Id:D}\" data-live-stream=\"/stream\" data-live-from=\"[0-9]{{13}}\">", html);
         Assert.Equal(2, Islands.Names(html).Count(name => name == "account-menu"));
         Assert.Contains("data-skeleton=\"profile\"", profile, StringComparison.Ordinal);
         await factory.Timelines.DidNotReceiveWithAnyArgs().PublicAsync(default!, default, TestSupport.Ct);

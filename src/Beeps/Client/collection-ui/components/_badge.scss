@@ -1,7 +1,7 @@
 /* Labels:
  *  .badge  — soft rounded label (status, kind). Variants by colour: -primary / -success / -warning / -danger.
- *  .tag-group — a row of segments, the first one tinted.
- *  .count  — tiny number pill (.count-primary). */
+ *  .count  — tiny number pill (.count-primary).
+ * (Upstream's .tag-group is used only by the admin pages, so it is in Client/scss/admin.scss.) */
 @use "../foundation/layers";
 @use "../abstracts" as *;
 
@@ -28,17 +28,6 @@
   }
   @each $tone in ("primary", "success", "warning", "danger") {
     .#{$prefix}badge-#{$tone} { --_bg: var(--cui-#{$tone}-soft); --_fg: var(--cui-#{$tone}-text); }
-  }
-
-  /* Segmented label: <span class="tag-group"><span>SDK</span><a>Dart</a><a>Flutter</a></span> */
-  .#{$prefix}tag-group {
-    padding: 0;
-    gap: 0;
-    overflow: hidden;
-    > * { padding: 0.1rem 0.4rem; }
-    > * + * { border-inline-start: var(--cui-border-width) solid color-mix(in oklch, currentColor 25%, transparent); }
-    > :first-child { background: color-mix(in oklch, currentColor 12%, transparent); }
-    > a:hover { background: color-mix(in oklch, currentColor 12%, transparent); }
   }
 
   /* Count pill: tiny number attached to a nav item. */

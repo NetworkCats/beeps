@@ -1,12 +1,9 @@
 using Beeps.Features.Accounts;
-using Beeps.Features.Avatars;
 using Beeps.Features.Beeps;
-using Beeps.Features.Live;
 using Beeps.Features.Profiles;
 using Beeps.Features.Shared;
 using Beeps.Features.Timelines;
 using Beeps.Tests.Support;
-using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Beeps.Tests.Features.Timelines;
 
@@ -106,8 +103,7 @@ public sealed class TimelineServiceTests
 
     private TimelineService Create()
     {
-        var views = new BeepViews(beeps, counters, TestData.Avatars, TestData.Media, NullLogger<BeepViews>.Instance);
-        var profileService = new ProfileService(profiles, views, TestData.Media, new ImmediateUnitOfWork(), TestData.AllowingRateLimits(), TestData.Live(Substitute.For<ILiveEventStore>()), TestData.Time(), new TestLocalizer(), NullLogger<ProfileService>.Instance);
-        return new TimelineService(store, profileService, views, new TestLocalizer());
+        var views = TestServices.Views(beeps, counters);
+        return new TimelineService(store, TestServices.Profiles(profiles, views), views, new TestLocalizer());
     }
 }

@@ -329,9 +329,9 @@ public sealed class LiveEventHubTests : IAsyncDisposable
 
         public Task<IReadOnlyList<Guid>> TakeChangedCountsAsync(int max, CancellationToken cancellationToken) => throw new NotSupportedException();
 
-        public Task<IReadOnlyList<string>> AddConnectionAsync(Guid accountId, string connectionId, DateTimeOffset now, int max, CancellationToken cancellationToken) =>
+        public Task<IReadOnlyList<string>> AddConnectionAsync(Guid actorId, string connectionId, DateTimeOffset now, int max, CancellationToken cancellationToken) =>
             throw new NotSupportedException();
 
-        public Task RemoveConnectionAsync(Guid accountId, string connectionId, CancellationToken cancellationToken) => throw new NotSupportedException();
+        public Task RemoveConnectionAsync(Guid actorId, string connectionId, CancellationToken cancellationToken) => throw new NotSupportedException();
     }
 }

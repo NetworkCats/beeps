@@ -17,6 +17,7 @@ public sealed class LiveServiceTests : IAsyncDisposable
     private static readonly Guid Alice = Guid.NewGuid();
     private static readonly Viewer TomViewer = Viewer.Human(Tom);
     private static readonly Guid TomSession = Guid.NewGuid();
+    private static readonly string LastSeen = new LiveEventId(TestData.Now.ToUnixTimeMilliseconds(), 7).ToString();
 
     private readonly TestLiveFeed feed = new();
     private readonly ILiveEventStore store = Substitute.For<ILiveEventStore>();
@@ -71,28 +72,28 @@ public sealed class LiveServiceTests : IAsyncDisposable
         stream = null;
 
         Assert.Equal(new LiveMessage(LiveMessages.Inbox, """{"unread_count":3}""", null, options.ReconnectDelay), first);
-        await store.Received(1).AddConnectionAsync(Tom, connectionId, TestData.Now, options.MaxConnectionsPerAccount, Arg.Any<CancellationToken>());
+        await store.Received(1).AddConnectionAsync(Tom, connectionId, TestData.Now, options.MaxConnectionsPerActor, Arg.Any<CancellationToken>());
         await store.Received(1).RemoveConnectionAsync(Tom, connectionId, Arg.Any<CancellationToken>());
     }
 
     [Fact]
     public async Task APageComingBackFromItsLastEventIsNotCountedAgain()
     {
-        var first = await OpenAsync(new LiveRequest("home", null, "1760603400000-7", null));
+        var first = await OpenAsync(new LiveRequest("home", null, LastSeen, null));
 
         // It has the count; what changed it since is replayed.
-        Assert.Equal(new LiveMessage(LiveMessages.Ping, "{}", "1760603400000-7", options.ReconnectDelay), first);
+        Assert.Equal(new LiveMessage(LiveMessages.Ping, "{}", LastSeen, options.ReconnectDelay), first);
         await notifications.DidNotReceiveWithAnyArgs().CountUnreadAsync(default, default, TestSupport.Ct);
     }
 
     [Fact]
     public async Task AReconnectionReplaysFromItsLastEventAndAFreshPageFromWhenItWasRendered()
     {
-        await OpenAsync(new LiveRequest("", null, "1760603400000-7", TestData.Now.ToUnixTimeMilliseconds()));
+        await OpenAsync(new LiveRequest("", null, LastSeen, TestData.Now.ToUnixTimeMilliseconds()));
         await stream!.DisposeAsync();
         await OpenAsync(new LiveRequest("", null, null, TestData.Now.ToUnixTimeMilliseconds()));
 
-        Assert.Equal(LiveEventId.Parse("1760603400000-7"), feed.Starts[0]);
+        Assert.Equal(LiveEventId.Parse(LastSeen), feed.Starts[0]);
         // A little earlier than rendered: the app's and Valkey's clocks may disagree slightly.
         Assert.Equal(LiveEventId.Before(TestData.Now - TimeSpan.FromSeconds(2)), feed.Starts[1]);
     }
@@ -216,13 +217,23 @@ public sealed class LiveServiceTests : IAsyncDisposable
     [Fact]
     public async Task APageRenderedAfterTheChangeIsNotShownAnewForIt()
     {
-        // The test feed stamps its events before this render time; a fresh page is replayed from a little before it.
-        await OpenAsync(new LiveRequest("", null, null, TestData.Now.ToUnixTimeMilliseconds() + 1000));
+        // The test feed stamps its events at TestData.Now; a fresh page is replayed from a little before it was rendered.
+        await OpenAsync(new LiveRequest("", null, null, TestData.Now.ToUnixTimeMilliseconds() + 1));
 
         feed.Publish(LiveEventTypes.AccountChanged, $$"""{"account_id":"{{Tom:D}}"}""");
         var id = feed.Publish(LiveEventTypes.Inbox, $$"""{"recipient_ids":["{{Tom:D}}"]}""");
 
         Assert.Equal((LiveMessages.Inbox, id), ((await NextAsync()).Type, stream!.Current.Id));
+    }
+
+    [Fact]
+    public async Task APageRenderedAsTheChangeHappenedIsShownAnewForIt()
+    {
+        await OpenAsync(new LiveRequest("", null, null, TestData.Now.ToUnixTimeMilliseconds()));
+
+        var id = feed.Publish(LiveEventTypes.AccountChanged, $$"""{"account_id":"{{Tom:D}}"}""");
+
+        Assert.Equal(new LiveMessage(LiveMessages.Reload, "{}", id), await NextAsync());
     }
 
     [Fact]
@@ -426,7 +437,7 @@ public sealed class LiveServiceTests : IAsyncDisposable
     [Fact]
     public async Task MissedEventsMakeThePageCatchUpTheUnreadCountWithIt()
     {
-        await OpenAsync(new LiveRequest("home", null, "1760603400000-1", null));
+        await OpenAsync(new LiveRequest("home", null, LastSeen, null));
         sessions.IsActiveAsync(TomSession, TestData.Now, Arg.Any<CancellationToken>()).Returns(true);
         unread = 7;
 
@@ -439,7 +450,7 @@ public sealed class LiveServiceTests : IAsyncDisposable
     [Fact]
     public async Task ASignOutAmongTheMissedEventsStillSignsTheTabOut()
     {
-        await OpenAsync(new LiveRequest("home", null, "1760603400000-1", null));
+        await OpenAsync(new LiveRequest("home", null, LastSeen, null));
         sessions.IsActiveAsync(TomSession, TestData.Now, Arg.Any<CancellationToken>()).Returns(false);
 
         feed.Publish(LiveEventTypes.Gap, "");
@@ -470,7 +481,7 @@ public sealed class LiveServiceTests : IAsyncDisposable
         Assert.Equal("""{"unread_count":1}""", first.Data);
         Assert.Equal((LiveMessages.Inbox, """{"unread_count":2}"""), (second.Type, second.Data));
         Assert.Equal(LiveMessages.Inbox, afterGap.Type);
-        await store.Received(1).AddConnectionAsync(agent.ActorId, Arg.Any<string>(), TestData.Now, options.MaxConnectionsPerAccount, Arg.Any<CancellationToken>());
+        await store.Received(1).AddConnectionAsync(agent.ActorId, Arg.Any<string>(), TestData.Now, options.MaxConnectionsPerActor, Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -594,7 +605,7 @@ public sealed class LiveServiceTests : IAsyncDisposable
         var beeps = Substitute.For<IBeepStore>();
         var counters = Substitute.For<IBeepCounterStore>();
         var live = TestData.Live(store, counters);
-        var views = new BeepViews(beeps, counters, TestData.Avatars, TestData.Media, NullLogger<BeepViews>.Instance);
+        var views = TestServices.Views(beeps, counters);
         return new LiveService(
             feed,
             store,

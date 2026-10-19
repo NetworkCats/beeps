@@ -30,7 +30,6 @@ public sealed class EfAgentStore(BeepsDbContext db, HybridCache cache, CacheInva
                 x.a.CreatedAt,
                 x.a.DisabledAt,
                 x.k == null ? null : x.k.KeyPrefix,
-                x.k == null ? null : x.k.CreatedAt,
                 x.k == null ? null : x.k.LastUsedAt,
                 x.a.Bio,
                 x.a.AvatarMedia == null || x.a.AvatarMedia.Status != MediaStatus.Ready ? null : x.a.AvatarMedia.StorageKey))

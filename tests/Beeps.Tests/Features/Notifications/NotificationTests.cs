@@ -1,12 +1,9 @@
-using System.Text.Json;
 using Beeps.Features.Accounts;
-using Beeps.Features.Avatars;
 using Beeps.Features.Beeps;
 using Beeps.Features.Live;
 using Beeps.Features.Notifications;
 using Beeps.Features.Shared;
 using Beeps.Tests.Support;
-using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Beeps.Tests.Features.Notifications;
 
@@ -158,11 +155,11 @@ public sealed class NotificationTests
     }
 
     private static OutboxEnvelope Envelope(BeepNotificationsRequest payload) =>
-        new(Guid.NewGuid(), BeepNotificationsRequest.MessageType, JsonSerializer.Serialize(payload, NotificationsJsonContext.Default.BeepNotificationsRequest), 1, TestData.Now);
+        TestData.Envelope(BeepNotificationsRequest.MessageType, payload, NotificationsJsonContext.Default.BeepNotificationsRequest);
 
     private static OutboxEnvelope Envelope(LikeNotificationRequest payload) =>
-        new(Guid.NewGuid(), LikeNotificationRequest.MessageType, JsonSerializer.Serialize(payload, NotificationsJsonContext.Default.LikeNotificationRequest), 1, TestData.Now);
+        TestData.Envelope(LikeNotificationRequest.MessageType, payload, NotificationsJsonContext.Default.LikeNotificationRequest);
 
     private NotificationService CreateService() =>
-        new(store, beeps, new BeepViews(beeps, counters, TestData.Avatars, TestData.Media, NullLogger<BeepViews>.Instance), TestData.Live(liveEvents), TestData.Time());
+        new(store, beeps, TestServices.Views(beeps, counters), TestData.Live(liveEvents), TestData.Time());
 }

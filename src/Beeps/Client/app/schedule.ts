@@ -59,12 +59,3 @@ export function schedule(run: () => Promise<void>, minInterval = 0): void {
       });
   }, delay);
 }
-
-/** Drops what is waiting to run (the page it was for is gone); what is running finishes. */
-export function cancel(run: () => Promise<void>): void {
-  const state = states.get(run);
-  if (!state) return;
-  window.clearTimeout(state.timer);
-  state.timer = undefined;
-  state.again = false;
-}

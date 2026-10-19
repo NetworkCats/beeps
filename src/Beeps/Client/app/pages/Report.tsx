@@ -1,11 +1,10 @@
 // Reporting a beep to the admins (Beep/Report.cshtml): a reason and an optional note. Sent, it goes back to the beep.
-import type { TargetedSubmitEvent } from 'preact';
 import { useMemo } from 'preact/hooks';
 import { putBeeps } from '../beeps.ts';
 import { BeepCard } from '../components/BeepCard.tsx';
 import { Antiforgery, FieldError, FormErrors, field } from '../components/Forms.tsx';
 import { Icon } from '../components/Icon.tsx';
-import { sendForm } from '../forms.ts';
+import { sending } from '../forms.ts';
 import { t } from '../i18n.ts';
 import type { IslandProps } from '../islands.tsx';
 import { useLive } from '../page.ts';
@@ -28,10 +27,6 @@ export function ReportPage({ props, errors }: IslandProps<ReportProps>) {
   useLive(props.live);
   useMemo(() => putBeeps([props.beep]), [props.beep]);
   const permalink = paths.beep(props.beep.id);
-  const submit = (event: TargetedSubmitEvent<HTMLFormElement>): void => {
-    event.preventDefault();
-    void sendForm(event.currentTarget, event.submitter ?? null);
-  };
   return (
     <section class="feed">
       <header class="column-header">
@@ -43,7 +38,7 @@ export function ReportPage({ props, errors }: IslandProps<ReportProps>) {
       <p class="column-lead">{t('Report.Lead')}</p>
       <FormErrors errors={errors} />
       <BeepCard id={props.beep.id} />
-      <form class="settings-section" method="post" onSubmit={submit}>
+      <form class="settings-section" method="post" onSubmit={sending()}>
         <fieldset class="check-group">
           <legend class="label">{t('Report.Reason')}</legend>
           {props.reasons.map((reason) => (

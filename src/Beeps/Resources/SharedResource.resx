@@ -150,6 +150,9 @@
   <data name="Error.CodeInvalid" xml:space="preserve">
     <value>The code is wrong or has expired. Request a new one if needed.</value>
   </data>
+  <data name="Error.ResendTooSoon.One" xml:space="preserve">
+    <value>Wait 1 second before asking for a new code.</value>
+  </data>
   <data name="Error.ResendTooSoon" xml:space="preserve">
     <value>Wait {0} seconds before asking for a new code.</value>
   </data>

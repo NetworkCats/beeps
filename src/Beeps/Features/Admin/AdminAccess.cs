@@ -26,7 +26,7 @@ public sealed class AdminAccess(IAdminStore store, TimeProvider time, IStringLoc
             Action = action,
             TargetType = targetType,
             TargetId = targetId,
-            Detail = detail is { Length: > AdminAuditLog.DetailMaxLength } ? detail[..AdminAuditLog.DetailMaxLength] : detail,
+            Detail = detail is null ? null : TextRules.Truncate(detail, AdminAuditLog.DetailMaxLength),
             CreatedAt = now,
         });
     }

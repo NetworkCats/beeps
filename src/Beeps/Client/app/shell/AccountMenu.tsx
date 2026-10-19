@@ -37,14 +37,14 @@ export function AccountMenu({ props }: IslandProps<{ rail?: boolean }>) {
           {t('Nav.Settings')}
         </a>
         {admin && (
-          <a class="dropdown-item" href="/admin">
+          <a class="dropdown-item" href={paths.admin}>
             <Icon name="admin_panel_settings" />
             {t('Nav.Admin')}
           </a>
         )}
         <hr class="dropdown-divider" />
         {/* Sent as a page: signed out, the next page needs the app anew. */}
-        <form method="post" action="/logout">
+        <form method="post" action={paths.logout}>
           <button class="dropdown-item" type="submit">
             <Icon name="logout" />
             {t('Nav.Logout')}

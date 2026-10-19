@@ -14,19 +14,15 @@ public sealed class ComposeAndActionsPagesTests : IDisposable
     public async Task PostingGoesBackToTheNewBeepWithANotice()
     {
         var user = WebAuth.ArrangeUser(factory);
-        Beep? posted = null;
-        factory.Beeps.When(b => b.AddBeep(Arg.Any<Beep>(), Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<IReadOnlyCollection<Guid>>()))
-            .Do(ci => posted = ci.Arg<Beep>());
-        factory.Beeps.GetRowsAsync(default!, default, TestSupport.Ct).ReturnsForAnyArgs(ci =>
-            posted is null ? [] : (IReadOnlyList<BeepRow>)[new BeepRow(posted.Id, posted.Text, TestBeeps.Human(id: user.Id), null, posted.Id, TestData.Now, 0, 0, false)]);
+        var posted = TestBeeps.ArrangePosting(factory, TestBeeps.Human(id: user.Id));
         using var client = await WebAuth.SignInAsync(factory, user);
 
         using var response = await WebAuth.PostFormAsync(client, "/", "/compose", ("text", "  hello beeps  "), ("ReturnUrl", "/"));
         var page = await Islands.PageAsync(client, "/");
 
         Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
-        Assert.Equal("hello beeps", posted?.Text);
-        Assert.Equal($"/#beep-{posted!.Id:D}", response.Headers.Location?.OriginalString);
+        Assert.Equal("hello beeps", posted()?.Text);
+        Assert.Equal($"/#beep-{posted()!.Id:D}", response.Headers.Location?.OriginalString);
         Assert.Contains("Beep posted.", page, StringComparison.Ordinal);
     }
 

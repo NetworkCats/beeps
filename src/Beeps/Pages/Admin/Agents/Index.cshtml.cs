@@ -47,7 +47,7 @@ public sealed class IndexModel(AdminService admin, IStringLocalizer<SharedResour
 
     private LocalRedirectResult Done(Result result, string notice)
     {
-        TempData[result.IsSuccess ? Notices.Success : Notices.Error] = result.IsSuccess ? localizer[notice].Value : result.Error.Detail;
+        this.Notify(result, localizer[notice]);
         return LocalRedirect(Url.IsLocalUrl(ReturnUrl) ? ReturnUrl : Url.Page("/Admin/Agents/Index")!);
     }
 }

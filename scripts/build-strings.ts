@@ -4,22 +4,19 @@
 //
 //   node scripts/build-strings.ts           writes the list
 //   node scripts/build-strings.ts --check   fails when it is out of date (npm test)
-import { readdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { dirname, join, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { readFileSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { appSources, client } from './client-sources.ts';
 
-const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const app = join(root, 'src/Beeps/Client/app');
-const target = join(root, 'src/Beeps/Client/strings.json');
+const target = join(client, 'strings.json');
 
 function keysIn(source: string): string[] {
   return [...source.matchAll(/'([A-Z][A-Za-z0-9]*(?:\.[A-Za-z0-9]+)+)'/g)].map((match) => match[1] ?? '');
 }
 
 const keys = new Set<string>();
-for (const name of readdirSync(app, { recursive: true, encoding: 'utf8' })) {
-  if (!/\.tsx?$/.test(name) || name.includes('.test.')) continue;
-  for (const key of keysIn(readFileSync(join(app, name), 'utf8'))) keys.add(key);
+for (const path of appSources()) {
+  for (const key of keysIn(readFileSync(path, 'utf8'))) keys.add(key);
 }
 const json = `${JSON.stringify([...keys].sort(), null, 2)}\n`;
 

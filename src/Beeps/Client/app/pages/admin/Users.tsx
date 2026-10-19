@@ -6,8 +6,8 @@ import { t } from '../../i18n.ts';
 import type { IslandProps } from '../../islands.tsx';
 import { useLive } from '../../page.ts';
 import type { LiveProps, PageProps } from '../../props.ts';
+import { useRows } from '../../rows.ts';
 import { adminPaths, UserBadges, type AdminUser } from './parts.tsx';
-import { useRows } from './rows.ts';
 
 interface AdminUsersProps {
   live: LiveProps;

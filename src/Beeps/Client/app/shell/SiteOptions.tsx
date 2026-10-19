@@ -9,6 +9,7 @@ import { Icon } from '../components/Icon.tsx';
 import { Menu } from '../components/Menu.tsx';
 import { t } from '../i18n.ts';
 import type { IslandProps } from '../islands.tsx';
+import { paths } from '../paths.ts';
 import { pagePath } from '../router.ts';
 import { theme } from '../state.ts';
 
@@ -25,7 +26,6 @@ interface SiteOptionsProps {
   returnUrl: string;
   culture: string;
   cultures: OptionProps[];
-  theme: string;
   themes: OptionProps[];
   year: number;
 }
@@ -54,10 +54,10 @@ function Options({ props }: { props: SiteOptionsProps }) {
 
   return (
     <>
-      <a class="footer-link" href="/about">
+      <a class="footer-link" href={paths.about}>
         {t('Footer.About')}
       </a>
-      <form class="footer-switch" method={method} action="/culture">
+      <form class="footer-switch" method={method} action={paths.culture}>
         <input type="hidden" name="returnUrl" value={returnUrl} />
         <Icon name="language" />
         <select class="footer-select" name="culture" aria-label={t('Footer.Language')} onChange={submitOnChange}>
@@ -72,7 +72,7 @@ function Options({ props }: { props: SiteOptionsProps }) {
         </button>
         <Antiforgery />
       </form>
-      <form class="footer-switch" method={method} action="/theme" onSubmit={switchTheme}>
+      <form class="footer-switch" method={method} action={paths.theme} onSubmit={switchTheme}>
         <input type="hidden" name="returnUrl" value={returnUrl} />
         <Icon name="contrast" />
         <select class="footer-select" name="theme" aria-label={t('Footer.Theme')} onChange={submitOnChange}>

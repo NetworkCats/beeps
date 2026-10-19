@@ -8,13 +8,14 @@ public sealed class LiveEventIdTests
     [Fact]
     public void IdsParseAndOrderByTimeThenSequence()
     {
-        var a = LiveEventId.Parse("1760603400000-0");
-        var b = LiveEventId.Parse("1760603400000-12");
-        var c = LiveEventId.Parse("1760603400001-0");
+        var now = TestData.Now.ToUnixTimeMilliseconds();
+        var a = LiveEventId.Parse($"{now}-0");
+        var b = LiveEventId.Parse($"{now}-12");
+        var c = LiveEventId.Parse($"{now + 1}-0");
 
         Assert.True(a < b && b < c);
-        Assert.Equal("1760603400000-12", b.ToString());
-        Assert.Equal(DateTimeOffset.FromUnixTimeMilliseconds(1760603400000), a.Time);
+        Assert.Equal($"{now}-12", b.ToString());
+        Assert.Equal(TestData.Now, a.Time);
     }
 
     [Theory]

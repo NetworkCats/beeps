@@ -37,17 +37,22 @@ public sealed class AdminFiguresWorkerTests
         using (watchers.Watch())
         {
             // The first look: the page that just opened may be older than what it finds.
-            await WaitUntilAsync(() => TestData.LiveEvents(liveEvents, LiveEventTypes.AdminChanged).Count == 1);
+            await TestSupport.WaitUntilAsync(() => TestData.LiveEvents(liveEvents, LiveEventTypes.AdminChanged).Count == 1);
             await Task.Delay(100, TestSupport.Ct);
             Assert.Single(TestData.LiveEvents(liveEvents, LiveEventTypes.AdminChanged));
 
             // The outbox backlog grows: no event says so, the worker does.
             outbox = 3;
-            await WaitUntilAsync(() => TestData.LiveEvents(liveEvents, LiveEventTypes.AdminChanged).Count == 2);
+            await TestSupport.WaitUntilAsync(() => TestData.LiveEvents(liveEvents, LiveEventTypes.AdminChanged).Count == 2);
             await Task.Delay(100, TestSupport.Ct);
             Assert.Equal(2, TestData.LiveEvents(liveEvents, LiveEventTypes.AdminChanged).Count);
         }
 
+        // The page closed: once a look already under way is done, the worker stops looking.
+        await Task.Delay(50, TestSupport.Ct);
+        var looks = system.ReceivedCalls().Count();
+        await Task.Delay(100, TestSupport.Ct);
+        Assert.Equal(looks, system.ReceivedCalls().Count());
         await worker.StopAsync(TestSupport.Ct);
     }
 
@@ -61,15 +66,5 @@ public sealed class AdminFiguresWorkerTests
             Options.Create(new LiveOptions { AdminFiguresInterval = TimeSpan.FromMilliseconds(10) }),
             TimeProvider.System,
             NullLogger<AdminFiguresWorker>.Instance);
-    }
-
-    private static async Task WaitUntilAsync(Func<bool> condition)
-    {
-        for (var i = 0; i < 300 && !condition(); i++)
-        {
-            await Task.Delay(10, TestSupport.Ct);
-        }
-
-        Assert.True(condition());
     }
 }

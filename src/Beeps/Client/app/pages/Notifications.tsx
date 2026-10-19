@@ -3,15 +3,14 @@
 // the top under a new id. Seeing a beep here leaves its notification
 // unread, unlike elsewhere (seen.ts). Its first page follows the inbox live: new entries come in at the top, entries
 // read in another tab or gone with their beep catch up. An older page is drawn again when the inbox changes.
-import type { TargetedMouseEvent, TargetedSubmitEvent } from 'preact';
 import { useRef } from 'preact/hooks';
 import { signal, type Signal } from '@preact/signals';
 import { beepSignal, putBeeps, useShown } from '../beeps.ts';
-import { BeepCard } from '../components/BeepCard.tsx';
+import { BeepCard, openOnClick } from '../components/BeepCard.tsx';
 import { Antiforgery } from '../components/Forms.tsx';
 import { Icon } from '../components/Icon.tsx';
 import { Pager } from '../components/Pager.tsx';
-import { sendForm } from '../forms.ts';
+import { sending } from '../forms.ts';
 import { getIslands, getJson } from '../http.ts';
 import { t } from '../i18n.ts';
 import { useSnapshot, type IslandProps } from '../islands.tsx';
@@ -19,7 +18,6 @@ import { compareIds } from '../live-url.ts';
 import { refreshPage, useLive, useLiveEvent } from '../page.ts';
 import { paths } from '../paths.ts';
 import type { ActorProps, LiveProps, NotificationProps, PageProps } from '../props.ts';
-import { visit } from '../router.ts';
 import { schedule } from '../schedule.ts';
 
 interface NotificationsProps {
@@ -68,16 +66,10 @@ function LikeEntry({ entry }: { entry: NotificationProps }) {
   const from = entry.from;
   const others = entry.others ?? 0;
   const permalink = paths.beep(entry.beep.id);
-  const open = (event: TargetedMouseEvent<HTMLElement>): void => {
-    if (event.defaultPrevented || event.button !== 0 || !(event.target instanceof Element)) return;
-    if (event.target.closest('a, button') || window.getSelection()?.toString()) return;
-    if (event.metaKey || event.ctrlKey) window.open(permalink, '_blank', 'noopener');
-    else void visit(permalink).catch(() => {});
-  };
   return (
     <li class="notification">
       <UnreadDot entry={entry} />
-      <article class="notification-group" onClick={open}>
+      <article class="notification-group" onClick={(event) => openOnClick(event, permalink)}>
         <span class="notification-icon notification-icon-like" aria-hidden="true">
           <Icon name="favorite" />
         </span>
@@ -188,17 +180,12 @@ export function NotificationsPage({ props }: IslandProps<NotificationsProps>) {
     return true;
   };
 
-  const markRead = (event: TargetedSubmitEvent<HTMLFormElement>): void => {
-    event.preventDefault();
-    void sendForm(event.currentTarget, event.submitter ?? null);
-  };
-
   return (
     <section class="feed">
       <header class="column-header">
         <h1 class="column-title">{t('Notifications.Title')}</h1>
         {/* Marks up to the newest one shown, so ones that arrive meanwhile stay unread; there once one is unread. */}
-        <form class="column-actions" method="post" action="/notifications?handler=Read" hidden={!unread} onSubmit={markRead}>
+        <form class="column-actions" method="post" action={`${paths.notifications}?handler=Read`} hidden={!unread} onSubmit={sending()}>
           <input type="hidden" name="upToId" value={items[0]?.id ?? ''} />
           <button class="btn btn-sm btn-ghost" type="submit">
             <Icon name="done_all" />

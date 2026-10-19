@@ -1,0 +1,31 @@
+// beeps' own mixins, shared by main.scss, member.scss and image-crop.scss. No output unless included.
+@use "../collection-ui/abstracts" as *;
+
+/// A round button around one icon: the top bar's ⋯, the way back, a beep's ⋯ menu, the composer's picture button,
+/// the image editor's buttons. Colours and hover are each one's own.
+@mixin round-icon-button($size, $display: inline-flex, $icon-size: 1.375rem) {
+  display: $display;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: $size;
+  height: $size;
+  padding: 0;
+  border-radius: var(--cui-radius-full);
+  transition: background-color var(--cui-transition), color var(--cui-transition);
+
+  > .icon {
+    --cui-icon-size: #{$icon-size};
+  }
+
+  &:focus-visible {
+    @include focus-ring;
+  }
+}
+
+/// The 20px heavy title of a column, a dialog, a card in the side column and a profile.
+@mixin title {
+  font-size: var(--cui-text-xl);
+  font-weight: 800;
+  line-height: 1.2;
+}
