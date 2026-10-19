@@ -50,27 +50,32 @@ services:
 
   # S3-compatible object storage standing in for Cloudflare R2. The app writes with the beeps-dev key;
   # anyone may read the beeps-media bucket, as anyone may read media.beeps.sh in production.
+  # The app talks to it over HTTP on 8333; browsers load images over HTTPS from https://media.beeps.local:8443
+  # (the mkcert certificate `make certs` writes into dev/certs).
   seaweedfs:
     image: chrislusf/seaweedfs:4.48
-    command: ["server", "-dir=/data", "-s3", "-s3.port=8333", "-s3.config=/etc/seaweedfs/s3.json", "-ip.bind=0.0.0.0"]
+    command: ["server", "-dir=/data", "-s3", "-s3.port=8333", "-s3.port.https=8443", "-s3.cert.file=/certs/beeps.local.pem", "-s3.key.file=/certs/beeps.local-key.pem", "-s3.config=/etc/seaweedfs/s3.json", "-ip.bind=0.0.0.0"]
     ports:
       - "127.0.0.1:8333:8333"
+      - "127.0.0.1:8443:8443"
+      - "[::1]:8443:8443"
     volumes:
       - seaweedfs-data:/data
       - ./dev/seaweedfs-s3.json:/etc/seaweedfs/s3.json:ro
+      - ./dev/certs:/certs:ro
     healthcheck:
       test: ["CMD-SHELL", "wget -qO /dev/null http://localhost:8333/healthz || exit 1"]
       interval: 5s
       timeout: 3s
       retries: 20
 
-  # Creates the media bucket once SeaweedFS is up; creating it again changes nothing.
+  # Creates the media bucket once SeaweedFS is up, unless it is already there.
   seaweedfs-init:
     image: chrislusf/seaweedfs:4.48
     depends_on:
       seaweedfs:
         condition: service_healthy
-    entrypoint: ["/bin/sh", "-c", "echo 's3.bucket.create -name beeps-media' | weed shell -master=seaweedfs:9333"]
+    entrypoint: ["/bin/sh", "-c", "echo 's3.bucket.list' | weed shell -master=seaweedfs:9333 | grep -qw beeps-media || echo 's3.bucket.create -name beeps-media' | weed shell -master=seaweedfs:9333"]
     restart: "no"
 
   mailhog:

@@ -487,7 +487,7 @@ tests/Beeps.Tests/
   - 关联记录在 `user_logins`（见 8）。管理员删除账号时关联保留，和邮箱、用户名一样不能再被拿去注册。
   - 配置：`OAuth__Google__ClientId`、`OAuth__Google__ClientSecret`、`OAuth__GitHub__ClientId`、`OAuth__GitHub__ClientSecret`，回调地址分别是 `https://beeps.sh/oauth/google/callback`、`https://beeps.sh/oauth/github/callback`。没有配置的一家不注册处理器：按钮照常显示，点了回到原页面并提示"本站还没有开通 Google 登录"（本地开发默认如此）。
 - **通行密钥（passkey）**（`AccountService.Passkeys.cs`，`Infrastructure/Passkeys/FrameworkPasskeyCeremonies.cs`）：
-  - WebAuthn 的校验用框架自带的 `PasskeyHandler`（ASP.NET Core Identity 的一部分，在共享框架里，不加依赖），但不用 Identity 的其余部分：它查账号和通行密钥要通过一个 `UserManager`，这里每次只给它调用方事先查好的那一个账号和那几个通行密钥（`IPasskeyCeremonies` 不碰数据库）。站点就是依赖方：RP ID 是 `Site:BaseUrl` 的主机名（线上 `beeps.sh`，本地 `localhost`），只接受这个地址发起的仪式（origin 比对，不接受跨源嵌入）。要求通行密钥存在认证器上（resident key，登录页才能不问用户名就列出来）、每次都验证用户（指纹、面容或屏幕锁）；不要求、也不校验 attestation，任何认证器都可以。签名计数回退的拒绝（多数同步的通行密钥一直报 0，不受影响）。
+  - WebAuthn 的校验用框架自带的 `PasskeyHandler`（ASP.NET Core Identity 的一部分，在共享框架里，不加依赖），但不用 Identity 的其余部分：它查账号和通行密钥要通过一个 `UserManager`，这里每次只给它调用方事先查好的那一个账号和那几个通行密钥（`IPasskeyCeremonies` 不碰数据库）。站点就是依赖方：RP ID 是 `Site:BaseUrl` 的主机名（线上 `beeps.sh`，本地 `beeps.local`），只接受这个地址发起的仪式（origin 比对，不接受跨源嵌入）。要求通行密钥存在认证器上（resident key，登录页才能不问用户名就列出来）、每次都验证用户（指纹、面容或屏幕锁）；不要求、也不校验 attestation，任何认证器都可以。签名计数回退的拒绝（多数同步的通行密钥一直报 0，不受影响）。
   - 每个仪式两个请求：先取给浏览器的选项（页面 handler 返回 JSON），再把认证器的回答作为表单提交。中间的状态（challenge 等）放在加密的 ticket 里随选项发给浏览器、随回答带回（Data Protection，按仪式种类和账号分开加密，互相不能冒用；10 分钟内有效，用站点时钟判断），服务端不存。
   - **添加**（设置的"通行密钥"页）：浏览器创建通行密钥，保存凭据 id、公钥、签名计数、传输方式、是否可同步，和添加时的 User-Agent（列表里按它显示设备和浏览器，同"登录设备"）。已有的通行密钥列为 excludeCredentials，同一台设备不会重复创建；同一个回答提交两次只加一次。每个账号最多 20 个，按账号计入 `AccountChange` 限流；和关联 Google、GitHub 一样不要求再输密码。
   - **登录**：登录页在 Google、GitHub 按钮下面有"使用通行密钥登录"（island `passkey-sign-in`，浏览器不支持时隐藏）。点了以后浏览器列出用户在本站的通行密钥，不用输入用户名；签名通过就登录通行密钥所属的账号（`ReturnUrl` 照常带过去），不经过 Turnstile 和邮箱验证码（密码错误计数与它无关）。按 IP 计入登录尝试的限流。被封禁、被删除的账号拒绝；账号开着两步验证时拒绝（提示先用密码、Google 或 GitHub 登录）。
@@ -740,10 +740,12 @@ tests/Beeps.Tests/
 
 所有端口只绑定到 `127.0.0.1`。
 
-应用在本机运行：
+应用在本机运行，常用操作在根目录的 `Makefile`（`make setup` 第一次，`make dev` 之后每次）：
 1. `docker compose -f compose.dev.yml up -d` 启动依赖服务
 2. `npm run watch` 监听前端资源
 3. `dotnet watch` 运行应用
+
+本地也走 HTTPS：站点 `https://beeps.local`，媒体 `https://media.beeps.local:8443/beeps-media`。证书由 mkcert 签发（`make certs`，本地 CA 加进系统信任，证书在 `dev/certs/`，不提交），两个域名由 `make hosts` 写进 `/etc/hosts`；`make certs` 还信任 .NET 开发证书，dotnet watch 刷新浏览器用的 `wss://localhost` 要它。不用反向代理：Kestrel 直接监听 `https://*:443`（macOS 上普通用户只能在所有网卡上监听 443），SeaweedFS 用自己的 HTTPS 端口 8443 提供图片；应用写入对象仍经 `http://localhost:8333`。另外保留 `http://localhost:5080`，给只接受 `localhost` 的场合（Google OAuth 测试应用的回调地址）。
 
 本地配置放在 `appsettings.Development.json` 和 user-secrets 中，指向 `localhost` 上的各个服务。
 

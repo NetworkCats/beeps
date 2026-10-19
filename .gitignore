@@ -13,6 +13,7 @@ src/Beeps/wwwroot/dist/
 # Local secrets
 .env
 *.local.json
+dev/certs/
 
 # OS
 .DS_Store

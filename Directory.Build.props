@@ -9,5 +9,8 @@
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
     <InvariantGlobalization>false</InvariantGlobalization>
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+    <!-- The SDK default is obj\, which dotnet watch reads as a literal backslash on macOS and then cannot find
+         obj\Debug/net10.0/staticwebassets.development.json. -->
+    <BaseIntermediateOutputPath>obj/</BaseIntermediateOutputPath>
   </PropertyGroup>
 </Project>
