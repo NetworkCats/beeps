@@ -269,7 +269,10 @@ export function startLive(): void {
   window.addEventListener('pagehide', disconnect);
   window.addEventListener('pageshow', (event) => {
     leaving = false;
-    if (event.persisted && !source && !closed) connect();
+    if (!event.persisted) return;
+    // Kept as it was being replaced (signed out, say): Back would show the account's page to whoever is here now.
+    if (closed && !pushedOut) void showAnew();
+    else if (!source && !closed) connect();
   });
   connect();
 }

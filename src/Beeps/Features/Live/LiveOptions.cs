@@ -39,6 +39,12 @@ public sealed class LiveOptions
     [Range(1, 100_000)]
     public int MaxReplay { get; set; } = 1000;
 
+    /// <summary>
+    /// How often an open stream looks again at the session or agent key it was opened with: the event that ends one may
+    /// have been lost (Valkey down as it was published), and a session runs out with no event at all.
+    /// </summary>
+    public TimeSpan SessionCheckInterval { get; set; } = TimeSpan.FromMinutes(5);
+
     /// <summary>Told to browsers as the SSE <c>retry</c> field.</summary>
     public TimeSpan ReconnectDelay { get; set; } = TimeSpan.FromSeconds(3);
 }

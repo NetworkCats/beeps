@@ -190,10 +190,24 @@ public sealed class AccountPagesTests : IDisposable
         Assert.Equal(HttpStatusCode.BadRequest, asked.StatusCode);
         Assert.Contains("cf-turnstile", askedHtml, StringComparison.Ordinal);
         Assert.Contains("type=\"submit\" disabled", askedHtml, StringComparison.Ordinal);
-        // Then on to the code, for the name given, which stays out of the URL; nobody is signed in yet.
+        // Then on to the code, for the name given, which stays out of the URL and the form (this browser's TempData
+        // has it); nobody is signed in yet.
         Assert.Equal("/login/code", passed.RequestMessage?.RequestUri?.AbsolutePath);
-        Assert.Contains("name=\"Login\" value=\"tom\"", codeHtml, StringComparison.Ordinal);
+        Assert.DoesNotContain("name=\"Login\"", codeHtml, StringComparison.Ordinal);
         Assert.Empty(factory.Sessions.All);
+    }
+
+    [Fact]
+    public async Task ACodeIsTriedOnlyForTheAccountThisBrowsersPasswordWasRightFor()
+    {
+        WebAuth.ArrangeUser(factory);
+        using var stranger = WebAuth.NewClient(factory);
+
+        using var response = await WebAuth.PostFormAsync(stranger, "/login", "/login/code", ("Login", "tom"), ("Code", "123456"));
+
+        // Naming the account in the form does not reach its code, whose attempts are its owner's.
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        await factory.Accounts.DidNotReceiveWithAnyArgs().FindUserByHandleAsync(default!, TestSupport.Ct);
     }
 
     [Fact]

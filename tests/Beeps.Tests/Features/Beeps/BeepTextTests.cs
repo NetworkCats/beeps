@@ -177,6 +177,11 @@ public sealed class BeepTextTests
     [InlineData("example.com")]
     [InlineData("ftp://example.com")]
     [InlineData("javascript:alert(1)")]
+    [InlineData("www.")]
+    [InlineData("the www. prefix")]
+    [InlineData("www.,")]
+    [InlineData("访问www.。")]
+    [InlineData("#x www.")]
     public void SomeAddressesAreNotLinks(string text) =>
         Assert.DoesNotContain(BeepText.Tokenize(text), t => t.Kind == BeepTextTokenKind.Link);
 
@@ -200,6 +205,14 @@ public sealed class BeepTextTests
             "<a class=\"link\" href=\"https://www.example.org\" target=\"_blank\" rel=\"nofollow noopener noreferrer ugc\">" +
             "<span class=\"link-hidden\">www.</span>example.org</a>",
             html);
+    }
+
+    [Fact]
+    public void AWwwLinkWithAnAddressInItsQueryStillOpensElsewhere()
+    {
+        var html = BeepText.RenderHtml("www.example.com/login?next=https://example.org", new HashSet<string>());
+
+        Assert.Contains("href=\"https://www.example.com/login?next=https://example.org\"", html, StringComparison.Ordinal);
     }
 
     [Fact]

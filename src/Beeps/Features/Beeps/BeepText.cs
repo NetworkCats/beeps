@@ -255,7 +255,7 @@ public static class BeepText
     /// </summary>
     private static void AppendLink(StringBuilder html, string link)
     {
-        var href = link.Contains("://", StringComparison.Ordinal) ? link : "https://" + link;
+        var href = link.StartsWith("http://", StringComparison.OrdinalIgnoreCase) || link.StartsWith("https://", StringComparison.OrdinalIgnoreCase) ? link : "https://" + link;
         var hidden = UserLinks.HiddenPrefixLength(link);
         html.Append("<a class=\"link\" href=\"").Append(Encoder.Encode(href)).Append("\" target=\"_blank\" rel=\"").Append(UserLinks.Rel).Append("\">");
         AppendHidden(html, link[..hidden]);
@@ -335,8 +335,10 @@ public static class BeepText
             return 0;
         }
 
+        // Trimming never reaches into the "www." itself ("www." at the end of a sentence).
+        var prefixLength = schemeLength == 0 ? 4 : schemeLength;
         var length = rest.IndexOfAnyExcept(LinkCharacters) is >= 0 and var stop ? stop : rest.Length;
-        while (length > schemeLength && EndsOutsideLink(rest[..length]))
+        while (length > prefixLength && EndsOutsideLink(rest[..length]))
         {
             length--;
         }

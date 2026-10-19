@@ -79,7 +79,12 @@ public sealed partial class ClientAssetsTests : IDisposable
         }
 
         // Routing finds static files whatever the case of their address: so does the check.
-        foreach (var file in new[] { stylesheet.ToUpperInvariant(), "/dist/ADMIN.css", $"/dist/{adminChunk.ToUpperInvariant()}", "/dist/Chunks.json" })
+        // So it does whether the file is asked for compressed or as its source map.
+        foreach (var file in new[]
+        {
+            stylesheet.ToUpperInvariant(), "/dist/ADMIN.css", $"/dist/{adminChunk.ToUpperInvariant()}", "/dist/Chunks.json",
+            stylesheet + ".gz", "/dist/admin.css.map", $"/dist/{adminChunk}.gz", $"/dist/{adminChunk}.map.gz", "/dist/chunks.json.gz",
+        })
         {
             using var forAnyone = await anonymous.GetAsync(new Uri(file, UriKind.Relative), TestSupport.Ct);
             Assert.True(forAnyone.StatusCode == HttpStatusCode.NotFound, file);
@@ -119,8 +124,12 @@ public sealed partial class ClientAssetsTests : IDisposable
         using var signedIn = await WebAuth.SignInAsync(factory, user);
 
         var drawn = await signedOut.GetStringAsync(new Uri("/public", UriKind.Relative), TestSupport.Ct);
-        var shell = await signedIn.GetStringAsync(new Uri("/public", UriKind.Relative), TestSupport.Ct);
+        using var shellAnswer = await signedIn.GetAsync(new Uri("/public", UriKind.Relative), TestSupport.Ct);
+        var shell = await shellAnswer.Content.ReadAsStringAsync(TestSupport.Ct);
         var settings = await signedIn.GetStringAsync(new Uri("/settings/profile", UriKind.Relative), TestSupport.Ct);
+
+        // The shell is the member's own: no shared cache keeps it.
+        Assert.True(shellAnswer.Headers.CacheControl?.NoStore);
 
         // Signed out the server draws the page itself.
         Assert.DoesNotContain("skeleton-page", drawn, StringComparison.Ordinal);

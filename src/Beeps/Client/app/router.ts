@@ -118,6 +118,8 @@ export function pageUrl(): string {
 
 function save(): void {
   snapshots.delete(current.key);
+  // Left before its first page came (an app shell's skeleton): going back fetches it, rather than show the skeleton for good.
+  if (document.querySelector('#main .skeleton-page')) return;
   snapshots.set(current.key, {
     url: shownUrl,
     title: document.title,

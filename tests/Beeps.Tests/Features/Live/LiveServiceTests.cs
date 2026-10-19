@@ -194,6 +194,20 @@ public sealed class LiveServiceTests : IAsyncDisposable
     }
 
     [Fact]
+    public async Task ATabWhoseSessionRanOutWithNoEventSignsOutOnTheNextHeartbeat()
+    {
+        options.HeartbeatInterval = TimeSpan.FromMilliseconds(50);
+        await OpenAsync(new LiveRequest("home", null, null, null));
+        sessions.IsActiveAsync(TomSession, Arg.Any<DateTimeOffset>(), Arg.Any<CancellationToken>()).Returns(false);
+
+        Assert.Equal(LiveMessages.Ping, (await NextAsync()).Type);
+        time.Now += options.SessionCheckInterval;
+
+        Assert.Equal(new LiveMessage(LiveMessages.SignedOut, "{}"), await NextAsync());
+        Assert.False(await stream!.MoveNextAsync());
+    }
+
+    [Fact]
     public async Task ALogInElsewhereIsListedOnTheDevicesPage()
     {
         await OpenAsync(new LiveRequest("", null, null, null));

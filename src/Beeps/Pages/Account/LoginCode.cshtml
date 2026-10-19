@@ -9,7 +9,6 @@
     <p class="auth-lead">@L["LoginCode.Lead", (int)AccountService.CodeLifetime.TotalMinutes]</p>
     <form class="auth-form" method="post">
         <form-errors />
-        <input type="hidden" name="Login" value="@Model.Login">
         <input type="hidden" name="ReturnUrl" value="@Model.ReturnUrl">
         <div class="field">
             <label class="label" for="Code">@L["Field.Code"]</label>

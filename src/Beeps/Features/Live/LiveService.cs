@@ -147,8 +147,19 @@ public sealed partial class LiveService(
             // The heartbeat only notices a quiet feed; on a busy one every event may be someone else's, so a
             // connection that wrote nothing for the interval is pinged too, or proxies drop it as idle.
             var lastWrite = time.GetTimestamp();
+            var checkedAt = time.GetUtcNow();
             await foreach (var item in WithHeartbeatAsync(subscription, cancellationToken))
             {
+                if (time.GetUtcNow() - checkedAt >= options.Value.SessionCheckInterval)
+                {
+                    checkedAt = time.GetUtcNow();
+                    if (await EndedAsync(connection, cancellationToken) is { } ended)
+                    {
+                        yield return ended;
+                        yield break;
+                    }
+                }
+
                 if (item is null)
                 {
                     yield return Message(LiveMessages.Ping, new EmptyMessage(), LiveJsonContext.Default.EmptyMessage, lastId);
@@ -354,6 +365,19 @@ public sealed partial class LiveService(
     }
 
     /// <summary>An agent whose key no longer works is told the stream is closed, as when it opened too many: it must not reconnect with it.</summary>
+    /// <summary>What ends the stream when its session or key no longer works; null while it does.</summary>
+    private async Task<LiveMessage?> EndedAsync(Connection connection, CancellationToken cancellationToken)
+    {
+        if (connection.SessionId is { } sessionId && !await sessions.IsActiveAsync(sessionId, time.GetUtcNow(), cancellationToken))
+        {
+            return Message(LiveMessages.SignedOut, new EmptyMessage(), LiveJsonContext.Default.EmptyMessage);
+        }
+
+        return connection.KeyId is { } keyId && !await agents.IsKeyActiveAsync(keyId, cancellationToken)
+            ? Message(LiveMessages.Close, new EmptyMessage(), LiveJsonContext.Default.EmptyMessage)
+            : null;
+    }
+
     private async Task<IReadOnlyList<LiveMessage>> AgentKeyChangedAsync(Connection connection, LiveEvent item, CancellationToken cancellationToken) =>
         connection.KeyId is { } keyId && !await agents.IsKeyActiveAsync(keyId, cancellationToken)
             ? [Message(LiveMessages.Close, new EmptyMessage(), LiveJsonContext.Default.EmptyMessage, item.Id)]

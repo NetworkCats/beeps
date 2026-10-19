@@ -12,7 +12,11 @@ namespace Beeps.Pages.Account;
 /// </summary>
 public sealed class LoginCodeModel(AccountService accounts, IStringLocalizer<SharedResource> localizer) : PageModel
 {
-    [BindProperty] public string? Login { get; set; }
+    /// <summary>
+    /// The account the password was right for, as the first step left it in this browser's TempData (encrypted), never
+    /// as posted: anyone could name any account there and use up the attempts of the code sent to its owner.
+    /// </summary>
+    public string? Login { get; private set; }
 
     [BindProperty] public string? Code { get; set; }
 
@@ -25,7 +29,7 @@ public sealed class LoginCodeModel(AccountService accounts, IStringLocalizer<Sha
             return LocalRedirect("~/");
         }
 
-        Login = TempData[LoginModel.LoginKey] as string;
+        Login = TempData.Peek(LoginModel.LoginKey) as string;
         // Opened by itself (or again, the name long gone): there is nothing to sign in to here.
         return string.IsNullOrEmpty(Login) ? RedirectToPage("/Account/Login", new { ReturnUrl }) : Page();
     }
@@ -37,9 +41,14 @@ public sealed class LoginCodeModel(AccountService accounts, IStringLocalizer<Sha
             return this.AlreadySignedIn(localizer);
         }
 
+        Login = TempData.Peek(LoginModel.LoginKey) as string;
         var result = await accounts.LoginWithCodeAsync(Login, Code, cancellationToken);
-        return result.IsSuccess
-            ? await LoginModel.SignInAfterFirstStepAsync(this, accounts, result.Value, ReturnUrl, cancellationToken)
-            : this.ShowError(result.Error);
+        if (!result.IsSuccess)
+        {
+            return this.ShowError(result.Error);
+        }
+
+        TempData.Remove(LoginModel.LoginKey);
+        return await LoginModel.SignInAfterFirstStepAsync(this, accounts, result.Value, ReturnUrl, cancellationToken);
     }
 }

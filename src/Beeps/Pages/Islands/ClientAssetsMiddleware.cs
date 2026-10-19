@@ -26,9 +26,10 @@ public sealed partial class ClientAssetsMiddleware(RequestDelegate next)
             return;
         }
 
-        // admin.ab12cd34ef.css and chunks/X.js.map are the same file as admin.css and chunks/X.js. Routing finds static
-        // files whatever the case of their address (ADMIN.CSS is admin.css), so the file is named in one case here.
-        var file = Fingerprint().Replace(rest.Value.TrimStart('/').ToLowerInvariant(), "");
+        // admin.ab12cd34ef.css, admin.css.gz and chunks/X.js.ab12cd34ef.map are the same file as admin.css and chunks/X.js
+        // (MapStaticAssets serves each file fingerprinted, compressed and as its source map, in any mix). Routing finds
+        // static files whatever the case of their address (ADMIN.CSS is admin.css), so the file is named in one case here.
+        var file = Fingerprint().Replace(Variant().Replace(rest.Value.TrimStart('/').ToLowerInvariant(), ""), "");
         var adminOnly = chunks.IsAdminOnly(file);
         if (file == "chunks.json" || (adminOnly && !(await authorization.AuthorizeAsync(context.User, AuthPolicies.Admin)).Succeeded))
         {
@@ -52,6 +53,9 @@ public sealed partial class ClientAssetsMiddleware(RequestDelegate next)
         await next(context);
     }
 
-    [GeneratedRegex(@"\.[a-z0-9]{10}(?=\.(?:css|js)$)|\.map$")]
+    [GeneratedRegex(@"(?:(?:\.[a-z0-9]{10})?\.map)?(?:\.(?:gz|br))?$")]
+    private static partial Regex Variant();
+
+    [GeneratedRegex(@"\.[a-z0-9]{10}(?=\.(?:css|js|json)$)")]
     private static partial Regex Fingerprint();
 }

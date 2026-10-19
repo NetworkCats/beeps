@@ -25,6 +25,9 @@ public sealed class AppShellAttribute : Attribute, IAsyncPageFilter
             return next();
         }
 
+        // The shell is this member's own (their id, handle, and admin links), and nothing in it asks for an antiforgery
+        // token, which would have said so: no shared cache (a CDN caching pages) may give it to anyone else.
+        http.Response.Headers.CacheControl = "no-store";
         context.Result = new ViewResult { ViewName = "_AppShell" };
         return Task.CompletedTask;
     }

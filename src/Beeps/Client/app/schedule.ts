@@ -10,6 +10,8 @@ interface State {
   timer?: number;
   running: boolean;
   again: boolean;
+  /** The longest `minInterval` of the calls made while it ran, which its next run keeps to. */
+  againInterval: number;
   started: number;
   failures: number;
 }
@@ -24,11 +26,12 @@ const states = new Map<() => Promise<void>, State>();
 export function schedule(run: () => Promise<void>, minInterval = 0): void {
   let state = states.get(run);
   if (!state) {
-    state = { running: false, again: false, started: 0, failures: 0 };
+    state = { running: false, again: false, againInterval: 0, started: 0, failures: 0 };
     states.set(run, state);
   }
   if (state.running) {
     state.again = true;
+    state.againInterval = Math.max(state.againInterval, minInterval);
     return;
   }
   if (state.timer !== undefined) return;
@@ -53,8 +56,10 @@ export function schedule(run: () => Promise<void>, minInterval = 0): void {
       .finally(() => {
         current.running = false;
         if (current.again || retry > 0) {
+          const interval = Math.max(retry, current.againInterval);
           current.again = false;
-          schedule(run, retry);
+          current.againInterval = 0;
+          schedule(run, interval);
         }
       });
   }, delay);

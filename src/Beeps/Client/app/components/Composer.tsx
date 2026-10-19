@@ -267,13 +267,21 @@ export function Composer({ composer, errors }: { composer: ComposerProps; errors
   const submit = (event: TargetedSubmitEvent<HTMLFormElement>): void => {
     event.preventDefault();
     const element = event.currentTarget;
+    const sentText = textarea.current?.value;
+    const sentFiles = Array.from(fileInput.current?.files ?? []);
     void sendForm(element, event.submitter ?? null, {
       answeredBy: 'compose',
       onErrors: (answer) => setOwnErrors(answer),
       onDone: () => {
-        element.reset();
-        setText('');
-        setPreviews([]);
+        // What was typed or added while it was on its way is the next beep, and stays.
+        const files = Array.from(fileInput.current?.files ?? []);
+        const unchanged = textarea.current?.value === sentText
+          && files.length === sentFiles.length && files.every((file, i) => file === sentFiles[i]);
+        if (unchanged) {
+          element.reset();
+          setText('');
+          setPreviews([]);
+        }
         setOwnErrors(null);
         closeSuggestions();
       },
