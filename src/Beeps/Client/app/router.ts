@@ -505,6 +505,10 @@ function onPop(event: PopStateEvent): void {
   const entry = entryOf(event.state);
   // Only the fragment changed (a link within the page): nothing to show.
   if (!entry) return;
+  // A page still on its way was left behind: it must not be shown over the one gone back to.
+  visiting?.abort();
+  visiting = undefined;
+  delete document.documentElement.dataset.loading;
   manual();
   save();
   current = entry;

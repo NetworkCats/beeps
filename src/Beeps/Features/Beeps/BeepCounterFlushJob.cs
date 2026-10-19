@@ -78,7 +78,10 @@ public sealed partial class BeepCounterFlushJob(IBeepCounterStore counters, IBee
     private static partial void LogFlushed(ILogger logger, int count);
 }
 
-/// <summary>A beep whose live count could not be changed (Valkey was away), to recount (<see cref="BeepRecountHandler"/>).</summary>
+/// <summary>
+/// A beep whose live count could not be changed (Valkey was away, or it was out of sight), to recount
+/// (<see cref="BeepRecountHandler"/>).
+/// </summary>
 public sealed record BeepRecountRequest(Guid BeepId)
 {
     public const string MessageType = "beeps.recount";

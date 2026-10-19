@@ -51,7 +51,9 @@ public sealed class EfAccountStore(BeepsDbContext db, HybridCache cache, CacheIn
                     u.Theme))
                 .FirstOrDefaultAsync(ct),
             SharedCache.Account,
-            cancellationToken: cancellationToken);
+            // Not cancelled with the request: the loader runs on this request's context, so the request must wait for it (a
+            // cancellable caller returns early, and its pooled context would go to another request mid-query).
+            cancellationToken: CancellationToken.None);
 
     public Task ForgetAccountAsync(Guid userId, CancellationToken cancellationToken) =>
         invalidator.ForgetSharedAsync([SharedCache.AccountKey(userId)]);

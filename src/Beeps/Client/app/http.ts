@@ -42,12 +42,14 @@ export function retryable(error: unknown): boolean {
 export interface IslandsAnswer {
   url: string;
   status: number;
+  /** A redirect was followed: a form sent got as far as being done. */
+  redirected: boolean;
   page: IslandsPage | null;
 }
 
 async function islandsAnswer(response: Response): Promise<IslandsAnswer> {
   const json = response.headers.get('Content-Type')?.includes('application/json');
-  return { url: pageOf(response.url), status: response.status, page: json ? ((await response.json()) as IslandsPage) : null };
+  return { url: pageOf(response.url), status: response.status, redirected: response.redirected, page: json ? ((await response.json()) as IslandsPage) : null };
 }
 
 /** The data of the page at `url`, for this viewer, as a reload would draw it. */

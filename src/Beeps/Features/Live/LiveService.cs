@@ -23,7 +23,8 @@ public sealed record LiveRequest(string? Watch, string? Beeps, string? LastEvent
 /// <summary>Who a browser connection is for, beyond the viewer.</summary>
 /// <param name="SessionId">The tab's server-side session: when it ends elsewhere, the tab is told to sign out.</param>
 /// <param name="Verified">False until the email address is verified: the tab then only follows its account (verified elsewhere, signed out).</param>
-public sealed record LiveSession(Guid? SessionId, bool Verified);
+/// <param name="Admin">Only an admin's tab follows the admin pages: what changes there is not for anyone else to time.</param>
+public sealed record LiveSession(Guid? SessionId, bool Verified, bool Admin = false);
 
 public static class LiveErrorCodes
 {
@@ -100,7 +101,8 @@ public sealed partial class LiveService(
         var home = topic.Kind == LiveTopicKind.Home ? await HomeAccountsAsync(viewer, fresh: false, cancellationToken) : null;
         // A first connection is replayed a little from before the page was rendered; a reconnection from its last event.
         DateTimeOffset? renderedAt = request.LastEventId is null && request.From is { } from ? DateTimeOffset.FromUnixTimeMilliseconds(from) : null;
-        var connection = new Connection(NewConnectionId(), viewer, session.Verified ? topic : LiveTopic.None, watched, home)
+        var followed = session.Verified && (topic.Kind != LiveTopicKind.Admin || session.Admin) ? topic : LiveTopic.None;
+        var connection = new Connection(NewConnectionId(), viewer, followed, watched, home)
         {
             SessionId = session.SessionId,
             RenderedAt = renderedAt,

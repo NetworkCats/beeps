@@ -18,7 +18,9 @@ public sealed class EfSessionStore(BeepsDbContext db, HybridCache cache, CacheIn
                 .Select(s => new SessionRow(s.Id, s.UserId, s.TokenHash, s.LastSeenAt, s.ExpiresAt))
                 .FirstOrDefaultAsync(ct),
             SharedCache.Session,
-            cancellationToken: cancellationToken);
+            // Not cancelled with the request: the loader runs on this request's context, so the request must wait for it (a
+            // cancellable caller returns early, and its pooled context would go to another request mid-query).
+            cancellationToken: CancellationToken.None);
 
     public async Task TouchAsync(SessionRow session, DateTimeOffset now, DateTimeOffset expiresAt, CancellationToken cancellationToken)
     {

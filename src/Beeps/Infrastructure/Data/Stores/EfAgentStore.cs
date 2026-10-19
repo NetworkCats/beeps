@@ -50,7 +50,9 @@ public sealed class EfAgentStore(BeepsDbContext db, HybridCache cache, CacheInva
             (db, keyHash),
             static async (state, ct) => await QueryActiveKeyAsync(state.db, state.keyHash, ct),
             SharedCache.AgentKey,
-            cancellationToken: cancellationToken);
+            // Not cancelled with the request: the loader runs on this request's context, so the request must wait for it (a
+            // cancellable caller returns early, and its pooled context would go to another request mid-query).
+            cancellationToken: CancellationToken.None);
 
     public async Task TouchKeyAsync(AgentKeyMatch key, DateTimeOffset now, CancellationToken cancellationToken)
     {

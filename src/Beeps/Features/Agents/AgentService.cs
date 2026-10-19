@@ -93,8 +93,9 @@ public sealed partial class AgentService(
             return limited;
         }
 
+        // One at a time, as creating is: two at once would each revoke only the old key, leaving both new ones working.
         var result = await unitOfWork.InTransactionAsync<AgentWithKey>(
-            null,
+            AdvisoryLocks.OwnerAgents(ownerId),
             async ct =>
             {
                 var now = time.GetUtcNow();

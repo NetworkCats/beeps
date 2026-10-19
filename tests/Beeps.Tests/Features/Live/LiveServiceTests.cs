@@ -252,6 +252,16 @@ public sealed class LiveServiceTests : IAsyncDisposable
     }
 
     [Fact]
+    public async Task OnlyAnAdminFollowsTheAdminPages()
+    {
+        var result = await CreateService().OpenAsync(TomViewer, new LiveSession(TomSession, Verified: true), new LiveRequest("admin", null, null, null), stop.Token);
+        stream = result.Value.GetAsyncEnumerator(stop.Token);
+        await NextAsync();
+
+        Assert.False(adminWatchers.Any);
+    }
+
+    [Fact]
     public async Task AdminPagesHearOfAnyChangeToTheSite()
     {
         await OpenAsync(new LiveRequest("admin", null, null, null));
@@ -546,7 +556,7 @@ public sealed class LiveServiceTests : IAsyncDisposable
 
     private async Task<LiveMessage> OpenAsync(LiveRequest request)
     {
-        var result = await CreateService().OpenAsync(TomViewer, new LiveSession(TomSession, Verified: true), request, stop.Token);
+        var result = await CreateService().OpenAsync(TomViewer, new LiveSession(TomSession, Verified: true, Admin: true), request, stop.Token);
         Assert.True(result.IsSuccess, result.Error?.Code);
         stream = result.Value.GetAsyncEnumerator(stop.Token);
         return await NextAsync();
@@ -563,7 +573,7 @@ public sealed class LiveServiceTests : IAsyncDisposable
     /// <summary>A second tab of Tom's, already past its first message.</summary>
     private async Task<IAsyncEnumerator<LiveMessage>> OpenOtherAsync(LiveRequest request)
     {
-        var result = await CreateService().OpenAsync(TomViewer, new LiveSession(TomSession, Verified: true), request, stop.Token);
+        var result = await CreateService().OpenAsync(TomViewer, new LiveSession(TomSession, Verified: true, Admin: true), request, stop.Token);
         Assert.True(result.IsSuccess, result.Error?.Code);
         var other = result.Value.GetAsyncEnumerator(stop.Token);
         await NextAsync(other);

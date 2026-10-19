@@ -98,7 +98,7 @@ public static class LiveEndpoints
     {
         var result = await live.OpenAsync(
             user.Viewer(),
-            new LiveSession(user.SessionId(), user.IsMember()),
+            new LiveSession(user.SessionId(), user.IsMember(), user.IsInRole(BeepsClaims.AdminRole)),
             new LiveRequest(query.Watch, query.Beeps, lastEventId ?? query.LastEventId, query.From, query.All == true),
             cancellationToken);
         return result.IsSuccess ? Stream(context, result.Value, cancellationToken) : result.Error.ToHttpResult();

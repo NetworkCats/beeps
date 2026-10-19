@@ -26,6 +26,9 @@ function samePage(url: URL): boolean {
 
 export async function sendForm(form: HTMLFormElement, submitter: HTMLElement | null, options: SendOptions = {}): Promise<void> {
   const button = submitter instanceof HTMLButtonElement || submitter instanceof HTMLInputElement ? submitter : null;
+  // A form with a button is sent once at a time: Enter or Ctrl+Enter again while it is on its way would post it twice.
+  // One sent as soon as something in it changes (a switch) has none, and is sent each time, its latest answer standing.
+  if (form.getAttribute('aria-busy') === 'true' && form.querySelector('button[type="submit"], button:not([type]), input[type="submit"]')) return;
   if (form.dataset.confirm && !(await confirmAction(form.dataset.confirm))) return;
   const action = button?.getAttribute('formaction') ? button.formAction : form.action;
   const data = new FormData(form, button);
@@ -56,6 +59,11 @@ export async function sendForm(form: HTMLFormElement, submitter: HTMLElement | n
     if (answer.page?.notice) showToast(answer.page.notice);
     if (answer.page?.alert) showToast(answer.page.alert, true);
     await visit(answer.url, true).catch(() => {});
+    return;
+  }
+  // It went through, but the page it led to failed to load: sending it again would do it twice.
+  if (answer.redirected) {
+    await visit(answer.url).catch(() => {});
     return;
   }
   // Anything else (an error page): sent again the plain way, which nothing came of the first time, to show what went wrong.

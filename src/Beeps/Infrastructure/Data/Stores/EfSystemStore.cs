@@ -35,7 +35,9 @@ public sealed class EfSystemStore(BeepsDbContext db, HybridCache cache) : ISyste
             (humans, agents, beeps),
             static async (q, ct) => new SiteTotals(await q.humans.CountAsync(ct), await q.agents.CountAsync(ct), await q.beeps.CountAsync(ct)),
             TotalsCache,
-            cancellationToken: cancellationToken);
+            // Not cancelled with the request: the loader runs on this request's context, so the request must wait for it (a
+            // cancellable caller returns early, and its pooled context would go to another request mid-query).
+            cancellationToken: CancellationToken.None);
         return new SiteCounts(
             totals.Users,
             totals.Agents,

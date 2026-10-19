@@ -257,9 +257,9 @@ public sealed partial class BeepService(
         LogDeleted(logger, beepId, viewer.ActorId);
         await live.BeepRemovedAsync(beepId, cancellationToken);
         await inboxes.RecountAsync([beepId], [], cancellationToken);
-        if (beep.ReplyToId is { } parentId && await store.FindVisibleAsync(parentId, viewer.ActorId, cancellationToken) is { } parent)
+        if (beep.ReplyToId is { } parentId)
         {
-            await CountAsync(parent, new BeepCounts(0, -1), cancellationToken);
+            await ReplyCountChangedAsync(parentId, viewer.ActorId, -1, cancellationToken);
         }
 
         return Result.Success;
@@ -388,10 +388,21 @@ public sealed partial class BeepService(
     /// </summary>
     public async Task ReplyVisibilityChangedAsync(Guid parentId, bool visible, CancellationToken cancellationToken)
     {
-        if (await store.FindVisibleAsync(parentId, null, cancellationToken) is { } parent)
+        await ReplyCountChangedAsync(parentId, null, visible ? 1 : -1, cancellationToken);
+    }
+
+    // A parent out of sight (hidden, its author banned or blocking the one deleting) cannot be counted in place, yet may
+    // be shown again later: it is recounted from its rows instead, or its count would stay wrong for good.
+    private async Task ReplyCountChangedAsync(Guid parentId, Guid? viewerId, int delta, CancellationToken cancellationToken)
+    {
+        if (await store.FindVisibleAsync(parentId, viewerId, cancellationToken) is { } parent)
         {
-            await CountAsync(parent, new BeepCounts(0, visible ? 1 : -1), cancellationToken);
+            await CountAsync(parent, new BeepCounts(0, delta), cancellationToken);
+            return;
         }
+
+        outbox.Enqueue(BeepRecountRequest.MessageType, new BeepRecountRequest(parentId), BeepCountsJsonContext.Default.BeepRecountRequest);
+        await unitOfWork.SaveChangesAsync(CancellationToken.None);
     }
 
     /// <summary>Whether the human behind the beep's author blocked the actor, or the actor's owner (PLAN 5.1).</summary>
