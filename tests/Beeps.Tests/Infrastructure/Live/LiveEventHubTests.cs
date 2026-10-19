@@ -102,6 +102,19 @@ public sealed class LiveEventHubTests : IAsyncDisposable
     }
 
     [Fact]
+    public async Task AReplayThatCannotBeReadIsAGapNotAFailedStream()
+    {
+        var seen = store.Add("seen");
+        var hub = await StartAsync();
+        store.FailTrimmedReads = true;
+        using var subscription = hub.Subscribe(LiveEventId.Parse(seen));
+
+        store.Add("after");
+
+        Assert.Equal([LiveEventTypes.Gap, "after"], await TakeAsync(subscription, 2));
+    }
+
+    [Fact]
     public async Task TooMuchToReplayIsAGap()
     {
         options.MaxReplay = 2;
@@ -120,15 +133,16 @@ public sealed class LiveEventHubTests : IAsyncDisposable
     {
         var hub = await StartAsync();
         using var slow = hub.Subscribe(null);
-        var reads = store.Reads;
 
         for (var i = 0; i <= LiveEventHub.SubscriberCapacity; i++)
         {
             store.Add($"{i}");
         }
 
-        // Three batches and one empty read: everything was handed out before the subscriber reads anything.
-        while (store.Reads < reads + 4)
+        // An empty read after the last one was added: the hub reads one batch after another, handing each out before
+        // the next read, so everything was handed out before the subscriber reads anything.
+        var emptyReads = store.EmptyReads;
+        while (store.EmptyReads == emptyReads)
         {
             await Task.Delay(5, TestSupport.Ct);
         }
@@ -265,6 +279,8 @@ public sealed class LiveEventHubTests : IAsyncDisposable
 
         public int Reads { get; private set; }
 
+        public int EmptyReads { get; private set; }
+
         /// <param name="announce">Whether the hub hears of it, as over Pub/Sub; it may miss the word.</param>
         public string Add(string label, bool announce = true)
         {
@@ -297,12 +313,22 @@ public sealed class LiveEventHubTests : IAsyncDisposable
             lock (gate)
             {
                 Reads++;
-                return Task.FromResult<IReadOnlyList<LiveEvent>>([.. events.Where(e => LiveEventId.Parse(e.Id) > after).Take(max)]);
+                IReadOnlyList<LiveEvent> read = [.. events.Where(e => LiveEventId.Parse(e.Id) > after).Take(max)];
+                EmptyReads += read.Count == 0 ? 1 : 0;
+                return Task.FromResult(read);
             }
         }
 
+        /// <summary>Valkey away, for a replay: where the stream was trimmed cannot be read.</summary>
+        public bool FailTrimmedReads { get; set; }
+
         public Task<LiveEventId?> TrimmedUpToAsync(CancellationToken cancellationToken)
         {
+            if (FailTrimmedReads)
+            {
+                throw new InvalidOperationException("Valkey is away.");
+            }
+
             lock (gate)
             {
                 return Task.FromResult(trimmed);

@@ -153,16 +153,35 @@ public sealed partial class AccountService(
             return Result.Success;
         }
 
-        var consumed = await ConsumeCodeAsync(EmailCodePurpose.VerifyEmail, user.NormalizedEmail, code!, cancellationToken);
+        var email = user.NormalizedEmail;
+        var consumed = await ConsumeCodeAsync(EmailCodePurpose.VerifyEmail, email, code!, cancellationToken);
         if (!consumed.IsSuccess)
         {
             return consumed;
         }
 
-        user.EmailVerifiedAt = time.GetUtcNow();
-        // From now on the person can be found by search.
-        outbox.SyncAccountToSearch(user.Id);
-        await unitOfWork.SaveChangesAsync(cancellationToken);
+        // A move to another address sent alongside must not leave that one verified by this code.
+        var verified = await unitOfWork.InTransactionAsync(
+            AdvisoryLocks.UnverifiedEmail(user.Id),
+            async ct =>
+            {
+                if (await store.LeftUnverifiedEmailAsync(user.Id, email, ct))
+                {
+                    return CodeInvalid();
+                }
+
+                user.EmailVerifiedAt = time.GetUtcNow();
+                // From now on the person can be found by search.
+                outbox.SyncAccountToSearch(user.Id);
+                await unitOfWork.SaveChangesAsync(ct);
+                return Result.Success;
+            },
+            cancellationToken);
+        if (!verified.IsSuccess)
+        {
+            return verified;
+        }
+
         await store.ForgetAccountAsync(user.Id, cancellationToken);
         // Their other open tabs become a member's pages; the admin user list drops the "unverified" mark.
         await live.AccountChangedAsync(user.Id, cancellationToken);
@@ -240,22 +259,41 @@ public sealed partial class AccountService(
             return limited;
         }
 
-        // The code sent to the old address stops working.
-        if (await store.FindEmailCodeAsync(EmailCodePurpose.VerifyEmail, user.NormalizedEmail, cancellationToken) is { } old)
-        {
-            store.RemoveEmailCode(old);
-        }
-
-        user.Email = newEmail!.Trim();
-        user.NormalizedEmail = email;
-        await IssueCodeAsync(EmailCodePurpose.VerifyEmail, user, cancellationToken);
+        Result moved;
         try
         {
-            await unitOfWork.SaveChangesAsync(cancellationToken);
+            // The old address may have been verified meanwhile (its code sent alongside): it stays the account's.
+            moved = await unitOfWork.InTransactionAsync(
+                AdvisoryLocks.UnverifiedEmail(user.Id),
+                async ct =>
+                {
+                    if (await store.LeftUnverifiedEmailAsync(user.Id, user.NormalizedEmail, ct))
+                    {
+                        return AlreadyVerified();
+                    }
+
+                    // The code sent to the old address stops working.
+                    if (await store.FindEmailCodeAsync(EmailCodePurpose.VerifyEmail, user.NormalizedEmail, ct) is { } old)
+                    {
+                        store.RemoveEmailCode(old);
+                    }
+
+                    user.Email = newEmail!.Trim();
+                    user.NormalizedEmail = email;
+                    await IssueCodeAsync(EmailCodePurpose.VerifyEmail, user, ct);
+                    await unitOfWork.SaveChangesAsync(ct);
+                    return Result.Success;
+                },
+                cancellationToken);
         }
         catch (UniqueViolationException exception) when (exception.IndexName == AccountIndexes.UniqueEmail)
         {
             return NewEmailTaken();
+        }
+
+        if (!moved.IsSuccess)
+        {
+            return moved;
         }
 
         // The admin user list shows the address.
@@ -416,14 +454,17 @@ public sealed partial class AccountService(
             return consumed;
         }
 
-        // The new password and the end of every old session commit together.
+        // The new password and the end of every old session commit together. The code proves the address it went to,
+        // unless the account moved to another meanwhile (sent alongside): that one stays unverified.
         var verifies = user.EmailVerifiedAt is null;
+        var email = user.NormalizedEmail;
         var result = await unitOfWork.InTransactionAsync(
-            null,
+            verifies ? AdvisoryLocks.UnverifiedEmail(user.Id) : null,
             async ct =>
             {
                 var now = time.GetUtcNow();
                 user.PasswordHash = passwordHasher.HashPassword(user, request.NewPassword!);
+                verifies = verifies && !await store.LeftUnverifiedEmailAsync(user.Id, email, ct);
                 if (verifies)
                 {
                     // The code proved the address works, so from now on the person can be found by search.

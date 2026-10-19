@@ -282,7 +282,7 @@ function ProfileCard({ profile }: { profile: ProfileCardProps }) {
 export function ProfilePage({ props }: IslandProps<ProfileProps>) {
   useLive(props.live);
   const feed = useBeepFeed({ ...props.list, watch: props.live.watch, pageOf: listOf });
-  useFeedSnapshot(props, feed, (current, list) => ({ ...current, list: { ...current.list, items: list.items, next: list.next } }));
+  useFeedSnapshot(props, feed, (current, list) => ({ ...current, list: { ...current.list, items: list.items, next: list.next, waiting: list.waiting } }));
   const actor = props.profile.actor;
   const handle = actor.handle ?? '';
   return (

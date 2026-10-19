@@ -93,7 +93,7 @@ public sealed class ClientChunks
             }
 
             var admin = root.TryGetProperty("admin", out var listed) ? Names(listed) : [];
-            return new Manifest(Names(root.GetProperty("app")), islands, admin.ToFrozenSet(StringComparer.Ordinal));
+            return new Manifest(Names(root.GetProperty("app")), islands, admin.ToFrozenSet(StringComparer.OrdinalIgnoreCase));
         }
         catch (Exception error) when (error is IOException or JsonException or KeyNotFoundException or InvalidOperationException)
         {
@@ -107,6 +107,6 @@ public sealed class ClientChunks
     private sealed record Manifest(IReadOnlyList<string> App, IReadOnlyDictionary<string, IReadOnlyList<string>> Islands, FrozenSet<string> Admin)
     {
         // Not built yet: admin.css is still the admin pages' alone.
-        public static readonly Manifest Empty = new([], new Dictionary<string, IReadOnlyList<string>>(), new[] { "admin.css" }.ToFrozenSet(StringComparer.Ordinal));
+        public static readonly Manifest Empty = new([], new Dictionary<string, IReadOnlyList<string>>(), new[] { "admin.css" }.ToFrozenSet(StringComparer.OrdinalIgnoreCase));
     }
 }

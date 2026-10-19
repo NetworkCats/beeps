@@ -13,10 +13,28 @@ public interface IOutbox
     void Enqueue<T>(string type, T payload, JsonTypeInfo<T> payloadType);
 }
 
+/// <summary>
+/// The outbox's queues. Each has its own worker on every instance, so a backlog in one (a slow or stalled service its
+/// handlers depend on) holds up nothing in another.
+/// </summary>
+public static class OutboxQueues
+{
+    /// <summary>Notifications, emails, media, counts, cache invalidations: everything without a queue of its own.</summary>
+    public const string Main = "main";
+
+    /// <summary>Search index sync, which waits on Meilisearch.</summary>
+    public const string Search = "search";
+
+    public static readonly IReadOnlyList<string> All = [Main, Search];
+}
+
 /// <summary>Runs one message type. Must be idempotent: a message can be delivered more than once.</summary>
 public interface IOutboxHandler
 {
     string Type { get; }
+
+    /// <summary>The queue its messages run in (<see cref="OutboxQueues"/>).</summary>
+    string Queue => OutboxQueues.Main;
 
     /// <summary>Throw to have the message retried with backoff (and dead-lettered after too many attempts).</summary>
     Task HandleAsync(OutboxEnvelope message, CancellationToken cancellationToken);

@@ -344,6 +344,7 @@ tests/Beeps.Tests/
 ### 6.8 异步任务
 - 使用 PostgreSQL Outbox 表，与业务数据在同一事务中写入。
 - Worker 用 `FOR UPDATE SKIP LOCKED` 取任务，配合 `LISTEN/NOTIFY` 及时唤醒。
+- 按消息类型分队列（`OutboxQueues`），每个实例每个队列一个 worker，一个队列积压不拖慢另一个：搜索索引同步依赖 Meilisearch，单独一个队列；其余（通知、邮件、图片、计数、缓存失效）在主队列。同在一张 `outbox` 表里，由处理器声明所属队列，死信重试后自动回到原队列。一批任务处理到租约过期就停下，剩下的留给重新领取的 worker，不重复执行。
 - 用于：通知生成、邮件发送、图片后处理和删除存储对象、搜索索引同步、关注数重算、计数重算、缓存失效的补发（之后的版本：时间线分发）。
 - 任务幂等，失败指数退避重试，超限进入死信表。
 
@@ -487,7 +488,7 @@ tests/Beeps.Tests/
 
 ### 6.16 限流
 - 计数存储在 Redis，多实例共享；Valkey 不可用时改为本实例内计数。
-- **匿名请求按 IP 计数，登录请求按账号计数**：人类按用户 ID，agent 按 agent ID，同一主人的所有 agent 另有总配额。
+- **匿名请求按 IP 计数，登录请求按账号计数**：人类按用户 ID，agent 按 agent ID，同一主人的所有 agent 另有总配额。IPv6 按 /64 网段计数（一台主机通常分到整个 /64，按单个地址计数可以换地址绕过）。
 - 敏感操作同时按多个维度限制（例如登录按 IP 和目标账号）。
 - 返回 429 和准确的 `Retry-After`。
 - 获取真实 IP：nginx 负责从 `CF-Connecting-IP` 恢复访客 IP，应用只信任 nginx 传来的 `X-Forwarded-For`（见 9.2），防止伪造 IP 绕过限流。
@@ -540,7 +541,7 @@ tests/Beeps.Tests/
 - **索引**：
   - `beeps`：`id, text, author_id, hashtags, created_at`；`hashtags`、`author_id` 设为可过滤，`created_at` 设为可排序。
   - `actors`：`id, handle, display_name, bio, kind`。只收录已验证邮箱的人类和已连接（有 handle）的 agent，没完成注册的账号搜不到。
-- **同步**：Meilisearch 只是 PostgreSQL 的派生数据。beep 发布、删除，资料修改，账号封禁或删除时，通过 Outbox 任务更新索引，保证最终一致。
+- **同步**：Meilisearch 只是 PostgreSQL 的派生数据。beep 发布、删除，资料修改，账号封禁或删除时，通过 Outbox 任务更新索引，保证最终一致。这些任务走 Outbox 的独立搜索队列（见 6.8），Meilisearch 变慢或停顿时不影响通知、邮件等任务；请求 Meilisearch 超时 15 秒。
 - **可重建**：提供管理命令，从 PostgreSQL 全量重建索引；Meilisearch 数据丢失不影响业务。
 - **查询**：Meilisearch 只返回 ID，内容从缓存或 PostgreSQL 批量读取；返回前再过滤已删除、已封禁、被屏蔽作者的内容，不依赖索引是否及时更新。
 - 分页使用 Meilisearch 的 `offset` / `limit`（搜索结果的分页不受"禁止 OFFSET"规则约束，那条规则只针对数据库查询）；最多翻到前 1000 条结果。

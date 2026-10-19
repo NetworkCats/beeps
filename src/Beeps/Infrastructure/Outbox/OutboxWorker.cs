@@ -4,10 +4,11 @@ using Npgsql;
 namespace Beeps.Infrastructure.Outbox;
 
 /// <summary>
-/// Drains the outbox whenever a NOTIFY arrives (new messages) or the poll interval passes (retries
-/// becoming due). Every instance runs one; SKIP LOCKED keeps them from taking the same message.
+/// Drains one queue of the outbox whenever a NOTIFY arrives (new messages) or the poll interval passes (retries
+/// becoming due). Every instance runs one per queue; SKIP LOCKED keeps them from taking the same message.
 /// </summary>
 public sealed partial class OutboxWorker(
+    string queue,
     IServiceScopeFactory scopes,
     NpgsqlDataSource dataSource,
     IOptions<OutboxOptions> options,
@@ -19,12 +20,15 @@ public sealed partial class OutboxWorker(
 
     private const string ListenSql = $"LISTEN {Channel}";
 
+    /// <summary>The queue it drains, one of <see cref="Features.Shared.OutboxQueues"/>.</summary>
+    public string Queue => queue;
+
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         var settings = options.Value;
         if (!settings.Enabled)
         {
-            LogDisabled(logger);
+            LogDisabled(logger, queue);
             return;
         }
 
@@ -51,7 +55,7 @@ public sealed partial class OutboxWorker(
             }
             catch (Exception exception)
             {
-                LogLoopFailed(logger, exception);
+                LogLoopFailed(logger, exception, queue);
                 try
                 {
                     await Task.Delay(settings.ErrorDelay, time, stoppingToken);
@@ -70,14 +74,14 @@ public sealed partial class OutboxWorker(
         do
         {
             await using var scope = scopes.CreateAsyncScope();
-            claimed = await scope.ServiceProvider.GetRequiredService<OutboxProcessor>().ProcessBatchAsync(cancellationToken);
+            claimed = await scope.ServiceProvider.GetRequiredService<OutboxProcessor>().ProcessBatchAsync(queue, cancellationToken);
         }
         while (claimed >= batchSize);
     }
 
-    [LoggerMessage(Level = LogLevel.Information, Message = "Outbox worker is disabled on this instance")]
-    private static partial void LogDisabled(ILogger logger);
+    [LoggerMessage(Level = LogLevel.Information, Message = "Outbox worker for the {Queue} queue is disabled on this instance")]
+    private static partial void LogDisabled(ILogger logger, string queue);
 
-    [LoggerMessage(Level = LogLevel.Error, Message = "Outbox worker loop failed; reconnecting")]
-    private static partial void LogLoopFailed(ILogger logger, Exception exception);
+    [LoggerMessage(Level = LogLevel.Error, Message = "Outbox worker loop for the {Queue} queue failed; reconnecting")]
+    private static partial void LogLoopFailed(ILogger logger, Exception exception, string queue);
 }

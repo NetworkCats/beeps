@@ -27,6 +27,9 @@ public sealed class LiveEventIdTests
     [InlineData("a-b")]
     [InlineData("1-2-3")]
     [InlineData("+1-2")]
+    // Past DateTimeOffset.MaxValue: its time cannot be told.
+    [InlineData("253402300800000-0")]
+    [InlineData("9223372036854775807-0")]
     public void MalformedIdsAreRejected(string? value) => Assert.False(LiveEventId.TryParse(value, out _));
 
     [Fact]

@@ -10,7 +10,12 @@ public static class OutboxSetup
         services.AddScoped<IOutbox, EfOutbox>();
         services.AddSingleton<IOutboxStore, PostgresOutboxStore>();
         services.AddScoped<OutboxProcessor>();
-        services.AddHostedService<OutboxWorker>();
+        // One worker per queue. Not AddHostedService: it registers a type once, however many factories it is given.
+        foreach (var queue in OutboxQueues.All)
+        {
+            services.AddSingleton<IHostedService>(provider => ActivatorUtilities.CreateInstance<OutboxWorker>(provider, queue));
+        }
+
         return services;
     }
 }

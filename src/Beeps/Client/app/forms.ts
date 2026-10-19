@@ -7,7 +7,7 @@ import { confirmAction } from './dialogs.ts';
 import { postIslands, type IslandsAnswer } from './http.ts';
 import { showAnswer } from './page.ts';
 import type { Errors } from './props.ts';
-import { submitPage, visit } from './router.ts';
+import { pageUrl, submitPage, visit } from './router.ts';
 import { showToast } from './toasts.ts';
 import { t } from './i18n.ts';
 
@@ -33,6 +33,7 @@ export async function sendForm(form: HTMLFormElement, submitter: HTMLElement | n
   const action = button?.getAttribute('formaction') ? button.formAction : form.action;
   const data = new FormData(form, button);
   const sent = markSending(form, button);
+  const from = pageUrl();
   let answer: IslandsAnswer;
   try {
     answer = await postIslands(action, data);
@@ -41,6 +42,13 @@ export async function sendForm(form: HTMLFormElement, submitter: HTMLElement | n
     return;
   } finally {
     sent();
+  }
+  // Another page was gone to while it was on its way (a beep with images takes a while): it stays shown, and only
+  // what the form did is said.
+  if (pageUrl() !== from) {
+    if (answer.status < 400 && answer.page?.notice) showToast(answer.page.notice);
+    if (answer.page?.alert) showToast(answer.page.alert, true);
+    return;
   }
   if (showAnswer(answer, samePage)) {
     options.onErrors?.(answer.page?.islands[options.answeredBy ?? '']?.errors ?? {});

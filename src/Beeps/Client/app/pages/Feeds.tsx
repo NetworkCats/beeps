@@ -33,7 +33,7 @@ function listOf(name: string) {
 }
 
 function withList<P extends { list: BeepListProps }>(props: P, list: FeedSource): P {
-  return { ...props, list: { ...props.list, items: list.items, next: list.next } };
+  return { ...props, list: { ...props.list, items: list.items, next: list.next, waiting: list.waiting } };
 }
 
 /** Signed in, home and public are two feeds of one place: tabs in the column header switch between them. */

@@ -231,6 +231,22 @@ public sealed partial class AccountServiceTests
     }
 
     [Fact]
+    public async Task ACodeForAnAddressMovedAwayMeanwhileVerifiesNothing()
+    {
+        var user = TestData.User(verified: false);
+        var (code, _) = await IssueVerificationCodeAsync(user);
+        // A move to another address, sent alongside, committed first.
+        store.LeftUnverifiedEmailAsync(user.Id, user.NormalizedEmail, Arg.Any<CancellationToken>()).Returns(true);
+
+        var result = await CreateService().VerifyEmailAsync(user.Id, code, TestSupport.Ct);
+
+        Assert.Equal(AccountErrorCodes.CodeInvalid, result.Error?.Code);
+        Assert.Null(user.EmailVerifiedAt);
+        Assert.Equal([AdvisoryLocks.UnverifiedEmail(user.Id)], unitOfWork.Locks);
+        Assert.Equal(1, unitOfWork.Rollbacks);
+    }
+
+    [Fact]
     public async Task AWrongCodeCountsAsAnAttempt()
     {
         var user = TestData.User(verified: false);
@@ -344,6 +360,22 @@ public sealed partial class AccountServiceTests
         Assert.Equal((EmailCodePurpose.VerifyEmail, "Tom@Example.org"), (email.Purpose, email.To));
         store.Received().AddEmailCode(Arg.Is<EmailCode>(c => c.Purpose == EmailCodePurpose.VerifyEmail && c.NormalizedEmail == "tom@example.org"));
         Assert.Single(TestData.LiveEvents(liveEvents, LiveEventTypes.AdminChanged));
+    }
+
+    [Fact]
+    public async Task AnAddressVerifiedMeanwhileIsNotMovedAway()
+    {
+        var user = TestData.User(verified: false, passwordHash: "hashed:old password");
+        store.FindUserAsync(user.Id, Arg.Any<CancellationToken>()).Returns(user);
+        // Its code, sent alongside, committed first.
+        store.LeftUnverifiedEmailAsync(user.Id, "tom@example.com", Arg.Any<CancellationToken>()).Returns(true);
+
+        var result = await CreateService().ChangeUnverifiedEmailAsync(user.Id, "tom@example.org", "old password", TestData.Origin, TestSupport.Ct);
+
+        Assert.Equal(AccountErrorCodes.AlreadyVerified, result.Error?.Code);
+        Assert.Equal("tom@example.com", user.NormalizedEmail);
+        Assert.Equal([AdvisoryLocks.UnverifiedEmail(user.Id)], unitOfWork.Locks);
+        Assert.Empty(sentCodes);
     }
 
     [Fact]

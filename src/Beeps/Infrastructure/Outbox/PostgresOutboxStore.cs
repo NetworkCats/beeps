@@ -12,7 +12,7 @@ public sealed class PostgresOutboxStore(NpgsqlDataSource dataSource) : IOutboxSt
         SET attempts = o.attempts + 1, run_after = @lease_until
         FROM (
             SELECT id FROM outbox
-            WHERE run_after <= @now
+            WHERE run_after <= @now AND (type = ANY(@types)) <> @except
             ORDER BY run_after, id
             LIMIT @limit
             FOR UPDATE SKIP LOCKED
@@ -34,9 +34,12 @@ public sealed class PostgresOutboxStore(NpgsqlDataSource dataSource) : IOutboxSt
         SELECT id, type, payload, attempts, @error, created_at, @failed_at FROM moved
         """;
 
-    public async Task<IReadOnlyList<OutboxEnvelope>> ClaimAsync(int limit, DateTimeOffset now, DateTimeOffset leaseUntil, CancellationToken cancellationToken)
+    public async Task<IReadOnlyList<OutboxEnvelope>> ClaimAsync(OutboxTypes types, int limit, DateTimeOffset now, DateTimeOffset leaseUntil, CancellationToken cancellationToken)
     {
+        ArgumentNullException.ThrowIfNull(types);
         await using var command = dataSource.CreateCommand(ClaimSql);
+        command.Parameters.AddWithValue("types", types.Types.ToArray());
+        command.Parameters.AddWithValue("except", types.Except);
         command.Parameters.AddWithValue("lease_until", leaseUntil);
         command.Parameters.AddWithValue("now", now);
         command.Parameters.AddWithValue("limit", limit);

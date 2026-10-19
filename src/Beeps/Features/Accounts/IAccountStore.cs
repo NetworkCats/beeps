@@ -22,6 +22,13 @@ public interface IAccountStore
 
     Task<User?> FindUserByEmailAsync(string normalizedEmail, CancellationToken cancellationToken);
 
+    /// <summary>
+    /// Whether the account no longer has <paramref name="normalizedEmail"/> as its unverified address (it was verified,
+    /// or moved to another), as the database has it now rather than the tracked copy. Asked under
+    /// <see cref="Shared.AdvisoryLocks.UnverifiedEmail"/> before committing a change decided from an earlier read.
+    /// </summary>
+    Task<bool> LeftUnverifiedEmailAsync(Guid userId, string normalizedEmail, CancellationToken cancellationToken);
+
     Task<User?> FindUserByHandleAsync(string normalizedHandle, CancellationToken cancellationToken);
 
     /// <summary>A Google or GitHub account's link, whoever it belongs to: a deleted account keeps its links.</summary>

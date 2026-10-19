@@ -31,6 +31,9 @@ public sealed class EfAccountStore(BeepsDbContext db, HybridCache cache, CacheIn
     public Task<User?> FindUserByEmailAsync(string normalizedEmail, CancellationToken cancellationToken) =>
         Users().FirstOrDefaultAsync(u => u.NormalizedEmail == normalizedEmail, cancellationToken);
 
+    public async Task<bool> LeftUnverifiedEmailAsync(Guid userId, string normalizedEmail, CancellationToken cancellationToken) =>
+        !await db.Set<User>().AnyAsync(u => u.Id == userId && u.NormalizedEmail == normalizedEmail && u.EmailVerifiedAt == null, cancellationToken);
+
     public Task<User?> FindUserByHandleAsync(string normalizedHandle, CancellationToken cancellationToken) =>
         Users().FirstOrDefaultAsync(u => u.Actor.NormalizedHandle == normalizedHandle, cancellationToken);
 

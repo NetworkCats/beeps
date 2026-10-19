@@ -29,6 +29,8 @@ const MAX_FETCH_ROUNDS = 20;
 export interface FeedSource {
   items: BeepProps[];
   next?: string;
+  /** New beeps that were held above the timeline when it was left, for when it is gone back to. */
+  waiting?: BeepProps[];
 }
 
 export interface FeedOptions extends FeedSource {
@@ -80,22 +82,31 @@ function mine(id: string): boolean {
   return beepSignal(id).value?.author.id === viewer.value.id;
 }
 
-/** The list's new ids; those it did not have before come in, or, above a timeline's top, wait to be shown. */
+/**
+ * The list's new ids; those it did not have before come in, or, above a live timeline's top, wait to be shown. Those
+ * waiting already keep waiting (the viewer's own beep, put in at once, may have moved the top past them). A list that
+ * does not follow new beeps (an older page, the likes, in the order they were liked) holds none.
+ */
 function arrive(state: FeedState, ids: string[]): void {
   const had = new Set(state.ids.value);
-  const top = state.options.thread ? undefined : visibleOf(state.ids.value)[0];
-  const { ids: shown, held } = holdNewer(ids, had, top, mine);
+  const top = state.options.thread || !state.watch.value ? undefined : visibleOf(state.ids.value)[0];
+  const waiting = new Set(top === undefined ? [] : state.waiting.value);
+  const { ids: shown, held } = holdNewer(ids.filter((id) => !waiting.has(id)), had, top, mine);
   for (const id of shown) if (!had.has(id)) state.entering.add(id);
   state.ids.value = shown;
-  if (held.length > 0) state.waiting.value = insertOrdered(state.waiting.value, held, false);
+  const shownIds = new Set(shown);
+  if (held.length > 0 || state.waiting.value.some((id) => shownIds.has(id))) {
+    state.waiting.value = insertOrdered(state.waiting.value.filter((id) => !shownIds.has(id)), held, false);
+  }
 }
 
 function create(options: FeedOptions): FeedState {
   putBeeps(options.items);
+  putBeeps(options.waiting ?? []);
   const state: FeedState = {
     ids: signal(options.items.map((beep) => beep.id)),
     entering: new Set(),
-    waiting: signal([]),
+    waiting: signal((options.waiting ?? []).map((beep) => beep.id)),
     next: signal(options.next),
     watch: signal(options.watch),
     source: options,
@@ -204,6 +215,7 @@ export function useBeepFeed(options: FeedOptions): Feed {
   const snapshot = (): FeedSource => ({
     items: visibleOf(state.ids.value).map((id) => beepSignal(id).value as BeepProps),
     next: state.next.value,
+    waiting: visibleOf(state.waiting.value).map((id) => beepSignal(id).value as BeepProps),
   });
 
   const entering = (id: string): boolean => state.entering.has(id);

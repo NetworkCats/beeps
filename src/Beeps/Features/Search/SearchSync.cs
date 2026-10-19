@@ -46,6 +46,8 @@ public sealed class SearchBeepSyncHandler(ISearchStore store, ISearchIndex index
 {
     public string Type => SearchBeepSyncRequest.MessageType;
 
+    public string Queue => OutboxQueues.Search;
+
     public async Task HandleAsync(OutboxEnvelope message, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(message);
@@ -69,6 +71,8 @@ public sealed class SearchAccountSyncHandler(ISearchStore store, ISearchIndex in
     public const int BatchSize = 500;
 
     public string Type => SearchAccountSyncRequest.MessageType;
+
+    public string Queue => OutboxQueues.Search;
 
     public async Task HandleAsync(OutboxEnvelope message, CancellationToken cancellationToken)
     {

@@ -185,19 +185,31 @@ public sealed partial class LiveEventHub(
         }
     }
 
-    /// <summary>Null when the events after <paramref name="start"/> cannot all be replayed: too old, too many, or trimmed away.</summary>
+    /// <summary>
+    /// Null when the events after <paramref name="start"/> cannot all be replayed: too old, too many, trimmed away, or
+    /// unreadable (Valkey away). The stream has started by then, so failing would only drop it for the client to
+    /// reconnect into the same failure, again and again; a gap has it catch up from the pages instead.
+    /// </summary>
     private async Task<IReadOnlyList<LiveEvent>?> ReplayAsync(LiveEventId start, CancellationToken cancellationToken)
     {
         await ready.Task.WaitAsync(cancellationToken);
         var settings = options.Value;
-        if (start.Time < time.GetUtcNow() - settings.ReplayWindow
-            || await store.TrimmedUpToAsync(cancellationToken) is { } trimmed && trimmed > start)
+        try
         {
+            if (start.Time < time.GetUtcNow() - settings.ReplayWindow
+                || await store.TrimmedUpToAsync(cancellationToken) is { } trimmed && trimmed > start)
+            {
+                return null;
+            }
+
+            var events = await store.ReadAfterAsync(start, settings.MaxReplay + 1, cancellationToken);
+            return events.Count > settings.MaxReplay ? null : events;
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
+        {
+            LogReplayFailed(logger, exception);
             return null;
         }
-
-        var events = await store.ReadAfterAsync(start, settings.MaxReplay + 1, cancellationToken);
-        return events.Count > settings.MaxReplay ? null : events;
     }
 
     /// <summary>
@@ -261,6 +273,9 @@ public sealed partial class LiveEventHub(
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Reading live events failed; retrying")]
     private static partial void LogReadFailed(ILogger logger, Exception exception);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Replaying live events for a connection failed; it catches up from a gap")]
+    private static partial void LogReplayFailed(ILogger logger, Exception exception);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "A live connection fell too far behind and was ended")]
     private static partial void LogOverflow(ILogger logger);

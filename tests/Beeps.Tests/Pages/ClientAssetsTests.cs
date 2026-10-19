@@ -78,6 +78,13 @@ public sealed partial class ClientAssetsTests : IDisposable
             Assert.Equal(HttpStatusCode.NotFound, forAnyone.StatusCode);
         }
 
+        // Routing finds static files whatever the case of their address: so does the check.
+        foreach (var file in new[] { stylesheet.ToUpperInvariant(), "/dist/ADMIN.css", $"/dist/{adminChunk.ToUpperInvariant()}", "/dist/Chunks.json" })
+        {
+            using var forAnyone = await anonymous.GetAsync(new Uri(file, UriKind.Relative), TestSupport.Ct);
+            Assert.True(forAnyone.StatusCode == HttpStatusCode.NotFound, file);
+        }
+
         // Everyone else's chunks are anyone's, and kept for good; the manifest is the server's own.
         using var chunk = await anonymous.GetAsync(new Uri($"/dist/{publicChunk}", UriKind.Relative), TestSupport.Ct);
         using var listed = await asAdmin.GetAsync(new Uri("/dist/chunks.json", UriKind.Relative), TestSupport.Ct);

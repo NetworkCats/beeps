@@ -25,6 +25,24 @@ public sealed class OutboxProcessorTests
     public OutboxProcessorTests()
     {
         handler.Type.Returns("test.message");
+        handler.Queue.Returns(OutboxQueues.Main);
+    }
+
+    [Fact]
+    public async Task EachQueueClaimsItsOwnTypesAndTheMainQueueEverythingElse()
+    {
+        var search = Substitute.For<IOutboxHandler>();
+        search.Type.Returns("search.thing");
+        search.Queue.Returns(OutboxQueues.Search);
+        Claim();
+        var processor = new OutboxProcessor(store, [handler, search], Options.Create(options), time, NullLogger<OutboxProcessor>.Instance);
+
+        await processor.ProcessBatchAsync(OutboxQueues.Main, TestSupport.Ct);
+        await processor.ProcessBatchAsync(OutboxQueues.Search, TestSupport.Ct);
+
+        // A slow search engine then holds up only the search queue.
+        await store.Received(1).ClaimAsync(Arg.Is<OutboxTypes>(t => t.Except && t.Types.Single() == "search.thing"), 10, TestData.Now, TestData.Now.AddMinutes(5), Arg.Any<CancellationToken>());
+        await store.Received(1).ClaimAsync(Arg.Is<OutboxTypes>(t => !t.Except && t.Types.Single() == "search.thing"), 10, TestData.Now, TestData.Now.AddMinutes(5), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -32,10 +50,10 @@ public sealed class OutboxProcessorTests
     {
         Claim();
 
-        var claimed = await CreateProcessor().ProcessBatchAsync(TestSupport.Ct);
+        var claimed = await CreateProcessor().ProcessBatchAsync(OutboxQueues.Main, TestSupport.Ct);
 
         Assert.Equal(0, claimed);
-        await store.Received(1).ClaimAsync(10, TestData.Now, TestData.Now.AddMinutes(5), Arg.Any<CancellationToken>());
+        await store.Received(1).ClaimAsync(Arg.Any<OutboxTypes>(), 10, TestData.Now, TestData.Now.AddMinutes(5), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -44,12 +62,33 @@ public sealed class OutboxProcessorTests
         var message = Message(attempts: 1);
         Claim(message);
 
-        var claimed = await CreateProcessor().ProcessBatchAsync(TestSupport.Ct);
+        var claimed = await CreateProcessor().ProcessBatchAsync(OutboxQueues.Main, TestSupport.Ct);
 
         Assert.Equal(1, claimed);
         await handler.Received(1).HandleAsync(message, Arg.Any<CancellationToken>());
         await store.Received(1).CompleteAsync(message.Id, Arg.Any<CancellationToken>());
         await store.DidNotReceiveWithAnyArgs().RescheduleAsync(default, default, default!, TestSupport.Ct);
+    }
+
+    [Fact]
+    public async Task WhatIsLeftOfABatchOnceItsLeaseRanOutIsNotRunHereToo()
+    {
+        var clock = new FixedTimeProvider(TestData.Now);
+        var slow = Message(attempts: 1);
+        var left = Message(attempts: 1);
+        Claim(slow, left);
+        // Another worker may claim the rest again from here on.
+        handler.HandleAsync(slow, Arg.Any<CancellationToken>()).Returns(_ =>
+        {
+            clock.Now += options.LeaseDuration;
+            return Task.CompletedTask;
+        });
+
+        await new OutboxProcessor(store, [handler], Options.Create(options), clock, NullLogger<OutboxProcessor>.Instance).ProcessBatchAsync(OutboxQueues.Main, TestSupport.Ct);
+
+        await store.Received(1).CompleteAsync(slow.Id, Arg.Any<CancellationToken>());
+        await handler.DidNotReceive().HandleAsync(left, Arg.Any<CancellationToken>());
+        await store.DidNotReceive().CompleteAsync(left.Id, Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -59,7 +98,7 @@ public sealed class OutboxProcessorTests
         Claim(message);
         handler.HandleAsync(message, Arg.Any<CancellationToken>()).ThrowsAsync(new InvalidOperationException("smtp down"));
 
-        await CreateProcessor().ProcessBatchAsync(TestSupport.Ct);
+        await CreateProcessor().ProcessBatchAsync(OutboxQueues.Main, TestSupport.Ct);
 
         await store.Received(1).RescheduleAsync(
             message.Id,
@@ -76,7 +115,7 @@ public sealed class OutboxProcessorTests
         Claim(message);
         handler.HandleAsync(message, Arg.Any<CancellationToken>()).ThrowsAsync(new InvalidOperationException("boom"));
 
-        await CreateProcessor().ProcessBatchAsync(TestSupport.Ct);
+        await CreateProcessor().ProcessBatchAsync(OutboxQueues.Main, TestSupport.Ct);
 
         await store.Received(1).DeadLetterAsync(message.Id, Arg.Is<string>(e => e.Contains("boom", StringComparison.Ordinal)), TestData.Now, Arg.Any<CancellationToken>());
         await store.DidNotReceiveWithAnyArgs().RescheduleAsync(default, default, default!, TestSupport.Ct);
@@ -88,7 +127,7 @@ public sealed class OutboxProcessorTests
         var message = Message(attempts: 1, type: "from.a.newer.release");
         Claim(message);
 
-        await CreateProcessor().ProcessBatchAsync(TestSupport.Ct);
+        await CreateProcessor().ProcessBatchAsync(OutboxQueues.Main, TestSupport.Ct);
 
         await store.Received(1).RescheduleAsync(message.Id, TestData.Now.AddSeconds(10), Arg.Is<string>(e => e.Contains("from.a.newer.release", StringComparison.Ordinal)), Arg.Any<CancellationToken>());
     }
@@ -99,7 +138,7 @@ public sealed class OutboxProcessorTests
         var message = Message(attempts: 4);
         Claim(message);
 
-        await CreateProcessor().ProcessBatchAsync(TestSupport.Ct);
+        await CreateProcessor().ProcessBatchAsync(OutboxQueues.Main, TestSupport.Ct);
 
         await handler.DidNotReceiveWithAnyArgs().HandleAsync(default!, TestSupport.Ct);
         await store.Received(1).DeadLetterAsync(message.Id, Arg.Any<string>(), TestData.Now, Arg.Any<CancellationToken>());
@@ -117,7 +156,7 @@ public sealed class OutboxProcessorTests
             shutdown.Token.ThrowIfCancellationRequested();
         });
 
-        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => CreateProcessor().ProcessBatchAsync(shutdown.Token));
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => CreateProcessor().ProcessBatchAsync(OutboxQueues.Main, shutdown.Token));
 
         await store.DidNotReceiveWithAnyArgs().RescheduleAsync(default, default, default!, TestSupport.Ct);
         await store.DidNotReceiveWithAnyArgs().DeadLetterAsync(default, default!, default, TestSupport.Ct);
@@ -145,7 +184,7 @@ public sealed class OutboxProcessorTests
         new(Guid.CreateVersion7(TestData.Now), type, """{"id":1}""", attempts, TestData.Now.AddMinutes(-1));
 
     private void Claim(params OutboxEnvelope[] messages) =>
-        store.ClaimAsync(default, default, default, TestSupport.Ct).ReturnsForAnyArgs(messages);
+        store.ClaimAsync(default!, default, default, default, TestSupport.Ct).ReturnsForAnyArgs(messages);
 
     private OutboxProcessor CreateProcessor() =>
         new(store, [handler], Options.Create(options), time, NullLogger<OutboxProcessor>.Instance);

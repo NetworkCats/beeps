@@ -23,6 +23,10 @@ public sealed class MeilisearchIndex : ISearchIndex
     private const string PrimaryKey = "id";
     private const int TaskPollMilliseconds = 50;
 
+    // The client's own HttpClient waits 100 s for an answer: a stalled engine would hold each sync job (and the outbox
+    // messages queued behind it) that long.
+    private static readonly TimeSpan RequestTimeout = TimeSpan.FromSeconds(15);
+
     private readonly MeilisearchClient client;
     private readonly Lazy<MeilisearchClient> adminClient;
     private readonly SearchOptions options;
@@ -31,9 +35,13 @@ public sealed class MeilisearchIndex : ISearchIndex
     {
         ArgumentNullException.ThrowIfNull(options);
         this.options = options.Value;
-        client = new MeilisearchClient(this.options.Url, this.options.ApiKey);
-        adminClient = new Lazy<MeilisearchClient>(() => new MeilisearchClient(this.options.Url, this.options.AdminKey ?? this.options.ApiKey));
+        client = NewClient(this.options.ApiKey);
+        adminClient = new Lazy<MeilisearchClient>(() => NewClient(this.options.AdminKey ?? this.options.ApiKey));
     }
+
+    // As MeilisearchClient(url, key) makes it, with a shorter timeout.
+    private MeilisearchClient NewClient(string? apiKey) =>
+        new(new HttpClient(new MeilisearchMessageHandler(new HttpClientHandler())) { BaseAddress = new Uri(options.Url), Timeout = RequestTimeout }, apiKey);
 
     public Task UpsertBeepsAsync(IReadOnlyCollection<BeepDocument> beeps, CancellationToken cancellationToken) =>
         AddAsync(client, BeepsIndex, BeepsJson(beeps), cancellationToken);
@@ -133,6 +141,11 @@ public sealed class MeilisearchIndex : ISearchIndex
         {
             // Nothing indexed yet: run `search rebuild` once (README, launch checklist).
             return new SearchHits([], 0);
+        }
+        catch (OperationCanceledException exception) when (!cancellationToken.IsCancellationRequested)
+        {
+            // Not the request going away: the engine is too slow, which callers handle as it being away.
+            throw new TimeoutException($"Meilisearch did not answer within {options.SearchTimeout}.", exception);
         }
 
         var ids = result.Hits.Select(h => Guid.TryParse(h.Id, CultureInfo.InvariantCulture, out var id) ? id : Guid.Empty).Where(id => id != Guid.Empty).ToList();

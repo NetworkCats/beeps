@@ -19,6 +19,12 @@ public static class AdvisoryLocks
     /// <summary>Per-owner key for the agent limit, so two parallel creates cannot both pass the count.</summary>
     public static long OwnerAgents(Guid ownerId) => Derive("owner-agents", ownerId);
 
+    /// <summary>
+    /// Per-account key for an unverified address: verifying it and moving to another both decide from an earlier read
+    /// of it, so one must not commit over the other (an address nobody verified would end up verified).
+    /// </summary>
+    public static long UnverifiedEmail(Guid userId) => Derive("unverified-email", userId);
+
     /// <summary>Held by whichever instance is running the scheduled job right now.</summary>
     public static long ScheduledJob(string name) => Derive($"job:{name}");
 

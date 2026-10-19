@@ -45,6 +45,8 @@ export interface BeepProps {
 export interface BeepListProps {
   items: BeepProps[];
   next?: string;
+  /** Kept by the client when the page is left (BeepFeed.tsx); the server never sends it. */
+  waiting?: BeepProps[];
   emptyTitle: string;
   emptyText?: string;
 }

@@ -73,9 +73,12 @@ export function showAnswer(answer: { url: string; status: number; page: IslandsP
 
 async function refresh(): Promise<void> {
   const live = pageLive.value;
+  const page = pageUrl();
   // A page whose own address may change (a profile after a rename) says where it can be found by id.
-  const url = live.url ? live.url + window.location.search : pageUrl();
+  const url = live.url ? live.url + window.location.search : page;
   const answer = await getIslands(url);
+  // Another page was shown meanwhile (or this one with another query): the answer is for the one left.
+  if (pageUrl() !== page || pageLive.value !== live) return;
   if (answer.status >= 500) throw new HttpError(answer.status);
   const shownHere = showAnswer(answer, (found) => {
     if (!live.url) return found.pathname === window.location.pathname;

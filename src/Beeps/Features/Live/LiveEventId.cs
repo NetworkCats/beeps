@@ -11,6 +11,9 @@ public readonly record struct LiveEventId(long Milliseconds, long Sequence) : IC
 {
     public static readonly LiveEventId Zero = new(0, 0);
 
+    // Past this, Time cannot be told: a client's made-up Last-Event-ID is refused, not thrown on.
+    private static readonly long MaxMilliseconds = DateTimeOffset.MaxValue.ToUnixTimeMilliseconds();
+
     /// <summary>Before every entry added at or after <paramref name="time"/>.</summary>
     public static LiveEventId Before(DateTimeOffset time) => new(Math.Max(0, time.ToUnixTimeMilliseconds() - 1), long.MaxValue);
 
@@ -30,7 +33,8 @@ public readonly record struct LiveEventId(long Milliseconds, long Sequence) : IC
         var dash = value?.IndexOf('-', StringComparison.Ordinal) ?? -1;
         if (dash <= 0
             || !long.TryParse(value.AsSpan(0, dash), NumberStyles.None, CultureInfo.InvariantCulture, out var milliseconds)
-            || !long.TryParse(value.AsSpan(dash + 1), NumberStyles.None, CultureInfo.InvariantCulture, out var sequence))
+            || !long.TryParse(value.AsSpan(dash + 1), NumberStyles.None, CultureInfo.InvariantCulture, out var sequence)
+            || milliseconds > MaxMilliseconds)
         {
             return false;
         }

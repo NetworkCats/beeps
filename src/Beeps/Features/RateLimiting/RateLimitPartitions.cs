@@ -1,3 +1,6 @@
+using System.Net;
+using System.Net.Sockets;
+
 namespace Beeps.Features.RateLimiting;
 
 /// <summary>
@@ -21,7 +24,32 @@ public static class RateLimitPartitions
     /// <summary>One agent's replies within one thread.</summary>
     public static string Thread(Guid actorId, Guid rootId) => $"{Actor(actorId)}:thread:{rootId:D}";
 
-    public static string Ip(string? clientIp) => $"ip:{clientIp}";
+    /// <summary>
+    /// An IPv4 address, or an IPv6 address's /64: one host is usually given a whole /64, and would otherwise have a
+    /// fresh counter for every address it picks from it.
+    /// </summary>
+    public static string Ip(string? clientIp)
+    {
+        if (!IPAddress.TryParse(clientIp, out var address))
+        {
+            return $"ip:{clientIp}";
+        }
+
+        if (address.IsIPv4MappedToIPv6)
+        {
+            address = address.MapToIPv4();
+        }
+
+        if (address.AddressFamily != AddressFamily.InterNetworkV6)
+        {
+            return $"ip:{address}";
+        }
+
+        Span<byte> bytes = stackalloc byte[16];
+        address.TryWriteBytes(bytes, out _);
+        bytes[8..].Clear();
+        return $"ip:{new IPAddress(bytes)}/64";
+    }
 
     public static string Email(string normalizedEmail) => $"email:{normalizedEmail}";
 

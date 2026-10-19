@@ -26,8 +26,9 @@ public sealed partial class ClientAssetsMiddleware(RequestDelegate next)
             return;
         }
 
-        // admin.ab12cd34ef.css and chunks/X.js.map are the same file as admin.css and chunks/X.js.
-        var file = Fingerprint().Replace(rest.Value.TrimStart('/'), "");
+        // admin.ab12cd34ef.css and chunks/X.js.map are the same file as admin.css and chunks/X.js. Routing finds static
+        // files whatever the case of their address (ADMIN.CSS is admin.css), so the file is named in one case here.
+        var file = Fingerprint().Replace(rest.Value.TrimStart('/').ToLowerInvariant(), "");
         var adminOnly = chunks.IsAdminOnly(file);
         if (file == "chunks.json" || (adminOnly && !(await authorization.AuthorizeAsync(context.User, AuthPolicies.Admin)).Succeeded))
         {
