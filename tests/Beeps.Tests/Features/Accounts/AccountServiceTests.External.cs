@@ -191,6 +191,8 @@ public sealed partial class AccountServiceTests
 
         Assert.True(result.IsSuccess);
         store.Received(1).AddLogin(Arg.Is<ExternalLogin>(l => l.UserId == user.Id && l.ProviderKey == "42"));
+        // The owner hears of it: a stolen session could otherwise add a way back in that outlives a password reset.
+        outbox.Received(1).Enqueue(SignInMethodEmail.MessageType, new SignInMethodEmail(user.Email, user.Locale, "GitHub"), Arg.Any<System.Text.Json.Serialization.Metadata.JsonTypeInfo<SignInMethodEmail>>());
     }
 
     [Fact]

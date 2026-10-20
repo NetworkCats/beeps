@@ -18,7 +18,7 @@ function milliseconds(value: string): number {
 }
 
 /** Plays the arrival on an element just put on the page (before it is painted), then leaves its styles as they were. */
-export async function enter(element: HTMLElement): Promise<void> {
+async function enter(element: HTMLElement): Promise<void> {
   const open = milliseconds(token('--cui-duration-slower'));
   const fade = milliseconds(token('--cui-duration-slow'));
   if (document.hidden || open <= 0 || typeof element.animate !== 'function') return;

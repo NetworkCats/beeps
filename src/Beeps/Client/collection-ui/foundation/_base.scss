@@ -28,15 +28,13 @@
   }
 
   /* ---- Headings ------------------------------------------------------------ */
+  /* Sized by beeps (Client/scss/_theme.scss), which keeps headings small. */
   h1, h2, h3, h4, h5, h6 {
     font-family: var(--cui-font-heading);
     font-weight: var(--cui-weight-semibold);
     line-height: var(--cui-leading-tight);
     color: var(--cui-text);
   }
-  /* h1–h4 are sized by beeps (Client/scss/_theme.scss), which keeps headings small. */
-  h5 { font-size: var(--cui-text-base); }
-  h6 { font-size: var(--cui-text-sm); }
 
   /* ---- Inline -------------------------------------------------------------- */
   a:where(:not([class])) {
@@ -48,12 +46,9 @@
     &:hover { color: var(--cui-link-hover); text-decoration-color: currentColor; }
   }
   strong, b { font-weight: var(--cui-weight-semibold); }
-  small { font-size: var(--cui-text-sm); }
-  mark { background: color-mix(in oklch, var(--cui-warning) 30%, transparent); color: inherit; padding: 0 0.15em; border-radius: var(--cui-radius-sm); }
-  abbr { cursor: help; }
   time { font-variant-numeric: tabular-nums; }
 
-  code, samp, pre { font-family: var(--cui-font-mono); font-size: 0.9em; }
+  code { font-family: var(--cui-font-mono); font-size: 0.9em; }
   :where(code):not(pre code) {
     padding: 0.125em 0.35em;
     border-radius: var(--cui-radius-sm);

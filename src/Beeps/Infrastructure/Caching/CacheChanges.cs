@@ -1,6 +1,5 @@
 using Beeps.Features.Accounts;
 using Beeps.Features.Beeps;
-using Beeps.Features.Profiles;
 using Beeps.Features.Shared;
 using Beeps.Infrastructure.Data;
 using Beeps.Infrastructure.Outbox;
@@ -167,12 +166,6 @@ public sealed class PendingCacheChanges(BeepsDbContext db, CacheInvalidator inva
                     break;
                 case Beep beep when entry.State == EntityState.Added:
                     pending.Add(CacheChange.BeepPosted(beep.Id));
-                    break;
-                case Beep beep when entry.State == EntityState.Modified && entry.Property(nameof(Beep.DeletedAt)).IsModified:
-                    pending.Add(CacheChange.BeepRemoved(beep.Id));
-                    break;
-                case Follow follow when entry.State is EntityState.Added or EntityState.Deleted:
-                    pending.Add(CacheChange.Following(follow.FollowerId));
                     break;
             }
         }

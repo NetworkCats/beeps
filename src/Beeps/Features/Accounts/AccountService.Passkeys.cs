@@ -104,6 +104,7 @@ public sealed partial class AccountService
             UserAgent = userAgent is { Length: > Passkey.UserAgentMaxLength } ? userAgent[..Passkey.UserAgentMaxLength] : userAgent,
             CreatedAt = now,
         });
+        NotifySignInMethodAdded(user, provider: null);
         try
         {
             await unitOfWork.SaveChangesAsync(cancellationToken);

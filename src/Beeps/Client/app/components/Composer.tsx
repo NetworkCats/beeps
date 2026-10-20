@@ -56,12 +56,12 @@ function lineBottom(textarea: HTMLTextAreaElement, index: number): number {
   return textarea.offsetTop + Math.min(textarea.clientTop + bottom - textarea.scrollTop, textarea.offsetHeight);
 }
 
-/** The text as the layer behind the textarea draws it, mentions in colour; a last space keeps a final empty line. */
 /** Whether what is being dragged is files from outside, not text moved about in the page. */
 function carriesFiles(event: DragEvent): boolean {
   return event.dataTransfer?.types.includes('Files') ?? false;
 }
 
+/** The text as the layer behind the textarea draws it, mentions in colour; a last space keeps a final empty line. */
 function highlighted(text: string): ComponentChildren[] {
   const parts: ComponentChildren[] = [];
   let from = 0;

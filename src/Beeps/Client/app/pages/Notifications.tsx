@@ -5,7 +5,7 @@
 // read in another tab or gone with their beep catch up. An older page is drawn again when the inbox changes.
 import { useRef } from 'preact/hooks';
 import { signal, type Signal } from '@preact/signals';
-import { beepSignal, putBeeps, useShown } from '../beeps.ts';
+import { beepSignal, putBeeps, removalMark, useShown } from '../beeps.ts';
 import { BeepCard, openOnClick } from '../components/BeepCard.tsx';
 import { Antiforgery } from '../components/Forms.tsx';
 import { Icon } from '../components/Icon.tsx';
@@ -123,8 +123,9 @@ function create(page: PageProps<NotificationProps>, live: boolean): InboxState {
       if (!live) return;
       const shown = state.items.value;
       const limit = Math.min(Math.max(shown.length, INBOX_PAGE), INBOX_MAX);
+      const since = removalMark();
       const fresh = (await getJson<{ items: NotificationProps[] }>(`${LIVE_NOTIFICATIONS}?limit=${limit}`)).items;
-      putBeeps(fresh.map((entry) => entry.beep));
+      putBeeps(fresh.map((entry) => entry.beep), since);
       const whole = fresh.length < limit;
       const oldest = fresh.at(-1)?.id ?? '';
       const current = new Set(fresh.map(about));
@@ -170,10 +171,11 @@ export function NotificationsPage({ props }: IslandProps<NotificationsProps>) {
   const loadMore = async (): Promise<boolean> => {
     const next = state.next.value;
     if (!next) return true;
+    const since = removalMark();
     const answer = await getIslands(next);
     const page = (answer.page?.islands.notifications?.props as NotificationsProps | undefined)?.page;
     if (!page) return false;
-    putBeeps(page.items.map((entry) => entry.beep));
+    putBeeps(page.items.map((entry) => entry.beep), since);
     const shown = new Set(state.items.value.map(about));
     state.items.value = [...state.items.value, ...page.items.filter((entry) => !shown.has(about(entry)))];
     state.next.value = page.next;

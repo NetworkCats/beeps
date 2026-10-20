@@ -127,6 +127,8 @@ public sealed class SessionServiceTests
 
         Assert.True(result.IsSuccess);
         await sessions.Received(1).RevokeOthersAsync(UserId, current, TestData.Now, Arg.Any<CancellationToken>());
+        // Saved with the durable removal of the cached sessions it stages, then removed at once.
+        Assert.Equal(1, unitOfWork.Saves);
         await sessions.Received(1).ForgetAllAsync(UserId);
         Assert.Equal([$$"""{"account_id":"{{UserId:D}}"}"""], TestData.LiveEvents(liveEvents, LiveEventTypes.SessionsEnded));
     }

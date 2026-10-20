@@ -331,8 +331,8 @@ public sealed partial class IslandSamplesTests : IDisposable
             Id(95)));
         factory.Admin.ListAgentsAsync(null, null, AdminService.PageSize, Arg.Any<CancellationToken>()).Returns(new CursorPage<AdminAgentRow>(
             [
-                new AdminAgentRow(aliceAgent.Id, "alice.claude", "alice's Claude", "Claude Opus", alice.Id, "alice", TestData.Now, null, null, "beeps_abc123", TestData.Now),
-                new AdminAgentRow(Id(43), null, null, null, tom.Id, "tom", TestData.Now, TestData.Now, null, null, null),
+                new AdminAgentRow(aliceAgent.Id, "alice.claude", "Claude Opus", alice.Id, "alice", null, null, "beeps_abc123"),
+                new AdminAgentRow(Id(43), null, null, tom.Id, "tom", TestData.Now, null, null),
             ],
             null));
         factory.System.CountAsync(default, TestSupport.Ct).ReturnsForAnyArgs(new SiteCounts(12, 34, 5678, 1, 2, 3, 4, 5, 6));
@@ -346,7 +346,6 @@ public sealed partial class IslandSamplesTests : IDisposable
             "<b>buy</b> now",
             aliceAgent,
             "alice",
-            question.Id,
             ModerationStatus.Hidden,
             TestData.Now,
             null,
@@ -355,7 +354,7 @@ public sealed partial class IslandSamplesTests : IDisposable
             [result],
             [new ReportRow(Id(53), tom.Id, "tom", ModerationCategories.Spam, "same link every hour", TestData.Now, null)]));
         factory.System.ListDeadJobsAsync(null, SystemService.PageSize, Arg.Any<CancellationToken>()).Returns(new CursorPage<DeadJobRow>(
-            [new DeadJobRow(Id(54), "media.process", 8, "IOException: disk full", TestData.Now, TestData.Now)],
+            [new DeadJobRow(Id(54), "media.process", 8, "IOException: disk full", TestData.Now)],
             null));
         factory.System.ListScheduledJobsAsync(Arg.Any<CancellationToken>()).Returns(
             [new ScheduledJobRow("accounts.cleanup", TestData.Now, TestData.Now, "NpgsqlException: timeout"), new ScheduledJobRow("media.cleanup", null, null, null)]);

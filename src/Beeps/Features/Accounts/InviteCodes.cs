@@ -20,7 +20,7 @@ public static class InviteCodes
     }
 
     /// <summary>What gets hashed: case, spaces and dashes do not matter when typing a code.</summary>
-    public static string Normalize(string code)
+    private static string Normalize(string code)
     {
         ArgumentNullException.ThrowIfNull(code);
         return string.Concat(code.Where(char.IsAsciiLetterOrDigit)).ToUpperInvariant();

@@ -16,14 +16,14 @@ interface RowsState<T> {
   more: boolean;
 }
 
-export interface Rows<T> {
+interface Rows<T> {
   rows: T[];
   next?: string;
   /** Loads the next page into the list, for the Pager. */
   loadMore: () => Promise<boolean>;
 }
 
-export interface RowsOptions<P, T> {
+interface RowsOptions<P, T> {
   /** The island, whose props the next page answers with. */
   island: string;
   /** Each row's key. */

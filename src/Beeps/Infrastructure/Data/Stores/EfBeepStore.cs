@@ -105,17 +105,22 @@ public sealed class EfBeepStore(BeepsDbContext db, ContentReads reads, PendingCa
         db.Set<BeepMedia>().AddRange(mediaIds.Select((id, position) => new BeepMedia { BeepId = beepId, MediaId = id, Position = position }));
     }
 
-    public async Task<bool> DeleteAsync(Guid beepId, DateTimeOffset now, CancellationToken cancellationToken)
+    public async Task<ModerationStatus?> DeleteAsync(Guid beepId, DateTimeOffset now, CancellationToken cancellationToken)
     {
-        var deleted = await db.Set<Beep>()
-            .Where(b => b.Id == beepId && b.DeletedAt == null)
-            .ExecuteUpdateAsync(s => s.SetProperty(b => b.DeletedAt, now), cancellationToken) == 1;
-        if (deleted)
+        // Read under the lock, so a review deciding at the same moment lands before or after, never in between.
+        var status = await db.Database
+            .SqlQuery<string>($"""SELECT moderation_status AS "Value" FROM beeps WHERE id = {beepId} AND deleted_at IS NULL FOR UPDATE""")
+            .FirstOrDefaultAsync(cancellationToken);
+        if (status is null)
         {
-            cacheChanges.Add(CacheChange.BeepRemoved(beepId));
+            return null;
         }
 
-        return deleted;
+        await db.Set<Beep>()
+            .Where(b => b.Id == beepId)
+            .ExecuteUpdateAsync(s => s.SetProperty(b => b.DeletedAt, now), cancellationToken);
+        cacheChanges.Add(CacheChange.BeepRemoved(beepId));
+        return EnumText.Parse<ModerationStatus>(status);
     }
 
     public async Task<bool> AddLikeAsync(Guid actorId, Guid beepId, DateTimeOffset now, CancellationToken cancellationToken) =>

@@ -16,7 +16,9 @@ interface State {
   failures: number;
 }
 
-const states = new Map<() => Promise<void>, State>();
+// Weak: each feed or inbox shown schedules its own functions, which go with it once it is left (a timer still due
+// holds its function until it runs).
+const states = new WeakMap<() => Promise<void>, State>();
 
 /**
  * Runs `run` soon, once for any number of calls; calls made while it runs make it run once more. With `minInterval`,

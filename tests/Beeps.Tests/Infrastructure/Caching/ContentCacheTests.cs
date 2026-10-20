@@ -137,5 +137,5 @@ public sealed class ContentCacheTests : IDisposable
             TestSupport.Ct);
 
     private static CachedActor Actor(Guid id) =>
-        new(id, ActorKind.Human, "h" + id.ToString("N")[..8], "actor " + id, null, null, null, null, TestData.Now, Deleted: false, Banned: false);
+        new(id, ActorKind.Human, "h" + id.ToString("N")[..8], "actor " + id, null, null, null, null, TestData.Now, Deleted: false, Banned: false, BannerKey: null, Website: null);
 }

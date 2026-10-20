@@ -15,12 +15,12 @@
 
 /// The soft focus ring that replaces the browser outline. `$inset: true` for rows and
 /// cells that sit flush inside a container, where an outer ring would be clipped.
-@mixin focus-ring($inset: false, $ring: var(--cui-ring)) {
+@mixin focus-ring($inset: false) {
   outline: none;
   @if $inset {
-    box-shadow: inset $ring;
+    box-shadow: inset var(--cui-ring);
   } @else {
-    box-shadow: $ring;
+    box-shadow: var(--cui-ring);
   }
 }
 

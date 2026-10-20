@@ -71,7 +71,7 @@ public sealed class EfSystemStore(BeepsDbContext db, HybridCache cache) : ISyste
         var rows = await dead
             .OrderByDescending(m => m.Id)
             .Take(limit + 1)
-            .Select(m => new DeadJobRow(m.Id, m.Type, m.Attempts, m.LastError, m.CreatedAt, m.FailedAt))
+            .Select(m => new DeadJobRow(m.Id, m.Type, m.Attempts, m.LastError, m.FailedAt))
             .ToListAsync(cancellationToken);
         return CursorPage.FromOverfetch(rows, limit, r => r.Id);
     }

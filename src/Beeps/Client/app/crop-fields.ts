@@ -8,13 +8,13 @@ export interface CropBox {
   height: number;
 }
 
-export interface CropFields {
+interface CropFields {
   x: number;
   y: number;
   size: number;
 }
 
-export interface BannerCropFields {
+interface BannerCropFields {
   x: number;
   y: number;
   width: number;

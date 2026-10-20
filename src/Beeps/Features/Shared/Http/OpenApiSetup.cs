@@ -1,4 +1,3 @@
-using Microsoft.AspNetCore.OpenApi;
 using Microsoft.OpenApi;
 
 namespace Beeps.Features.Shared.Http;

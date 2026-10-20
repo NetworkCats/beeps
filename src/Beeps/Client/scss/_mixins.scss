@@ -3,7 +3,7 @@
 
 /// A round button around one icon: the top bar's ⋯, the way back, a beep's ⋯ menu, the composer's picture button,
 /// the image editor's buttons. Colours and hover are each one's own.
-@mixin round-icon-button($size, $display: inline-flex, $icon-size: 1.375rem) {
+@mixin round-icon-button($size, $display: inline-flex) {
   display: $display;
   flex-shrink: 0;
   align-items: center;
@@ -15,7 +15,7 @@
   transition: background-color var(--cui-transition), color var(--cui-transition);
 
   > .icon {
-    --cui-icon-size: #{$icon-size};
+    --cui-icon-size: 1.375rem;
   }
 
   &:focus-visible {

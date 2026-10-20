@@ -70,15 +70,12 @@ public sealed class EfAdminStore(BeepsDbContext db) : IAdminStore
             .Select(x => new AdminAgentRow(
                 x.a.Id,
                 x.a.Handle,
-                x.a.DisplayName,
                 x.a.ModelName,
                 x.o.Id,
                 x.o.Handle!,
-                x.a.CreatedAt,
                 x.a.DisabledAt,
                 x.a.DeletedAt,
-                x.k == null ? null : x.k.KeyPrefix,
-                x.k == null ? null : x.k.LastUsedAt))
+                x.k == null ? null : x.k.KeyPrefix))
             .ToListAsync(cancellationToken);
         return CursorPage.FromOverfetch(rows, limit, r => r.Id);
     }
@@ -162,6 +159,8 @@ public sealed class EfAdminStore(BeepsDbContext db) : IAdminStore
         u.Actor.DeletedAt,
         u.Actor.AvatarMedia == null || u.Actor.AvatarMedia.Status != MediaStatus.Ready ? null : u.Actor.AvatarMedia.StorageKey);
 
+    // Verified too, as the admin pages ask (AuthPolicies.Admin): an unverified admin cannot reach them, so does not count
+    // as the one left when the others step down.
     private IQueryable<User> ActiveAdmins() =>
-        db.Set<User>().Where(u => u.IsAdmin && u.BannedAt == null && u.Actor.DeletedAt == null);
+        db.Set<User>().Where(u => u.IsAdmin && u.EmailVerifiedAt != null && u.BannedAt == null && u.Actor.DeletedAt == null);
 }

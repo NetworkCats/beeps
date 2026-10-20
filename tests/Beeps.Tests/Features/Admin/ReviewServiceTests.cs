@@ -1,5 +1,4 @@
 using System.Text.Json.Serialization.Metadata;
-using Beeps.Features.Accounts;
 using Beeps.Features.Admin;
 using Beeps.Features.Beeps;
 using Beeps.Features.Live;
@@ -44,7 +43,7 @@ public sealed class ReviewServiceTests
         [
             (await service.ListQueueAsync(outsider, null, TestSupport.Ct)).Error,
             (await service.GetBeepAsync(outsider, BeepId, TestSupport.Ct)).Error,
-            (await service.KeepAsync(outsider, BeepId, TestSupport.Ct)).Error,
+            (await service.KeepAsync(outsider, BeepId, [], TestSupport.Ct)).Error,
             (await service.DeleteAsync(outsider, BeepId, TestSupport.Ct)).Error,
             (await service.RemoveMediaAsync(outsider, BeepId, TestSupport.Ct)).Error,
         ];
@@ -74,9 +73,10 @@ public sealed class ReviewServiceTests
     {
         Subject(ModerationStatus.Hidden, replyTo: ParentId);
         store.SetStatusAsync(BeepId, Arg.Any<IReadOnlyCollection<ModerationStatus>>(), ModerationStatus.HumanAllowed, Arg.Any<CancellationToken>()).Returns(true);
-        store.ResolveReportsAsync(BeepId, AdminId, TestData.Now, Arg.Any<CancellationToken>()).Returns(2);
+        Guid[] seen = [Guid.NewGuid(), Guid.NewGuid()];
+        store.ResolveReportsAsync(BeepId, seen, AdminId, TestData.Now, Arg.Any<CancellationToken>()).Returns(2);
 
-        var result = await Create().KeepAsync(AdminId, BeepId, TestSupport.Ct);
+        var result = await Create().KeepAsync(AdminId, BeepId, seen, TestSupport.Ct);
 
         Assert.True(result.IsSuccess);
         await store.Received(1).DeleteJobAsync(BeepId, Arg.Any<CancellationToken>());
@@ -91,12 +91,27 @@ public sealed class ReviewServiceTests
     }
 
     [Fact]
+    public async Task KeepingABeepTheModelJustHidRestoresIt()
+    {
+        Subject(ModerationStatus.Pending, replyTo: ParentId);
+        store.LockStatusAsync(BeepId, Arg.Any<CancellationToken>()).Returns(ModerationStatus.Hidden);
+        store.SetStatusAsync(BeepId, Arg.Any<IReadOnlyCollection<ModerationStatus>>(), ModerationStatus.HumanAllowed, Arg.Any<CancellationToken>()).Returns(true);
+
+        await Create().KeepAsync(AdminId, BeepId, [], TestSupport.Ct);
+
+        Assert.Equal("Hidden -> HumanAllowed, reports resolved: 0", Assert.Single(audit).Detail);
+        await counters.Received(1).AddAsync(ParentId, Arg.Any<BeepCounts>(), new BeepCounts(0, 1), Arg.Any<CancellationToken>());
+        Assert.Equal(["{}"], TestData.LiveEvents(liveEvents, LiveEventTypes.Resync));
+    }
+
+    [Fact]
     public async Task KeepingAReportedBeepClosesItsReports()
     {
         Subject(ModerationStatus.HumanAllowed, replyTo: ParentId);
-        store.ResolveReportsAsync(BeepId, AdminId, TestData.Now, Arg.Any<CancellationToken>()).Returns(1);
+        Guid[] seen = [Guid.NewGuid()];
+        store.ResolveReportsAsync(BeepId, seen, AdminId, TestData.Now, Arg.Any<CancellationToken>()).Returns(1);
 
-        var result = await Create().KeepAsync(AdminId, BeepId, TestSupport.Ct);
+        var result = await Create().KeepAsync(AdminId, BeepId, seen, TestSupport.Ct);
 
         Assert.True(result.IsSuccess);
         Assert.Equal("HumanAllowed, reports resolved: 1", Assert.Single(audit).Detail);
@@ -107,11 +122,24 @@ public sealed class ReviewServiceTests
     }
 
     [Fact]
+    public async Task KeepingClosesOnlyTheReportsTheAdminSaw()
+    {
+        Subject(ModerationStatus.HumanAllowed);
+        Guid[] seen = [Guid.NewGuid()];
+
+        await Create().KeepAsync(AdminId, BeepId, seen, TestSupport.Ct);
+
+        // One filed since the page was drawn stays open, and the beep in the queue.
+        await store.Received(1).ResolveReportsAsync(BeepId, seen, AdminId, TestData.Now, Arg.Any<CancellationToken>());
+        await store.DidNotReceive().ResolveReportsAsync(BeepId, AdminId, Arg.Any<DateTimeOffset>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task KeepingWhatIsAlreadyKeptChangesNothing()
     {
         Subject(ModerationStatus.HumanAllowed);
 
-        var result = await Create().KeepAsync(AdminId, BeepId, TestSupport.Ct);
+        var result = await Create().KeepAsync(AdminId, BeepId, [], TestSupport.Ct);
 
         Assert.True(result.IsSuccess);
         Assert.Empty(audit);
@@ -124,8 +152,8 @@ public sealed class ReviewServiceTests
         Subject(ModerationStatus.Hidden, deleted: true);
         var service = Create();
 
-        var deleted = await service.KeepAsync(AdminId, BeepId, TestSupport.Ct);
-        var missing = await service.KeepAsync(AdminId, Guid.NewGuid(), TestSupport.Ct);
+        var deleted = await service.KeepAsync(AdminId, BeepId, [], TestSupport.Ct);
+        var missing = await service.KeepAsync(AdminId, Guid.NewGuid(), [], TestSupport.Ct);
 
         Assert.Equal(ErrorKind.NotFound, deleted.Error?.Kind);
         Assert.Equal(ErrorKind.NotFound, missing.Error?.Kind);
@@ -135,7 +163,7 @@ public sealed class ReviewServiceTests
     public async Task DeletingABeepRemovesItForEveryoneAndRecordsIt()
     {
         Subject(ModerationStatus.Failed, replyTo: ParentId);
-        beeps.DeleteAsync(BeepId, TestData.Now, Arg.Any<CancellationToken>()).Returns(true);
+        beeps.DeleteAsync(BeepId, TestData.Now, Arg.Any<CancellationToken>()).Returns(ModerationStatus.Failed);
 
         var result = await Create().DeleteAsync(AdminId, BeepId, TestSupport.Ct);
 
@@ -151,8 +179,9 @@ public sealed class ReviewServiceTests
     [Fact]
     public async Task DeletingAHiddenReplyLeavesItsParentsCountAlone()
     {
-        Subject(ModerationStatus.Hidden, replyTo: ParentId);
-        beeps.DeleteAsync(BeepId, TestData.Now, Arg.Any<CancellationToken>()).Returns(true);
+        // Read as pending, hidden by the model before the delete took its lock.
+        Subject(ModerationStatus.Pending, replyTo: ParentId);
+        beeps.DeleteAsync(BeepId, TestData.Now, Arg.Any<CancellationToken>()).Returns(ModerationStatus.Hidden);
 
         await Create().DeleteAsync(AdminId, BeepId, TestSupport.Ct);
 

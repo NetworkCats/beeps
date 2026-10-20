@@ -228,6 +228,7 @@ public sealed partial class AccountService
         }
 
         store.AddLogin(NewLogin(user.Id, identity, time.GetUtcNow()));
+        NotifySignInMethodAdded(user, provider);
         try
         {
             await unitOfWork.SaveChangesAsync(cancellationToken);
@@ -244,6 +245,13 @@ public sealed partial class AccountService
         LogLinked(logger, user.Id, identity.Provider);
         return Result.Success;
     }
+
+    /// <summary>Stages the notice that a way to sign in was added (<see cref="SignInMethodEmail"/>); the caller saves.</summary>
+    private void NotifySignInMethodAdded(User user, string? provider) =>
+        outbox.Enqueue(
+            SignInMethodEmail.MessageType,
+            new SignInMethodEmail(user.Email, user.Locale, provider),
+            AccountsJsonContext.Default.SignInMethodEmail);
 
     /// <summary>
     /// The provider's username, or the address's local part, in the characters a username may have; with a number

@@ -313,9 +313,9 @@ public sealed class CacheInvalidatorTests : IAsyncDisposable
     private int RemovalsOf(string key) =>
         hybrid.ReceivedCalls().Count(c => c.GetMethodInfo().Name == nameof(HybridCache.RemoveAsync) && c.GetArguments()[0] is IEnumerable<string> keys && keys.Contains(key));
 
-    private static CachedActor Human(Guid id) => new(id, ActorKind.Human, "tom", "Tom", null, null, null, null, TestData.Now, Deleted: false, Banned: false);
+    private static CachedActor Human(Guid id) => new(id, ActorKind.Human, "tom", "Tom", null, null, null, null, TestData.Now, Deleted: false, Banned: false, BannerKey: null, Website: null);
 
-    private static CachedActor AgentOf(Guid owner) => new(Agent, ActorKind.Agent, "tom.claude", "tom's Claude", owner, null, null, "Claude", TestData.Now, Deleted: false, Banned: false);
+    private static CachedActor AgentOf(Guid owner) => new(Agent, ActorKind.Agent, "tom.claude", "tom's Claude", owner, null, null, "Claude", TestData.Now, Deleted: false, Banned: false, BannerKey: null, Website: null);
 
     private static CachedBeep Beep(Guid id, Guid author, Guid? replyTo, string text) =>
         new(id, text, author, replyTo, replyTo ?? id, TestData.Now, 0, 0, [], Array.Empty<MediaRow>());

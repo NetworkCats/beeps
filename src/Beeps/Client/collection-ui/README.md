@@ -15,7 +15,7 @@
 | 文件 | 用途 |
 |---|---|
 | `abstracts/*` | 配置、函数、mixin（不输出 CSS） |
-| `foundation/*` | 调色板、语义 token、reset、元素样式（`_layout.scss` 的页面框架 `.page` 已删：beeps 的外壳在 `Client/scss/_site.scss` 里排） |
+| `foundation/*` | 调色板、语义 token、reset、元素样式（`_layout.scss` 已整个删除：beeps 的外壳在 `Client/scss/_site.scss` 里排） |
 | `components/_button.scss` | 按钮 |
 | `components/_navbar.scss` | 只保留跳到正文的 `.skip-link`（beeps 没有顶部导航栏） |
 | `components/_form.scss` | 表单字段、输入框、单选、开关（下拉框、复选框、文件选择已删） |
@@ -47,16 +47,18 @@
   indicator、popover、drawer、布局原语等）、变体（如 `btn-success`、`badge-pill`、`avatar-xs`）、工具类，以及只配合上游 JS 的
   状态类和属性钩子（`is-dismissing`、`.active`、`data-cui-theming`、`data-cui-indicator`、`th[data-sort]`）。头注释只记录剩下的部分。
 - token 也只输出被读到的：调色板只输出品牌色和各状态色相的明暗两阶（`brand-color()` 引用的），其余色阶在 Sass 里用
-  `palette-color()` 取；`$statuses` 的 `tokens` 列出每个状态色要输出哪些派生 token；去掉了 `[data-brand]` 预设、`--cui-prefix`、
-  布局 token 和用不到的间距、字号、阴影、缓动、层级。
+  `palette-color()` 取；`$hues` 只留下用到的色相（品牌 indigo，状态色 green / amber / red / cyan，点赞的 pink），`$brand`
+  的默认值也改成了 indigo；`$statuses` 的 `tokens` 列出每个状态色要输出哪些派生 token；去掉了 `[data-brand]` 预设、
+  `--cui-prefix`、布局 token 和用不到的间距、字号、阴影、缓动、层级。
 - 图标字体用 Material Symbols Rounded（`$icon-font`），但自托管并裁剪到只含用到的图标：名单在
   `Client/icons.json`，由 `scripts/build-icons.ts` 下载到 `wwwroot/fonts/`（见 PLAN 6.9）。组件
   用 `icon-glyph()` 画的图标（Stepper 的勾、关闭按钮）也要列进名单（`npm test` 会检查）；复制按钮一律带文字，
   上游只有图标的复制按钮（`content_copy` 和复制后的勾）已删。
-- 中性灰改成无彩度的纯灰（`_settings.scss` 里覆盖 `$neutral`），上游用 `--cui-tint` 染色的 token 在
-  `_theme.scss` 里全部换成纯灰，页面背景是纯白 / 近黑。圆角比上游大（`$radii`），按钮是胶囊形、没有上游的
-  键帽立体效果。
-- 几处改成可以从页面覆盖：`.dialog-sm` / `-lg` 和 `.avatar-lg` / `-xl` 设置公开的 `--cui-dialog-width` /
+- 中性灰改成无彩度的纯灰（`_settings.scss` 里覆盖 `$neutral`，只留还被读到的几阶）。上游用 `--cui-tint` 染色的 token
+  （页面、表面、线、文字、阴影色等）由 `_theme.scss` 全部换成纯灰，所以 `_tokens.scss` 里删掉了它们的上游默认值和
+  `--cui-tint` 本身；字体栈、控件尺寸等被 `_theme.scss` 覆盖的上游默认值也一并删掉。页面背景是纯白 / 近黑。圆角比上游大
+  （`$radii`），按钮是胶囊形、没有上游的键帽立体效果，实心按钮也没有边框。
+- 几处改成可以从页面覆盖：`.dialog-sm` 和 `.avatar-lg` / `-xl` 设置公开的 `--cui-dialog-width` /
   `--cui-avatar-size`（上游直接设私有的 `--_width` / `--_size`，页面的覆盖不起作用）；`.sidenav-cta` 的高度读
   `--cui-sidenav-cta-height`；菜单项的悬停和按下读 `--cui-dropdown-item-hover` / `-active`（菜单浮在自己的底色上）。
   `.dialog-plain .dialog-footer` 改成后代选择器（确认框的按钮在 `<form method="dialog">` 里）。去掉了对话框遮罩的模糊和

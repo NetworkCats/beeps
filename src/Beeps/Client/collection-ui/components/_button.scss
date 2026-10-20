@@ -68,15 +68,14 @@
     > .#{$prefix}icon { --cui-icon-size: 1.25em; margin-inline: -0.125em; }
   }
 
-  /* Solid variants: same keycap relief, coloured. The border is a darker step of the fill
-   * so the button reads as an object, not a flat rectangle. */
+  /* Solid variants: same keycap relief, coloured, with no border of their own. */
   @each $tone in ("primary", "danger") {
     .#{$prefix}btn-#{$tone} {
       --_bg: var(--cui-#{$tone}-solid);
       --_bg-hover: var(--cui-#{$tone}-solid-hover);
       --_bg-active: var(--cui-#{$tone}-solid-active);
       --_fg: var(--cui-#{$tone}-contrast);
-      --_border: var(--cui-#{$tone}-edge);
+      --_border: transparent;
       --_highlight: oklch(100% 0 0 / 0.18);
       --_edge: oklch(0% 0 0 / 0.3);
       --_shadow-active: inset 0 1px 2px oklch(0% 0 0 / 0.25);

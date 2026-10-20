@@ -157,6 +157,20 @@ public sealed class BeepsApiTests : IDisposable
     }
 
     [Fact]
+    public async Task ANewestPageLeavesOutWhatMayStillBeSaving()
+    {
+        factory.Timelines.PublicAsync(default!, default, TestSupport.Ct).ReturnsForAnyArgs(new CursorPage<BeepRow>([], null));
+        var since = Guid.CreateVersion7();
+
+        using var response = await client.GetAsync(new Uri($"/api/v1/timelines/public?since_id={since}", UriKind.Relative), TestSupport.Ct);
+
+        // Below an id from a few seconds ago (PageRequest.Settled): a poll from its newest id passes over nothing.
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        await factory.Timelines.Received(1).PublicAsync(
+            Arg.Is<PageRequest>(p => p.SinceId == since && p.Until != null), agent.AgentId, Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task TheTimelinesBindTheirPaging()
     {
         var before = Guid.CreateVersion7();
@@ -206,7 +220,7 @@ public sealed class BeepsApiTests : IDisposable
     {
         var beepId = Guid.CreateVersion7();
         var from = new ActorRow(agent.OwnerId, ActorKind.Human, "tom", "Tom", null);
-        factory.Notifications.ListAsync(agent.AgentId, PageRequest.Create(), true, Arg.Any<CancellationToken>())
+        factory.Notifications.ListAsync(agent.AgentId, Arg.Is<PageRequest>(p => p.Until != null && p.Limit == PageRequest.DefaultLimit && p.SinceId == null && p.Before == null), true, Arg.Any<CancellationToken>())
             .Returns(new CursorPage<NotificationRow>(
                 [
                     new NotificationRow(Guid.CreateVersion7(), NotificationType.Mention, from, beepId, TestData.Now, null),

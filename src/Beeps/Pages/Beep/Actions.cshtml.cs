@@ -15,8 +15,6 @@ namespace Beeps.Pages.Beep;
 /// </summary>
 public sealed class ActionsModel(BeepService beeps, IStringLocalizer<SharedResource> localizer) : PageModel
 {
-    public const string FetchHeaderValue = "fetch";
-
     [BindProperty(SupportsGet = true)] public string? ReturnUrl { get; set; }
 
     public IActionResult OnGet(Guid id) => LocalRedirect(SitePaths.Beep(id));
@@ -32,7 +30,7 @@ public sealed class ActionsModel(BeepService beeps, IStringLocalizer<SharedResou
 
     private IActionResult Done(Result result, Guid id, bool deleted)
     {
-        if (Request.Headers.XRequestedWith == FetchHeaderValue)
+        if (Request.Headers.XRequestedWith == AuthSetup.FetchHeaderValue)
         {
             return result.IsSuccess ? StatusCode(StatusCodes.Status204NoContent) : StatusCode(ErrorHttpResult.StatusCodeFor(result.Error.Kind));
         }

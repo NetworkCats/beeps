@@ -10,7 +10,7 @@ public sealed record LiveMessage(string Type, string Data, string? Id = null, Ti
 /// </summary>
 public static class LiveMessages
 {
-    /// <summary>A new beep for the watched page: <see cref="BeepMessage"/>. The page fetches it, rendered for the viewer.</summary>
+    /// <summary>A new beep for the watched page: <see cref="IdMessage"/>. The page fetches it, rendered for the viewer.</summary>
     public const string Beep = "beep";
 
     /// <summary>A beep on the page was deleted, or hidden by moderation: <see cref="IdMessage"/>.</summary>
@@ -73,8 +73,6 @@ public static class LiveMessages
     /// <summary>Keeps the connection open through proxies; carries the latest event id seen.</summary>
     public const string Ping = "ping";
 }
-
-public sealed record BeepMessage(Guid Id, Guid RootId, Guid? ReplyToId);
 
 public sealed record IdMessage(Guid Id);
 

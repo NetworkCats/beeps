@@ -1,5 +1,4 @@
 using System.Net;
-using Beeps.Features.Accounts;
 using Beeps.Features.Beeps;
 using Beeps.Features.Shared;
 using Beeps.Tests.Support;

@@ -4,7 +4,7 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { t } from '../i18n.ts';
 
-export interface PagerProps {
+interface PagerProps {
   href: string;
   label: string;
   /** Loads the next page into the list; false when it could not. */

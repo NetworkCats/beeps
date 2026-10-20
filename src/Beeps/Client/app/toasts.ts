@@ -2,7 +2,7 @@
 // while; an alert stays until it is closed.
 import { signal } from '@preact/signals';
 
-export interface Toast {
+interface Toast {
   id: number;
   message: string;
   alert: boolean;

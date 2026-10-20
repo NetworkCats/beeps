@@ -70,15 +70,12 @@ public sealed record AuditLogRow(
 public sealed record AdminAgentRow(
     Guid Id,
     string? Handle,
-    string? DisplayName,
     string? ModelName,
     Guid OwnerId,
     string OwnerHandle,
-    DateTimeOffset CreatedAt,
     DateTimeOffset? DisabledAt,
     DateTimeOffset? DeletedAt,
-    string? KeyPrefix,
-    DateTimeOffset? KeyLastUsedAt);
+    string? KeyPrefix);
 
 public sealed record InviteRow(
     Guid Id,

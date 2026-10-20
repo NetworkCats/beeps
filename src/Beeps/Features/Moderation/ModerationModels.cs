@@ -1,4 +1,3 @@
-using Beeps.Features.Accounts;
 using Beeps.Features.Beeps;
 using Beeps.Features.Media;
 using Beeps.Features.Shared;
@@ -101,7 +100,6 @@ public sealed record ReviewBeepRow(
     string Text,
     ActorRow Author,
     string? AuthorOwnerHandle,
-    Guid RootId,
     ModerationStatus Status,
     DateTimeOffset CreatedAt,
     DateTimeOffset? DeletedAt,
@@ -124,6 +122,12 @@ public interface IModerationStore
     void AddResult(ModerationResult result);
 
     /// <summary>
+    /// The beep's moderation status, its row locked until the transaction ends; null if it is deleted or missing.
+    /// Runs immediately.
+    /// </summary>
+    Task<ModerationStatus?> LockStatusAsync(Guid beepId, CancellationToken cancellationToken);
+
+    /// <summary>
     /// Moves the beep to <paramref name="to"/> only if it is in one of <paramref name="from"/> and not deleted, so
     /// whichever decision lands second (the model's or an admin's) sees the first. Runs immediately.
     /// </summary>
@@ -137,6 +141,9 @@ public interface IModerationStore
 
     /// <summary>Closes the beep's open reports. Runs immediately; returns how many.</summary>
     Task<int> ResolveReportsAsync(Guid beepId, Guid adminId, DateTimeOffset now, CancellationToken cancellationToken);
+
+    /// <summary>Closes those of the beep's open reports that are <paramref name="reportIds"/>. Runs immediately; returns how many.</summary>
+    Task<int> ResolveReportsAsync(Guid beepId, IReadOnlyCollection<Guid> reportIds, Guid adminId, DateTimeOffset now, CancellationToken cancellationToken);
 
     /// <summary>Oldest first: beeps not deleted that are hidden, failed review, or have open reports.</summary>
     Task<CursorPage<ReviewQueueRow>> ListQueueAsync(Guid? after, int limit, CancellationToken cancellationToken);

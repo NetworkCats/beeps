@@ -1,22 +1,20 @@
 /* Tabs: the underline strip under a page header (pub.dev, crates, jsr).
  *
  *   <nav class="tabs">
- *     <a class="tab" href="/pkg/readme" aria-current="page"><span class="icon">description</span> Readme</a>
- *     <a class="tab" href="/pkg/versions">Versions <span class="count">12</span></a>
+ *     <a class="tab" href="/pkg/readme" aria-current="page">Readme</a>
+ *     <a class="tab" href="/pkg/versions">Versions</a>
  *   </nav>
  *
- * Active: [aria-selected="true"] or [aria-current]. .tabs-justify spreads the tabs
- * over the strip. */
+ * Active: [aria-current], drawn by beeps in scss/_site.scss. .tabs-justify spreads the tabs over the strip. */
 @use "../foundation/layers";
 @use "../abstracts" as *;
 
 @layer cui.components {
   .#{$prefix}tabs {
-    --_accent: var(--cui-tabs-accent, var(--cui-primary));
     display: flex;
     align-items: stretch;
     gap: var(--cui-space-1);
-    /* The strip line is an inset shadow (not a border) so the active tab's 2px
+    /* The strip line is an inset shadow (not a border) so the active tab's
      * underline can overlap it while the strip still scrolls sideways. */
     box-shadow: inset 0 calc(-1 * var(--cui-border-width)) 0 var(--cui-border);
     overflow-x: auto;
@@ -34,8 +32,6 @@
     --_height: var(--cui-tabs-height, 2.75rem);
     --_px: var(--cui-tabs-px, var(--cui-space-3));
     --_font: var(--cui-tabs-font, var(--cui-text-sm));
-    --_active-bg: var(--cui-tabs-active-bg, var(--cui-primary-soft));
-    --_active-fg: var(--cui-tabs-active-fg, var(--cui-primary-text));
     position: relative;
     display: inline-flex;
     align-items: center;
@@ -52,28 +48,13 @@
     text-decoration: none;
     background: transparent;
     border: 0;
-    border-block-end: 2px solid transparent;
-    border-start-start-radius: var(--cui-radius);
-    border-start-end-radius: var(--cui-radius);
     cursor: pointer;
     user-select: none;
     -webkit-tap-highlight-color: transparent;
-    transition: color var(--cui-transition), background-color var(--cui-transition), border-color var(--cui-transition);
+    transition: color var(--cui-transition), background-color var(--cui-transition);
 
-    &:hover { --_fg: var(--cui-text); background: var(--cui-surface-hover); text-decoration: none; }
+    &:hover { --_fg: var(--cui-text); text-decoration: none; }
     &:focus-visible { @include focus-ring($inset: true); }
-    /* Active: the tab fills with a brand wash and sits on a 2px brand rule (crates.io). */
-    &[aria-selected="true"], &[aria-current]:not([aria-current="false"]) {
-      --_fg: var(--_active-fg);
-      font-weight: var(--cui-weight-semibold);
-      background: var(--_active-bg);
-      border-block-end-color: var(--_accent);
-    }
-    &:disabled, &[aria-disabled="true"] { opacity: 0.5; pointer-events: none; }
-
-    > .#{$prefix}icon { --cui-icon-size: 1.25rem; color: var(--cui-text-3); }
-    &[aria-selected="true"] > .#{$prefix}icon, &[aria-current]:not([aria-current="false"]) > .#{$prefix}icon { color: inherit; }
-    > .#{$prefix}count { margin-inline-start: var(--cui-space-0-5); }
   }
 
   /* Spread over the strip */

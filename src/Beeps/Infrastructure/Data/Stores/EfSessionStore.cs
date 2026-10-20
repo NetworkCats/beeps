@@ -1,11 +1,12 @@
 using Beeps.Features.Accounts;
+using Beeps.Features.Shared;
 using Beeps.Infrastructure.Caching;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Hybrid;
 
 namespace Beeps.Infrastructure.Data.Stores;
 
-public sealed class EfSessionStore(BeepsDbContext db, HybridCache cache, CacheInvalidator invalidator, TimeProvider time) : ISessionStore
+public sealed class EfSessionStore(BeepsDbContext db, HybridCache cache, CacheInvalidator invalidator, IOutbox outbox, TimeProvider time) : ISessionStore
 {
     public void Add(UserSession session) => db.Set<UserSession>().Add(session);
 
@@ -36,9 +37,21 @@ public sealed class EfSessionStore(BeepsDbContext db, HybridCache cache, CacheIn
 
     public async Task RevokeAsync(string tokenHash, DateTimeOffset now, CancellationToken cancellationToken)
     {
-        await db.Set<UserSession>()
-            .Where(s => s.TokenHash == tokenHash && s.RevokedAt == null)
-            .ExecuteUpdateAsync(s => s.SetProperty(x => x.RevokedAt, now), cancellationToken);
+        // Committed with the durable copy of its removal from the cache (StageForget), then removed at once.
+        await using (var transaction = await db.Database.BeginTransactionAsync(cancellationToken))
+        {
+            var revoked = await db.Set<UserSession>()
+                .Where(s => s.TokenHash == tokenHash && s.RevokedAt == null)
+                .ExecuteUpdateAsync(s => s.SetProperty(x => x.RevokedAt, now), cancellationToken);
+            if (revoked > 0)
+            {
+                StageForget([SharedCache.SessionKey(tokenHash)]);
+                await db.SaveChangesAsync(cancellationToken);
+            }
+
+            await transaction.CommitAsync(cancellationToken);
+        }
+
         await invalidator.ForgetSharedAsync([SharedCache.SessionKey(tokenHash)]);
     }
 
@@ -68,14 +81,25 @@ public sealed class EfSessionStore(BeepsDbContext db, HybridCache cache, CacheIn
             .ToListAsync(cancellationToken);
 
     public Task RevokeAllAsync(Guid userId, DateTimeOffset now, CancellationToken cancellationToken) =>
-        db.Set<UserSession>()
-            .Where(s => s.UserId == userId && s.RevokedAt == null)
-            .ExecuteUpdateAsync(s => s.SetProperty(x => x.RevokedAt, now), cancellationToken);
+        RevokeWhereAsync(userId, db.Set<UserSession>().Where(s => s.UserId == userId && s.RevokedAt == null), now, cancellationToken);
 
     public Task RevokeOthersAsync(Guid userId, Guid keepSessionId, DateTimeOffset now, CancellationToken cancellationToken) =>
-        db.Set<UserSession>()
-            .Where(s => s.UserId == userId && s.Id != keepSessionId && s.RevokedAt == null)
-            .ExecuteUpdateAsync(s => s.SetProperty(x => x.RevokedAt, now), cancellationToken);
+        RevokeWhereAsync(userId, db.Set<UserSession>().Where(s => s.UserId == userId && s.Id != keepSessionId && s.RevokedAt == null), now, cancellationToken);
+
+    /// <summary>
+    /// Revokes the sessions and stages the durable copy of their removal from the cache, with the account's state (a
+    /// ban is part of it), for the caller to save in the same transaction (<see cref="ForgetAllAsync"/> removes them at
+    /// once after the commit; this one, if the instance stops before that).
+    /// </summary>
+    private async Task RevokeWhereAsync(Guid userId, IQueryable<UserSession> sessions, DateTimeOffset now, CancellationToken cancellationToken)
+    {
+        var hashes = await sessions.Where(s => s.ExpiresAt > now).Select(s => s.TokenHash).ToListAsync(cancellationToken);
+        await sessions.ExecuteUpdateAsync(s => s.SetProperty(x => x.RevokedAt, now), cancellationToken);
+        StageForget([.. hashes.Select(SharedCache.SessionKey), SharedCache.AccountKey(userId)]);
+    }
+
+    private void StageForget(IReadOnlyList<string> keys) =>
+        outbox.Enqueue(SharedCacheForgetRequest.MessageType, new SharedCacheForgetRequest(keys), ContentCacheJsonContext.Default.SharedCacheForgetRequest);
 
     public Task ForgetAllAsync(Guid userId) => ForgetUsersAsync([userId]);
 

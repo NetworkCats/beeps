@@ -5,7 +5,6 @@ using Beeps.Features.Live;
 using Beeps.Features.Notifications;
 using Beeps.Features.Profiles;
 using Beeps.Features.Search;
-using Beeps.Features.Avatars;
 using Beeps.Features.Shared;
 using Beeps.Tests.Support;
 using Microsoft.Extensions.Logging.Abstractions;

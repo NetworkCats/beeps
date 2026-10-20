@@ -50,11 +50,4 @@ public sealed class Result<T>
     internal static Result<T> FromValue(T value) => new(value);
 
     public static implicit operator Result<T>(Error error) => new(error);
-
-    public TOut Match<TOut>(Func<T, TOut> success, Func<Error, TOut> failure)
-    {
-        ArgumentNullException.ThrowIfNull(success);
-        ArgumentNullException.ThrowIfNull(failure);
-        return IsSuccess ? success(value!) : failure(Error);
-    }
 }

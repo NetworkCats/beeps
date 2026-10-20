@@ -31,10 +31,10 @@ public static class ExternalAuth
     /// <summary>The provider's username, as a claim of the cookie's identity.</summary>
     private const string UsernameClaim = "beeps:username";
 
-    public static string CallbackPath(string provider) => $"/oauth/{provider}/callback";
+    private static string CallbackPath(string provider) => $"/oauth/{provider}/callback";
 
     /// <summary>Where the browser goes when the provider's way back fails or is cancelled (Pages/Account/External).</summary>
-    public static string FailedPath(string provider, bool link) => $"/oauth/{provider}?handler=Failed&link={(link ? "true" : "false")}";
+    private static string FailedPath(string provider, bool link) => $"/oauth/{provider}?handler=Failed&link={(link ? "true" : "false")}";
 
     public static AuthenticationBuilder AddBeepsExternalLogins(this AuthenticationBuilder builder, IConfiguration configuration)
     {

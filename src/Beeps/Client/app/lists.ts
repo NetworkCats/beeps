@@ -2,7 +2,7 @@
 // can test it.
 import { compareIds } from './live-url.ts';
 
-export interface ListState {
+interface ListState {
   ids: string[];
   next?: string;
 }

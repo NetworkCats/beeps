@@ -654,6 +654,18 @@
   <data name="Email.SignIn.Ignore" xml:space="preserve">
     <value>If it wasn't you, someone knows your password: reset it now.</value>
   </data>
+  <data name="Email.MethodAdded.Subject" xml:space="preserve">
+    <value>A new way to sign in to your beeps account</value>
+  </data>
+  <data name="Email.MethodAdded.Intro" xml:space="preserve">
+    <value>A new way to sign in was just added to your beeps account: {0}.</value>
+  </data>
+  <data name="Email.MethodAdded.Passkey" xml:space="preserve">
+    <value>a passkey</value>
+  </data>
+  <data name="Email.MethodAdded.Ignore" xml:space="preserve">
+    <value>If it wasn't you, someone else is signed in to your account: reset your password, then remove it in Settings → Your account.</value>
+  </data>
   <data name="Email.Code.Expiry" xml:space="preserve">
     <value>The code expires in {0} minutes.</value>
   </data>

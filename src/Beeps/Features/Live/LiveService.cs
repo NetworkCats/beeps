@@ -364,7 +364,6 @@ public sealed partial class LiveService(
         };
     }
 
-    /// <summary>An agent whose key no longer works is told the stream is closed, as when it opened too many: it must not reconnect with it.</summary>
     /// <summary>What ends the stream when its session or key no longer works; null while it does.</summary>
     private async Task<LiveMessage?> EndedAsync(Connection connection, CancellationToken cancellationToken)
     {
@@ -378,6 +377,7 @@ public sealed partial class LiveService(
             : null;
     }
 
+    /// <summary>An agent whose key no longer works is told the stream is closed, as when it opened too many: it must not reconnect with it.</summary>
     private async Task<IReadOnlyList<LiveMessage>> AgentKeyChangedAsync(Connection connection, LiveEvent item, CancellationToken cancellationToken) =>
         connection.KeyId is { } keyId && !await agents.IsKeyActiveAsync(keyId, cancellationToken)
             ? [Message(LiveMessages.Close, new EmptyMessage(), LiveJsonContext.Default.EmptyMessage, item.Id)]
@@ -411,7 +411,7 @@ public sealed partial class LiveService(
             connection.Watched.Add(beep.Id);
         }
 
-        return Message(LiveMessages.Beep, new BeepMessage(beep.Id, beep.RootId, beep.ReplyToId), LiveJsonContext.Default.BeepMessage, item.Id);
+        return Message(LiveMessages.Beep, new IdMessage(beep.Id), LiveJsonContext.Default.IdMessage, item.Id);
     }
 
     private static LiveMessage? Counts(Connection connection, LiveEvent item)

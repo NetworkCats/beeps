@@ -10,8 +10,8 @@
 // takes the form's place in the tab's history, as the page already shown does when it is visited again: going back
 // never lands on a form already sent, or on the same page.
 //
-// A page signed in as someone else, signed out, or in another language is loaded in full instead: it needs other
-// scripts, or its layout reads differently.
+// A page signed in as someone else, signed out, or in another language is loaded in full instead: it needs another
+// shell, config and live connection, or its layout reads differently.
 //
 // Signed in, a link the mouse rests on is fetched at once, as JSON (the page of a beep too, which opens when clicked
 // anywhere on it), so following it shows the page without waiting.
@@ -64,6 +64,8 @@ let current: Entry = { key: '', index: 0 };
 // shows the page gone to by the time this one is saved.
 let shownUrl = '';
 let visiting: AbortController | undefined;
+// Pages asked for so far: the first page tried again only while nothing else was asked for meanwhile.
+let requests = 0;
 
 /** From the first page shown in place on, going back is scrolled here, to where the snapshot was taken. */
 function manual(): void {
@@ -175,7 +177,6 @@ function stylesOf(fresh: Document): string[] {
 }
 
 function shown(detail: PageShown): void {
-  readConfig();
   // Called once the page is drawn, so after its address is in the history.
   const url = new URL(pageUrl());
   pagePath.value = url.pathname + url.search;
@@ -282,17 +283,21 @@ interface ShowOptions {
 /** Puts what came back in place of this page, given whether it was fetched ahead. */
 type Swap = (ahead: boolean) => Promise<void>;
 
+/** A page of this site for someone else (signed in or out meanwhile, another language), to be loaded in full. */
+const ELSEWHERE = 'elsewhere';
+
 /**
  * What came back for a link or a form, made ready to be shown: the stylesheets it needs loaded, and the components of
- * its islands. Null when it is to be loaded in full instead: not a page of this site, or one for someone else.
+ * its islands. `ELSEWHERE` when it is a page of this site for someone else; null when it is no page of this site at all
+ * (a proxy's error page, say).
  */
-async function prepare(response: Response): Promise<Swap | null> {
+async function prepare(response: Response): Promise<Swap | typeof ELSEWHERE | null> {
   const auth = document.body.dataset.auth ?? '';
   if (isJson(response)) {
     const answer = (await response.json()) as IslandsPage;
     const view = answer.page;
     const main = document.getElementById('main');
-    if (!main || (view.auth ?? '') !== auth || view.lang !== document.documentElement.lang) return null;
+    if (!main || (view.auth ?? '') !== auth || view.lang !== document.documentElement.lang) return ELSEWHERE;
     // One that cannot be loaded has the page loaded in full once it is shown (mount).
     const components = Object.keys(answer.islands).map((name) => loadComponent(name).catch(() => undefined));
     await Promise.all([addMissingStyles(stylesNamed(view.shell.styles)), ...components]);
@@ -300,7 +305,9 @@ async function prepare(response: Response): Promise<Swap | null> {
   }
   if (!isHtml(response)) return null;
   const fresh = new DOMParser().parseFromString(await response.text(), 'text/html');
-  if ((fresh.body.dataset.auth ?? '') !== auth) return null;
+  // Every page of the site, error pages too, has its main element.
+  if (!fresh.getElementById('main')) return null;
+  if ((fresh.body.dataset.auth ?? '') !== auth) return ELSEWHERE;
   await addMissingStyles(stylesOf(fresh));
   return (ahead) => swapIn(fresh, ahead);
 }
@@ -310,7 +317,10 @@ async function show(response: Response, options: ShowOptions, signal: AbortSigna
   const swap = await prepare(response);
   if (signal.aborted) return;
   const address = pageOf(response.url);
-  if (!swap) {
+  if (!swap || swap === ELSEWHERE) {
+    // No page of the site (a proxy's error page, say) where the caller tries again: loaded in full, an app shell would
+    // only fetch it again, and fail again, for ever. A page of the site for someone else is loaded in full, as before.
+    if (!swap && options.retry) throw new Error(`Page not shown: ${response.status}`);
     window.location.assign(address);
     return;
   }
@@ -343,6 +353,7 @@ async function show(response: Response, options: ShowOptions, signal: AbortSigna
 }
 
 async function request(url: string, init: RequestInit, options: ShowOptions): Promise<void> {
+  requests++;
   visiting?.abort();
   const controller = new AbortController();
   visiting = controller;
@@ -371,7 +382,15 @@ async function request(url: string, init: RequestInit, options: ShowOptions): Pr
  * skeleton; then the layout's islands are drawn too, now the app's config has come with it.
  */
 export function showFirstPage(): Promise<void> {
-  return request(pageUrl(), {}, { replace: true, first: true, hash: window.location.hash }).then(() => mount(document.body));
+  const shown = request(pageUrl(), {}, { replace: true, first: true, retry: true, hash: window.location.hash });
+  const asked = requests;
+  return shown.then(
+    () => mount(document.body),
+    // Not fetched (offline, the site failing): tried again in place, not by loading the shell again in a loop; unless
+    // another page was asked for meanwhile (a link, a reload), which shows itself.
+    () => new Promise<void>((resolve) => window.setTimeout(resolve, 5000))
+      .then(() => (requests === asked && !visiting ? showFirstPage() : mount(document.body))),
+  );
 }
 
 /** Goes to another page of the site; `replace`, in place of this one (it showed a form, and this is its answer). */
@@ -432,7 +451,7 @@ function fetchAhead(url: string): void {
   if (entry && Date.now() - entry.at <= AHEAD_TTL) return;
   // A page that did not come back as one (an error, a redirect off the site) is fetched again when followed.
   const response = fetchPage(key)
-    .then((r) => (r.ok && (isJson(r) || isHtml(r)) ? r : null), () => null);
+    .then((r) => (r.ok && isJson(r) ? r : null), () => null);
   fetchedAhead.set(key, { at: Date.now(), response });
   while (fetchedAhead.size > MAX_AHEAD) fetchedAhead.delete(fetchedAhead.keys().next().value as string);
 }

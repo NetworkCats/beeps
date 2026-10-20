@@ -12,7 +12,7 @@ import { pageUrl, submitPage, visit } from './router.ts';
 import { showToast } from './toasts.ts';
 import { t } from './i18n.ts';
 
-export interface SendOptions {
+interface SendOptions {
   /** The island whose page answers when the form is refused (a composer posts to the compose page): its errors are this form's. */
   answeredBy?: string;
   /** The form's errors, for drawing them next to it; empty once it went through. */

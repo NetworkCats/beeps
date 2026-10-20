@@ -21,6 +21,7 @@ public sealed record AccountCodeEmail(string To, string Locale, EmailCodePurpose
 
 [JsonSourceGenerationOptions(PropertyNamingPolicy = JsonKnownNamingPolicy.SnakeCaseLower, UseStringEnumConverter = true)]
 [JsonSerializable(typeof(AccountCodeEmail))]
+[JsonSerializable(typeof(SignInMethodEmail))]
 internal sealed partial class AccountsJsonContext : JsonSerializerContext;
 
 /// <summary>Sends the code email in the recipient's language.</summary>

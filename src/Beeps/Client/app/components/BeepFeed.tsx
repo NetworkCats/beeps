@@ -6,12 +6,12 @@
 // replies, which come in below.
 import { signal, type Signal } from '@preact/signals';
 import { useEffect, useRef, useState } from 'preact/hooks';
-import { beepSignal, fetchNew, putBeeps } from '../beeps.ts';
+import { beepSignal, fetchNew, putBeeps, removalMark } from '../beeps.ts';
 import { viewer } from '../config.ts';
 import { getIslands } from '../http.ts';
 import { t } from '../i18n.ts';
 import { useSnapshot } from '../islands.tsx';
-import { compareIds, NO_ID, previousId } from '../live-url.ts';
+import { compareIds, earlierId, NO_ID, previousId } from '../live-url.ts';
 import { appendPage, holdNewer, insertOrdered, mergeFresh } from '../lists.ts';
 import type { ActorProps } from '../props.ts';
 import { Icon } from './Icon.tsx';
@@ -25,6 +25,9 @@ import { Pager } from './Pager.tsx';
 const FETCH_LIMIT = 50;
 // A burst bigger than this many answers is left for a resync.
 const MAX_FETCH_ROUNDS = 20;
+// How long a beep may be committed after the id it was given (PageRequest.SettleTime): new beeps are asked for from
+// this long before the newest shown, so one committed after a newer one still comes.
+const LATE_COMMIT = 3000;
 
 export interface FeedSource {
   items: BeepProps[];
@@ -33,7 +36,7 @@ export interface FeedSource {
   waiting?: BeepProps[];
 }
 
-export interface FeedOptions extends FeedSource {
+interface FeedOptions extends FeedSource {
   /** The live topic, when new beeps are added as they come (the first page of a timeline, a thread's last page). */
   watch?: string;
   thread?: boolean;
@@ -43,7 +46,7 @@ export interface FeedOptions extends FeedSource {
   pageOf: (page: IslandsPage) => (FeedSource & { watch?: string }) | undefined;
 }
 
-export interface Feed {
+interface Feed {
   /** The beeps shown, in order, without those that went. */
   visible: string[];
   next?: string;
@@ -117,8 +120,9 @@ function create(options: FeedOptions): FeedState {
       const thread = !!state.options.thread;
       const shown = visibleOf(state.ids.value);
       if (thread) {
-        // A thread grows at the bottom, oldest first: ask after the last one until all of it came.
-        let after = shown.at(-1) ?? NO_ID;
+        // A thread grows at the bottom, oldest first: ask after the last one until all of it came (from a little
+        // before it, for one committed late; those shown already are not added twice).
+        let after = earlierId(shown.at(-1) ?? NO_ID, LATE_COMMIT);
         for (let round = 0; round < MAX_FETCH_ROUNDS; round++) {
           const fresh = await fetchNew(watch, after);
           arrive(state, insertOrdered(state.ids.value, fresh.map((beep) => beep.id), true));
@@ -131,7 +135,9 @@ function create(options: FeedOptions): FeedState {
       // between them and what the page showed, so the rest are asked for below the oldest that came. Those waiting to
       // be shown came already.
       const waiting = visibleOf(state.waiting.value)[0];
-      const after = waiting && (!shown[0] || compareIds(waiting, shown[0]) > 0) ? waiting : shown[0] ?? NO_ID;
+      const newest = waiting && (!shown[0] || compareIds(waiting, shown[0]) > 0) ? waiting : shown[0] ?? NO_ID;
+      // From a little before it, for one committed late; those shown already are not added twice.
+      const after = earlierId(newest, LATE_COMMIT);
       let before: string | undefined;
       for (let round = 0; round < MAX_FETCH_ROUNDS; round++) {
         const fresh = await fetchNew(watch, after, before);
@@ -200,10 +206,11 @@ export function useBeepFeed(options: FeedOptions): Feed {
   const loadMore = async (): Promise<boolean> => {
     const next = state.next.value;
     if (!next) return true;
+    const since = removalMark();
     const answer = await getIslands(next);
     const page = answer.page ? options.pageOf(answer.page) : undefined;
     if (!page) return false;
-    putBeeps(page.items);
+    putBeeps(page.items, since);
     const added = appendPage({ ids: state.ids.value, next }, { ids: page.items.map((beep) => beep.id), next: page.next });
     state.ids.value = added.ids;
     state.next.value = added.next;
@@ -291,7 +298,7 @@ function WaitingBeeps({ feed }: { feed: Feed }) {
   );
 }
 
-export interface BeepListViewProps {
+interface BeepListViewProps {
   feed: Feed;
   emptyTitle: string;
   emptyText?: string;

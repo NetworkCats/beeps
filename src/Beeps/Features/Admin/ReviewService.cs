@@ -49,9 +49,12 @@ public sealed partial class ReviewService(
 
     /// <summary>
     /// "Restore" for a hidden beep, "mark handled" for the others (PLAN 3.6): the beep is visible, reviewed by a
-    /// person, and its open reports are closed.
+    /// person, and the open reports the admin saw are closed.
     /// </summary>
-    public async Task<Result> KeepAsync(Guid adminId, Guid beepId, CancellationToken cancellationToken)
+    /// <param name="seenReports">
+    /// The open reports the admin's page showed: one filed since is not closed unread, and keeps the beep in the queue.
+    /// </param>
+    public async Task<Result> KeepAsync(Guid adminId, Guid beepId, IReadOnlyCollection<Guid> seenReports, CancellationToken cancellationToken)
     {
         if (await access.RequireAdminAsync(adminId, cancellationToken) is { } denied)
         {
@@ -69,8 +72,10 @@ public sealed partial class ReviewService(
             null,
             async ct =>
             {
+                // The status now, not the one read above: the model may have decided in between.
+                var before = await store.LockStatusAsync(beepId, ct) ?? subject.Status;
                 var changed = await store.SetStatusAsync(beepId, Keepable, ModerationStatus.HumanAllowed, ct);
-                var resolved = await store.ResolveReportsAsync(beepId, adminId, time.GetUtcNow(), ct);
+                var resolved = seenReports.Count == 0 ? 0 : await store.ResolveReportsAsync(beepId, seenReports, adminId, time.GetUtcNow(), ct);
                 if (!changed && resolved == 0)
                 {
                     return Result.Success;
@@ -84,8 +89,8 @@ public sealed partial class ReviewService(
                 }
 
                 kept = true;
-                restored = changed && subject.Status == ModerationStatus.Hidden;
-                access.Audit(adminId, AuditActions.KeepBeep, AuditTargets.Beep, beepId, Detail(subject.Status, changed ? ModerationStatus.HumanAllowed : subject.Status, resolved));
+                restored = changed && before == ModerationStatus.Hidden;
+                access.Audit(adminId, AuditActions.KeepBeep, AuditTargets.Beep, beepId, Detail(before, changed ? ModerationStatus.HumanAllowed : before, resolved));
                 await unitOfWork.SaveChangesAsync(ct);
                 return Result.Success;
             },
@@ -125,14 +130,14 @@ public sealed partial class ReviewService(
             return NotFound();
         }
 
-        var deleted = false;
+        ModerationStatus? deleted = null;
         var result = await unitOfWork.InTransactionAsync(
             null,
             async ct =>
             {
                 var now = time.GetUtcNow();
                 deleted = await beepStore.DeleteAsync(beepId, now, ct);
-                if (!deleted)
+                if (deleted is not { } status)
                 {
                     return Result.Success;
                 }
@@ -140,12 +145,12 @@ public sealed partial class ReviewService(
                 var resolved = await store.ResolveReportsAsync(beepId, adminId, now, ct);
                 await store.DeleteJobAsync(beepId, ct);
                 outbox.SyncBeepToSearch(beepId);
-                access.Audit(adminId, AuditActions.DeleteBeep, AuditTargets.Beep, beepId, Detail(subject.Status, subject.Status, resolved));
+                access.Audit(adminId, AuditActions.DeleteBeep, AuditTargets.Beep, beepId, Detail(status, status, resolved));
                 await unitOfWork.SaveChangesAsync(ct);
                 return Result.Success;
             },
             cancellationToken);
-        if (!deleted)
+        if (deleted is null)
         {
             return result;
         }
@@ -154,7 +159,7 @@ public sealed partial class ReviewService(
         await live.BeepRemovedAsync(beepId, cancellationToken);
         await inboxes.RecountAsync([beepId], [], cancellationToken);
         // A hidden reply was already left out of its parent's count.
-        if (subject.ReplyToId is { } parentId && subject.Status != ModerationStatus.Hidden)
+        if (subject.ReplyToId is { } parentId && deleted != ModerationStatus.Hidden)
         {
             await beeps.ReplyVisibilityChangedAsync(parentId, visible: false, cancellationToken);
         }

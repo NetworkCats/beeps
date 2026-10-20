@@ -89,6 +89,60 @@ public sealed class OutboxProcessorTests
         await store.Received(1).CompleteAsync(slow.Id, Arg.Any<CancellationToken>());
         await handler.DidNotReceive().HandleAsync(left, Arg.Any<CancellationToken>());
         await store.DidNotReceive().CompleteAsync(left.Id, Arg.Any<CancellationToken>());
+        // Never started here, so none of its attempts is used up.
+        await store.DidNotReceive().StartAttemptAsync(left.Id, Arg.Any<DateTimeOffset>(), Arg.Any<DateTimeOffset>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task OnlyTheMessageThatStartedCountsAnAttempt()
+    {
+        var crashing = Message(attempts: 1);
+        var waiting = Message(attempts: 1);
+        Claim(crashing, waiting);
+        // What a crash of the whole process looks like from here: nothing after it runs.
+        handler.HandleAsync(Arg.Is<OutboxEnvelope>(m => m.Id == crashing.Id), Arg.Any<CancellationToken>()).ThrowsAsync(new OperationCanceledException());
+        using var stopped = new CancellationTokenSource();
+        await stopped.CancelAsync();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => CreateProcessor().ProcessBatchAsync(OutboxQueues.Main, stopped.Token));
+
+        await store.Received(1).StartAttemptAsync(crashing.Id, TestData.Now.AddMinutes(5), TestData.Now.AddMinutes(5), Arg.Any<CancellationToken>());
+        await store.DidNotReceive().StartAttemptAsync(waiting.Id, Arg.Any<DateTimeOffset>(), Arg.Any<DateTimeOffset>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task AMessageGoneBeforeItStartsIsSkipped()
+    {
+        var message = Message(attempts: 1);
+        Claim(message);
+        store.StartAttemptAsync(message.Id, Arg.Any<DateTimeOffset>(), Arg.Any<DateTimeOffset>(), Arg.Any<CancellationToken>()).Returns((int?)null);
+
+        await CreateProcessor().ProcessBatchAsync(OutboxQueues.Main, TestSupport.Ct);
+
+        await handler.DidNotReceiveWithAnyArgs().HandleAsync(default!, TestSupport.Ct);
+        await store.DidNotReceiveWithAnyArgs().CompleteAsync(default, TestSupport.Ct);
+    }
+
+    [Fact]
+    public async Task ALongRunningMessageKeepsItsLease()
+    {
+        var message = Message(attempts: 1);
+        Claim(message);
+        var extended = new TaskCompletionSource();
+        store.ExtendLeaseAsync(message.Id, Arg.Any<DateTimeOffset>(), Arg.Any<CancellationToken>()).Returns(_ =>
+        {
+            extended.TrySetResult();
+            return Task.CompletedTask;
+        });
+        // Still running when half its lease is gone: it must not be claimed again and run beside itself.
+        handler.HandleAsync(message, Arg.Any<CancellationToken>()).Returns(_ => extended.Task.WaitAsync(TimeSpan.FromSeconds(10), TestSupport.Ct));
+        var shortLease = new OutboxOptions { BatchSize = 10, MaxAttempts = 3, LeaseDuration = TimeSpan.FromMilliseconds(100) };
+
+        await new OutboxProcessor(store, [handler], Options.Create(shortLease), TimeProvider.System, NullLogger<OutboxProcessor>.Instance)
+            .ProcessBatchAsync(OutboxQueues.Main, TestSupport.Ct);
+
+        await store.Received().ExtendLeaseAsync(message.Id, Arg.Any<DateTimeOffset>(), Arg.Any<CancellationToken>());
+        await store.Received(1).CompleteAsync(message.Id, Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -183,8 +237,16 @@ public sealed class OutboxProcessorTests
     private static OutboxEnvelope Message(int attempts, string type = "test.message") =>
         new(Guid.CreateVersion7(TestData.Now), type, """{"id":1}""", attempts, TestData.Now.AddMinutes(-1));
 
-    private void Claim(params OutboxEnvelope[] messages) =>
-        store.ClaimAsync(default!, default, default, default, TestSupport.Ct).ReturnsForAnyArgs(messages);
+    /// <summary>Claims <paramref name="messages"/>, each counted at its <see cref="OutboxEnvelope.Attempts"/> once started.</summary>
+    private void Claim(params OutboxEnvelope[] messages)
+    {
+        store.ClaimAsync(default!, default, default, default, TestSupport.Ct)
+            .ReturnsForAnyArgs([.. messages.Select(m => m with { Attempts = m.Attempts - 1 })]);
+        foreach (var message in messages)
+        {
+            store.StartAttemptAsync(message.Id, Arg.Any<DateTimeOffset>(), Arg.Any<DateTimeOffset>(), Arg.Any<CancellationToken>()).Returns(message.Attempts);
+        }
+    }
 
     private OutboxProcessor CreateProcessor() =>
         new(store, [handler], Options.Create(options), time, NullLogger<OutboxProcessor>.Instance);

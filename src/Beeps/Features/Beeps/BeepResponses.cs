@@ -95,7 +95,10 @@ public sealed class PageParameters
     [FromQuery(Name = "limit")]
     public int? Limit { get; init; }
 
-    public PageRequest ToRequest() => PageRequest.Create(Before, SinceId, Limit);
+    [FromServices]
+    public required TimeProvider Time { get; init; }
+
+    public PageRequest ToRequest() => PageRequest.Create(Before, SinceId, Limit).Settled(Time.GetUtcNow());
 }
 
 /// <param name="MediaIds">Up to four images from <c>POST /api/v1/media</c>, in display order.</param>

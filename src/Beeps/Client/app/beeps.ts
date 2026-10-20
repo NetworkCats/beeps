@@ -26,11 +26,27 @@ export function beepSignal(id: string): Signal<BeepProps | null | undefined> {
   return entry;
 }
 
-export function putBeeps(list: readonly BeepProps[]): void {
-  for (const beep of list) beepSignal(beep.id).value = beep;
+// Removals counted as they come, with the count each beep and author went at: an answer fetched before one must not
+// bring back what it removed (fetched as a beep was posted, say, and hidden by review on the way).
+let removals = 0;
+const beepRemovedAt = new Map<string, number>();
+const authorRemovedAt = new Map<string, number>();
+
+/** Taken as a fetch starts, and given back to `putBeeps` with what it brought. */
+export function removalMark(): number {
+  return removals;
+}
+
+/** Puts these beeps in place; with `since` (a `removalMark`), not those removed after it, which went for good. */
+export function putBeeps(list: readonly BeepProps[], since?: number): void {
+  for (const beep of list) {
+    if (since !== undefined && Math.max(beepRemovedAt.get(beep.id) ?? 0, authorRemovedAt.get(beep.author.id) ?? 0) > since) continue;
+    beepSignal(beep.id).value = beep;
+  }
 }
 
 export function removeBeep(id: string): void {
+  beepRemovedAt.set(id, ++removals);
   const entry = beeps.get(id);
   if (entry) entry.value = null;
 }
@@ -38,6 +54,8 @@ export function removeBeep(id: string): void {
 /** A banned or deleted account: everything by it goes, wherever it is shown. */
 export function removeAuthors(ids: readonly string[]): void {
   const gone = new Set(ids);
+  removals++;
+  for (const id of gone) authorRemovedAt.set(id, removals);
   for (const entry of beeps.values()) {
     if (entry.value && gone.has(entry.value.author.id)) entry.value = null;
   }
@@ -123,6 +141,7 @@ async function redrawChanged(): Promise<void> {
   const ids = mergeIds([...changed].filter((id) => shown.has(id)));
   ids.forEach((id) => changed.delete(id));
   if (ids.length === 0) return;
+  const since = removalMark();
   let fresh: BeepProps[];
   try {
     fresh = (await getJson<{ items: BeepProps[] }>(`${LIVE_BEEPS}?${new URLSearchParams({ ids: ids.join(',') })}`)).items;
@@ -131,7 +150,7 @@ async function redrawChanged(): Promise<void> {
     ids.forEach((id) => changed.add(id));
     throw error;
   }
-  putBeeps(fresh);
+  putBeeps(fresh, since);
   const found = new Set(fresh.map((beep) => beep.id));
   for (const id of ids) if (!found.has(id)) removeBeep(id);
   // More changed than one request carries: the rest go next.
@@ -142,7 +161,8 @@ async function redrawChanged(): Promise<void> {
 export async function fetchNew(watch: string, after: string, before?: string): Promise<BeepProps[]> {
   const params = new URLSearchParams({ watch, after });
   if (before) params.set('before', before);
+  const since = removalMark();
   const items = (await getJson<{ items: BeepProps[] }>(`${LIVE_BEEPS}?${params}`)).items;
-  putBeeps(items);
+  putBeeps(items, since);
   return items;
 }

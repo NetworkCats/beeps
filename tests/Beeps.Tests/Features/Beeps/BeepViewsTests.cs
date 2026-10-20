@@ -1,5 +1,4 @@
 using Beeps.Features.Accounts;
-using Beeps.Features.Avatars;
 using Beeps.Features.Beeps;
 using Beeps.Features.Media;
 using Beeps.Features.Shared;

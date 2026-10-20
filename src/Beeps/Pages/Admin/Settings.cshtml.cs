@@ -21,8 +21,11 @@ public sealed class SettingsModel(AdminService admin, IStringLocalizer<SharedRes
     public async Task<IActionResult> OnGetAsync(CancellationToken cancellationToken) =>
         await LoadAsync(cancellationToken) ? Page() : Forbid();
 
+    // Posted without a mode, or with one that is none, it would bind to the first: registration open to all.
     public async Task<IActionResult> OnPostModeAsync(CancellationToken cancellationToken) =>
-        Done(await admin.SetRegistrationModeAsync(User.ActorId(), Mode, cancellationToken), "Admin.Done.Mode");
+        ModelState.IsValid && Request.Form.ContainsKey(nameof(Mode))
+            ? Done(await admin.SetRegistrationModeAsync(User.ActorId(), Mode, cancellationToken), "Admin.Done.Mode")
+            : BadRequest();
 
     public async Task<IActionResult> OnPostCreateInviteAsync(CancellationToken cancellationToken)
     {

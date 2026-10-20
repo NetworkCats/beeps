@@ -8,7 +8,7 @@ indent_style = space
 indent_size = 4
 trim_trailing_whitespace = true
 
-[*.{json,yml,yaml,ts,scss,css,js,cshtml,html,xml,csproj,props,resx,slnx}]
+[*.{json,yml,yaml,ts,tsx,scss,cshtml,csproj,props,resx,slnx}]
 indent_size = 2
 
 [*.cshtml]

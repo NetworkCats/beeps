@@ -19,7 +19,7 @@ export interface ActorProps {
   avatar: string;
 }
 
-export interface MediaProps {
+interface MediaProps {
   url: string;
   thumbnail: string;
   width: number;

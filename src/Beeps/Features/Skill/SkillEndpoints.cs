@@ -22,7 +22,7 @@ public static class SkillEndpoints
         return routes;
     }
 
-    public static string Render(SiteOptions site)
+    private static string Render(SiteOptions site)
     {
         ArgumentNullException.ThrowIfNull(site);
         return Template.Value.Replace(BaseUrlPlaceholder, site.BaseUri.ToString().TrimEnd('/'), StringComparison.Ordinal);

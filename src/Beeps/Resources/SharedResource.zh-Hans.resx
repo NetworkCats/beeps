@@ -654,6 +654,18 @@
   <data name="Email.SignIn.Ignore" xml:space="preserve">
     <value>如果不是你本人在登录，说明有人知道你的密码，请立即重置密码。</value>
   </data>
+  <data name="Email.MethodAdded.Subject" xml:space="preserve">
+    <value>你的 beeps 账号添加了新的登录方式</value>
+  </data>
+  <data name="Email.MethodAdded.Intro" xml:space="preserve">
+    <value>你的 beeps 账号刚刚添加了新的登录方式：{0}。</value>
+  </data>
+  <data name="Email.MethodAdded.Passkey" xml:space="preserve">
+    <value>通行密钥</value>
+  </data>
+  <data name="Email.MethodAdded.Ignore" xml:space="preserve">
+    <value>如果不是你本人添加的，说明有别人登录了你的账号：请重置密码，再到 设置 → 你的账号 中移除它。</value>
+  </data>
   <data name="Email.Code.Expiry" xml:space="preserve">
     <value>验证码 {0} 分钟内有效。</value>
   </data>

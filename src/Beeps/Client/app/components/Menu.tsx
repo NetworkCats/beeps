@@ -3,7 +3,7 @@
 import type { ComponentChildren } from 'preact';
 import { useEffect, useRef, useState } from 'preact/hooks';
 
-export interface MenuProps {
+interface MenuProps {
   class: string;
   summary: ComponentChildren;
   children: ComponentChildren;

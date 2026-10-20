@@ -54,6 +54,7 @@ public static class FeaturesSetup
         services.AddScoped<ReviewService>();
         services.AddScoped<SystemService>();
         services.AddScoped<IOutboxHandler, AccountCodeEmailHandler>();
+        services.AddScoped<IOutboxHandler, SignInMethodEmailHandler>();
         services.AddScoped<IOutboxHandler, BeepNotificationsHandler>();
         services.AddScoped<IOutboxHandler, LikeNotificationHandler>();
         services.AddScoped<IOutboxHandler, DeleteMediaObjectsHandler>();

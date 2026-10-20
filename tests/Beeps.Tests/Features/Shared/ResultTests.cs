@@ -34,16 +34,6 @@ public sealed class ResultTests
     }
 
     [Fact]
-    public void MatchPicksTheBranch()
-    {
-        Result<int> success = 2;
-        Result<int> failure = Error.Forbidden("nope");
-
-        Assert.Equal("4", success.Match(v => (v * 2).ToString(System.Globalization.CultureInfo.InvariantCulture), e => e.Code));
-        Assert.Equal("nope", failure.Match(v => v.ToString(System.Globalization.CultureInfo.InvariantCulture), e => e.Code));
-    }
-
-    [Fact]
     public void NonGenericResultCarriesSuccessOrError()
     {
         Result failure = Error.Validation("bad_input");

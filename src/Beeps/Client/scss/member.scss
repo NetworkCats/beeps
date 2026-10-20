@@ -838,21 +838,12 @@ fieldset.settings-group {
 
 // ---- Forms in the column: agents, reports -------------------------------------------------------------
 
-// Sections of a form page are told apart by their headings and the space between them, not by lines.
+// A form in the column (or the note that stands in for one), its fields spaced apart.
 .settings-section {
   display: flex;
   flex-direction: column;
   gap: var(--cui-space-5);
   padding: var(--cui-space-5) var(--beeps-pad) var(--cui-space-4);
-
-  & + & {
-    padding-block-start: var(--cui-space-6);
-  }
-
-  > h2 {
-    font-size: var(--cui-text-lg);
-    font-weight: 800;
-  }
 }
 
 fieldset.check-group {

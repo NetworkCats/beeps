@@ -1,5 +1,4 @@
 using Beeps.Infrastructure.Data.Stores;
-using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.Caching.StackExchangeRedis;
 using StackExchange.Redis;
 

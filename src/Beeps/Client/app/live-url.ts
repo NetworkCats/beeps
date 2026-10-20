@@ -54,6 +54,17 @@ export function previousId(id: string): string {
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
 }
 
+/**
+ * The first id made `ms` before this one (UUIDv7: the time comes first). Ids are made before the insert, and two
+ * inserts can commit in either order: asking for what came after this one instead also brings one committed late.
+ */
+export function earlierId(id: string, ms: number): string {
+  const hex = id.replace(/-/g, '').toLowerCase();
+  if (hex.length !== 32 || id === NO_ID) return id;
+  const time = Math.max(0, parseInt(hex.slice(0, 12), 16) - ms).toString(16).padStart(12, '0');
+  return `${time.slice(0, 8)}-${time.slice(8, 12)}-7000-8000-000000000000`;
+}
+
 /** Orders ids as the server does: newest last. */
 export function compareIds(a: string, b: string): number {
   const x = a.toLowerCase();

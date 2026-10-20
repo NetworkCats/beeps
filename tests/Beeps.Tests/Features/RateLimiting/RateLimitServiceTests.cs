@@ -1,7 +1,6 @@
 using Beeps.Features.RateLimiting;
 using Beeps.Features.Shared;
 using Beeps.Tests.Support;
-using Beeps;
 using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;

@@ -7,7 +7,7 @@ import { viewer } from '../config.ts';
 import { confirmAction } from '../dialogs.ts';
 import { formData } from '../http.ts';
 import { t } from '../i18n.ts';
-import { pageLive } from '../page.ts';
+import { pageLive, showAnew } from '../page.ts';
 import { useEnter } from '../motion.ts';
 import { here, paths } from '../paths.ts';
 import { visit } from '../router.ts';
@@ -60,7 +60,11 @@ async function act(id: string, handler: string): Promise<boolean> {
       body: formData(),
       headers: { 'X-Requested-With': 'fetch' },
       credentials: 'same-origin',
+      // Never followed: a redirect (to sign in, say) ends on a page that answers 200, as if it was done.
+      redirect: 'manual',
     });
+    // Signed out meanwhile, before the tab heard of it: the page shows that, as a reload would.
+    if (response.status === 401 || response.type === 'opaqueredirect') void showAnew();
     return response.ok;
   } catch {
     return false;

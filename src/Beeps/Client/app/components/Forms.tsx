@@ -37,7 +37,7 @@ export function FormErrors({ errors }: { errors: Errors }) {
 }
 
 /** What beeps-field="…" adds to an input: its name and id, and aria for its errors. */
-export interface FieldAttributes {
+interface FieldAttributes {
   name: string;
   id: string;
   'aria-invalid'?: 'true';

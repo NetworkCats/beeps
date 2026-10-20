@@ -114,7 +114,7 @@ public sealed class LiveServiceTests : IAsyncDisposable
         feed.Publish(LiveEventTypes.BeepRemoved, $$"""{"id":"{{followed.Id:D}}"}""");
         var removed = await NextAsync();
 
-        Assert.Equal(new LiveMessage(LiveMessages.Beep, $$"""{"id":"{{followed.Id:D}}","root_id":"{{followed.Id:D}}","reply_to_id":null}""", id), beep);
+        Assert.Equal(new LiveMessage(LiveMessages.Beep, $$"""{"id":"{{followed.Id:D}}"}""", id), beep);
         Assert.Equal($$"""[{"id":"{{followed.Id:D}}","like_count":2,"reply_count":1}]""", counts.Data);
         Assert.Equal((LiveMessages.Removed, $$"""{"id":"{{followed.Id:D}}"}"""), (removed.Type, removed.Data));
     }

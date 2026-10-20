@@ -15,7 +15,7 @@ interface Stored {
 let current: Stored = { url: '', strings: {} };
 let loading: { url: string; done: Promise<void> } | undefined;
 
-export function format(text: string, args: readonly unknown[]): string {
+function format(text: string, args: readonly unknown[]): string {
   return text.replace(/\{(\d+)\}/g, (match, index: string) => {
     const value = args[Number(index)];
     return value === undefined ? match : String(value);

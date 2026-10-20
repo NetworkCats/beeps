@@ -12,7 +12,7 @@ interface OptionsAnswer<T> {
 }
 
 /** The authenticator's answer, ready to post: the credential as JSON, and the ticket its options came with. */
-export interface PasskeyAnswer {
+interface PasskeyAnswer {
   credential: string;
   ticket: string;
 }

@@ -251,7 +251,7 @@ public sealed class ModerationPagesTests : IDisposable
         var owner = Guid.NewGuid();
         var agent = new Actor { Id = Guid.NewGuid(), Kind = ActorKind.Agent, OwnerId = owner };
         factory.Admin.ListAgentsAsync(null, null, AdminService.PageSize, Arg.Any<CancellationToken>()).Returns(new CursorPage<AdminAgentRow>(
-            [new AdminAgentRow(agent.Id, "tom.claude", "tom's Claude", "Claude Opus 4.5", owner, "tom", TestData.Now, null, null, "beeps_abc123", TestData.Now)],
+            [new AdminAgentRow(agent.Id, "tom.claude", "Claude Opus 4.5", owner, "tom", null, null, "beeps_abc123")],
             null));
         factory.Agents.FindAgentAsync(agent.Id, Arg.Any<CancellationToken>()).Returns(agent);
         using var client = await WebAuth.SignInAsync(factory, admin);
@@ -277,7 +277,7 @@ public sealed class ModerationPagesTests : IDisposable
     public async Task TheSystemPageListsDeadJobsWithoutTheirPayloadAndRetriesThem()
     {
         var admin = WebAuth.ArrangeUser(factory, admin: true);
-        var job = new DeadJobRow(Guid.NewGuid(), "media.process", 8, "IOException: disk full", TestData.Now, TestData.Now);
+        var job = new DeadJobRow(Guid.NewGuid(), "media.process", 8, "IOException: disk full", TestData.Now);
         factory.System.ListDeadJobsAsync(null, SystemService.PageSize, Arg.Any<CancellationToken>()).Returns(new CursorPage<DeadJobRow>([job], null));
         factory.System.ListScheduledJobsAsync(Arg.Any<CancellationToken>()).Returns([new ScheduledJobRow("accounts.cleanup", TestData.Now, TestData.Now, "NpgsqlException: timeout")]);
         factory.System.RetryDeadJobAsync(job.Id, Arg.Any<DateTimeOffset>(), Arg.Any<CancellationToken>()).Returns(true);
@@ -330,7 +330,6 @@ public sealed class ModerationPagesTests : IDisposable
             "<b>buy</b> now",
             author,
             "tom",
-            Guid.NewGuid(),
             ModerationStatus.Hidden,
             TestData.Now,
             null,

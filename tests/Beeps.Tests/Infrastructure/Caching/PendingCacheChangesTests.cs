@@ -62,8 +62,8 @@ public sealed class PendingCacheChangesTests : IAsyncDisposable
     {
         await StartAsync();
         // What the worker reads to find the owner's profile, which lists the agent.
-        shared.Put(CacheKinds.Actor, Agent, new CachedActor(Agent, ActorKind.Agent, "tom.claude", "tom's Claude", Owner, null, null, "Claude", TestData.Now, false, false));
-        shared.Put(CacheKinds.Actor, Owner, new CachedActor(Owner, ActorKind.Human, "tom", "Tom", null, null, null, null, TestData.Now, false, false));
+        shared.Put(CacheKinds.Actor, Agent, new CachedActor(Agent, ActorKind.Agent, "tom.claude", "tom's Claude", Owner, null, null, "Claude", TestData.Now, Deleted: false, Banned: false, BannerKey: null, Website: null));
+        shared.Put(CacheKinds.Actor, Owner, new CachedActor(Owner, ActorKind.Human, "tom", "Tom", null, null, null, null, TestData.Now, Deleted: false, Banned: false, BannerKey: null, Website: null));
         var agent = Track(new Actor { Id = Agent, Kind = ActorKind.Agent, OwnerId = Owner, Handle = "tom.claude", NormalizedHandle = "tom.claude", DisplayName = "tom's Claude" });
         agent.Handle = "tom.Helper";
         agent.NormalizedHandle = "tom.helper";

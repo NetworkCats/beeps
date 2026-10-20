@@ -1,6 +1,5 @@
 using System.Globalization;
 using Beeps.Features.Live;
-using Beeps.Features.Localization;
 using Beeps.Features.Shared;
 using Microsoft.Extensions.Localization;
 
@@ -144,7 +143,15 @@ public sealed class SessionService(
             return Error.Validation(AccountErrorCodes.InvalidInput, localizer["Sessions.Error.Current"]);
         }
 
-        await sessions.RevokeOthersAsync(userId, keep, time.GetUtcNow(), cancellationToken);
+        await unitOfWork.InTransactionAsync(
+            null,
+            async ct =>
+            {
+                await sessions.RevokeOthersAsync(userId, keep, time.GetUtcNow(), ct);
+                await unitOfWork.SaveChangesAsync(ct);
+                return Result.Success;
+            },
+            cancellationToken);
         await sessions.ForgetAllAsync(userId);
         await live.SessionsEndedAsync(userId, cancellationToken);
         return Result.Success;

@@ -43,7 +43,8 @@ public sealed partial class OutboxProcessor
     public async Task<int> ProcessBatchAsync(string queue, CancellationToken cancellationToken)
     {
         var now = time.GetUtcNow();
-        var leasedUntil = now + options.LeaseDuration;
+        // Whole milliseconds, which PostgreSQL keeps exactly: StartAttemptAsync asks for this very value back.
+        var leasedUntil = WholeMilliseconds(now + options.LeaseDuration);
         var batch = await store.ClaimAsync(TypesOf(queue), options.BatchSize, now, leasedUntil, cancellationToken);
         foreach (var message in batch)
         {
@@ -54,11 +55,19 @@ public sealed partial class OutboxProcessor
                 break;
             }
 
-            await ProcessAsync(message, cancellationToken);
+            // Counted as it starts, not when the batch was claimed: one that kills the process uses up only its own
+            // attempts, and is dead-lettered alone rather than with the messages claimed beside it.
+            // Leased afresh as it starts too (the batch's lease may be nearly out by now), and only while still held here.
+            if (await store.StartAttemptAsync(message.Id, leasedUntil, time.GetUtcNow() + options.LeaseDuration, cancellationToken) is { } attempts)
+            {
+                await ProcessAsync(message with { Attempts = attempts }, cancellationToken);
+            }
         }
 
         return batch.Count;
     }
+
+    private static DateTimeOffset WholeMilliseconds(DateTimeOffset time) => DateTimeOffset.FromUnixTimeMilliseconds(time.ToUnixTimeMilliseconds());
 
     private OutboxTypes TypesOf(string queue) => queue == OutboxQueues.Main
         ? new([.. handlers.Values.Where(h => h.Queue != OutboxQueues.Main).Select(h => h.Type)], Except: true)
@@ -81,7 +90,7 @@ public sealed partial class OutboxProcessor
         {
             try
             {
-                await handler.HandleAsync(message, cancellationToken);
+                await HandleLeasedAsync(handler, message, cancellationToken);
                 await store.CompleteAsync(message.Id, cancellationToken);
                 return;
             }
@@ -108,6 +117,50 @@ public sealed partial class OutboxProcessor
             await store.RescheduleAsync(message.Id, failedAt + FailedAttempts.RetryDelay(message.Attempts, options.RetryBaseDelay, options.RetryMaxDelay), error, cancellationToken);
         }
     }
+
+    /// <summary>
+    /// Runs the handler, keeping the message's lease while it does: one that takes longer (a search sync of a prolific
+    /// account) would otherwise be claimed again and run beside itself, and in the end dead-lettered as it ran.
+    /// </summary>
+    private async Task HandleLeasedAsync(IOutboxHandler handler, OutboxEnvelope message, CancellationToken cancellationToken)
+    {
+        using var done = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        var renewing = RenewLeaseAsync(message.Id, done.Token);
+        try
+        {
+            await handler.HandleAsync(message, cancellationToken);
+        }
+        finally
+        {
+            await done.CancelAsync();
+            await renewing;
+        }
+    }
+
+    private async Task RenewLeaseAsync(Guid id, CancellationToken cancellationToken)
+    {
+        var every = options.LeaseDuration / 2;
+        while (true)
+        {
+            try
+            {
+                await Task.Delay(every, time, cancellationToken);
+                await store.ExtendLeaseAsync(id, time.GetUtcNow() + options.LeaseDuration, cancellationToken);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                return;
+            }
+            catch (Exception exception)
+            {
+                // Tried again next time round; at worst the message is claimed again, as without renewing.
+                LogLeaseNotExtended(logger, exception, id);
+            }
+        }
+    }
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "The lease of outbox message {MessageId} could not be extended")]
+    private static partial void LogLeaseNotExtended(ILogger logger, Exception exception, Guid messageId);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Outbox message {MessageId} ({MessageType}) failed on attempt {Attempts}")]
     private static partial void LogHandlerFailed(ILogger logger, Exception exception, Guid messageId, string messageType, int attempts);

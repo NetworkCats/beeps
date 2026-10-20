@@ -540,6 +540,7 @@
         "mediaShown": true,
         "reports": [
           {
+            "id": "00000000-0000-7000-8000-000000000035",
             "createdAt": "2026-10-16T08:30:00Z",
             "reporterId": "10000000-0000-7000-8000-000000000001",
             "reporterHandle": "tom",

@@ -2,7 +2,6 @@ using Beeps.Features.Media;
 using System.Linq.Expressions;
 using Beeps.Features.Accounts;
 using Beeps.Features.Beeps;
-using Beeps.Features.Profiles;
 using Beeps.Features.Search;
 using Microsoft.EntityFrameworkCore;
 
@@ -24,6 +23,7 @@ public sealed class EfSearchStore(BeepsDbContext db, ContentReads reads) : ISear
         var actors = await db.Set<Actor>()
             .AsNoTracking()
             .Where(a => a.Id == actorId || a.OwnerId == actorId)
+            .OrderBy(a => a.Id)
             .Select(a => new { a.Id, a.Kind, a.Handle, a.DisplayName, a.Bio, Findable = findable.Any(f => f.Id == a.Id) })
             .ToListAsync(cancellationToken);
         return [.. actors.Select(a => new ActorDocumentState(a.Id, a.Findable ? new ActorDocument(a.Id, a.Kind, a.Handle!, a.DisplayName, a.Bio) : null))];

@@ -30,6 +30,40 @@ public sealed class SearchSyncTests
     }
 
     [Fact]
+    public async Task ABeepDeletedWhileItWasIndexedIsTakenOutAgain()
+    {
+        var beep = new BeepDocument(Guid.NewGuid(), "hi", Guid.NewGuid(), [], TestData.Now);
+        // Read as shown; deleted (and its delete sent by another sync) before this one's write went in.
+        store.FindBeepAsync(beep.Id, Arg.Any<CancellationToken>()).Returns(beep, (BeepDocument?)null);
+
+        await new SearchBeepSyncHandler(store, index, TestData.Live(liveEvents)).HandleAsync(Envelope(new SearchBeepSyncRequest(beep.Id)), TestSupport.Ct);
+
+        Received.InOrder(() =>
+        {
+            index.UpsertBeepsAsync(Arg.Any<IReadOnlyCollection<BeepDocument>>(), Arg.Any<CancellationToken>());
+            index.DeleteBeepsAsync(Arg.Is<IReadOnlyCollection<Guid>>(d => d.Single() == beep.Id), Arg.Any<CancellationToken>());
+        });
+    }
+
+    [Fact]
+    public async Task AnAccountBannedWhileItWasIndexedIsTakenOutAgain()
+    {
+        var tom = Actor("tom");
+        store.GetAccountAsync(tom.Id, Arg.Any<CancellationToken>())
+            .Returns([new ActorDocumentState(tom.Id, tom)], [new ActorDocumentState(tom.Id, null)]);
+        store.ListBeepsAsync(default, default, default, TestSupport.Ct).ReturnsForAnyArgs([]);
+
+        await new SearchAccountSyncHandler(store, index, TestData.Live(liveEvents)).HandleAsync(Envelope(new SearchAccountSyncRequest(tom.Id, Beeps: true)), TestSupport.Ct);
+
+        Received.InOrder(() =>
+        {
+            index.UpsertActorsAsync(Arg.Any<IReadOnlyCollection<ActorDocument>>(), Arg.Any<CancellationToken>());
+            index.DeleteActorsAsync(Arg.Is<IReadOnlyCollection<Guid>>(d => d.Single() == tom.Id), Arg.Any<CancellationToken>());
+            index.DeleteBeepsByAuthorsAsync(Arg.Is<IReadOnlyCollection<Guid>>(d => d.Single() == tom.Id), Arg.Any<CancellationToken>());
+        });
+    }
+
+    [Fact]
     public async Task AProfileChangeUpdatesOnlyTheProfiles()
     {
         var tom = Actor("tom");

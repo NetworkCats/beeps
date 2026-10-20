@@ -64,17 +64,13 @@ public static class MediaErrorCodes
 /// <summary>Field names in validation errors; the web forms bind their file inputs with the same names.</summary>
 public static class MediaFields
 {
-    /// <summary>The API's <c>media_ids</c>, and the web composer's file input.</summary>
+    /// <summary>The web composer's file input.</summary>
     public const string Images = "Images";
 
     public const string MediaIds = "media_ids";
 
     /// <summary>The API's avatar request.</summary>
     public const string MediaId = "media_id";
-
-    public const string Avatar = "Avatar";
-
-    public const string Banner = "Banner";
 }
 
 /// <summary>

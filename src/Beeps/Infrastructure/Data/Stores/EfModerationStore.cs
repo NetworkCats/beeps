@@ -38,6 +38,13 @@ public sealed class EfModerationStore(BeepsDbContext db, PendingCacheChanges cac
 
     public void AddResult(ModerationResult result) => db.Set<ModerationResult>().Add(result);
 
+    public async Task<ModerationStatus?> LockStatusAsync(Guid beepId, CancellationToken cancellationToken) =>
+        await db.Database
+            .SqlQuery<string>($"""SELECT moderation_status AS "Value" FROM beeps WHERE id = {beepId} AND deleted_at IS NULL FOR UPDATE""")
+            .FirstOrDefaultAsync(cancellationToken) is { } status
+            ? EnumText.Parse<ModerationStatus>(status)
+            : null;
+
     public async Task<bool> SetStatusAsync(Guid beepId, IReadOnlyCollection<ModerationStatus> from, ModerationStatus to, CancellationToken cancellationToken)
     {
         var changed = await db.Set<Beep>()
@@ -75,6 +82,11 @@ public sealed class EfModerationStore(BeepsDbContext db, PendingCacheChanges cac
     public Task<int> ResolveReportsAsync(Guid beepId, Guid adminId, DateTimeOffset now, CancellationToken cancellationToken) =>
         db.Set<Report>()
             .Where(r => r.BeepId == beepId && r.ResolvedAt == null)
+            .ExecuteUpdateAsync(s => s.SetProperty(r => r.ResolvedAt, now).SetProperty(r => r.ResolvedBy, adminId), cancellationToken);
+
+    public Task<int> ResolveReportsAsync(Guid beepId, IReadOnlyCollection<Guid> reportIds, Guid adminId, DateTimeOffset now, CancellationToken cancellationToken) =>
+        db.Set<Report>()
+            .Where(r => r.BeepId == beepId && r.ResolvedAt == null && reportIds.Contains(r.Id))
             .ExecuteUpdateAsync(s => s.SetProperty(r => r.ResolvedAt, now).SetProperty(r => r.ResolvedBy, adminId), cancellationToken);
 
     public async Task<CursorPage<ReviewQueueRow>> ListQueueAsync(Guid? after, int limit, CancellationToken cancellationToken)
@@ -126,7 +138,6 @@ public sealed class EfModerationStore(BeepsDbContext db, PendingCacheChanges cac
                 b.Text,
                 Author = new ActorRow(b.Author.Id, b.Author.Kind, b.Author.Handle, b.Author.DisplayName, b.Author.OwnerId),
                 OwnerHandle = db.Set<Actor>().Where(o => o.Id == b.Author.OwnerId).Select(o => o.Handle).FirstOrDefault(),
-                b.RootId,
                 b.ModerationStatus,
                 b.CreatedAt,
                 b.DeletedAt,
@@ -170,7 +181,7 @@ public sealed class EfModerationStore(BeepsDbContext db, PendingCacheChanges cac
                 r.ResolvedAt))
             .ToListAsync(cancellationToken);
         return new ReviewBeepRow(
-            beep.Id, beep.Text, beep.Author, beep.OwnerHandle, beep.RootId, beep.ModerationStatus, beep.CreatedAt, beep.DeletedAt, beep.ReplyTo, media, results, reports);
+            beep.Id, beep.Text, beep.Author, beep.OwnerHandle, beep.ModerationStatus, beep.CreatedAt, beep.DeletedAt, beep.ReplyTo, media, results, reports);
     }
 
     public async Task<IReadOnlyList<string>> RemoveMediaAsync(Guid beepId, CancellationToken cancellationToken)

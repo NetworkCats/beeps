@@ -4,7 +4,7 @@
 // framework loads:
 //
 //   @use "collection-ui/scss" with (
-//     $brand: "teal",
+//     $brand: "pink",
 //     $breakpoints: (sm: 36rem, lg: 62rem, xl: 80rem),
 //     $hues-extra: ("lime": (hue: 130, chroma: (0.02, 0.05, 0.09, 0.13, 0.16, 0.17, 0.16, 0.14, 0.12, 0.1, 0.07))),
 //   );
@@ -35,10 +35,10 @@ $media-features: (
 ) !default;
 
 // ---- Palette ---------------------------------------------------------------
-// Quote hue names ("blue", not blue): unquoted, Sass reads them as colour literals.
-// Ten hues × eleven steps on ONE shared OKLCH lightness ladder, so any hue can be swapped for
-// another ($brand: "teal") without re-tuning contrast. Chroma is shaped per hue so saturated
-// hues (blue, red) and gentle hues (teal) read with similar intensity. Step 600 is the
+// Quote hue names ("indigo", not indigo): unquoted, Sass reads them as colour literals.
+// Every hue has eleven steps on ONE shared OKLCH lightness ladder, so any hue can be swapped for
+// another ($brand: "pink") without re-tuning contrast. Chroma is shaped per hue so saturated
+// hues (indigo, red) and gentle hues (cyan) read with similar intensity. Step 600 is the
 // light-mode brand step, 400 the dark-mode one (tokens derive a deeper `-solid` fill from it).
 $ladder: (
   50: 97%,
@@ -56,16 +56,12 @@ $ladder: (
 
 // Each hue: `hue` (one angle, or one per step) and `chroma` (one per ladder step).
 $hues: (
-  "blue": (hue: 255, chroma: (0.015, 0.035, 0.07, 0.11, 0.16, 0.2, 0.2, 0.18, 0.15, 0.12, 0.09)),
   "indigo": (hue: 275, chroma: (0.015, 0.035, 0.07, 0.11, 0.15, 0.19, 0.19, 0.17, 0.14, 0.11, 0.08)),
-  "violet": (hue: 300, chroma: (0.015, 0.035, 0.07, 0.11, 0.15, 0.19, 0.19, 0.17, 0.14, 0.11, 0.08)),
   "pink": (hue: 350, chroma: (0.015, 0.035, 0.07, 0.11, 0.15, 0.18, 0.18, 0.16, 0.13, 0.1, 0.08)),
   "red": (hue: 25, chroma: (0.015, 0.035, 0.07, 0.11, 0.16, 0.19, 0.19, 0.17, 0.14, 0.11, 0.08)),
-  "orange": (hue: 50, chroma: (0.015, 0.035, 0.07, 0.11, 0.15, 0.17, 0.17, 0.15, 0.12, 0.1, 0.07)),
   // Amber leans towards orange as it darkens, so it never turns olive.
   "amber": (hue: (80, 80, 80, 80, 75, 70, 65, 60, 60, 60, 60), chroma: (0.02, 0.05, 0.09, 0.13, 0.15, 0.15, 0.14, 0.12, 0.1, 0.08, 0.06)),
   "green": (hue: 150, chroma: (0.02, 0.045, 0.08, 0.12, 0.15, 0.16, 0.15, 0.13, 0.11, 0.09, 0.06)),
-  "teal": (hue: 185, chroma: (0.015, 0.035, 0.065, 0.1, 0.12, 0.13, 0.12, 0.1, 0.085, 0.07, 0.05)),
   "cyan": (hue: 220, chroma: (0.015, 0.035, 0.07, 0.1, 0.13, 0.14, 0.13, 0.11, 0.09, 0.075, 0.055)),
 ) !default;
 
@@ -91,14 +87,14 @@ $neutral: (
 
 // ---- Brand -----------------------------------------------------------------
 // The default --cui-primary hue, and the steps used for it in light and dark mode.
-$brand: "blue" !default;
+$brand: "indigo" !default;
 $brand-steps: (light: 600, dark: 400) !default;
 
 // ---- Status colours --------------------------------------------------------
 // Each one gets the scale its `tokens` list names (-soft, -text, -solid, -contrast, -ring, -edge…;
 // all of them when it names none), so only what the components read is emitted.
-// `soft` / `soft-hover` are how much of the colour is mixed into transparent. (No -edge for danger: it is
-// only the solid button's border, which beeps' buttons do not have, Client/scss/_theme.scss.)
+// `soft` / `soft-hover` are how much of the colour is mixed into transparent. (No -edge for danger: beeps' solid
+// buttons have no border, and only the checked radio reads --cui-primary-edge.)
 $statuses: (
   success: (hue: "green", soft: 12%, tokens: (soft, text)),
   warning: (hue: "amber", soft: 14%, tokens: (soft, text)),
@@ -106,7 +102,7 @@ $statuses: (
   info: (hue: "cyan", tokens: ()),
 ) !default;
 
-// Extra statuses merged into $statuses, e.g. ("promo": (hue: "violet", soft: 12%, soft-hover: 18%)).
+// Extra statuses merged into $statuses, e.g. ("promo": (hue: "pink", soft: 12%, soft-hover: 18%)).
 $statuses-extra: () !default;
 
 // ---- Scales ----------------------------------------------------------------

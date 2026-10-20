@@ -173,7 +173,6 @@ public sealed record AgentsChangedEvent(
 [JsonSerializable(typeof(AgentsChangedEvent))]
 [JsonSerializable(typeof(LikedMessage))]
 [JsonSerializable(typeof(IdsMessage))]
-[JsonSerializable(typeof(BeepMessage))]
 [JsonSerializable(typeof(IdMessage))]
 [JsonSerializable(typeof(IReadOnlyList<CountsEntry>))]
 [JsonSerializable(typeof(InboxMessage))]

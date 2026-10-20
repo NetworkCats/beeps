@@ -83,7 +83,6 @@
     --cui-icon-weight: 300;
     --cui-weight-bold: 700;
     --cui-badge-radius: var(--cui-radius-full);
-    --cui-tabs-active-bg: transparent;
     --cui-card-radius: var(--cui-radius-xl);
     --cui-dropdown-bg: var(--beeps-surface-raised);
     --cui-dropdown-item-hover: var(--beeps-surface-raised-hover);
@@ -109,8 +108,6 @@
 @layer cui.base {
   h1 { font-size: var(--cui-text-xl); font-weight: 800; letter-spacing: -0.01em; }
   h2 { font-size: 1.0625rem; font-weight: var(--cui-weight-bold); letter-spacing: -0.005em; }
-  h3 { font-size: var(--cui-text-base); }
-  h4 { font-size: var(--cui-text-sm); }
 
   @include mq(max-sm) {
     h1 { font-size: var(--cui-text-lg); }
@@ -127,6 +124,5 @@
 @layer cui.components {
   .btn-sm { --_font: 0.875rem; --_px: 1rem; }
   .btn:active { translate: none; }
-  .btn-primary, .btn-danger { --_border: transparent; }
   .input, .textarea { font-size: var(--cui-text-base); }
 }

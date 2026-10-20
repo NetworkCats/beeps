@@ -52,8 +52,6 @@
       background: var(--_head-bg);
     }
     tbody tr:last-child > td { border-block-end-color: var(--_border); }
-
-    td > .#{$prefix}avatar { vertical-align: middle; }
   }
 
   /* Row hover: opt-in so plain tables stay quiet. */

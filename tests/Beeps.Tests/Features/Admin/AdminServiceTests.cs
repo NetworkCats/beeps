@@ -1,7 +1,6 @@
 using Beeps.Features.Accounts;
 using Beeps.Features.Admin;
 using Beeps.Features.Agents;
-using Beeps.Features.Avatars;
 using Beeps.Features.Live;
 using Beeps.Features.Profiles;
 using Beeps.Features.Search;
@@ -171,6 +170,20 @@ public sealed class AdminServiceTests
         Assert.Null(user.BannedAt);
         Assert.Empty(audit);
         Assert.All(unitOfWork.Locks, l => Assert.Equal(AdvisoryLocks.Admins, l));
+    }
+
+    [Fact]
+    public async Task AnUnverifiedAdminIsNotTheLastOne()
+    {
+        // Counted apart from the others: one who cannot reach the admin pages does not keep them reachable.
+        var user = User(admin: true);
+        user.EmailVerifiedAt = null;
+        store.CountActiveAdminsAsync(Arg.Any<CancellationToken>()).Returns(1);
+
+        var revoke = await CreateService().SetAdminAsync(AdminId, user.Id, false, TestSupport.Ct);
+
+        Assert.True(revoke.IsSuccess);
+        Assert.False(user.IsAdmin);
     }
 
     [Fact]

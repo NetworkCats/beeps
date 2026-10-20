@@ -28,8 +28,9 @@ public sealed class BeepModel(ReviewService review, IStringLocalizer<SharedResou
         return Page();
     }
 
-    public async Task<IActionResult> OnPostKeepAsync(Guid id, CancellationToken cancellationToken) =>
-        Done(await review.KeepAsync(User.ActorId(), id, cancellationToken), "Admin.Done.Kept", toQueue: true);
+    /// <param name="reports">The open reports the page showed (ReviewBeep.tsx).</param>
+    public async Task<IActionResult> OnPostKeepAsync(Guid id, [FromForm] Guid[]? reports, CancellationToken cancellationToken) =>
+        Done(await review.KeepAsync(User.ActorId(), id, reports ?? [], cancellationToken), "Admin.Done.Kept", toQueue: true);
 
     public async Task<IActionResult> OnPostDeleteAsync(Guid id, CancellationToken cancellationToken) =>
         Done(await review.DeleteAsync(User.ActorId(), id, cancellationToken), "Admin.Done.BeepDeleted", toQueue: true);

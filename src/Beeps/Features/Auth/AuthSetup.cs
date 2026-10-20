@@ -28,9 +28,10 @@ public static class AuthSetup
                 options.LoginPath = LoginPath;
                 options.Events.OnRedirectToLogin = context =>
                 {
-                    // PLAN 6.10: the stream and what the islands fetch refuse signed-out requests outright;
-                    // a redirect to the login page would only feed HTML to a script.
-                    if (IsLive(context.Request))
+                    // PLAN 6.10: the stream, what the islands fetch and the beep buttons' requests refuse signed-out
+                    // requests outright; a redirect to the login page would only feed HTML to a script (whose fetch
+                    // follows it to a 200, as if what it asked for was done).
+                    if (IsScripted(context.Request))
                     {
                         context.Response.StatusCode = StatusCodes.Status401Unauthorized;
                     }
@@ -44,7 +45,7 @@ public static class AuthSetup
                 options.Events.OnRedirectToAccessDenied = context =>
                 {
                     // An unverified account is sent to finish verification; anyone else gets a plain 403 page.
-                    if (!IsLive(context.Request) && context.HttpContext.User.FindFirst(BeepsClaims.EmailVerified)?.Value == "false")
+                    if (!IsScripted(context.Request) && context.HttpContext.User.FindFirst(BeepsClaims.EmailVerified)?.Value == "false")
                     {
                         context.Response.Redirect(VerifyPath);
                     }
@@ -108,11 +109,21 @@ public static class AuthSetup
         return conventions;
     }
 
+    /// <summary>Sent as <c>X-Requested-With</c> by scripts that want just a status code back (Pages/Beep/Actions).</summary>
+    public const string FetchHeaderValue = "fetch";
+
     /// <summary>The browsers' event stream and what the islands fetch (Pages/Islands/IslandEndpoints.cs): never a login redirect.</summary>
     public static bool IsLive(HttpRequest request)
     {
         ArgumentNullException.ThrowIfNull(request);
         return request.Path.StartsWithSegments("/stream") || request.Path.StartsWithSegments("/live");
+    }
+
+    /// <summary>What only a script asks for, which wants a status code, not a page to go to: <see cref="IsLive"/>, and any request sent with <c>X-Requested-With: fetch</c>.</summary>
+    public static bool IsScripted(HttpRequest request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        return IsLive(request) || request.Headers.XRequestedWith == FetchHeaderValue;
     }
 
     public static bool IsApi(HttpRequest request)

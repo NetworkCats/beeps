@@ -39,8 +39,11 @@ public interface IBeepStore
     /// <summary>Stages the beep's images, in this order.</summary>
     void AttachMedia(Guid beepId, IReadOnlyList<Guid> mediaIds);
 
-    /// <summary>Soft-deletes the beep. Runs immediately; false if it was already deleted.</summary>
-    Task<bool> DeleteAsync(Guid beepId, DateTimeOffset now, CancellationToken cancellationToken);
+    /// <summary>
+    /// Soft-deletes the beep. Runs immediately, locking the row until the transaction ends; returns the moderation
+    /// status it had then, or null if it was already deleted.
+    /// </summary>
+    Task<ModerationStatus?> DeleteAsync(Guid beepId, DateTimeOffset now, CancellationToken cancellationToken);
 
     /// <summary>Runs immediately; false if the actor already liked the beep.</summary>
     Task<bool> AddLikeAsync(Guid actorId, Guid beepId, DateTimeOffset now, CancellationToken cancellationToken);

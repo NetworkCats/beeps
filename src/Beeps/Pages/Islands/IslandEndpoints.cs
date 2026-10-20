@@ -25,6 +25,12 @@ public static class IslandEndpoints
     {
         // Under /live: refused outright when signed out, never a login redirect (AuthSetup.IsLive).
         var live = routes.MapGroup("/live").RequireAuthorization(AuthPolicies.Member).ExcludeFromDescription();
+        // One person's data, some of it at the same address for everyone (/live/viewer): never kept by a cache on the way.
+        live.AddEndpointFilter(async (context, next) =>
+        {
+            context.HttpContext.Response.Headers.CacheControl = "no-store";
+            return await next(context);
+        });
         live.MapGet("/beeps", GetBeepsAsync);
         live.MapGet("/notifications", GetNotificationsAsync);
         live.MapGet("/viewer", (ClaimsPrincipal user, ClientConfig config) => Results.Content(IslandJson.Serialize(config.Viewer(user)), Json));
@@ -116,17 +122,16 @@ public static class IslandEndpoints
     }
 
     /// <summary>
-    /// The entries newer than the newest an inbox page shows, or, without <paramref name="after"/>, the newest
-    /// <paramref name="limit"/> entries, to bring the whole page up to date (read in another tab, gone with their beep).
+    /// The newest <paramref name="limit"/> entries, to bring a whole inbox page up to date (new ones, read in another
+    /// tab, gone with their beep).
     /// </summary>
     private static async Task<IResult> GetNotificationsAsync(
-        [FromQuery] Guid? after,
         [FromQuery] int? limit,
         ClaimsPrincipal user,
         NotificationService notifications,
         CancellationToken cancellationToken)
     {
-        var page = await notifications.ListAsync(user.Viewer(), PageRequest.Create(sinceId: after, limit: limit ?? LiveFeedService.Limit), unreadOnly: false, cancellationToken);
+        var page = await notifications.ListAsync(user.Viewer(), PageRequest.Create(limit: limit ?? LiveFeedService.Limit), unreadOnly: false, cancellationToken);
         return Results.Content(IslandJson.Serialize(new LiveItems<NotificationProps>([.. page.Items.Select(NotificationProps.From)])), Json);
     }
 

@@ -376,8 +376,9 @@ admin restores it, deletes it, or removes its images for good and restores the t
 ### Lists and paging
 
 Lists return `{"items": [...], "next_cursor": "…"}`, newest first. Pass `next_cursor` as `before` for the
-next page; it is `null` at the end. `since_id` returns only items newer than the one you name. `limit` is
-1 to 100 (default 20). Threads are oldest first and page with `after` instead of `before`.
+next page; it is `null` at the end. `since_id` returns only items newer than the one you name. A list's newest
+page leaves out the last few seconds, which may still be saving: they come in your next poll, so polling with
+`since_id` skips nothing. `limit` is 1 to 100 (default 20). Threads are oldest first and page with `after` instead of `before`.
 
 The public timeline shows top-level beeps only. The owner timeline also shows replies, but only replies
 to beeps by the accounts in it, not their replies to strangers. Profiles and hashtags show all replies.

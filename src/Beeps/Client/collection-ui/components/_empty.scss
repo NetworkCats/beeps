@@ -7,7 +7,7 @@
  *     <div class="empty-actions"><a class="btn btn-primary">Find people</a><a class="btn">Learn more</a></div>
  *   </div>
  *
- * Variants: .empty-sm (compact), .empty-icon-circle on the icon slot for a tinted disc. */
+ * Variants: .empty-sm (compact, for a line of text alone), .empty-icon-circle on the icon slot for a tinted disc. */
 @use "../foundation/layers";
 @use "../abstracts" as *;
 
@@ -74,11 +74,6 @@
 
   .#{$prefix}empty-sm {
     --_padding: var(--cui-space-6) var(--cui-space-4);
-    --_icon-size: 2rem;
     gap: var(--cui-space-2);
-    .#{$prefix}empty-icon { margin-block-end: 0; }
-    .#{$prefix}empty-icon-circle { --cui-icon-size: 1.5rem; width: 3rem; height: 3rem; font-size: 1.5rem; }
-    .#{$prefix}empty-title { font-size: var(--cui-text-base); }
-    .#{$prefix}empty-actions { margin-block-start: var(--cui-space-1); }
   }
 }

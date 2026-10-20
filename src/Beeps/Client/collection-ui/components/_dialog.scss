@@ -5,11 +5,11 @@
  *     <div class="dialog-footer"><button class="btn">Cancel</button><button class="btn btn-danger">Delete</button></div>
  *   </dialog>
  *
- * Sizes: .dialog-sm / -lg, which set --cui-dialog-width (so a page can still set its own). .dialog-plain drops
+ * Size: .dialog-sm, which sets --cui-dialog-width (so a page can still set its own). .dialog-plain drops
  * the footer band, wherever in the dialog the footer is (a <form method="dialog"> may wrap it). Entry animates
  * with @starting-style, and closing runs the transitions back.
  *
- * Hooks: dialog.dialog (+ [open], ::backdrop), .dialog-sm/-lg, .dialog-plain, .dialog-body, .dialog-footer. */
+ * Hooks: dialog.dialog (+ [open], ::backdrop), .dialog-sm, .dialog-plain, .dialog-body, .dialog-footer. */
 @use "../foundation/layers";
 @use "../abstracts" as *;
 
@@ -86,9 +86,8 @@
     }
   }
 
-  /* Sizes */
+  /* Size */
   .#{$prefix}dialog-sm { --cui-dialog-width: min(24rem, calc(100vw - 2rem)); }
-  .#{$prefix}dialog-lg { --cui-dialog-width: min(44rem, calc(100vw - 2rem)); }
 
   /* ---- Sections ---------------------------------------------------------- */
   .#{$prefix}dialog-body {
@@ -101,7 +100,6 @@
     line-height: var(--cui-leading-base);
     color: var(--cui-text);
     p { color: var(--cui-text-2); margin: 0; }
-    p + p { margin-block-start: var(--cui-space-3); }
     > :last-child { margin-block-end: 0; }
   }
   .#{$prefix}dialog-footer {

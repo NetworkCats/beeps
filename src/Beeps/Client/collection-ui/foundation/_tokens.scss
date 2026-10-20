@@ -1,11 +1,9 @@
 // Semantic tokens. Every colour is a light-dark() pair, so one declaration serves both
 // themes. `color-scheme` on :root follows the OS; data-theme="light|dark" overrides it.
 //
-// The signature of Collection UI is that the neutrals are not neutral: page, inset
-// surfaces, hairlines, muted text, shadows and the dark band all carry a faint (2–12%) wash of
-// --cui-tint (the brand colour by default), the way crates.io's cream page and jsr's
-// cyan hairlines do. Change the brand and the whole sheet re-tints with it; set
-// `--cui-tint: var(--cui-neutral-500)` for plain grays.
+// Surfaces, hairlines, ink, the shadow colour, the type stacks and the control sizes are all
+// beeps' own (Client/scss/_theme.scss, pure grays), so upstream's tinted defaults for them and
+// the --cui-tint that washed them are not here.
 @use "sass:list";
 @use "sass:map";
 @use "layers";
@@ -15,8 +13,7 @@
 /// ring, and a solid fill (with its hover and active steps) with its contrast ink and edge.
 /// $opts: soft, soft-hover (mix percentages); tokens, which of hover, soft, soft-hover, text,
 /// ring, solid, contrast and edge to emit (default all: only what the components read is
-/// emitted); cap-solid (default true): in dark mode cap the fill at L 55% so it carries white
-/// text; false keeps it bright with dark ink.
+/// emitted). In dark mode the solid fill is capped at L 55% so it carries white text.
 @mixin color-scale($name, $opts) {
   $c: var(--cui-#{$name});
   $solid: var(--cui-#{$name}-solid);
@@ -37,13 +34,8 @@
     --cui-#{$name}-ring: color-mix(in oklch, #{$c} 30%, transparent);
   }
   @if list.index($tokens, solid) {
-    @if map.get($opts, cap-solid) == false {
-      --cui-#{$name}-solid: #{$c};
-      --cui-#{$name}-solid-hover: var(--cui-#{$name}-hover);
-    } @else {
-      --cui-#{$name}-solid: light-dark(#{$c}, oklch(from #{$c} min(l, 0.55) c h));
-      --cui-#{$name}-solid-hover: color-mix(in oklch, #{$solid} 90%, var(--cui-shade));
-    }
+    --cui-#{$name}-solid: light-dark(#{$c}, oklch(from #{$c} min(l, 0.55) c h));
+    --cui-#{$name}-solid-hover: color-mix(in oklch, #{$solid} 90%, var(--cui-shade));
     --cui-#{$name}-solid-active: color-mix(in oklch, #{$solid} 84%, #000);
   }
   @if list.index($tokens, contrast) {
@@ -61,7 +53,6 @@
 
     /* ---- Brand ------------------------------------------------------------- */
     --cui-primary: #{brand-color($brand)};
-    --cui-tint: var(--cui-primary);  /* hue that washes the neutrals (see above) */
     --cui-shade: light-dark(#000, #fff); /* what "darker on hover" means in each theme */
 
     /* ---- Status ------------------------------------------------------------ */
@@ -73,64 +64,17 @@
       @include color-scale($name, $status);
     }
 
-    /* ---- Surfaces (tinted) ------------------------------------------------- */
-    --cui-bg: light-dark(
-      color-mix(in oklch, var(--cui-tint) 2.5%, var(--cui-neutral-50)),
-      color-mix(in oklch, var(--cui-tint) 3%, var(--cui-neutral-950)));            /* page */
-    --cui-surface: light-dark(
-      var(--cui-neutral-0),
-      color-mix(in oklch, var(--cui-tint) 2%, var(--cui-neutral-900)));            /* cards, rows, inputs */
-    --cui-surface-2: light-dark(
-      color-mix(in oklch, var(--cui-tint) 3%, var(--cui-neutral-100)),
-      color-mix(in oklch, var(--cui-tint) 3%, var(--cui-neutral-800)));            /* inset: code, table head, strips */
-    --cui-surface-3: light-dark(
-      color-mix(in oklch, var(--cui-tint) 5%, var(--cui-neutral-200)),
-      color-mix(in oklch, var(--cui-tint) 4%, var(--cui-neutral-700)));            /* pressed / strong inset */
-    --cui-surface-hover: light-dark(
-      color-mix(in oklch, var(--cui-tint) 3%, var(--cui-neutral-50)),
-      color-mix(in oklch, var(--cui-tint) 3%, color-mix(in oklch, var(--cui-neutral-900) 55%, var(--cui-neutral-800))));
-    --cui-overlay: light-dark(
-      color-mix(in oklch, var(--cui-tint) 25%, oklch(20% 0.02 255 / 0.5)),
-      oklch(5% 0.01 255 / 0.72));
-    --cui-band: light-dark(
-      color-mix(in oklch, var(--cui-tint) 14%, var(--cui-neutral-950)),
-      color-mix(in oklch, var(--cui-tint) 8%, var(--cui-neutral-1000)));           /* navbar / hero / footer */
-    --cui-band-2: light-dark(
-      color-mix(in oklch, var(--cui-tint) 12%, var(--cui-neutral-900)),
-      color-mix(in oklch, var(--cui-tint) 7%, var(--cui-neutral-950)));
+    /* ---- Dark band --------------------------------------------------------- */
     --cui-band-text: var(--cui-neutral-50);
-    --cui-band-muted: color-mix(in oklch, var(--cui-tint) 12%, var(--cui-neutral-400));
     --cui-band-border: oklch(100% 0 0 / 0.12);
     --cui-band-hover: oklch(100% 0 0 / 0.08);
     --cui-band-ring: 0 0 0 3px oklch(100% 0 0 / 0.3);              /* focus ring on dark bands */
 
-    /* ---- Lines (tinted hairlines) ------------------------------------------ */
-    --cui-border: light-dark(
-      color-mix(in oklch, var(--cui-tint) 7%, var(--cui-neutral-200)),
-      color-mix(in oklch, var(--cui-tint) 6%, var(--cui-neutral-800)));
-    --cui-border-strong: light-dark(
-      color-mix(in oklch, var(--cui-tint) 9%, var(--cui-neutral-300)),
-      color-mix(in oklch, var(--cui-tint) 8%, var(--cui-neutral-700)));
+    /* ---- Lines ------------------------------------------------------------- */
     --cui-border-width: 1px;
     --cui-divider: var(--cui-border);
 
-    /* ---- Text (ink, faintly tinted) --------------------------------------- */
-    --cui-text: light-dark(
-      color-mix(in oklch, var(--cui-tint) 6%, var(--cui-neutral-900)),
-      var(--cui-neutral-50));
-    --cui-text-2: light-dark(
-      color-mix(in oklch, var(--cui-tint) 6%, var(--cui-neutral-600)),
-      color-mix(in oklch, var(--cui-tint) 5%, var(--cui-neutral-400)));  /* secondary */
-    --cui-text-3: light-dark(
-      color-mix(in oklch, var(--cui-tint) 8%, var(--cui-neutral-500)),
-      color-mix(in oklch, var(--cui-tint) 6%, var(--cui-neutral-500)));  /* muted / meta */
-    --cui-text-4: light-dark(
-      color-mix(in oklch, var(--cui-tint) 6%, var(--cui-neutral-400)),
-      color-mix(in oklch, var(--cui-tint) 5%, var(--cui-neutral-600)));  /* placeholder, disabled */
-
     /* ---- Type -------------------------------------------------------------- */
-    --cui-font-sans: "IBM Plex Sans", "Inter Variable", Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
-    --cui-font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, "Liberation Mono", "Courier New", monospace;
     --cui-font-body: var(--cui-font-sans);
     --cui-font-heading: var(--cui-font-sans);
 
@@ -145,7 +89,6 @@
     --cui-weight-normal: 400;
     --cui-weight-medium: 500;
     --cui-weight-semibold: 600;
-    --cui-weight-bold: 600; /* opinion: 600 is bold enough */
 
     --cui-tracking-tight: -0.015em;
     --cui-tracking-wide: 0.06em;  /* uppercase micro-labels */
@@ -164,17 +107,9 @@
       }
     }
 
-    /* ---- Elevation & relief (tinted) --------------------------------------- */
-    --cui-shadow-color: light-dark(color-mix(in oklch, var(--cui-tint) 30%, var(--cui-neutral-900)), oklch(0% 0 0));
+    /* ---- Elevation --------------------------------------------------------- */
     --cui-shadow-sm: 0 1px 3px color-mix(in oklch, var(--cui-shadow-color) 8%, transparent), 0 1px 2px -1px color-mix(in oklch, var(--cui-shadow-color) 6%, transparent);
-    --cui-shadow-lg: 0 12px 32px -8px color-mix(in oklch, var(--cui-shadow-color) 22%, transparent), 0 4px 8px -4px color-mix(in oklch, var(--cui-shadow-color) 10%, transparent);
     --cui-shadow-xl: 0 24px 64px -12px color-mix(in oklch, var(--cui-shadow-color) 35%, transparent);
-    /* Relief: controls are physical. Buttons are keycaps (highlight on top, a 1px edge
-     * below), inputs are wells (sunk), pressing flattens the keycap. */
-    --cui-highlight: light-dark(oklch(100% 0 0 / 0.8), oklch(100% 0 0 / 0.07));
-    --cui-edge: light-dark(color-mix(in oklch, var(--cui-shadow-color) 16%, transparent), oklch(0% 0 0 / 0.55));
-    --cui-shadow-well: inset 0 1px 2px color-mix(in oklch, var(--cui-shadow-color) 7%, transparent);
-    --cui-shadow-pressed: inset 0 1px 2px color-mix(in oklch, var(--cui-shadow-color) 18%, transparent);
     @each $name, $status in $all-statuses {
       @if not map.get($status, tokens) or list.index(map.get($status, tokens), ring) {
         --cui-ring-#{$name}: 0 0 0 3px var(--cui-#{$name}-ring);
@@ -201,16 +136,6 @@
     }
 
     /* ---- Controls (shared by button, input, select) ------------------------ */
-    --cui-control-height-xs: 1.5rem;    /* 24 */
-    --cui-control-height-sm: 1.75rem;   /* 28 */
-    --cui-control-height: 2rem;         /* 32 */
-    --cui-control-height-lg: 2.5rem;    /* 40 */
-    --cui-control-padding-x: 0.75rem;
-    --cui-control-font-size: 0.8125rem; /* 13 */
-    --cui-control-radius: var(--cui-radius);
-    --cui-control-border: light-dark(
-      color-mix(in oklch, var(--cui-tint) 12%, var(--cui-neutral-300)),
-      color-mix(in oklch, var(--cui-tint) 8%, var(--cui-neutral-700)));
     --cui-control-bg: var(--cui-surface);
   }
 

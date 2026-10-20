@@ -30,10 +30,16 @@ public interface ISessionStore
     /// </summary>
     Task<IReadOnlyList<ActiveSession>> ListActiveAsync(Guid userId, Guid? currentSessionId, DateTimeOffset now, int limit, CancellationToken cancellationToken);
 
-    /// <summary>Ends every session of the user (password reset, ban, delete). Runs immediately, inside the caller's transaction if any.</summary>
+    /// <summary>
+    /// Ends every session of the user (password reset, ban, delete). Runs immediately, inside the caller's transaction;
+    /// also stages the durable removal of their cached copies, which the caller saves in it.
+    /// </summary>
     Task RevokeAllAsync(Guid userId, DateTimeOffset now, CancellationToken cancellationToken);
 
-    /// <summary>Ends every session of the user except <paramref name="keepSessionId"/> (password change). Runs immediately, inside the caller's transaction if any.</summary>
+    /// <summary>
+    /// Ends every session of the user except <paramref name="keepSessionId"/> (password change). Runs immediately, inside
+    /// the caller's transaction; also stages the durable removal of their cached copies, which the caller saves in it.
+    /// </summary>
     Task RevokeOthersAsync(Guid userId, Guid keepSessionId, DateTimeOffset now, CancellationToken cancellationToken);
 
     /// <summary>Drops the cached copies of the user's sessions. Call after committing <see cref="RevokeAllAsync"/> or <see cref="RevokeOthersAsync"/>. Not cancellable: a client that goes away must not leave a revoked session cached.</summary>

@@ -38,6 +38,8 @@ public sealed partial class AccountServiceTests
         Assert.Equal(TestData.Now, added.CreatedAt);
         Assert.Equal(new DeviceInfo(DeviceKind.Computer, "Mac", "Safari"), UserAgents.Describe(added.UserAgent));
         Assert.Equal(1, unitOfWork.Saves);
+        // The owner hears of it, saved with it: a stolen session could otherwise add a way back in that outlives a password reset.
+        outbox.Received(1).Enqueue(SignInMethodEmail.MessageType, new SignInMethodEmail(user.Email, user.Locale, null), Arg.Any<System.Text.Json.Serialization.Metadata.JsonTypeInfo<SignInMethodEmail>>());
     }
 
     [Fact]

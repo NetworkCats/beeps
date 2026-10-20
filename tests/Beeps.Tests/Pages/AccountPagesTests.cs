@@ -328,12 +328,23 @@ public sealed class AccountPagesTests : IDisposable
         Assert.Contains("value=\"tom@example.com\"", html, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public async Task ResetPasswordOpenedByItselfGoesBackToAskForACode()
+    {
+        using var client = WebAuth.NewClient(factory);
+
+        using var response = await client.GetAsync(new Uri("/reset-password", UriKind.Relative), TestSupport.Ct);
+
+        // No address and stamp in this browser: guesses here would count against a code someone else asked for.
+        Assert.Equal(HttpStatusCode.Found, response.StatusCode);
+        Assert.Equal("/forgot-password", response.Headers.Location?.OriginalString);
+    }
+
     [Theory]
     [InlineData("/login", false)]
     [InlineData("/register", false)]
     [InlineData("/login/code", false)]
     [InlineData("/forgot-password", true)]
-    [InlineData("/reset-password", true)]
     public async Task SignedInOnlyTheWayBackInStaysOpen(string path, bool open)
     {
         var user = WebAuth.ArrangeUser(factory);

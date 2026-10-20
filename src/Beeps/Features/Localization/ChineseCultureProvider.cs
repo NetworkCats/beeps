@@ -1,5 +1,4 @@
 using Microsoft.AspNetCore.Localization;
-using Microsoft.Net.Http.Headers;
 
 namespace Beeps.Features.Localization;
 

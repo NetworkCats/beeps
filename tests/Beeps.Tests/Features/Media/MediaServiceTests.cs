@@ -215,6 +215,4 @@ public sealed class MediaServiceTests
         Assert.Equal(MediaErrorCodes.TooMany, result.Error?.Code);
         await parts.RateLimits.DidNotReceiveWithAnyArgs().TryAcquireAsync(default!, TestSupport.Ct);
     }
-
-    private static bool IsWebP(ReadOnlyMemory<byte> data) => MediaRules.Sniff(data.Span) == ImageFormat.WebP;
 }

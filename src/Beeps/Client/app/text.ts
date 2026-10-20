@@ -18,7 +18,7 @@ export function isImageType(type: string): boolean {
   return IMAGE_TYPES.split(',').includes(type.toLowerCase());
 }
 
-export type ImagesProblem = 'too-many' | 'too-large' | null;
+type ImagesProblem = 'too-many' | 'too-large' | null;
 
 /** Too many or too large files, flagged as soon as they are chosen, rather than after a long upload that would fail. */
 export function checkImages(sizes: readonly number[], maxFiles: number, maxBytes: number): ImagesProblem {

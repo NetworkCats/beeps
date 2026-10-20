@@ -28,7 +28,7 @@ public sealed record UnannouncedCounts(int NewUsers, int ModerationBacklog, int 
 public sealed record SiteCounts(int Users, int Agents, int Beeps, int NewUsers, int NewAgents, int NewBeeps, int ModerationBacklog, int OutboxBacklog, int DeadJobs);
 
 /// <summary>An outbox message that ran out of attempts. Its payload is not shown: it can hold email addresses.</summary>
-public sealed record DeadJobRow(Guid Id, string Type, int Attempts, string LastError, DateTimeOffset CreatedAt, DateTimeOffset FailedAt);
+public sealed record DeadJobRow(Guid Id, string Type, int Attempts, string LastError, DateTimeOffset FailedAt);
 
 public sealed record ScheduledJobRow(string Name, DateTimeOffset? LastStartedAt, DateTimeOffset? LastFinishedAt, string? LastError);
 

@@ -4,7 +4,7 @@
 @use "mixins" as *;
 
 // Twitter's "Edit media": a header with the way out, the title and the button that applies, then the image. As wide
-// as the content column (its .dialog-lg would be wider).
+// as the content column.
 .crop-dialog {
   --cui-dialog-width: min(37.5rem, calc(100vw - 2rem));
 }

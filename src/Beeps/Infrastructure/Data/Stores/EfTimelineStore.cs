@@ -100,6 +100,11 @@ public sealed class EfTimelineStore(BeepsDbContext db, ContentReads reads) : ITi
             tagged = tagged.Where(t => t.BeepId > since);
         }
 
+        if (page.Until is { } until)
+        {
+            tagged = tagged.Where(t => t.BeepId < until);
+        }
+
         var hits = await tagged
             .Join(BeepQueries.Visible(db, viewerId), t => t.BeepId, b => b.Id, (t, b) => new { t.BeepId, Beep = b })
             .OrderByDescending(x => x.BeepId)
@@ -176,6 +181,11 @@ public sealed class EfTimelineStore(BeepsDbContext db, ContentReads reads) : ITi
         if (page.SinceId is { } since)
         {
             beeps = beeps.Where(b => b.Id > since);
+        }
+
+        if (page.Until is { } until)
+        {
+            beeps = beeps.Where(b => b.Id < until);
         }
 
         return beeps;

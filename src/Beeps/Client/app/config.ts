@@ -15,7 +15,7 @@ export interface Viewer {
   admin: boolean;
 }
 
-export interface Limits {
+interface Limits {
   beepLength: number;
   imagesPerBeep: number;
   mediaBytes: number;
@@ -45,8 +45,8 @@ export function config(): AppConfig {
   return current;
 }
 
-export function readConfig(root: ParentNode = document): void {
-  const script = root.querySelector('script#app-config');
+export function readConfig(): void {
+  const script = document.querySelector('script#app-config');
   if (script?.textContent) setConfig(JSON.parse(script.textContent) as AppConfig);
 }
 
@@ -54,8 +54,8 @@ export function readConfig(root: ParentNode = document): void {
  * A page gone back to shows the viewer as last heard of (a new avatar since), not as they were when it was left: its
  * saved config is given the viewer of now, before it is read.
  */
-export function keepViewer(root: ParentNode = document): void {
-  const script = root.querySelector('script#app-config');
+export function keepViewer(): void {
+  const script = document.querySelector('script#app-config');
   if (!script?.textContent) return;
   const saved = JSON.parse(script.textContent) as AppConfig;
   if (saved.viewer.id === viewer.value.id) script.textContent = JSON.stringify({ ...saved, viewer: viewer.value });

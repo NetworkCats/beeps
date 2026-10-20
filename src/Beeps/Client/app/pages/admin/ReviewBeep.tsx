@@ -28,6 +28,7 @@ interface ReviewMedia {
 }
 
 interface ReviewReport {
+  id: string;
   createdAt: string;
   reporterId: string;
   reporterHandle?: string;
@@ -188,6 +189,12 @@ export function ReviewBeepPage({ props: beep }: IslandProps<AdminReviewBeepProps
               <button class="btn btn-sm btn-primary" type="submit">
                 {beep.status === 'Hidden' ? t('Admin.Beep.Restore') : t('Admin.Beep.MarkHandled')}
               </button>
+              {/* The open reports shown here are closed; one filed meanwhile keeps the beep in the queue. */}
+              {beep.reports
+                .filter((report) => !report.resolved)
+                .map((report) => (
+                  <input key={report.id} type="hidden" name="reports" value={report.id} />
+                ))}
               <Antiforgery />
             </form>
           )}

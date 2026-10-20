@@ -99,6 +99,11 @@ public sealed class EfNotificationStore(BeepsDbContext db) : INotificationStore
             entries = entries.Where(e => e.Entry.Id > since);
         }
 
+        if (page.Until is { } until)
+        {
+            entries = entries.Where(e => e.Entry.Id < until);
+        }
+
         var found = await entries
             .OrderByDescending(e => e.HeadId)
             .Take(page.Limit + 1)

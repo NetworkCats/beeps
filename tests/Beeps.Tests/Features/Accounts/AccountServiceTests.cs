@@ -721,6 +721,8 @@ public sealed partial class AccountServiceTests
         var result = await CreateService().RequestPasswordResetAsync("nobody@example.com", "token", TestData.Origin, TestSupport.Ct);
 
         Assert.True(result.IsSuccess);
+        // Shaped as a real stamp: the encrypted cookie it goes in must not be longer or shorter for an unknown address.
+        Assert.Matches("^[0-9]{13}$", result.Value);
         Assert.Empty(sentCodes);
         await rateLimitStore.ReceivedWithAnyArgs(1).TryAcquireAsync(default!, TestSupport.Ct);
     }
@@ -734,8 +736,23 @@ public sealed partial class AccountServiceTests
         var result = await CreateService().RequestPasswordResetAsync(" Tom@Example.com ", "token", TestData.Origin, TestSupport.Ct);
 
         Assert.True(result.IsSuccess);
+        Assert.Matches("^[0-9]{13}$", result.Value);
         Assert.Equal(EmailCodePurpose.ResetPassword, Assert.Single(sentCodes).Purpose);
         Assert.Equal(1, unitOfWork.Saves);
+    }
+
+    [Fact]
+    public async Task ResetRequestsLeaveTheSignInCodesLimitAlone()
+    {
+        var calls = new List<IReadOnlyList<RateLimitCounter>>();
+        rateLimitStore.TryAcquireAsync(Arg.Do<IReadOnlyList<RateLimitCounter>>(calls.Add), Arg.Any<CancellationToken>()).Returns(RateLimitDecision.Allowed);
+
+        await CreateService().RequestPasswordResetAsync("tom@example.com", "token", TestData.Origin, TestSupport.Ct);
+
+        // Anyone can ask on someone's behalf: running it up must not stop the codes their sign-in sends.
+        Assert.Equal(
+            [RateLimitPolicies.PasswordReset, RateLimitPolicies.PasswordReset, RateLimitPolicies.EmailCodeIp, RateLimitPolicies.PasswordResetCode],
+            TestData.Policies(Assert.Single(calls)));
     }
 
     [Fact]
@@ -752,9 +769,9 @@ public sealed partial class AccountServiceTests
     public async Task ResetSetsThePasswordAndEndsEverySession()
     {
         var user = TestData.User(verified: false);
-        var code = await IssueResetCodeAsync(user);
+        var (code, stamp) = await IssueResetCodeAsync(user);
 
-        var result = await CreateService().ResetPasswordAsync(new PasswordResetRequest(user.Email, code, "new password!"), TestSupport.Ct);
+        var result = await CreateService().ResetPasswordAsync(new PasswordResetRequest(user.Email, code, "new password!", stamp), TestData.Origin, TestSupport.Ct);
 
         Assert.True(result.IsSuccess);
         Assert.Equal("hashed:new password!", user.PasswordHash);
@@ -772,7 +789,7 @@ public sealed partial class AccountServiceTests
     [Fact]
     public async Task ResetForAnUnknownAddressIsJustAWrongCode()
     {
-        var result = await CreateService().ResetPasswordAsync(new PasswordResetRequest("nobody@example.com", "123456", "new password!"), TestSupport.Ct);
+        var result = await CreateService().ResetPasswordAsync(new PasswordResetRequest("nobody@example.com", "123456", "new password!", "1"), TestData.Origin, TestSupport.Ct);
 
         Assert.Equal(AccountErrorCodes.CodeInvalid, result.Error?.Code);
     }
@@ -780,7 +797,7 @@ public sealed partial class AccountServiceTests
     [Fact]
     public async Task ResetValidatesItsInput()
     {
-        var result = await CreateService().ResetPasswordAsync(new PasswordResetRequest("x", "12", "short"), TestSupport.Ct);
+        var result = await CreateService().ResetPasswordAsync(new PasswordResetRequest("x", "12", "short", null), TestData.Origin, TestSupport.Ct);
 
         Assert.Equal([AccountFields.Code, AccountFields.Email, AccountFields.Password], result.Error?.Fields?.Keys.Order());
     }
@@ -830,13 +847,45 @@ public sealed partial class AccountServiceTests
     public async Task AWrongResetCodeStaysCountedAndKeepsSessions()
     {
         var user = TestData.User();
-        await IssueResetCodeAsync(user);
+        var (_, stamp) = await IssueResetCodeAsync(user);
 
-        var result = await CreateService().ResetPasswordAsync(new PasswordResetRequest(user.Email, "000000", "new password!"), TestSupport.Ct);
+        var result = await CreateService().ResetPasswordAsync(new PasswordResetRequest(user.Email, "000000", "new password!", stamp), TestData.Origin, TestSupport.Ct);
 
         Assert.Equal(AccountErrorCodes.CodeInvalid, result.Error?.Code);
         // Counted outside any transaction, so a rollback cannot undo it.
         Assert.Empty(unitOfWork.Locks);
+        await store.Received(1).TryCountCodeAttemptAsync(EmailCodePurpose.ResetPassword, user.NormalizedEmail, Arg.Any<DateTimeOffset>(), Arg.Any<int>(), Arg.Any<CancellationToken>());
+        await sessions.DidNotReceiveWithAnyArgs().RevokeAllAsync(default, default, TestSupport.Ct);
+    }
+
+    [Fact]
+    public async Task ResetGuessesAreLimitedAcrossCodes()
+    {
+        var user = TestData.User();
+        var (code, stamp) = await IssueResetCodeAsync(user);
+        rateLimitStore.TryAcquireAsync(default!, TestSupport.Ct).ReturnsForAnyArgs(RateLimitDecision.Denied(TimeSpan.FromHours(1)));
+
+        var result = await CreateService().ResetPasswordAsync(new PasswordResetRequest(user.Email, code, "new password!", stamp), TestData.Origin, TestSupport.Ct);
+
+        // Asking for new codes again and again gives no more guesses.
+        Assert.Equal(ErrorKind.RateLimited, result.Error?.Kind);
+        await store.DidNotReceiveWithAnyArgs().TryCountCodeAttemptAsync(default, default!, default, default, TestSupport.Ct);
+        await sessions.DidNotReceiveWithAnyArgs().RevokeAllAsync(default, default, TestSupport.Ct);
+    }
+
+    [Fact]
+    public async Task ResetGuessesWithoutTheStampUseUpNothing()
+    {
+        var user = TestData.User();
+        var (code, _) = await IssueResetCodeAsync(user);
+        var service = CreateService();
+
+        var stampless = await service.ResetPasswordAsync(new PasswordResetRequest(user.Email, code, "new password!", null), TestData.Origin, TestSupport.Ct);
+        var forged = await service.ResetPasswordAsync(new PasswordResetRequest(user.Email, code, "new password!", "0"), TestData.Origin, TestSupport.Ct);
+
+        Assert.Equal(AccountErrorCodes.CodeInvalid, stampless.Error?.Code);
+        Assert.Equal(AccountErrorCodes.CodeInvalid, forged.Error?.Code);
+        await store.DidNotReceiveWithAnyArgs().TryCountCodeAttemptAsync(default, default!, default, default, TestSupport.Ct);
         await sessions.DidNotReceiveWithAnyArgs().RevokeAllAsync(default, default, TestSupport.Ct);
     }
 
@@ -1305,14 +1354,14 @@ public sealed partial class AccountServiceTests
         return (Unprotect(sentCodes[^1]), stored!);
     }
 
-    private async Task<string> IssueResetCodeAsync(User user)
+    private async Task<(string Code, string Stamp)> IssueResetCodeAsync(User user)
     {
         EmailCode? stored = null;
         store.FindUserByEmailAsync(user.NormalizedEmail, Arg.Any<CancellationToken>()).Returns(user);
         store.When(s => s.AddEmailCode(Arg.Any<EmailCode>())).Do(ci => stored = ci.Arg<EmailCode>());
-        await CreateService().RequestPasswordResetAsync(user.Email, "token", TestData.Origin, TestSupport.Ct);
+        var stamp = await CreateService().RequestPasswordResetAsync(user.Email, "token", TestData.Origin, TestSupport.Ct);
         store.FindEmailCodeAsync(EmailCodePurpose.ResetPassword, user.NormalizedEmail, Arg.Any<CancellationToken>()).Returns(stored);
-        return Unprotect(sentCodes[^1]);
+        return (Unprotect(sentCodes[^1]), stamp.Value);
     }
 
     private async Task<(string Code, EmailCode Stored)> IssueEmailChangeCodeAsync(User user, string newEmail)

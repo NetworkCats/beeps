@@ -13,9 +13,20 @@ public interface IOutboxStore
 {
     /// <summary>
     /// Takes up to <paramref name="limit"/> due messages of a queue's <paramref name="types"/> that no other worker
-    /// holds, counts an attempt on each and hides them until <paramref name="leaseUntil"/>. Oldest first.
+    /// holds and hides them until <paramref name="leaseUntil"/>. Oldest first. No attempt is counted yet
+    /// (<see cref="StartAttemptAsync"/>): one that kills the process must not use up the attempts of the rest.
     /// </summary>
     Task<IReadOnlyList<OutboxEnvelope>> ClaimAsync(OutboxTypes types, int limit, DateTimeOffset now, DateTimeOffset leaseUntil, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Counts an attempt on a claimed message just before it runs, and leases it until <paramref name="leaseUntil"/>:
+    /// its attempts now, or null if it is gone or no longer held under <paramref name="claimedUntil"/> (claimed again
+    /// elsewhere once that lease ran out).
+    /// </summary>
+    Task<int?> StartAttemptAsync(Guid id, DateTimeOffset claimedUntil, DateTimeOffset leaseUntil, CancellationToken cancellationToken);
+
+    /// <summary>Keeps a message that is still running hidden until <paramref name="leaseUntil"/>.</summary>
+    Task ExtendLeaseAsync(Guid id, DateTimeOffset leaseUntil, CancellationToken cancellationToken);
 
     Task CompleteAsync(Guid id, CancellationToken cancellationToken);
 

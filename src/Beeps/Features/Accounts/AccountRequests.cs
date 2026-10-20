@@ -19,4 +19,5 @@ public sealed record LoginOutcome(AccountState? Account, string? CodeStamp = nul
     public static LoginOutcome CodeSent(string codeStamp) => new(null, codeStamp);
 }
 
-public sealed record PasswordResetRequest(string? Email, string? Code, string? NewPassword);
+/// <param name="CodeStamp">What asking for the code answered with, kept where only the browser that asked has it.</param>
+public sealed record PasswordResetRequest(string? Email, string? Code, string? NewPassword, string? CodeStamp);

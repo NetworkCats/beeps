@@ -3,7 +3,6 @@ using Beeps.Features.Shared.Http;
 using Beeps.Features.Shared;
 using Beeps.Tests.Support;
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Beeps.Tests.Features.Shared;

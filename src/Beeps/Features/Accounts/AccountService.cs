@@ -423,9 +423,10 @@ public sealed partial class AccountService(
 
     /// <summary>
     /// Sends a reset code if the address belongs to an account. The answer is the same either way, so
-    /// the form cannot be used to find out who has an account.
+    /// the form cannot be used to find out who has an account: a stamp naming the code sent, or nothing, for the
+    /// browser that asked to bring back with its guesses (<see cref="ResetPasswordAsync"/>).
     /// </summary>
-    public async Task<Result> RequestPasswordResetAsync(string? email, string? captchaToken, RequestOrigin origin, CancellationToken cancellationToken)
+    public async Task<Result<string>> RequestPasswordResetAsync(string? email, string? captchaToken, RequestOrigin origin, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(origin);
         if (!AccountRules.IsValidEmail(email?.Trim()))
@@ -444,29 +445,35 @@ public sealed partial class AccountService(
                 new RateLimitTarget(RateLimitPolicies.PasswordReset, RateLimitPartitions.Ip(origin.ClientIp)),
                 new RateLimitTarget(RateLimitPolicies.PasswordReset, RateLimitPartitions.Email(normalized)),
                 new RateLimitTarget(RateLimitPolicies.EmailCodeIp, RateLimitPartitions.Ip(origin.ClientIp)),
-                new RateLimitTarget(RateLimitPolicies.EmailCode, RateLimitPartitions.Email(normalized)),
+                // Not EmailCode: anyone can ask for a reset, and running it up must not stop the codes that signing in sends.
+                new RateLimitTarget(RateLimitPolicies.PasswordResetCode, RateLimitPartitions.Email(normalized)),
             ],
             cancellationToken);
         if (!limited.IsSuccess)
         {
-            return limited;
+            return limited.Error;
         }
 
         var user = await store.FindUserByEmailAsync(normalized, cancellationToken);
         if (user is null || user.BannedAt is not null)
         {
-            return Result.Success;
+            return DummyCodeStamp();
         }
 
-        await IssueCodeAsync(EmailCodePurpose.ResetPassword, user, cancellationToken);
+        var issued = await IssueCodeAsync(EmailCodePurpose.ResetPassword, user, cancellationToken);
         await unitOfWork.SaveChangesAsync(cancellationToken);
-        return Result.Success;
+        return CodeStamp(issued);
     }
 
-    /// <summary>Sets the new password and ends every existing session.</summary>
-    public async Task<Result> ResetPasswordAsync(PasswordResetRequest request, CancellationToken cancellationToken)
+    /// <summary>
+    /// Sets the new password and ends every existing session. Guesses count against the code only when the request
+    /// brings its stamp (<see cref="RequestPasswordResetAsync"/>), which only the browser that asked for it has:
+    /// anyone can name the address, but must not use up the attempts of the code sent to its owner.
+    /// </summary>
+    public async Task<Result> ResetPasswordAsync(PasswordResetRequest request, RequestOrigin origin, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
+        ArgumentNullException.ThrowIfNull(origin);
         var fields = new Dictionary<string, string[]>();
         if (!AccountRules.IsValidEmail(request.Email?.Trim()))
         {
@@ -492,6 +499,19 @@ public sealed partial class AccountService(
         if (user is null)
         {
             return CodeInvalid();
+        }
+
+        var issued = await store.FindEmailCodeAsync(EmailCodePurpose.ResetPassword, user.NormalizedEmail, cancellationToken);
+        if (issued is null || request.CodeStamp is null || !TextHashes.FixedTimeEquals(CodeStamp(issued.CreatedAt), request.CodeStamp))
+        {
+            return CodeInvalid();
+        }
+
+        // Per account and IP: one who asks for codes to guess at must not use up the guesses of the owner's own reset.
+        var limited = await rateLimits.CheckAsync(RateLimitPolicies.PasswordResetGuess, RateLimitPartitions.AccountFromIp(user.Id, origin.ClientIp), cancellationToken);
+        if (!limited.IsSuccess)
+        {
+            return limited;
         }
 
         // Outside the transaction: a wrong guess must stay counted even though nothing else is saved.
@@ -988,7 +1008,7 @@ public sealed partial class AccountService(
         }
 
         // A stamp that names no code, which looks the same as one that does.
-        var nowhere = LoginOutcome.CodeSent(RandomNumberGenerator.GetHexString(16, lowercase: true));
+        var nowhere = LoginOutcome.CodeSent(DummyCodeStamp());
         if (user?.PasswordHash is null)
         {
             passwordHasher.VerifyHashedPassword(TimingDummy, TimingDummyHash(), password);
@@ -1013,11 +1033,17 @@ public sealed partial class AccountService(
     }
 
     /// <summary>
-    /// Names one code sent for signing in: the time it was sent, which no two of an address's codes share (they are a
+    /// Names one code sent for signing in or a reset: the time it was sent, which no two of an address's codes share (they are a
     /// minute apart at least). In milliseconds, which PostgreSQL keeps exactly (it keeps microseconds).
     /// </summary>
     private static string CodeStamp(DateTimeOffset createdAt) =>
         createdAt.ToUnixTimeMilliseconds().ToString(CultureInfo.InvariantCulture);
+
+    /// <summary>
+    /// A stamp that names no code, shaped as a real one (13 digits): the encrypted TempData it is kept in must not be
+    /// longer or shorter for an address with no account, or a wrong password.
+    /// </summary>
+    private static string DummyCodeStamp() => RandomNumberGenerator.GetString("0123456789", 13);
 
     private static string HashCode(EmailCodePurpose purpose, string normalizedEmail, string code) =>
         TextHashes.Sha256Hex($"{purpose}:{normalizedEmail}:{code}");

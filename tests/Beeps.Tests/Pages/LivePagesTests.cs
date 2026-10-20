@@ -1,5 +1,4 @@
 using System.Net;
-using Beeps.Features.Accounts;
 using Beeps.Features.Agents;
 using Beeps.Features.Beeps;
 using Beeps.Features.Live;
@@ -188,7 +187,7 @@ public sealed partial class LivePagesTests : IDisposable
 
         Assert.Equal("text/event-stream", response.Content.Headers.ContentType?.MediaType);
         Assert.Equal(("inbox", """{"unread_count":1}"""), (inbox.Type, inbox.Data));
-        Assert.Equal(new SseEvent("beep", $$"""{"id":"{{mine:D}}","root_id":"{{mine:D}}","reply_to_id":null}""", id, null), beep);
+        Assert.Equal(new SseEvent("beep", $$"""{"id":"{{mine:D}}"}""", id, null), beep);
     }
 
     [Fact]
@@ -245,13 +244,13 @@ public sealed partial class LivePagesTests : IDisposable
         using var tom = await WebAuth.SignInAsync(factory, member);
 
         using var signedOut = await anonymous.GetAsync(new Uri("/stream", UriKind.Relative), TestSupport.Ct);
-        using var fragment = await anonymous.GetAsync(new Uri("/live/beeps?watch=home", UriKind.Relative), TestSupport.Ct);
+        using var signedOutItems = await anonymous.GetAsync(new Uri("/live/beeps?watch=home", UriKind.Relative), TestSupport.Ct);
         // Not verified yet is still signed in: such a tab follows its account (verified elsewhere, signed out).
         using var notVerified = await newbie.GetAsync(new Uri("/stream", UriKind.Relative), HttpCompletionOption.ResponseHeadersRead, TestSupport.Ct);
         using var badWatch = await tom.GetAsync(new Uri("/stream?watch=everything", UriKind.Relative), TestSupport.Ct);
 
         Assert.Equal(HttpStatusCode.Unauthorized, signedOut.StatusCode);
-        Assert.Equal(HttpStatusCode.Unauthorized, fragment.StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, signedOutItems.StatusCode);
         Assert.Equal(HttpStatusCode.OK, notVerified.StatusCode);
         Assert.Equal("text/event-stream", notVerified.Content.Headers.ContentType?.MediaType);
         Assert.Equal(HttpStatusCode.BadRequest, badWatch.StatusCode);
@@ -281,19 +280,18 @@ public sealed partial class LivePagesTests : IDisposable
     }
 
     [Fact]
-    public async Task NewInboxEntriesComeAsProps()
+    public async Task InboxEntriesComeAsProps()
     {
         var user = WebAuth.ArrangeUser(factory);
         var alice = TestBeeps.Human("alice");
         var reply = TestBeeps.Row("hi @tom", alice);
         TestBeeps.Arrange(factory, reply);
-        var newest = Guid.CreateVersion7();
         var notification = new NotificationRow(Guid.CreateVersion7(), NotificationType.Reply, alice, reply.Id, TestData.Now, null);
-        factory.Notifications.ListAsync(user.Id, PageRequest.Create(sinceId: newest, limit: LiveFeedService.Limit), false, Arg.Any<CancellationToken>())
+        factory.Notifications.ListAsync(user.Id, PageRequest.Create(limit: LiveFeedService.Limit), false, Arg.Any<CancellationToken>())
             .Returns(new CursorPage<NotificationRow>([notification], null));
         using var client = await WebAuth.SignInAsync(factory, user);
 
-        using var response = await client.GetAsync(new Uri($"/live/notifications?after={newest}", UriKind.Relative), TestSupport.Ct);
+        using var response = await client.GetAsync(new Uri("/live/notifications", UriKind.Relative), TestSupport.Ct);
 
         var entry = (await Islands.JsonAsync(response)).GetProperty("items").EnumerateArray().Single();
         Assert.Equal(notification.Id, entry.GetProperty("id").GetGuid());
@@ -354,6 +352,8 @@ public sealed partial class LivePagesTests : IDisposable
         Assert.Equal([user.Id.ToString("D")], Islands.Strings(Islands.Props(settings, "settings").GetProperty("live").GetProperty("actors")));
         var viewer = await Islands.JsonAsync(response);
         Assert.Equal(user.Id, viewer.GetProperty("id").GetGuid());
+        // The same address for everyone: no cache on the way may keep one person's answer.
+        Assert.True(response.Headers.CacheControl?.NoStore);
         Assert.EndsWith(".svg", viewer.GetProperty("avatar").GetString(), StringComparison.Ordinal);
     }
 

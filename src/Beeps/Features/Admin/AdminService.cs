@@ -515,7 +515,7 @@ public sealed partial class AdminService(
 
     /// <summary>An error if taking <paramref name="user"/> out of the admin set would leave it empty.</summary>
     private async Task<Error?> LastAdminAsync(User user, CancellationToken cancellationToken) =>
-        user.IsAdmin && user.BannedAt is null && await store.CountActiveAdminsAsync(cancellationToken) <= 1
+        user.IsAdmin && user.EmailVerifiedAt is not null && user.BannedAt is null && await store.CountActiveAdminsAsync(cancellationToken) <= 1
             ? Error.Conflict(AdminErrorCodes.LastAdmin, localizer["Error.LastAdmin"])
             : null;
 

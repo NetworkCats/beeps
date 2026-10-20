@@ -232,13 +232,13 @@ public sealed partial class BeepService(
             return Error.Forbidden(BeepErrorCodes.NotYourBeep, localizer["Error.NotYourBeep"]);
         }
 
-        var deleted = false;
+        ModerationStatus? deleted = null;
         await unitOfWork.InTransactionAsync(
             null,
             async ct =>
             {
                 deleted = await store.DeleteAsync(beepId, time.GetUtcNow(), ct);
-                if (deleted)
+                if (deleted is not null)
                 {
                     outbox.SyncBeepToSearch(beepId);
                     await unitOfWork.SaveChangesAsync(ct);
@@ -247,7 +247,7 @@ public sealed partial class BeepService(
                 return Result.Success;
             },
             cancellationToken);
-        if (!deleted)
+        if (deleted is null)
         {
             return Result.Success;
         }
@@ -255,7 +255,8 @@ public sealed partial class BeepService(
         LogDeleted(logger, beepId, viewer.ActorId);
         await live.BeepRemovedAsync(beepId, cancellationToken);
         await inboxes.RecountAsync([beepId], [], cancellationToken);
-        if (beep.ReplyToId is { } parentId)
+        // Its author still sees a hidden reply, but its parent's count already left it out.
+        if (beep.ReplyToId is { } parentId && deleted != ModerationStatus.Hidden)
         {
             await ReplyCountChangedAsync(parentId, viewer.ActorId, -1, cancellationToken);
         }

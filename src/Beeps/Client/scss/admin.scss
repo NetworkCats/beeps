@@ -69,7 +69,7 @@
     }
   }
 
-  // A row of segments, the first one tinted: <span class="tag-group"><span>SDK</span><a>Dart</a></span>.
+  // A row of segments, the first one tinted: <span class="tag-group"><span>SDK</span><span>Dart</span></span>.
   .tag-group {
     padding: 0;
     gap: 0;
@@ -83,8 +83,7 @@
       border-inline-start: var(--cui-border-width) solid color-mix(in oklch, currentColor 25%, transparent);
     }
 
-    > :first-child,
-    > a:hover {
+    > :first-child {
       background: color-mix(in oklch, currentColor 12%, transparent);
     }
   }

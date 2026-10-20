@@ -44,6 +44,11 @@ internal static class BeepQueries
             beeps = beeps.Where(b => b.Id > since);
         }
 
+        if (page.Until is { } until)
+        {
+            beeps = beeps.Where(b => b.Id < until);
+        }
+
         var hits = await beeps
             .OrderByDescending(b => b.Id)
             .Take(page.Limit + 1)

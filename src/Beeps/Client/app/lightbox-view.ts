@@ -8,7 +8,7 @@ export interface View {
   y: number;
 }
 
-export interface Box {
+interface Box {
   left: number;
   top: number;
   width: number;

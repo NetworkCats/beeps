@@ -7,9 +7,10 @@ public sealed class PostgresOutboxStore(NpgsqlDataSource dataSource) : IOutboxSt
 {
     // Claiming pushes run_after to the lease end, so the row needs no separate lock column and a
     // crashed worker's messages simply become due again. SKIP LOCKED lets instances claim in parallel.
+    // Attempts are counted one message at a time, as each starts (StartAttemptSql).
     private const string ClaimSql = """
         UPDATE outbox AS o
-        SET attempts = o.attempts + 1, run_after = @lease_until
+        SET run_after = @lease_until
         FROM (
             SELECT id FROM outbox
             WHERE run_after <= @now AND (type = ANY(@types)) <> @except
@@ -20,6 +21,14 @@ public sealed class PostgresOutboxStore(NpgsqlDataSource dataSource) : IOutboxSt
         WHERE o.id = due.id
         RETURNING o.id, o.type, o.payload::text, o.attempts, o.created_at
         """;
+
+    private const string StartAttemptSql = """
+        UPDATE outbox SET attempts = attempts + 1, run_after = @lease_until
+        WHERE id = @id AND run_after = @claimed_until
+        RETURNING attempts
+        """;
+
+    private const string ExtendLeaseSql = "UPDATE outbox SET run_after = @lease_until WHERE id = @id";
 
     private const string CompleteSql = "DELETE FROM outbox WHERE id = @id";
 
@@ -59,6 +68,23 @@ public sealed class PostgresOutboxStore(NpgsqlDataSource dataSource) : IOutboxSt
         // UUIDv7 ids sort by creation time.
         messages.Sort((a, b) => a.Id.CompareTo(b.Id));
         return messages;
+    }
+
+    public async Task<int?> StartAttemptAsync(Guid id, DateTimeOffset claimedUntil, DateTimeOffset leaseUntil, CancellationToken cancellationToken)
+    {
+        await using var command = dataSource.CreateCommand(StartAttemptSql);
+        command.Parameters.AddWithValue("id", id);
+        command.Parameters.AddWithValue("claimed_until", claimedUntil);
+        command.Parameters.AddWithValue("lease_until", leaseUntil);
+        return await command.ExecuteScalarAsync(cancellationToken) is int attempts ? attempts : null;
+    }
+
+    public async Task ExtendLeaseAsync(Guid id, DateTimeOffset leaseUntil, CancellationToken cancellationToken)
+    {
+        await using var command = dataSource.CreateCommand(ExtendLeaseSql);
+        command.Parameters.AddWithValue("id", id);
+        command.Parameters.AddWithValue("lease_until", leaseUntil);
+        await command.ExecuteNonQueryAsync(cancellationToken);
     }
 
     public async Task CompleteAsync(Guid id, CancellationToken cancellationToken)

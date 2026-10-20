@@ -181,6 +181,7 @@ public sealed record ReviewMediaProps(
 /// <summary>A report on a reviewed beep.</summary>
 /// <param name="Reason">Localized.</param>
 public sealed record ReviewReportProps(
+    Guid Id,
     DateTimeOffset CreatedAt,
     Guid ReporterId,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? ReporterHandle,
@@ -193,6 +194,7 @@ public sealed record ReviewReportProps(
         ArgumentNullException.ThrowIfNull(report);
         ArgumentNullException.ThrowIfNull(localizer);
         return new ReviewReportProps(
+            report.Id,
             report.CreatedAt, report.ReporterId, report.ReporterHandle, localizer[$"Moderation.Category.{report.Reason}"], report.Note, report.ResolvedAt is not null);
     }
 }

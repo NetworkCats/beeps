@@ -18,6 +18,9 @@ public static class RateLimitPartitions
     /// </summary>
     public static string Account(Guid accountId) => $"account:{accountId:D}";
 
+    /// <summary>One account as named from one IP (<see cref="Ip"/>): what others do to the account counts apart from what its owner does.</summary>
+    public static string AccountFromIp(Guid accountId, string? clientIp) => $"{Account(accountId)}:{Ip(clientIp)}";
+
     /// <summary>All agents of one owner together.</summary>
     public static string Owner(Guid ownerId) => $"owner:{ownerId:D}";
 

@@ -113,6 +113,24 @@ public sealed class ComposeAndActionsPagesTests : IDisposable
     }
 
     [Fact]
+    public async Task TheLikeScriptSignedOutMeanwhileIsRefusedNotSentToSignIn()
+    {
+        var beep = TestBeeps.Row("like me", TestBeeps.Human("alice"));
+        TestBeeps.Arrange(factory, beep);
+        using var client = WebAuth.NewClient(factory);
+        var token = await WebAuth.TokenAsync(client, "/login");
+
+        using var form = new FormUrlEncodedContent([KeyValuePair.Create("__RequestVerificationToken", token)]);
+        using var request = new HttpRequestMessage(HttpMethod.Post, new Uri($"/beeps/{beep.Id}/actions?handler=Delete&returnUrl=%2F", UriKind.Relative)) { Content = form };
+        request.Headers.Add("X-Requested-With", "fetch");
+        using var response = await client.SendAsync(request, TestSupport.Ct);
+
+        // A redirect would be followed by the script's fetch to the sign-in page's 200, as if the beep was deleted.
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        await factory.Beeps.DidNotReceiveWithAnyArgs().DeleteAsync(default, default, TestSupport.Ct);
+    }
+
+    [Fact]
     public async Task WithoutScriptALikeGoesBackToTheBeep()
     {
         var user = WebAuth.ArrangeUser(factory);
@@ -146,7 +164,7 @@ public sealed class ComposeAndActionsPagesTests : IDisposable
         var user = WebAuth.ArrangeUser(factory);
         var beep = TestBeeps.Row("oops", TestBeeps.Human(id: user.Id));
         TestBeeps.Arrange(factory, beep);
-        factory.Beeps.DeleteAsync(beep.Id, Arg.Any<DateTimeOffset>(), Arg.Any<CancellationToken>()).Returns(true);
+        factory.Beeps.DeleteAsync(beep.Id, Arg.Any<DateTimeOffset>(), Arg.Any<CancellationToken>()).Returns(ModerationStatus.Allowed);
         using var client = await WebAuth.SignInAsync(factory, user);
 
         using var response = await WebAuth.PostFormAsync(client, "/", $"/beeps/{beep.Id}/actions?handler=Delete&returnUrl=%2Fbeeps%2F{beep.Id}");

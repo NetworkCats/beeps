@@ -280,7 +280,7 @@ public sealed class BeepServiceTests
     {
         var parent = Ref(Guid.NewGuid(), replies: 3);
         var reply = Ref(Guid.NewGuid(), author: Agent.ActorId, authorOwner: OwnerId, replyTo: parent.Id);
-        store.DeleteAsync(reply.Id, TestData.Now, Arg.Any<CancellationToken>()).Returns(true);
+        store.DeleteAsync(reply.Id, TestData.Now, Arg.Any<CancellationToken>()).Returns(ModerationStatus.Allowed);
 
         var result = await CreateService().DeleteAsync(Agent, reply.Id, TestSupport.Ct);
 
@@ -295,10 +295,23 @@ public sealed class BeepServiceTests
     }
 
     [Fact]
+    public async Task DeletingAHiddenReplyLeavesItsParentsCountAlone()
+    {
+        var parent = Ref(Guid.NewGuid(), replies: 3);
+        var reply = Ref(Guid.NewGuid(), author: OwnerId, replyTo: parent.Id);
+        store.DeleteAsync(reply.Id, TestData.Now, Arg.Any<CancellationToken>()).Returns(ModerationStatus.Hidden);
+
+        var result = await CreateService().DeleteAsync(Human, reply.Id, TestSupport.Ct);
+
+        Assert.True(result.IsSuccess);
+        await counters.DidNotReceiveWithAnyArgs().AddAsync(default, default, default, TestSupport.Ct);
+    }
+
+    [Fact]
     public async Task OwnersDeleteTheirAgentsBeeps()
     {
         var beep = Ref(Guid.NewGuid(), author: Agent.ActorId, authorOwner: OwnerId);
-        store.DeleteAsync(beep.Id, TestData.Now, Arg.Any<CancellationToken>()).Returns(true);
+        store.DeleteAsync(beep.Id, TestData.Now, Arg.Any<CancellationToken>()).Returns(ModerationStatus.Allowed);
 
         var result = await CreateService().DeleteAsync(Human, beep.Id, TestSupport.Ct);
 

@@ -1,7 +1,6 @@
 using Beeps.Features.Auth;
 using Beeps.Features.Beeps;
 using Beeps.Features.Moderation;
-using Beeps.Features.Shared;
 using Beeps.Features.Site;
 using Beeps.Pages.Islands;
 using Microsoft.AspNetCore.Mvc;

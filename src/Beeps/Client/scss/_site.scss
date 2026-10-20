@@ -758,8 +758,6 @@
   --cui-tabs-height: var(--beeps-column-header-height);
   --cui-tabs-font: var(--beeps-text-size);
   --cui-tabs-fg: var(--cui-text-2);
-  border-block-end: 0;
-  border-radius: 0;
 
   &:hover {
     background: var(--cui-surface-hover);
@@ -1594,8 +1592,6 @@ span.beep-action {
     letter-spacing: -0.02em;
   }
 
-  > h1:last-child,
-  > h1 + .auth-form,
   > h1 + .oauth-buttons {
     margin-block-start: var(--cui-space-6);
   }

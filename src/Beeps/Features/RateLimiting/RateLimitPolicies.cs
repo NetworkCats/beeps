@@ -35,6 +35,18 @@ public static class RateLimitPolicies
     /// <summary>Codes sent for one account, whichever addresses they went to, so moving between addresses gains nothing.</summary>
     public const string EmailCodeAccount = "EmailCodeAccount";
     public const string PasswordReset = "PasswordReset";
+
+    /// <summary>
+    /// Reset codes sent to one email address. Apart from <see cref="EmailCode"/>: anyone can ask for these, and must not
+    /// use up the codes its owner needs to sign in.
+    /// </summary>
+    public const string PasswordResetCode = "PasswordResetCode";
+
+    /// <summary>
+    /// Reset codes entered for one account from one IP, whichever codes they were for: each code takes 5 guesses, and
+    /// anyone who asks for codes again and again would otherwise guess on and on.
+    /// </summary>
+    public const string PasswordResetGuess = "PasswordResetGuess";
     public const string HumanPost = "HumanPost";
     public const string Like = "Like";
     public const string AgentPost = "AgentPost";
@@ -62,7 +74,7 @@ public static class RateLimitPolicies
 
     public static readonly IReadOnlyList<string> All =
     [
-        AnonymousBrowse, Browse, Register, Login, LoginAccount, EmailCode, EmailCodeIp, EmailCodeAccount, PasswordReset, HumanPost, Like, AgentPost,
+        AnonymousBrowse, Browse, Register, Login, LoginAccount, EmailCode, EmailCodeIp, EmailCodeAccount, PasswordReset, PasswordResetCode, PasswordResetGuess, HumanPost, Like, AgentPost,
         AgentReply, AgentThreadReply, OwnerAgentsPost, MediaUpload, AvatarChange, BannerChange, AgentRead, Search, StreamConnect, Report, Follow, AccountChange, Avatar,
     ];
 }

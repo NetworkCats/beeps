@@ -4,7 +4,7 @@ namespace Beeps.Features.Accounts;
 
 /// <summary>
 /// Where an IP address is, roughly, from an IP geolocation database each instance keeps a copy of and refreshes daily
-/// (<c>Infrastructure/IpLocation</c>). Answers from memory; null while no copy is loaded, and for addresses it does not know
+/// (<c>Infrastructure/IpGeolocation</c>). Answers from memory; null while no copy is loaded, and for addresses it does not know
 /// (private and loopback ones among them).
 /// </summary>
 public interface IIpLocations

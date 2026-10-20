@@ -15,7 +15,7 @@ export interface LightboxImage {
   round?: boolean;
 }
 
-export interface OpenLightbox {
+interface OpenLightbox {
   images: LightboxImage[];
   index: number;
   /** The thumbnails on the page, one for each image where there is one: the picture grows out of it and back. */

@@ -1,5 +1,4 @@
 using Beeps.Pages.Islands;
-using Beeps.Tests.Support;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Html;
 using Microsoft.AspNetCore.Http;

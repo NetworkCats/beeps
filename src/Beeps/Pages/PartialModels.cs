@@ -26,7 +26,7 @@ public sealed record BeepList(CursorPage<BeepView> Page, string EmptyTitle, stri
 
 /// <summary>
 /// The square picked in the avatar cropper, posted as the hidden fields <c>Crop.X</c>, <c>Crop.Y</c> and
-/// <c>Crop.Size</c>. Without script they stay empty and the centered square is used.
+/// <c>Crop.Size</c>. Left empty when no square was picked, and the centered square is used.
 /// </summary>
 public sealed class AvatarCropForm
 {
@@ -41,7 +41,7 @@ public sealed class AvatarCropForm
 
 /// <summary>
 /// The strip picked in the banner cropper, posted as the hidden fields <c>BannerCrop.X</c>, <c>BannerCrop.Y</c> and
-/// <c>BannerCrop.Width</c>; its height follows from the width. Without script they stay empty and the centered strip is used.
+/// <c>BannerCrop.Width</c>; its height follows from the width. Left empty when no strip was picked, and the centered strip is used.
 /// </summary>
 public sealed class BannerCropForm
 {

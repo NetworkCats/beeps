@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { compareIds, liveStreamUrl, MAX_WATCHED_BEEPS, mergeIds, nextRetryDelay, NO_ID, previousId } from './live-url.ts';
+import { compareIds, earlierId, liveStreamUrl, MAX_WATCHED_BEEPS, mergeIds, nextRetryDelay, NO_ID, previousId } from './live-url.ts';
 
 test('a first connection replays from when the page was rendered', () => {
   assert.equal(liveStreamUrl('/stream', 'home', ['a', 'b'], undefined, '1760603400000'), '/stream?watch=home&beeps=a%2Cb&from=1760603400000');
@@ -49,4 +49,14 @@ test('ids order as their text, newest last', () => {
   assert.ok(compareIds('0199f0a2-0000-7000-8000-000000000000', '0199f0a3-0000-7000-8000-000000000000') < 0);
   assert.ok(compareIds('0199F0A3-0000-7000-8000-000000000000', '0199f0a2-ffff-7000-8000-000000000000') > 0);
   assert.equal(compareIds('a', 'A'), 0);
+});
+
+test('asking from a little earlier also brings a beep committed after a newer one', () => {
+  const newest = '019a0000-1000-7abc-8def-0123456789ab';
+  const late = '019a0000-0c00-7fff-bfff-ffffffffffff';
+  const earlier = earlierId(newest, 3000);
+  assert.equal(earlier, '019a0000-0448-7000-8000-000000000000');
+  assert.ok(compareIds(late, earlier) > 0);
+  assert.ok(compareIds(earlier, newest) < 0);
+  assert.equal(earlierId(NO_ID, 3000), NO_ID);
 });

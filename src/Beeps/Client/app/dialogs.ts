@@ -3,7 +3,7 @@
 // destroy, or without <dialog> support) does the browser's own confirm() ask instead.
 import { signal } from '@preact/signals';
 
-export interface PendingConfirm {
+interface PendingConfirm {
   message: string;
   answer: (confirmed: boolean) => void;
 }
