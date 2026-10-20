@@ -387,7 +387,12 @@ public sealed partial class AccountService(
     /// to its address, which only Turnstile and then the right password asked for.
     /// </summary>
     /// <param name="login">The email address or username the first step was given.</param>
-    public async Task<Result<AccountState>> LoginWithCodeAsync(string? login, string? code, CancellationToken cancellationToken)
+    /// <param name="codeStamp">
+    /// What the first step answered with (<see cref="LoginOutcome.CodeStamp"/>). Guesses count against the code only
+    /// when it names that code, which only the right password gets: anyone can name the account and get past
+    /// Turnstile with a wrong password, but must not use up the attempts of the code sent to its owner.
+    /// </param>
+    public async Task<Result<AccountState>> LoginWithCodeAsync(string? login, string? codeStamp, string? code, CancellationToken cancellationToken)
     {
         if (!AccountRules.IsWellFormedCode(code))
         {
@@ -395,6 +400,12 @@ public sealed partial class AccountService(
         }
 
         if (string.IsNullOrWhiteSpace(login) || (await FindByLoginAsync(login, cancellationToken)).User is not { } user)
+        {
+            return CodeInvalid();
+        }
+
+        var issued = await store.FindEmailCodeAsync(EmailCodePurpose.SignIn, user.NormalizedEmail, cancellationToken);
+        if (issued is null || codeStamp is null || !TextHashes.FixedTimeEquals(CodeStamp(issued.CreatedAt), codeStamp))
         {
             return CodeInvalid();
         }
@@ -976,41 +987,52 @@ public sealed partial class AccountService(
             return Error.Validation(AccountErrorCodes.CaptchaFailed, localizer["Error.CaptchaFailed"]);
         }
 
+        // A stamp that names no code, which looks the same as one that does.
+        var nowhere = LoginOutcome.CodeSent(RandomNumberGenerator.GetHexString(16, lowercase: true));
         if (user?.PasswordHash is null)
         {
             passwordHasher.VerifyHashedPassword(TimingDummy, TimingDummyHash(), password);
-            return LoginOutcome.CodeSent;
+            return nowhere;
         }
 
         if (passwordHasher.VerifyHashedPassword(user, user.PasswordHash, password) == PasswordVerificationResult.Failed || user.BannedAt is not null)
         {
-            return LoginOutcome.CodeSent;
+            return nowhere;
         }
 
         // A code sent in the last minute still stands; past the limits on codes none is sent, which is not said either.
         var last = await store.FindEmailCodeAsync(EmailCodePurpose.SignIn, user.NormalizedEmail, cancellationToken);
         if (TooSoon(last).IsSuccess && (await CheckCodeLimitsAsync(user, user.NormalizedEmail, origin, cancellationToken)).IsSuccess)
         {
-            await IssueCodeAsync(EmailCodePurpose.SignIn, user, cancellationToken);
+            var issued = await IssueCodeAsync(EmailCodePurpose.SignIn, user, cancellationToken);
             await unitOfWork.SaveChangesAsync(cancellationToken);
+            return LoginOutcome.CodeSent(CodeStamp(issued));
         }
 
-        return LoginOutcome.CodeSent;
+        return last is null ? nowhere : LoginOutcome.CodeSent(CodeStamp(last.CreatedAt));
     }
+
+    /// <summary>
+    /// Names one code sent for signing in: the time it was sent, which no two of an address's codes share (they are a
+    /// minute apart at least). In milliseconds, which PostgreSQL keeps exactly (it keeps microseconds).
+    /// </summary>
+    private static string CodeStamp(DateTimeOffset createdAt) =>
+        createdAt.ToUnixTimeMilliseconds().ToString(CultureInfo.InvariantCulture);
 
     private static string HashCode(EmailCodePurpose purpose, string normalizedEmail, string code) =>
         TextHashes.Sha256Hex($"{purpose}:{normalizedEmail}:{code}");
 
     private string TimingDummyHash() => timingDummyHash ??= passwordHasher.HashPassword(TimingDummy, "timing-dummy-password");
 
-    /// <summary>Stages a fresh code (replacing any earlier one) and its email; the caller saves.</summary>
-    private Task IssueCodeAsync(EmailCodePurpose purpose, User user, CancellationToken cancellationToken) =>
+    /// <summary>Stages a fresh code (replacing any earlier one) and its email; the caller saves. Returns when it was sent.</summary>
+    private Task<DateTimeOffset> IssueCodeAsync(EmailCodePurpose purpose, User user, CancellationToken cancellationToken) =>
         IssueCodeAsync(purpose, user, user.Email, cancellationToken);
 
     /// <summary>
     /// Stages a fresh code kept under the account's current address, sent to <paramref name="to"/>; the caller saves.
+    /// Returns when it was sent.
     /// </summary>
-    private async Task IssueCodeAsync(EmailCodePurpose purpose, User user, string to, CancellationToken cancellationToken)
+    private async Task<DateTimeOffset> IssueCodeAsync(EmailCodePurpose purpose, User user, string to, CancellationToken cancellationToken)
     {
         var code = RandomNumberGenerator.GetInt32(0, 1_000_000).ToString("D6", CultureInfo.InvariantCulture);
         var now = time.GetUtcNow();
@@ -1039,6 +1061,7 @@ public sealed partial class AccountService(
             AccountCodeEmail.MessageType,
             new AccountCodeEmail(to, user.Locale, purpose, codeProtector.Protect(code)),
             AccountsJsonContext.Default.AccountCodeEmail);
+        return now;
     }
 
     /// <summary>Checks a code and stages its removal on success; every guess counts, right or wrong.</summary>

@@ -6,6 +6,7 @@ import { markSending } from './busy.ts';
 import { confirmAction } from './dialogs.ts';
 import { postIslands, type IslandsAnswer } from './http.ts';
 import { showAnswer } from './page.ts';
+import { paths } from './paths.ts';
 import type { Errors } from './props.ts';
 import { pageUrl, submitPage, visit } from './router.ts';
 import { showToast } from './toasts.ts';
@@ -50,6 +51,12 @@ export async function sendForm(form: HTMLFormElement, submitter: HTMLElement | n
     if (answer.page?.alert) showToast(answer.page.alert, true);
     return;
   }
+  // Sent signed in, answered with the sign-in page: the session ended on the way (it expired, or was ended from
+  // another device) and nothing was done. The form keeps what was in it, which leaving for that page would lose.
+  if (document.body.dataset.auth && answer.page && !answer.page.page.auth && new URL(answer.url, window.location.href).pathname === paths.login) {
+    showToast(t('Error.ActionFailed'), true);
+    return;
+  }
   if (showAnswer(answer, samePage)) {
     options.onErrors?.(answer.page?.islands[options.answeredBy ?? '']?.errors ?? {});
     if (answer.status < 400) options.onDone?.();
@@ -78,6 +85,12 @@ export async function sendForm(form: HTMLFormElement, submitter: HTMLElement | n
   // The form stays as it was, to send again by hand.
   if (answer.status >= 500) {
     showToast(t('Error.ActionFailed'), true);
+    return;
+  }
+  // Refused before it reached the page (too many requests, or a body larger than allowed): sending it again would
+  // only be refused again, and the error page it shows would take the place of this one and what was typed in it.
+  if (answer.status === 429 || answer.status === 413) {
+    showToast(answer.page?.alert ?? t('Error.ActionFailed'), true);
     return;
   }
   // Anything else (a refusal with no page to show it): sent again the plain way, which nothing came of the first

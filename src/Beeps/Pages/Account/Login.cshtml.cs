@@ -11,6 +11,9 @@ public sealed class LoginModel(AccountService accounts, IStringLocalizer<SharedR
     /// <summary>The name the code page signs in, carried in TempData, not the URL, as the reset page's address is.</summary>
     public const string LoginKey = "LoginName";
 
+    /// <summary>Which code the password was right for (LoginOutcome.CodeStamp), beside <see cref="LoginKey"/>.</summary>
+    public const string CodeStampKey = "LoginCodeStamp";
+
     [BindProperty] public string? Login { get; set; }
 
     [BindProperty] public string? Password { get; set; }
@@ -48,6 +51,7 @@ public sealed class LoginModel(AccountService accounts, IStringLocalizer<SharedR
         if (result.Value.Account is not { } account)
         {
             TempData[LoginKey] = Login?.Trim();
+            TempData[CodeStampKey] = result.Value.CodeStamp;
             return RedirectToPage("/Account/LoginCode", new { ReturnUrl });
         }
 

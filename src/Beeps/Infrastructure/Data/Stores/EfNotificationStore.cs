@@ -80,15 +80,23 @@ public sealed class EfNotificationStore(BeepsDbContext db) : INotificationStore
             heads = heads.Where(h => h.Id < before);
         }
 
-        if (page.SinceId is { } since)
+        // An entry is never newer than its head, so heads up to `since` have none newer either.
+        if (page.SinceId is { } sinceHead)
         {
-            heads = heads.Where(h => h.Id > since);
+            heads = heads.Where(h => h.Id > sinceHead);
         }
 
         var entries = Entries(recipientId, heads);
         if (unreadOnly)
         {
             entries = entries.Where(e => e.Entry.ReadAt == null);
+        }
+
+        // Then by the entry's id, which is the one the caller was given: the head's is newer when it is from someone
+        // now hidden, and the same entry would come back as new on every poll.
+        if (page.SinceId is { } since)
+        {
+            entries = entries.Where(e => e.Entry.Id > since);
         }
 
         var found = await entries

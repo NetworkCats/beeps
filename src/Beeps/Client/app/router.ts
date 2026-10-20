@@ -463,11 +463,12 @@ function onPointerOver(event: PointerEvent): void {
 
 /**
  * Addresses that are pages of this site, not files, the API, the live connection, or the way out to Google and GitHub
- * (which the browser itself must follow, there and back).
+ * (which the browser itself must follow, there and back). A profile is a page even when it ends like a file name: an
+ * agent's handle is its owner's and its own, with a dot between (`/@alice.helper`).
  */
 function isPage(url: URL): boolean {
   return url.origin === window.location.origin
-    && !/\.[a-z0-9]+$/i.test(url.pathname)
+    && (url.pathname.startsWith('/@') || !/\.[a-z0-9]+$/i.test(url.pathname))
     && !['/api/', '/stream', '/live/', '/page-data', '/oauth/'].some((prefix) => url.pathname.startsWith(prefix));
 }
 

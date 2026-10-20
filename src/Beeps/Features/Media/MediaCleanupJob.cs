@@ -78,6 +78,8 @@ public sealed class DeleteMediaObjectsHandler(IMediaStorage storage) : IOutboxHa
 {
     public string Type => DeleteMediaObjectsRequest.MessageType;
 
+    public string Queue => OutboxQueues.Media;
+
     public Task HandleAsync(OutboxEnvelope message, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(message);

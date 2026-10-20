@@ -13,10 +13,15 @@ namespace Beeps.Infrastructure.Data.Stores;
 /// </remarks>
 public sealed class EfProfileStore(BeepsDbContext db, ContentReads reads, PendingCacheChanges cacheChanges) : IProfileStore
 {
-    /// <summary>{0} follower, {1} followee, {2} when.</summary>
+    /// <summary>
+    /// {0} follower, {1} followee, {2} when. Not while either has blocked the other: asked again here, after the pair's
+    /// lock, as a block that committed since the service asked has ended no follow yet (there was none to end).
+    /// </summary>
     private static readonly string AddFollowSql = $$"""
         WITH added AS (
-            INSERT INTO follows (follower_id, followee_id, created_at) VALUES ({0}, {1}, {2})
+            INSERT INTO follows (follower_id, followee_id, created_at)
+            SELECT {0}, {1}, {2}
+            WHERE NOT EXISTS (SELECT 1 FROM blocks WHERE (blocker_id = {0} AND blocked_id = {1}) OR (blocker_id = {1} AND blocked_id = {0}))
             ON CONFLICT DO NOTHING
             RETURNING follower_id, followee_id)
         {{CountsChange("+", "added")}}

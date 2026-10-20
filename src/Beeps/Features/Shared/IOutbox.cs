@@ -19,13 +19,19 @@ public interface IOutbox
 /// </summary>
 public static class OutboxQueues
 {
-    /// <summary>Notifications, emails, media, counts, cache invalidations: everything without a queue of its own.</summary>
+    /// <summary>Notifications, emails, counts, cache invalidations: everything without a queue of its own.</summary>
     public const string Main = "main";
 
     /// <summary>Search index sync, which waits on Meilisearch.</summary>
     public const string Search = "search";
 
-    public static readonly IReadOnlyList<string> All = [Main, Search];
+    /// <summary>
+    /// Image work: decoding, re-encoding and storing uploads, and deleting stored objects. A burst of uploads takes
+    /// seconds a message, and in the main queue the codes for signing in would wait behind it until they expired.
+    /// </summary>
+    public const string Media = "media";
+
+    public static readonly IReadOnlyList<string> All = [Main, Search, Media];
 }
 
 /// <summary>Runs one message type. Must be idempotent: a message can be delivered more than once.</summary>

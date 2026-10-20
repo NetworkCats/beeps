@@ -108,6 +108,22 @@ public sealed class IdempotencyTests : IDisposable
     }
 
     [Fact]
+    public async Task TheWriteIsNotCancelledWhenTheCallerGoesAway()
+    {
+        var token = new CancellationToken(canceled: true);
+        factory.Notifications.MarkReadAsync(default, default, default, TestSupport.Ct).ReturnsForAnyArgs(ci =>
+        {
+            token = ci.ArgAt<CancellationToken>(3);
+            return Task.FromResult(0);
+        });
+
+        using var response = await PostAsync("key-7");
+
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+        Assert.False(token.CanBeCanceled);
+    }
+
+    [Fact]
     public async Task WithValkeyDownTheRequestStillRuns()
     {
         factory.Idempotency.TryClaimAsync(default!, default!, default, TestSupport.Ct).ReturnsForAnyArgs<IdempotencyRecord?>(_ => throw new InvalidOperationException("down"));

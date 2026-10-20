@@ -13,8 +13,9 @@ namespace Beeps.Pages.Account;
 public sealed class LoginCodeModel(AccountService accounts, IStringLocalizer<SharedResource> localizer) : PageModel
 {
     /// <summary>
-    /// The account the password was right for, as the first step left it in this browser's TempData (encrypted), never
-    /// as posted: anyone could name any account there and use up the attempts of the code sent to its owner.
+    /// The account the first step was given, as it left it in this browser's TempData (encrypted), never as posted,
+    /// with the stamp of the code its password was right for: anyone could name any account and use up the attempts of
+    /// the code sent to its owner.
     /// </summary>
     public string? Login { get; private set; }
 
@@ -42,13 +43,14 @@ public sealed class LoginCodeModel(AccountService accounts, IStringLocalizer<Sha
         }
 
         Login = TempData.Peek(LoginModel.LoginKey) as string;
-        var result = await accounts.LoginWithCodeAsync(Login, Code, cancellationToken);
+        var result = await accounts.LoginWithCodeAsync(Login, TempData.Peek(LoginModel.CodeStampKey) as string, Code, cancellationToken);
         if (!result.IsSuccess)
         {
             return this.ShowError(result.Error);
         }
 
         TempData.Remove(LoginModel.LoginKey);
+        TempData.Remove(LoginModel.CodeStampKey);
         return await LoginModel.SignInAfterFirstStepAsync(this, accounts, result.Value, ReturnUrl, cancellationToken);
     }
 }

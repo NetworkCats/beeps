@@ -174,8 +174,12 @@ public sealed partial class IdempotencyMiddleware(RequestDelegate next, ILogger<
     {
         var response = context.Response;
         var original = response.Body;
+        var aborted = context.RequestAborted;
         using var buffer = new MemoryStream();
         response.Body = buffer;
+        // The write runs to its end even when the caller goes away (a client timeout): one that stopped after its
+        // commit would otherwise be released as failed, and the retry with the same key would write it again.
+        context.RequestAborted = CancellationToken.None;
         var succeeded = false;
         try
         {
@@ -184,12 +188,13 @@ public sealed partial class IdempotencyMiddleware(RequestDelegate next, ILogger<
         }
         finally
         {
+            context.RequestAborted = aborted;
             response.Body = original;
             await RememberAsync(store, storeKey, succeeded ? Record(response, fingerprint, buffer) : null);
         }
 
         buffer.Position = 0;
-        await buffer.CopyToAsync(original, context.RequestAborted);
+        await buffer.CopyToAsync(original, aborted);
     }
 
     private static IdempotencyRecord Record(HttpResponse response, string fingerprint, MemoryStream buffer) => new(

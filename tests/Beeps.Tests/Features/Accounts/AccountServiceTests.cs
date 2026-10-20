@@ -572,7 +572,7 @@ public sealed partial class AccountServiceTests
 
         var result = await CreateService().LoginAsync(new LoginRequest(login, password, "token"), TestData.Origin, TestSupport.Ct);
 
-        Assert.Same(LoginOutcome.CodeSent, result.Value);
+        Assert.Null(result.Value.Account);
         Assert.Empty(sentCodes);
         // An unknown name still paid for a hash check.
         hasher.ReceivedWithAnyArgs(1).VerifyHashedPassword(default!, default!, default!);
@@ -588,7 +588,7 @@ public sealed partial class AccountServiceTests
 
         var result = await CreateService().LoginAsync(new LoginRequest("tom", "correct horse", "token"), TestData.Origin, TestSupport.Ct);
 
-        Assert.Same(LoginOutcome.CodeSent, result.Value);
+        Assert.Null(result.Value.Account);
         Assert.Empty(sentCodes);
     }
 
@@ -603,7 +603,7 @@ public sealed partial class AccountServiceTests
 
         var result = await CreateService().LoginAsync(new LoginRequest("tom", "correct horse", "token"), TestData.Origin, TestSupport.Ct);
 
-        Assert.Same(LoginOutcome.CodeSent, result.Value);
+        Assert.Null(result.Value.Account);
         Assert.Empty(sentCodes);
     }
 
@@ -611,15 +611,45 @@ public sealed partial class AccountServiceTests
     public async Task TheCodeFinishesSigningInOnce()
     {
         var user = TestData.User(passwordHash: "hashed:correct horse");
-        var (code, stored) = await IssueSignInCodeAsync(user);
+        var (code, stamp, stored) = await IssueSignInCodeAsync(user);
         var service = CreateService();
 
-        var wrong = await service.LoginWithCodeAsync("tom", code == "000000" ? "111111" : "000000", TestSupport.Ct);
-        var result = await service.LoginWithCodeAsync("tom", code, TestSupport.Ct);
+        var wrong = await service.LoginWithCodeAsync("tom", stamp, code == "000000" ? "111111" : "000000", TestSupport.Ct);
+        var result = await service.LoginWithCodeAsync("tom", stamp, code, TestSupport.Ct);
 
         Assert.Equal(AccountErrorCodes.CodeInvalid, wrong.Error?.Code);
         Assert.Equal(user.Id, result.Value.UserId);
         store.Received(1).RemoveEmailCode(stored);
+    }
+
+    [Fact]
+    public async Task AWrongPasswordGetsNoStampThatReachesTheCodeSentToTheOwner()
+    {
+        var user = TestData.User(passwordHash: "hashed:correct horse");
+        var (code, _, _) = await IssueSignInCodeAsync(user);
+        var wrongPassword = await CreateService().LoginAsync(new LoginRequest("tom", "wrong", "token"), TestData.Origin, TestSupport.Ct);
+        store.ClearReceivedCalls();
+
+        var guess = await CreateService().LoginWithCodeAsync("tom", wrongPassword.Value.CodeStamp, code, TestSupport.Ct);
+        var none = await CreateService().LoginWithCodeAsync("tom", null, code, TestSupport.Ct);
+
+        Assert.Null(wrongPassword.Value.Account);
+        Assert.NotNull(wrongPassword.Value.CodeStamp);
+        Assert.Equal(AccountErrorCodes.CodeInvalid, guess.Error?.Code);
+        Assert.Equal(AccountErrorCodes.CodeInvalid, none.Error?.Code);
+        // Not one attempt of the owner's code was used up.
+        await store.DidNotReceiveWithAnyArgs().TryCountCodeAttemptAsync(default, default!, default, default, TestSupport.Ct);
+    }
+
+    [Fact]
+    public async Task ARightPasswordAgainWithinTheMinuteGetsTheStampOfTheCodeAlreadySent()
+    {
+        var user = TestData.User(passwordHash: "hashed:correct horse");
+        var (_, stamp, _) = await IssueSignInCodeAsync(user);
+
+        var again = await CreateService().LoginAsync(new LoginRequest("tom", "correct horse", "token"), TestData.Origin, TestSupport.Ct);
+
+        Assert.Equal(stamp, again.Value.CodeStamp);
     }
 
     [Fact]
@@ -628,9 +658,9 @@ public sealed partial class AccountServiceTests
         store.FindUserByHandleAsync("tom", Arg.Any<CancellationToken>()).Returns(TestData.User());
         var service = CreateService();
 
-        var unknown = await service.LoginWithCodeAsync("nobody", "123456", TestSupport.Ct);
-        var none = await service.LoginWithCodeAsync("tom", "123456", TestSupport.Ct);
-        var malformed = await service.LoginWithCodeAsync("tom", "12", TestSupport.Ct);
+        var unknown = await service.LoginWithCodeAsync("nobody", "1", "123456", TestSupport.Ct);
+        var none = await service.LoginWithCodeAsync("tom", "1", "123456", TestSupport.Ct);
+        var malformed = await service.LoginWithCodeAsync("tom", "1", "12", TestSupport.Ct);
 
         Assert.Equal(AccountErrorCodes.CodeInvalid, unknown.Error?.Code);
         Assert.Equal(AccountErrorCodes.CodeInvalid, none.Error?.Code);
@@ -1313,15 +1343,15 @@ public sealed partial class AccountServiceTests
             .Returns(RateLimitDecision.Denied(TimeSpan.FromMinutes(1)));
 
     /// <summary>Issues a real code through the service (signing in past the account's wrong passwords).</summary>
-    private async Task<(string Code, EmailCode Stored)> IssueSignInCodeAsync(User user)
+    private async Task<(string Code, string Stamp, EmailCode Stored)> IssueSignInCodeAsync(User user)
     {
         EmailCode? stored = null;
         store.FindUserByHandleAsync(user.Actor.NormalizedHandle!, Arg.Any<CancellationToken>()).Returns(user);
         store.When(s => s.AddEmailCode(Arg.Any<EmailCode>())).Do(ci => stored = ci.Arg<EmailCode>());
         Deny(RateLimitPolicies.LoginAccount);
-        await CreateService().LoginAsync(new LoginRequest(user.Actor.Handle, "correct horse", "token"), TestData.Origin, TestSupport.Ct);
+        var outcome = await CreateService().LoginAsync(new LoginRequest(user.Actor.Handle, "correct horse", "token"), TestData.Origin, TestSupport.Ct);
         store.FindEmailCodeAsync(EmailCodePurpose.SignIn, user.NormalizedEmail, Arg.Any<CancellationToken>()).Returns(stored);
-        return (Unprotect(sentCodes[^1]), stored!);
+        return (Unprotect(sentCodes[^1]), outcome.Value.CodeStamp!, stored!);
     }
 
     private string Unprotect(AccountCodeEmail email) =>

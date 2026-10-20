@@ -107,12 +107,18 @@ function draw(record: Mounted, component: Component): void {
   record.drawn = true;
   // The skeleton that stood in for it (Pages/Shared/_Skeleton.cshtml) goes: Preact only takes over markup it would draw.
   record.element.querySelector(':scope > .skeleton-page')?.remove();
-  render(
-    <IslandContext.Provider value={record}>
-      <Host component={component} envelope={record.envelope} />
-    </IslandContext.Provider>,
-    record.element,
-  );
+  // An island that throws as it is drawn is that island's fault alone: the others are still drawn, and it does not
+  // count as a chunk that failed to load, which loads the page in full (where it would throw again, and again).
+  try {
+    render(
+      <IslandContext.Provider value={record}>
+        <Host component={component} envelope={record.envelope} />
+      </IslandContext.Provider>,
+      record.element,
+    );
+  } catch (error) {
+    console.error(error);
+  }
 }
 
 /**

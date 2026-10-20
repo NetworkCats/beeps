@@ -28,6 +28,8 @@ public sealed partial class ProcessMediaHandler(
 {
     public string Type => ProcessMediaRequest.MessageType;
 
+    public string Queue => OutboxQueues.Media;
+
     public async Task HandleAsync(OutboxEnvelope message, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(message);

@@ -91,10 +91,23 @@ public sealed class EfMediaStore(BeepsDbContext db, PendingCacheChanges cacheCha
             return new UnusedMediaBatch([], null);
         }
 
-        // What still links them belongs to deleted beeps only, which nothing shows again.
-        await db.Database.ExecuteSqlAsync($"DELETE FROM beep_media WHERE media_id = ANY({ids})", cancellationToken);
+        // The checks above saw the statement's snapshot: a beep, avatar or banner that took one of these and committed
+        // while it ran is not in it, and the row lock does not re-check what is only in other tables. These statements
+        // see it, and with the rows locked no new use can start, so they check again. Links of deleted beeps go first;
+        // nothing shows them again.
+        await db.Database.ExecuteSqlAsync(
+            $"DELETE FROM beep_media bm USING beeps b WHERE bm.media_id = ANY({ids}) AND b.id = bm.beep_id AND b.deleted_at IS NOT NULL",
+            cancellationToken);
         var deleted = await db.Database
-            .SqlQuery<DeletedMedia>($"DELETE FROM media WHERE id = ANY({ids}) RETURNING storage_key, created_at, id")
+            .SqlQuery<DeletedMedia>(
+                $"""
+                DELETE FROM media m
+                WHERE m.id = ANY({ids})
+                  AND NOT EXISTS (SELECT 1 FROM beep_media bm WHERE bm.media_id = m.id)
+                  AND NOT EXISTS (SELECT 1 FROM actors a WHERE a.avatar_media_id = m.id)
+                  AND NOT EXISTS (SELECT 1 FROM actors a WHERE a.banner_media_id = m.id)
+                RETURNING m.storage_key, m.created_at, m.id
+                """)
             .ToListAsync(cancellationToken);
         var last = deleted.OrderBy(d => d.CreatedAt).ThenBy(d => d.Id).LastOrDefault();
         return new UnusedMediaBatch([.. deleted.Select(d => d.StorageKey)], last is null ? null : new MediaPosition(last.CreatedAt, last.Id));
