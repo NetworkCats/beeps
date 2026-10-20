@@ -166,10 +166,13 @@ public sealed class EfModerationStore(BeepsDbContext db, PendingCacheChanges cac
             .Take(MaxResults)
             .Select(ToResultRow)
             .ToListAsync(cancellationToken);
+        // Open ones first: "Keep" closes only the open reports shown (ReviewService.KeepAsync), so with more than fit,
+        // the rest come next rather than sit below closed ones, out of reach, keeping the beep in the queue for good.
         var reports = await db.Set<Report>()
             .AsNoTracking()
             .Where(r => r.BeepId == beepId)
-            .OrderByDescending(r => r.Id)
+            .OrderBy(r => r.ResolvedAt != null)
+            .ThenByDescending(r => r.Id)
             .Take(MaxReports)
             .Select(r => new ReportRow(
                 r.Id,

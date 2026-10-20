@@ -95,6 +95,7 @@ public sealed record ReportRow(
 /// <summary>Everything an admin needs to decide on one beep, whatever state it is in (deleted ones too).</summary>
 /// <param name="ReplyTo">The beep it answers, for context.</param>
 /// <param name="Media">Every attached image, also removed ones.</param>
+/// <param name="Reports">Open ones first, then closed ones, newest first in each; as many as fit.</param>
 public sealed record ReviewBeepRow(
     Guid Id,
     string Text,
