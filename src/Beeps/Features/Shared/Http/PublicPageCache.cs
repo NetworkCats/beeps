@@ -30,6 +30,23 @@ public static class PublicPageCache
     /// <summary>Put on a PageModel as <c>[OutputCache(PolicyName = PublicPageCache.Policy)]</c>.</summary>
     public const string Policy = "PublicPage";
 
+    /// <summary>
+    /// The only query keys the cached pages read (their cursors). Anything else (<c>?fbclid=</c>, <c>?utm_source=</c>,
+    /// a random <c>?x=1</c>) shares the page's copy instead of rendering it anew for every click.
+    /// </summary>
+    private static readonly string[] QueryKeys = ["before", "after"];
+
+    /// <summary>
+    /// The query string a cached page may echo (an address that comes back to it): only <see cref="QueryKeys"/>, as the
+    /// copy is shared by every query that differs in nothing else.
+    /// </summary>
+    public static QueryString CachedQuery(HttpRequest request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        var kept = QueryKeys.Where(request.Query.ContainsKey).SelectMany(key => request.Query[key].Select(value => KeyValuePair.Create(key, value)));
+        return QueryString.Create(kept);
+    }
+
     public static IServiceCollection AddBeepsOutputCache(this IServiceCollection services)
     {
         services.AddOptions<PublicPageCacheOptions>().BindConfiguration(PublicPageCacheOptions.SectionName);
@@ -49,7 +66,8 @@ public static class PublicPageCache
                     .VaryByValue(_ => new KeyValuePair<string, string>("culture", CultureInfo.CurrentUICulture.Name))
                     .VaryByValue(context => new KeyValuePair<string, string>("theme", ThemeCookie.Read(context.Request) ?? Themes.System))
                     // A page's data (/page-data/…) is asked for as the page itself, marked by this header (Pages/Islands).
-                    .SetVaryByHeader(IslandsHeader);
+                    .SetVaryByHeader(IslandsHeader)
+                    .SetVaryByQuery(QueryKeys);
             }));
         return services;
     }

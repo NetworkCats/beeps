@@ -8,6 +8,8 @@ public static class OutboxSetup
     {
         services.AddOptions<OutboxOptions>().BindConfiguration(OutboxOptions.SectionName).ValidateDataAnnotations().ValidateOnStart();
         services.AddScoped<IOutbox, EfOutbox>();
+        services.AddSingleton<WorkSignals>();
+        services.AddSingleton<WorkSignalInterceptor>();
         services.AddSingleton<IOutboxStore, PostgresOutboxStore>();
         services.AddScoped<OutboxProcessor>();
         // One worker per queue. Not AddHostedService: it registers a type once, however many factories it is given.

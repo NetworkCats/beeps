@@ -5,8 +5,8 @@ using Npgsql;
 namespace Beeps.Infrastructure.Moderation;
 
 /// <summary>
-/// Stages reviews on the request's DbContext, so the next <c>SaveChangesAsync</c> commits them with the beep. A
-/// trigger on the table NOTIFYs the workers on commit.
+/// Stages reviews on the request's DbContext, so the next <c>SaveChangesAsync</c> commits them with the beep. The
+/// workers are woken once it commits (<see cref="Outbox.WorkSignalInterceptor"/>).
 /// </summary>
 public sealed class EfModerationJobs(BeepsDbContext db, TimeProvider time) : IModerationJobs
 {

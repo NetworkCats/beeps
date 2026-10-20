@@ -1,5 +1,7 @@
 @using System.Globalization
+@using Beeps.Features.Shared.Http
 @using Beeps.Pages.Islands
+@using Microsoft.AspNetCore.OutputCaching
 @using Microsoft.AspNetCore.Diagnostics
 @model SiteOptionsPlace
 @inject TimeProvider Time
@@ -13,11 +15,13 @@
     // After an unhandled exception only the path is the error page's; the request keeps its query string.
     var failed = Context.Features.Get<IStatusCodeReExecuteFeature>();
     var crashed = Context.Features.Get<IExceptionHandlerPathFeature>();
+    // A cached page's copy is shared by queries that differ only in keys it does not read: it echoes none of them.
+    var cachedPage = Context.GetEndpoint()?.Metadata.GetMetadata<OutputCacheAttribute>() is not null;
     var here = failed is not null
         ? $"{new PathString(failed.OriginalPathBase)}{new PathString(failed.OriginalPath)}{failed.OriginalQueryString}"
         : crashed is not null
             ? $"{Context.Request.PathBase}{new PathString(crashed.Path)}{Context.Request.QueryString}"
-            : $"{Context.Request.PathBase}{Context.Request.Path}{Context.Request.QueryString}";
+            : $"{Context.Request.PathBase}{Context.Request.Path}{(cachedPage ? PublicPageCache.CachedQuery(Context.Request) : Context.Request.QueryString)}";
     var props = new SiteOptionsProps(
         inMenu,
         rail,

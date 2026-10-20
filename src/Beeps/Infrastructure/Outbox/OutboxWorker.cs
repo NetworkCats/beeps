@@ -4,8 +4,9 @@ using Npgsql;
 namespace Beeps.Infrastructure.Outbox;
 
 /// <summary>
-/// Drains one queue of the outbox whenever a NOTIFY arrives (new messages) or the poll interval passes (retries
-/// becoming due). Every instance runs one per queue; SKIP LOCKED keeps them from taking the same message.
+/// Drains one queue of the outbox whenever a NOTIFY arrives (new messages, <see cref="WorkSignals"/>) or the poll
+/// interval passes (retries becoming due). Every instance runs one per queue; SKIP LOCKED keeps them from taking the
+/// same message.
 /// </summary>
 public sealed partial class OutboxWorker(
     string queue,
@@ -15,10 +16,7 @@ public sealed partial class OutboxWorker(
     TimeProvider time,
     ILogger<OutboxWorker> logger) : BackgroundService
 {
-    /// <summary>The channel the <c>outbox_notify</c> trigger signals (created in the Initial migration).</summary>
-    private const string Channel = "beeps_outbox";
-
-    private const string ListenSql = $"LISTEN {Channel}";
+    private const string ListenSql = $"LISTEN {WorkSignals.OutboxChannel}";
 
     /// <summary>The queue it drains, one of <see cref="Features.Shared.OutboxQueues"/>.</summary>
     public string Queue => queue;

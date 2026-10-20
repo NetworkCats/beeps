@@ -10,7 +10,7 @@ using Microsoft.Extensions.Caching.Hybrid;
 
 namespace Beeps.Infrastructure.Data.Stores;
 
-public sealed class EfSystemStore(BeepsDbContext db, HybridCache cache) : ISystemStore
+public sealed class EfSystemStore(BeepsDbContext db, HybridCache cache, WorkSignals signals) : ISystemStore
 {
     /// <summary>
     /// The totals scan whole tables (a parallel scan of every beep), so every open admin page shares one count for a
@@ -76,9 +76,9 @@ public sealed class EfSystemStore(BeepsDbContext db, HybridCache cache) : ISyste
         return CursorPage.FromOverfetch(rows, limit, r => r.Id);
     }
 
-    public async Task<bool> RetryDeadJobAsync(Guid id, DateTimeOffset now, CancellationToken cancellationToken) =>
-        // The outbox trigger wakes the workers once this commits.
-        await db.Database.ExecuteSqlAsync(
+    public async Task<bool> RetryDeadJobAsync(Guid id, DateTimeOffset now, CancellationToken cancellationToken)
+    {
+        var moved = await db.Database.ExecuteSqlAsync(
             $"""
             WITH moved AS (
                 DELETE FROM outbox_dead WHERE id = {id}
@@ -88,6 +88,14 @@ public sealed class EfSystemStore(BeepsDbContext db, HybridCache cache) : ISyste
             SELECT id, type, payload, 0, {now}, created_at, last_error FROM moved
             """,
             cancellationToken) == 1;
+        if (moved)
+        {
+            // Raw SQL, which the tracked changes do not show: the workers are woken once this commits.
+            signals.Written(db, WorkQueues.Outbox);
+        }
+
+        return moved;
+    }
 
     public async Task<bool> DeleteDeadJobAsync(Guid id, CancellationToken cancellationToken) =>
         await db.Set<OutboxDeadMessage>().Where(m => m.Id == id).ExecuteDeleteAsync(cancellationToken) == 1;

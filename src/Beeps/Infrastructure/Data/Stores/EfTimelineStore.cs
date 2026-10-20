@@ -16,6 +16,9 @@ public sealed class EfTimelineStore(BeepsDbContext db, ContentReads reads) : ITi
     /// <summary>Past this many authors, a page is narrowed down first (<see cref="NarrowAsync"/>).</summary>
     private const int ManyAuthors = 200;
 
+    /// <summary>The most beeps <see cref="PostedSinceAsync"/> reads; a poll comes seconds after the last, far fewer were posted.</summary>
+    private const int PostedSinceScan = 1000;
+
     public Task<CursorPage<BeepRow>> PublicAsync(PageRequest page, Guid? viewerId, CancellationToken cancellationToken) =>
         BeepQueries.Visible(db, viewerId)
             .Where(b => b.ReplyToId == null)
@@ -128,6 +131,15 @@ public sealed class EfTimelineStore(BeepsDbContext db, ContentReads reads) : ITi
     private async Task<CursorPage<BeepRow>> NewestByAuthorsAsync(List<Guid> authors, IQueryable<Beep> beeps, PageRequest page, Guid? viewerId, CancellationToken cancellationToken)
     {
         var take = page.Limit + 1;
+        if (authors.Count > ManyAuthors && page.SinceId is { } since && await PostedSinceAsync(since, cancellationToken) is { } posted)
+        {
+            authors = [.. authors.Where(posted.Contains)];
+            if (authors.Count == 0)
+            {
+                return new CursorPage<BeepRow>([], null);
+            }
+        }
+
         if (authors.Count > ManyAuthors)
         {
             (authors, beeps) = await NarrowAsync(authors, beeps, take, viewerId, cancellationToken);
@@ -143,6 +155,23 @@ public sealed class EfTimelineStore(BeepsDbContext db, ContentReads reads) : ITi
             .Hits(db, viewerId)
             .ToListAsync(cancellationToken);
         return await BeepQueries.ToPageAsync(reads, hits, page.Limit, cancellationToken);
+    }
+
+    /// <summary>
+    /// Who posted anything after <paramref name="since"/>, site-wide: only they can have a beep newer than it, so a poll
+    /// for what is new (a live page, an agent's since_id) walks those few authors instead of narrowing down thousands
+    /// (<see cref="NarrowAsync"/>, one index probe each, on every poll). Null when more than
+    /// <see cref="PostedSinceScan"/> beeps came since: the walk along the primary key stops there.
+    /// </summary>
+    private async Task<HashSet<Guid>?> PostedSinceAsync(Guid since, CancellationToken cancellationToken)
+    {
+        var posted = await db.Set<Beep>()
+            .Where(b => b.Id > since)
+            .OrderBy(b => b.Id)
+            .Take(PostedSinceScan)
+            .Select(b => b.AuthorId)
+            .ToListAsync(cancellationToken);
+        return posted.Count < PostedSinceScan ? [.. posted] : null;
     }
 
     /// <summary>

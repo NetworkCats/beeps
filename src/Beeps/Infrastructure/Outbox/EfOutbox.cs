@@ -7,7 +7,7 @@ namespace Beeps.Infrastructure.Outbox;
 
 /// <summary>
 /// Stages messages on the request's DbContext, so the next <c>SaveChangesAsync</c> commits them in the
-/// same transaction as the business data. A trigger on the table NOTIFYs the workers on commit.
+/// same transaction as the business data. The workers are woken once it commits (<see cref="WorkSignalInterceptor"/>).
 /// </summary>
 public sealed class EfOutbox(BeepsDbContext db, TimeProvider time) : IOutbox
 {

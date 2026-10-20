@@ -36,6 +36,23 @@ public sealed class OutputCacheTests : IDisposable
     }
 
     [Fact]
+    public async Task QueryKeysThePageDoesNotReadShareItsCopy()
+    {
+        Show("first");
+        using var client = cached.CreateClient();
+        await client.GetStringAsync(new Uri("/public?fbclid=one", UriKind.Relative), TestSupport.Ct);
+
+        Show("second");
+        var tracked = await client.GetStringAsync(new Uri("/public?utm_source=two", UriKind.Relative), TestSupport.Ct);
+        var paged = await client.GetStringAsync(new Uri($"/public?before={Guid.NewGuid()}", UriKind.Relative), TestSupport.Ct);
+
+        Assert.Contains("first", tracked, StringComparison.Ordinal);
+        // The copy is everyone's: it echoes no visitor's own keys.
+        Assert.DoesNotContain("fbclid", tracked, StringComparison.Ordinal);
+        Assert.Contains("second", paged, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task EachLanguageHasItsOwnCopy()
     {
         Show("first");

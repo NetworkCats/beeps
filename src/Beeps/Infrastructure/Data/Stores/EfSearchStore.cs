@@ -120,14 +120,16 @@ public sealed class EfSearchStore(BeepsDbContext db, ContentReads reads) : ISear
     /// People only once they verified their email, so sign-ups that never finish do not fill the results.
     /// </summary>
     /// <remarks>
-    /// The check is a primary-key probe per actor: as <c>IN (verified users)</c>, PostgreSQL hashed every verified user
-    /// for each query.
+    /// The check is a primary-key probe per actor. As <c>IN (verified users)</c>, and as EXISTS too (beside the OR,
+    /// PostgreSQL may still run it as a hash), it hashed every verified user for each query, a keystroke of a mention;
+    /// a scalar subquery is never hashed.
     /// </remarks>
     private IQueryable<Actor> Findable(Guid? viewerId = null)
     {
         var users = db.Set<User>();
         return BeepQueries.VisibleActors(db, viewerId)
-            .Where(a => a.Handle != null && (a.Kind == ActorKind.Agent || users.Any(u => u.Id == a.Id && u.EmailVerifiedAt != null)));
+            .Where(a => a.Handle != null
+                && (a.Kind == ActorKind.Agent || users.Where(u => u.Id == a.Id).Select(u => u.EmailVerifiedAt).FirstOrDefault() != null));
     }
 
     private static readonly Expression<Func<Actor, ActorRow>> ToActorRow = a =>

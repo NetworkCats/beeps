@@ -1,4 +1,5 @@
 using Beeps.Features.Moderation;
+using Beeps.Infrastructure.Outbox;
 using Microsoft.Extensions.Options;
 using Npgsql;
 
@@ -7,8 +8,8 @@ namespace Beeps.Infrastructure.Moderation;
 /// <summary>
 /// Keeps up to <see cref="ModerationOptions.Concurrency"/> reviews running on this instance (PLAN 6.20): a slot
 /// that frees up takes the next due review at once, so one slow answer never holds up the others. Woken by
-/// NOTIFY when beeps are posted, and by the poll interval for retries that become due. Every instance runs one;
-/// SKIP LOCKED keeps them from taking the same review.
+/// NOTIFY when beeps are posted (<see cref="WorkSignals"/>), and by the poll interval for retries that become due.
+/// Every instance runs one; SKIP LOCKED keeps them from taking the same review.
 /// </summary>
 public sealed partial class ModerationWorker(
     IServiceScopeFactory scopes,
@@ -18,10 +19,7 @@ public sealed partial class ModerationWorker(
     TimeProvider time,
     ILogger<ModerationWorker> logger) : BackgroundService
 {
-    /// <summary>The channel the <c>moderation_jobs_notify</c> trigger signals (created in the Initial migration).</summary>
-    private const string Channel = "beeps_moderation";
-
-    private const string ListenSql = $"LISTEN {Channel}";
+    private const string ListenSql = $"LISTEN {WorkSignals.ModerationChannel}";
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {

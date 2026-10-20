@@ -144,9 +144,6 @@ public sealed partial class LiveService(
             yield return first with { Retry = options.Value.ReconnectDelay };
 
             var lastId = after?.ToString();
-            // The heartbeat only notices a quiet feed; on a busy one every event may be someone else's, so a
-            // connection that wrote nothing for the interval is pinged too, or proxies drop it as idle.
-            var lastWrite = time.GetTimestamp();
             var checkedAt = time.GetUtcNow();
             await foreach (var item in WithHeartbeatAsync(subscription, cancellationToken))
             {
@@ -163,7 +160,6 @@ public sealed partial class LiveService(
                 if (item is null)
                 {
                     yield return Message(LiveMessages.Ping, new EmptyMessage(), LiveJsonContext.Default.EmptyMessage, lastId);
-                    lastWrite = time.GetTimestamp();
                     continue;
                 }
 
@@ -173,25 +169,13 @@ public sealed partial class LiveService(
                     lastId = item.Id;
                 }
 
-                var wrote = false;
                 foreach (var message in await HandleAsync(connection, item, cancellationToken))
                 {
                     yield return message;
-                    wrote = true;
                     if (message.Type is LiveMessages.Close or LiveMessages.SignedOut)
                     {
                         yield break;
                     }
-                }
-
-                if (wrote)
-                {
-                    lastWrite = time.GetTimestamp();
-                }
-                else if (time.GetElapsedTime(lastWrite) >= options.Value.HeartbeatInterval)
-                {
-                    yield return Message(LiveMessages.Ping, new EmptyMessage(), LiveJsonContext.Default.EmptyMessage, lastId);
-                    lastWrite = time.GetTimestamp();
                 }
             }
         }
@@ -476,27 +460,30 @@ public sealed partial class LiveService(
         return Message(LiveMessages.Inbox, new InboxMessage(unread), LiveJsonContext.Default.InboxMessage, eventId);
     }
 
-    /// <summary>Merges the events with a ping whenever none came for the heartbeat interval (PLAN 6.10); null is a ping.</summary>
+    /// <summary>
+    /// Merges the events with a ping every heartbeat interval (PLAN 6.10); null is a ping. On a busy feed every event may
+    /// be someone else's, so a connection is pinged whether events came or not, or proxies drop it as idle.
+    /// </summary>
+    /// <remarks>
+    /// One timer runs from ping to ping: every connection hears every event on the instance, and a timer set anew for
+    /// each (with its token source) was most of what an event that concerns a connection not at all cost it.
+    /// </remarks>
     private async IAsyncEnumerable<LiveEvent?> WithHeartbeatAsync(ILiveSubscription subscription, [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         using var reading = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         var events = subscription.ReadAllAsync(reading.Token).GetAsyncEnumerator(reading.Token);
         var next = events.MoveNextAsync().AsTask();
+        var beat = Task.Delay(options.Value.HeartbeatInterval, time, reading.Token);
         try
         {
             while (true)
             {
-                using (var beat = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken))
+                if (await Task.WhenAny(next, beat) == beat)
                 {
-                    var delay = Task.Delay(options.Value.HeartbeatInterval, time, beat.Token);
-                    if (await Task.WhenAny(next, delay) == delay)
-                    {
-                        cancellationToken.ThrowIfCancellationRequested();
-                        yield return null;
-                        continue;
-                    }
-
-                    await beat.CancelAsync();
+                    cancellationToken.ThrowIfCancellationRequested();
+                    beat = Task.Delay(options.Value.HeartbeatInterval, time, reading.Token);
+                    yield return null;
+                    continue;
                 }
 
                 if (!await next)
@@ -510,7 +497,8 @@ public sealed partial class LiveService(
         }
         finally
         {
-            // An enumerator must not be disposed while a read is pending: cancel it and let it finish first.
+            // An enumerator must not be disposed while a read is pending: cancel it and let it finish first. The same
+            // cancellation stops the heartbeat's timer.
             await reading.CancelAsync();
             try
             {

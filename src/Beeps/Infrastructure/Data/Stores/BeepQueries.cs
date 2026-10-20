@@ -24,10 +24,15 @@ internal static class BeepQueries
     /// What a query needs to say about each beep: its id and what depends on the reader. The rest is the same for
     /// everyone and comes from the content cache (<see cref="ContentReads.ToRowsAsync"/>).
     /// </summary>
+    /// <remarks>
+    /// Whether the reader liked it is a scalar subquery, not EXISTS: PostgreSQL may run an EXISTS as one hash of every
+    /// like the reader ever gave (it weighs the rows under the page's LIMIT, not the page), 50 ms a page at 200,000
+    /// likes. A scalar subquery is always one primary-key probe per beep shown.
+    /// </remarks>
     public static IQueryable<BeepHit> Hits(this IQueryable<Beep> beeps, BeepsDbContext db, Guid? viewerId) =>
         beeps.Select(b => new BeepHit(
             b.Id,
-            viewerId != null && db.Set<Like>().Any(l => l.BeepId == b.Id && l.ActorId == viewerId),
+            viewerId != null && db.Set<Like>().Where(l => l.BeepId == b.Id && l.ActorId == viewerId).Select(l => true).FirstOrDefault(),
             b.ModerationStatus == ModerationStatus.Hidden));
 
     /// <summary>One newest-first page, cut by <see cref="PageRequest.Before"/> and <see cref="PageRequest.SinceId"/>.</summary>
