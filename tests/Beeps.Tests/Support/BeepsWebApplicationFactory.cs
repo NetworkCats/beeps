@@ -143,6 +143,7 @@ public sealed class BeepsWebApplicationFactory : WebApplicationFactory<Program>
         builder.UseSetting("OpenRouter:ApiKey", "test");
         builder.UseSetting("Live:Enabled", "false");
         builder.UseSetting("IpLocation:Enabled", "false");
+        builder.UseSetting("DisposableEmail:Enabled", "false");
         builder.UseSetting("Search:Url", "http://meilisearch.invalid");
         builder.UseSetting("Search:ApiKey", "test");
         builder.UseSetting("Site:BaseUrl", "https://beeps.test");

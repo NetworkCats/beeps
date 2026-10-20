@@ -88,6 +88,27 @@ public sealed partial class AccountServiceTests
     }
 
     [Fact]
+    public async Task AThrowawayAddressIsNotOfferedAnAccount()
+    {
+        var result = await CreateService().ExternalSignInAsync(Octocat with { Email = "octo@mailinator.com" }, TestSupport.Ct);
+
+        Assert.Equal(AccountErrorCodes.DisposableEmail, result.Error?.Code);
+        Assert.Equal("Error.ExternalDisposableEmail(GitHub)", result.Error?.Detail);
+    }
+
+    [Fact]
+    public async Task AThrowawayAddressWithAnAccountStillSignsIn()
+    {
+        var user = TestData.User("octo");
+        store.FindUserByEmailAsync("octo@mailinator.com", Arg.Any<CancellationToken>()).Returns(user);
+        store.ListLoginsAsync(user.Id, Arg.Any<CancellationToken>()).Returns([]);
+
+        var result = await CreateService().ExternalSignInAsync(Octocat with { Email = "octo@mailinator.com" }, TestSupport.Ct);
+
+        Assert.Equal(user.Id, result.Value.Account?.UserId);
+    }
+
+    [Fact]
     public async Task WithoutAUsernameThereTheAddressSuggestsOne()
     {
         var result = await CreateService().ExternalSignInAsync(Octocat with { Provider = ExternalProviders.Google, Username = null, Email = "jane.doe@example.com" }, TestSupport.Ct);
@@ -154,6 +175,15 @@ public sealed partial class AccountServiceTests
         var result = await CreateService().RegisterExternalAsync(Octocat, username, null, TestData.Origin, TestSupport.Ct);
 
         Assert.Equal([message], result.Error?.Fields?[AccountFields.Username]!);
+        store.DidNotReceiveWithAnyArgs().AddUser(default!);
+    }
+
+    [Fact]
+    public async Task AThrowawayAddressCannotSignUpWithAProvider()
+    {
+        var result = await CreateService().RegisterExternalAsync(Octocat with { Email = "octo@yopmail.com" }, "octo", null, TestData.Origin, TestSupport.Ct);
+
+        Assert.Equal(AccountErrorCodes.DisposableEmail, result.Error?.Code);
         store.DidNotReceiveWithAnyArgs().AddUser(default!);
     }
 

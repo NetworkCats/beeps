@@ -102,6 +102,9 @@
   <data name="Validation.Email" xml:space="preserve">
     <value>请输入有效的邮箱地址。</value>
   </data>
+  <data name="Validation.DisposableEmail" xml:space="preserve">
+    <value>不能使用一次性邮箱，请换一个常用的邮箱。</value>
+  </data>
   <data name="Validation.SameEmail" xml:space="preserve">
     <value>这已经是你的邮箱了。</value>
   </data>
@@ -1904,6 +1907,9 @@
   </data>
   <data name="Error.ExternalNoEmail" xml:space="preserve">
     <value>你的 {0} 账号没有已验证的邮箱。</value>
+  </data>
+  <data name="Error.ExternalDisposableEmail" xml:space="preserve">
+    <value>你的 {0} 账号的邮箱是一次性邮箱，请用常用的邮箱注册。</value>
   </data>
   <data name="Error.ExternalEmailTaken" xml:space="preserve">
     <value>这个邮箱已经注册了 beeps 账号。请先用密码登录，再到设置里关联 {0}。</value>

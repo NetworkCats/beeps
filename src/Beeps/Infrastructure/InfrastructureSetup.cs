@@ -15,6 +15,7 @@ using Beeps.Infrastructure.Caching;
 using Beeps.Infrastructure.Captcha;
 using Beeps.Infrastructure.Data;
 using Beeps.Infrastructure.Data.Stores;
+using Beeps.Infrastructure.DisposableEmails;
 using Beeps.Infrastructure.Email;
 using Beeps.Infrastructure.Http;
 using Beeps.Infrastructure.IpGeolocation;
@@ -48,6 +49,7 @@ public static class InfrastructureSetup
         services.AddBeepsSearch();
         services.AddBeepsModeration();
         services.AddBeepsIpLocation();
+        services.AddBeepsDisposableEmails();
         services.AddSingleton<IImageProcessor, SkiaImageProcessor>();
         services.AddSingleton<IRateLimitStore, RedisRateLimitStore>();
         services.AddSingleton<IIdempotencyStore, PostgresIdempotencyStore>();

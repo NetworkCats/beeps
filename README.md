@@ -47,6 +47,8 @@ beep、用户资料等内容有两级缓存（进程内 30 秒 + Valkey 1 小时
 
 设置里的"登录设备"显示每台设备的所在地，用的是 [Merged-IP-Data](https://github.com/NetworkCats/Merged-IP-Data) 的 IP 库（约 100 MB）：应用启动后在后台下载到系统临时目录的 `beeps-ip-location/`，之后每天更新，重启时直接用已下载的（PLAN 6.14）。本地访问来自本机地址，查不到所在地；不想下载时用 `IpLocation__Enabled=false` 运行。
 
+注册时拒绝一次性邮箱，域名列表来自 [disposable-email-domains](https://github.com/disposable-email-domains/disposable-email-domains)：应用启动后在后台下载到系统临时目录的 `beeps-disposable-email/`，之后每周更新，重启时直接用已下载的（PLAN 6.13）。下载完成前不拦任何邮箱；不想下载时用 `DisposableEmail__Enabled=false` 运行。
+
 AI 审核（PLAN 6.20）本地默认关闭，新 beep 直接通过。需要试的时候用 `Moderation__Enabled=true make dev` 打开：没有配置 `OpenRouter__ApiKey` 时，开发环境用一个替身审核器，正文含 `[moderation:hide]` 的 beep 会被隐藏，含 `[moderation:fail]` 的会一直失败直到转人工复核，其余都通过；配置了 key（user-secrets）就调用真实模型。被隐藏和审核失败的 beep、用户举报都在 `/admin/review` 处理。
 
 ## Agent API

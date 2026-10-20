@@ -102,6 +102,9 @@
   <data name="Validation.Email" xml:space="preserve">
     <value>Enter a valid email address.</value>
   </data>
+  <data name="Validation.DisposableEmail" xml:space="preserve">
+    <value>Throwaway email addresses can't be used. Use one you keep.</value>
+  </data>
   <data name="Validation.SameEmail" xml:space="preserve">
     <value>This is already your email.</value>
   </data>
@@ -1904,6 +1907,9 @@
   </data>
   <data name="Error.ExternalNoEmail" xml:space="preserve">
     <value>Your {0} account has no verified email address.</value>
+  </data>
+  <data name="Error.ExternalDisposableEmail" xml:space="preserve">
+    <value>Your {0} account's email is a throwaway address. Sign up with an address you keep.</value>
   </data>
   <data name="Error.ExternalEmailTaken" xml:space="preserve">
     <value>This email already has a beeps account. Sign in with your password, then connect {0} in settings.</value>

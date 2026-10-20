@@ -20,6 +20,7 @@ public sealed partial class AccountService(
     IUnitOfWork unitOfWork,
     IOutbox outbox,
     ICaptchaVerifier captcha,
+    IDisposableEmailDomains disposableEmails,
     IPasswordHasher<User> passwordHasher,
     IPasskeyCeremonies passkeyCeremonies,
     RateLimitService rateLimits,
@@ -58,9 +59,9 @@ public sealed partial class AccountService(
         ArgumentNullException.ThrowIfNull(request);
         ArgumentNullException.ThrowIfNull(origin);
         var fields = new Dictionary<string, string[]>();
-        if (!AccountRules.IsValidEmail(request.Email?.Trim()))
+        if (EmailError(request.Email) is { } emailError)
         {
-            fields[AccountFields.Email] = [localizer["Validation.Email"]];
+            fields[AccountFields.Email] = [emailError];
         }
 
         if (UsernameError(request.Username) is { } usernameError)
@@ -969,6 +970,12 @@ public sealed partial class AccountService(
         : AccountRules.IsReservedUsername(username!) ? localizer["Validation.UsernameReserved"].Value
         : null;
 
+    /// <summary>What is wrong with an address for an account to have, if anything: a throwaway one is refused too.</summary>
+    private string? EmailError(string? email) =>
+        !AccountRules.IsValidEmail(email?.Trim()) ? localizer["Validation.Email"].Value
+        : disposableEmails.IsDisposable(AccountRules.NormalizeEmail(email!)) ? localizer["Validation.DisposableEmail"].Value
+        : null;
+
     private static AccountState ToState(User user) => new(
         user.Id,
         user.Actor.Handle!,
@@ -1114,9 +1121,9 @@ public sealed partial class AccountService(
     /// </summary>
     private async Task<Result<(User User, string Email)>> CheckNewEmailAsync(Guid userId, string? newEmail, string? currentPassword, CancellationToken cancellationToken)
     {
-        if (!AccountRules.IsValidEmail(newEmail?.Trim()))
+        if (EmailError(newEmail) is { } emailError)
         {
-            return InvalidInput(new() { [AccountFields.NewEmail] = [localizer["Validation.Email"]] });
+            return InvalidInput(new() { [AccountFields.NewEmail] = [emailError] });
         }
 
         var checkedPassword = await CheckPasswordAsync(userId, currentPassword, cancellationToken);

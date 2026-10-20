@@ -4,6 +4,7 @@ using Beeps.Features.Profiles;
 using Beeps.Features.RateLimiting;
 using Beeps.Features.Search;
 using Beeps.Features.Shared;
+using Beeps.Infrastructure.DisposableEmails;
 using Beeps.Tests.Support;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
@@ -19,6 +20,7 @@ public sealed partial class AccountServiceTests
     private readonly IOutbox outbox = Substitute.For<IOutbox>();
     private readonly ILiveEventStore liveEvents = Substitute.For<ILiveEventStore>();
     private readonly ICaptchaVerifier captcha = Substitute.For<ICaptchaVerifier>();
+    private readonly DisposableEmailDomainList disposableEmails = new();
     private readonly IPasswordHasher<User> hasher = Substitute.For<IPasswordHasher<User>>();
     private readonly IPasskeyCeremonies ceremonies = Substitute.For<IPasskeyCeremonies>();
     private readonly IRateLimitStore rateLimitStore = Substitute.For<IRateLimitStore>();
@@ -28,6 +30,7 @@ public sealed partial class AccountServiceTests
     public AccountServiceTests()
     {
         captcha.VerifyAsync(default, default!, TestSupport.Ct).ReturnsForAnyArgs(true);
+        disposableEmails.Use(new HashSet<string> { "mailinator.com", "yopmail.com" });
         rateLimitStore.TryAcquireAsync(default!, TestSupport.Ct).ReturnsForAnyArgs(RateLimitDecision.Allowed);
         store.GetRegistrationModeAsync(default).ReturnsForAnyArgs(RegistrationMode.Open);
         store.TryCountCodeAttemptAsync(default, default!, default, default, TestSupport.Ct).ReturnsForAnyArgs(true);
@@ -48,6 +51,16 @@ public sealed partial class AccountServiceTests
         Assert.Equal(AccountErrorCodes.InvalidInput, result.Error?.Code);
         Assert.Equal([AccountFields.Email, AccountFields.Password, AccountFields.Username], result.Error!.Fields!.Keys.Order());
         await captcha.DidNotReceiveWithAnyArgs().VerifyAsync(default, default!, TestSupport.Ct);
+    }
+
+    [Fact]
+    public async Task RegisterRejectsThrowawayAddressesBeforeAskingTurnstile()
+    {
+        var result = await CreateService().RegisterAsync(new RegisterRequest("Tom@Mailinator.com", "Tom_1", "correct horse", null, "token"), TestData.Origin, TestSupport.Ct);
+
+        Assert.Equal(["Validation.DisposableEmail"], result.Error?.Fields?[AccountFields.Email]!);
+        await captcha.DidNotReceiveWithAnyArgs().VerifyAsync(default, default!, TestSupport.Ct);
+        store.DidNotReceiveWithAnyArgs().AddUser(default!);
     }
 
     [Fact]
@@ -1169,6 +1182,15 @@ public sealed partial class AccountServiceTests
     }
 
     [Fact]
+    public async Task AThrowawayNewAddressIsRefused()
+    {
+        var result = await CreateService().RequestEmailChangeAsync(Guid.NewGuid(), "tom@yopmail.com", "old password", TestData.Origin, TestSupport.Ct);
+
+        Assert.Equal(["Validation.DisposableEmail"], result.Error?.Fields?[AccountFields.NewEmail]!);
+        await store.DidNotReceiveWithAnyArgs().FindUserAsync(default, TestSupport.Ct);
+    }
+
+    [Fact]
     public async Task AnEmailChangeNeedsThePasswordOfAnAccountThatHasOne()
     {
         var user = TestData.User(passwordHash: "hashed:old password");
@@ -1415,6 +1437,7 @@ public sealed partial class AccountServiceTests
         unitOfWork,
         outbox,
         captcha,
+        disposableEmails,
         hasher,
         ceremonies,
         TestData.RateLimits(rateLimitStore),

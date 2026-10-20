@@ -20,6 +20,9 @@ public static class AccountErrorCodes
     /// <summary>Signing in with a provider: it gave no verified address to make an account with.</summary>
     public const string ExternalNoEmail = "external_no_email";
 
+    /// <summary>Signing up with a provider: its address is a throwaway one (<see cref="IDisposableEmailDomains"/>).</summary>
+    public const string DisposableEmail = "disposable_email";
+
     /// <summary>The provider's account is linked to another account here, or this one has another of that provider.</summary>
     public const string ExternalLinked = "external_linked";
 

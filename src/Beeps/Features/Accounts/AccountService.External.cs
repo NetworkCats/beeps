@@ -64,6 +64,11 @@ public sealed partial class AccountService
             return RegistrationClosed();
         }
 
+        if (disposableEmails.IsDisposable(AccountRules.NormalizeEmail(identity.Email)))
+        {
+            return DisposableEmail(provider);
+        }
+
         return new ExternalSignIn(null, await SuggestUsernameAsync(identity, cancellationToken));
     }
 
@@ -84,6 +89,11 @@ public sealed partial class AccountService
         if (identity.Email is null)
         {
             return NoVerifiedEmail(provider);
+        }
+
+        if (disposableEmails.IsDisposable(AccountRules.NormalizeEmail(identity.Email)))
+        {
+            return DisposableEmail(provider);
         }
 
         var limited = await rateLimits.CheckAsync(RateLimitPolicies.Register, RateLimitPartitions.Ip(origin.ClientIp), cancellationToken);
@@ -285,6 +295,8 @@ public sealed partial class AccountService
     private static Result<ExternalSignIn> SignedIn(User user) => new ExternalSignIn(ToState(user), null);
 
     private Error NoVerifiedEmail(string provider) => Error.Validation(AccountErrorCodes.ExternalNoEmail, localizer["Error.ExternalNoEmail", provider]);
+
+    private Error DisposableEmail(string provider) => Error.Validation(AccountErrorCodes.DisposableEmail, localizer["Error.ExternalDisposableEmail", provider]);
 
     private Error ExternalEmailTaken(string provider) => Error.Conflict(AccountErrorCodes.EmailTaken, localizer["Error.ExternalEmailTaken", provider]);
 
