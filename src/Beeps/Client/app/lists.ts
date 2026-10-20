@@ -10,13 +10,15 @@ interface ListState {
 /**
  * The list drawn again from a fresh first page: those shown past the last one the fresh page has stay (pushed off the
  * first page by new ones, or loaded as the list was scrolled), with the next page from where they end; the rest is the
- * fresh page as it is. A fresh page that has none of what was shown keeps everything below it; an empty one is empty.
+ * fresh page as it is. A fresh page whose last one was not shown is the list as a reload shows it: what was shown may
+ * not go on from it (more new ones than a page holds), and keeping it would leave a gap in between. An empty one is empty.
  */
 export function mergeFresh(shown: ListState, fresh: ListState): ListState {
   if (fresh.ids.length === 0) return { ids: [], next: fresh.next };
   const freshIds = new Set(fresh.ids);
   const last = fresh.ids.at(-1) ?? '';
   const at = shown.ids.indexOf(last);
+  if (at < 0) return fresh;
   const kept = shown.ids.slice(at + 1).filter((id) => !freshIds.has(id));
   return kept.length > 0 ? { ids: [...fresh.ids, ...kept], next: shown.next } : fresh;
 }

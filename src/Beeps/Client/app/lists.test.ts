@@ -14,8 +14,8 @@ test('a beep gone from the first page lets the next one move up without showing 
   assert.deepEqual(mergeFresh({ ids: ['a', 'b', 'c', 'd', 'e'] }, { ids: ['a', 'c', 'd'] }).ids, ['a', 'c', 'd', 'e']);
 });
 
-test('a first page of new beeps only keeps everything below it', () => {
-  assert.deepEqual(mergeFresh({ ids: ['a', 'b', 'c'] }, { ids: ['x', 'y'] }).ids, ['x', 'y', 'a', 'b', 'c']);
+test('a first page of new beeps only is the list as it is, with no gap above what was shown', () => {
+  assert.deepEqual(mergeFresh({ ids: ['a', 'b', 'c'], next: '?before=c' }, { ids: ['x', 'y'], next: '?before=y' }), { ids: ['x', 'y'], next: '?before=y' });
 });
 
 test('a beep the fresh page has elsewhere is not kept twice', () => {

@@ -12,7 +12,8 @@ public static class AdvisoryLocks
 {
     /// <summary>
     /// Who counts as an admin: "the first user becomes admin" (registration) and "never remove the last
-    /// admin" (ban, delete, revoke) both read the admin set and then change it.
+    /// admin" (ban, delete, revoke) both read the admin set and then change it. Admin changes to agents (an owner's
+    /// ban read before enabling one) and to site settings take it too, so they come before or after a ban, never between.
     /// </summary>
     public const long Admins = 1;
 

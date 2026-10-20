@@ -26,6 +26,8 @@ public sealed class BeepTextTests
     [InlineData("example.com/#top")]
     [InlineData("&#39; quoted")]
     [InlineData("## heading")]
+    // Normalized, it is four words: no tag page could be reached.
+    [InlineData("#\uFDFA")]
     public void SomeHashSignsAreNotHashtags(string text) =>
         Assert.Empty(BeepText.Hashtags(text));
 
@@ -116,8 +118,13 @@ public sealed class BeepTextTests
     [InlineData("two words")]
     [InlineData("123")]
     [InlineData("tag!")]
+    [InlineData("#\uFDFA")]
     public void NotAHashtagOnItsOwn(string? input) =>
         Assert.False(BeepText.TryNormalizeHashtag(input, out _));
+
+    [Fact]
+    public void AHashtagThatNormalizesToWordsIsNotLinked() =>
+        Assert.DoesNotContain("<a", BeepText.RenderHtml("#\uFDFA", new HashSet<string>()), StringComparison.Ordinal);
 
     [Fact]
     public void RenderingEscapesFirstThenLinks()

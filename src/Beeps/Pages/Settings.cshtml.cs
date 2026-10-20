@@ -92,6 +92,12 @@ public sealed class SettingsModel(
 
     public async Task<IActionResult> OnGetAsync(string? section, CancellationToken cancellationToken)
     {
+        // The route takes the section in any case: one address for each.
+        if (section?.ToLowerInvariant() is { } lower && lower != section)
+        {
+            return LocalRedirect(SitePaths.SettingsSection(lower));
+        }
+
         Section = section;
         if (!await LoadAsync(cancellationToken))
         {

@@ -19,6 +19,9 @@ public interface IAgentStore
 
     Task<Actor?> FindAgentAsync(Guid agentId, CancellationToken cancellationToken);
 
+    /// <summary>Reads the tracked agent again, for a change decided under a lock taken after it was loaded.</summary>
+    Task ReloadAsync(Actor agent, CancellationToken cancellationToken);
+
     /// <summary>Revokes every live key of the agent. Runs immediately.</summary>
     Task RevokeKeysAsync(Guid agentId, DateTimeOffset now, CancellationToken cancellationToken);
 

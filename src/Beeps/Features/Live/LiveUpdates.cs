@@ -143,11 +143,20 @@ public sealed partial class LiveUpdates(ILiveEventStore store, IBeepCounterStore
             return changed;
         }
 
-        var counts = await counters.GetAsync(changed, cancellationToken);
-        if (counts.Count > 0)
+        try
         {
-            var entries = counts.Select(c => new CountsEntry(c.Key, Math.Max(0, c.Value.Likes), Math.Max(0, c.Value.Replies))).ToList();
-            await store.AppendAsync(LiveEventTypes.Counts, JsonSerializer.Serialize(new CountsEvent(entries), LiveJsonContext.Default.CountsEvent), cancellationToken);
+            var counts = await counters.GetAsync(changed, cancellationToken);
+            if (counts.Count > 0)
+            {
+                var entries = counts.Select(c => new CountsEntry(c.Key, Math.Max(0, c.Value.Likes), Math.Max(0, c.Value.Replies))).ToList();
+                await store.AppendAsync(LiveEventTypes.Counts, JsonSerializer.Serialize(new CountsEvent(entries), LiveJsonContext.Default.CountsEvent), cancellationToken);
+            }
+        }
+        catch
+        {
+            // Taken but not published: they go back for the next run, or pages keep the old counts until the next change.
+            await CountsChangedAsync(changed, CancellationToken.None);
+            throw;
         }
 
         return changed;

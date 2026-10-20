@@ -5,7 +5,7 @@ import { useEffect, useLayoutEffect, useRef } from 'preact/hooks';
 import { getIslands } from './http.ts';
 import { applyIslands } from './islands.tsx';
 import type { IslandsPage, LiveProps } from './props.ts';
-import { pageUrl, reload } from './router.ts';
+import { pageUrl, reload, replaceAddress } from './router.ts';
 import { schedule } from './schedule.ts';
 import { showToast } from './toasts.ts';
 
@@ -81,9 +81,7 @@ async function refresh(): Promise<void> {
   if (pageUrl() !== page || pageLive.value !== live) return;
   const shownHere = showAnswer(answer, (found) => {
     if (!live.url) return found.pathname === window.location.pathname;
-    if (found.pathname !== window.location.pathname) {
-      window.history.replaceState(window.history.state, '', found.pathname + found.search + window.location.hash);
-    }
+    if (found.pathname !== window.location.pathname) replaceAddress(found.pathname + found.search + window.location.hash);
     return true;
   });
   // The page itself is gone for this person now (hidden from them, say): a reload would show that.

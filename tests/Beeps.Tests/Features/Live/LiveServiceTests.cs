@@ -407,8 +407,8 @@ public sealed class LiveServiceTests : IAsyncDisposable
         sessions.IsActiveAsync(TomSession, TestData.Now, Arg.Any<CancellationToken>()).Returns(true, false);
 
         // Still signed in: a reset only (no unread count to send), after which the page asks how it is signed in.
-        feed.Publish(LiveEventTypes.Gap, "");
-        Assert.Equal(new LiveMessage(LiveMessages.Reset, "{}"), await NextAsync());
+        var caughtUp = feed.Publish(LiveEventTypes.Gap, "");
+        Assert.Equal(new LiveMessage(LiveMessages.Reset, "{}", caughtUp), await NextAsync());
         feed.Publish(LiveEventTypes.Gap, "");
         Assert.Equal(new LiveMessage(LiveMessages.SignedOut, "{}"), await NextAsync());
         Assert.False(await stream!.MoveNextAsync());
@@ -475,9 +475,10 @@ public sealed class LiveServiceTests : IAsyncDisposable
         sessions.IsActiveAsync(TomSession, TestData.Now, Arg.Any<CancellationToken>()).Returns(true);
         unread = 7;
 
-        feed.Publish(LiveEventTypes.Gap, "");
+        var caughtUp = feed.Publish(LiveEventTypes.Gap, "");
 
-        Assert.Equal(new LiveMessage(LiveMessages.Reset, "{}"), await NextAsync());
+        // The reset says where the stream stands now: a reconnect after it does not start from before the gap again.
+        Assert.Equal(new LiveMessage(LiveMessages.Reset, "{}", caughtUp), await NextAsync());
         Assert.Equal(new LiveMessage(LiveMessages.Inbox, """{"unread_count":7}"""), await NextAsync());
     }
 
@@ -494,6 +495,21 @@ public sealed class LiveServiceTests : IAsyncDisposable
     }
 
     [Fact]
+    public async Task AnAgentsUnreadCountFollowsItsOwnersBlocks()
+    {
+        var agent = Viewer.Agent(Guid.NewGuid(), Tom);
+        unread = 3;
+        stream = CreateService().OpenInbox(agent, null, null, stop.Token).Value.GetAsyncEnumerator(stop.Token);
+        await NextAsync();
+
+        feed.Publish(LiveEventTypes.RelationChanged, $$"""{"actor_ids":["{{Guid.NewGuid():D}}","{{Guid.NewGuid():D}}"]}""");
+        unread = 2;
+        var blocked = feed.Publish(LiveEventTypes.RelationChanged, $$"""{"actor_ids":["{{Tom:D}}","{{Guid.NewGuid():D}}"]}""");
+
+        Assert.Equal(new LiveMessage(LiveMessages.Inbox, """{"unread_count":2}""", blocked), await NextAsync());
+    }
+
+    [Fact]
     public async Task AnAgentsStreamCarriesOnlyItsInbox()
     {
         var agent = Viewer.Agent(Guid.NewGuid(), Tom);
@@ -504,7 +520,6 @@ public sealed class LiveServiceTests : IAsyncDisposable
         feed.Publish(LiveEventTypes.BeepPosted, Json(Posted(Tom)));
         feed.Publish(LiveEventTypes.AgentConnected, $$"""{"agent_id":"{{agent.ActorId:D}}","owner_id":"{{Tom:D}}"}""");
         feed.Publish(LiveEventTypes.ActorChanged, $$"""{"actor_id":"{{agent.ActorId:D}}"}""");
-        feed.Publish(LiveEventTypes.RelationChanged, $$"""{"actor_ids":["{{agent.ActorId:D}}","{{Tom:D}}"]}""");
         feed.Publish(LiveEventTypes.Resync, "{}");
         unread = 2;
         feed.Publish(LiveEventTypes.Inbox, $$"""{"recipient_ids":["{{agent.ActorId:D}}"]}""");

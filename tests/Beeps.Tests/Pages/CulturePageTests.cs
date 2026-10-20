@@ -50,6 +50,18 @@ public sealed class CulturePageTests(BeepsWebApplicationFactory factory) : IClas
     }
 
     [Fact]
+    public async Task OnAPageNotFoundTheSwitchesComeBackToItsAddress()
+    {
+        using var client = NewClient();
+
+        using var response = await client.GetAsync(new Uri("/no/such/page?x=1", UriKind.Relative), TestSupport.Ct);
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        var options = Islands.Props(await response.Content.ReadAsStringAsync(TestSupport.Ct), "site-options");
+        Assert.Equal("/no/such/page?x=1", options.GetProperty("returnUrl").GetString());
+    }
+
+    [Fact]
     public async Task UnsupportedCulturesAreNotStored()
     {
         using var client = NewClient();

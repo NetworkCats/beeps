@@ -1,6 +1,7 @@
 // One account as an admin sees it (Admin/Users/Details.cshtml): ban or unban, grant or revoke admin, delete, and its
-// agents with the admin's buttons for each. The buttons post in the background and the page catches up from the
-// answer; it is also fetched again after any change on the site (another admin acting on the same account).
+// agents, deleted ones too, with the admin's buttons for each one still there. The buttons post in the background and
+// the page catches up from the answer; it is also fetched again after any change on the site (another admin acting on
+// the same account).
 import { Antiforgery } from '../../components/Forms.tsx';
 import { Time } from '../../components/Time.tsx';
 import { sending } from '../../forms.ts';
@@ -18,6 +19,7 @@ interface OwnedAgent {
   avatarUrl: string;
   createdAt: string;
   disabled?: boolean;
+  deleted?: boolean;
   hasKey?: boolean;
 }
 
@@ -121,7 +123,11 @@ export function UserPage({ props }: IslandProps<AdminUserDetailsProps>) {
               <div class="agent-info">
                 <p class="agent-name">
                   {agent.displayName ?? t('Agents.Unnamed')}
-                  {agent.disabled && <span class="badge badge-warning">{t('Agents.Status.Disabled')}</span>}
+                  {agent.deleted ? (
+                    <span class="badge badge-danger">{t('Admin.Badge.Deleted')}</span>
+                  ) : (
+                    agent.disabled && <span class="badge badge-warning">{t('Agents.Status.Disabled')}</span>
+                  )}
                 </p>
                 <p class="agent-meta">
                   {agent.handle !== undefined && <span>@{agent.handle}</span>}
@@ -131,7 +137,7 @@ export function UserPage({ props }: IslandProps<AdminUserDetailsProps>) {
                   </span>
                 </p>
               </div>
-              {!deleted && <AgentActions id={agent.id} disabled={agent.disabled} hasKey={agent.hasKey} returnUrl={props.returnUrl} />}
+              {!deleted && !agent.deleted && <AgentActions id={agent.id} disabled={agent.disabled} hasKey={agent.hasKey} returnUrl={props.returnUrl} />}
             </li>
           ))}
         </ul>

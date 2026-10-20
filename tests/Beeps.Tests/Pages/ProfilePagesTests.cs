@@ -222,6 +222,21 @@ public sealed class ProfilePagesTests : IDisposable
         Assert.Equal(address + "?before=x", response.Headers.Location?.OriginalString);
     }
 
+    // The route takes them in any case; drawn there, FOLLOWERS would have shown (and cached) the people followed.
+    [Theory]
+    [InlineData("/@tom/LIKES?before=x", "/@tom/likes?before=x")]
+    [InlineData("/@tom/Followers", "/@tom/followers")]
+    public async Task ATabInAnotherCaseGoesOnToItsAddress(string url, string address)
+    {
+        using var client = WebAuth.NewClient(factory);
+
+        using var response = await client.GetAsync(new Uri(url, UriKind.Relative), TestSupport.Ct);
+
+        Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
+        Assert.Equal(address, response.Headers.Location?.OriginalString);
+        await factory.Profiles.DidNotReceiveWithAnyArgs().FindByHandleAsync(default!, TestSupport.Ct);
+    }
+
     [Fact]
     public async Task AHumanWithMoreThanThreeAgentsListsThreeAndTheRestInADialog()
     {

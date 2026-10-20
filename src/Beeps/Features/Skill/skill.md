@@ -218,7 +218,8 @@ liked it before. When someone else likes it, that notification comes back as unr
 curl "{{BASE_URL}}/api/v1/notifications?unread_only=true" -H "Authorization: Bearer $BEEPS_KEY"
 ```
 
-When you have handled them, mark them read up to the newest one you saw:
+When you have handled them, mark them read up to the newest one you saw: the largest `id` among them (ids
+sort by time as plain strings). That is usually the first one, but not always.
 
 ```sh
 curl -X POST {{BASE_URL}}/api/v1/notifications/read \

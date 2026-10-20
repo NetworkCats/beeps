@@ -258,13 +258,16 @@ public sealed class AgentServiceTests
         Assert.Equal([$$"""{"agent_id":"{{row.Id:D}}","owner_id":"{{OwnerId:D}}"}"""], TestData.LiveEvents(liveEvents, LiveEventTypes.AgentConnected));
     }
 
-    [Fact]
-    public async Task ConnectingAgainChangesNothing()
+    [Theory]
+    [InlineData("GPT-5")]
+    [InlineData(null)]
+    [InlineData("bad\u0007name")]
+    public async Task ConnectingAgainChangesNothing(string? modelName)
     {
         var row = new AgentWithOwnerRow(Guid.NewGuid(), "tom.claude", "tom's Claude", "Claude Opus 4.5", TestData.Now, OwnerId, "tom", "Tom");
         store.GetAgentWithOwnerAsync(row.Id, Arg.Any<CancellationToken>()).Returns(row);
 
-        var result = await CreateService().ConnectAsync(row.Id, "GPT-5", TestSupport.Ct);
+        var result = await CreateService().ConnectAsync(row.Id, modelName, TestSupport.Ct);
 
         Assert.Equal("Claude Opus 4.5", result.Value.ModelName);
         await store.DidNotReceiveWithAnyArgs().TryConnectAsync(default, default!, default!, default!, TestSupport.Ct);
@@ -291,11 +294,14 @@ public sealed class AgentServiceTests
     [InlineData("bad\u0007name")]
     public async Task ConnectingNeedsAModelName(string? modelName)
     {
-        var result = await CreateService().ConnectAsync(Guid.NewGuid(), modelName, TestSupport.Ct);
+        var row = new AgentWithOwnerRow(Guid.NewGuid(), null, null, null, TestData.Now, OwnerId, "tom", "Tom");
+        store.GetAgentWithOwnerAsync(row.Id, Arg.Any<CancellationToken>()).Returns(row);
+
+        var result = await CreateService().ConnectAsync(row.Id, modelName, TestSupport.Ct);
 
         Assert.Equal(AccountErrorCodes.InvalidInput, result.Error?.Code);
         Assert.Equal(["Validation.ModelName(100)"], result.Error!.Fields![AgentFields.ModelName]);
-        await store.DidNotReceiveWithAnyArgs().GetAgentWithOwnerAsync(default, TestSupport.Ct);
+        await store.DidNotReceiveWithAnyArgs().TryConnectAsync(default, default!, default!, default!, TestSupport.Ct);
     }
 
     [Fact]
@@ -324,6 +330,27 @@ public sealed class AgentServiceTests
         Assert.Equal("helper", result.Value.HandleName);
         outbox.Received(1).Enqueue(SearchAccountSyncRequest.MessageType, new SearchAccountSyncRequest(agent.Id, false), Arg.Any<System.Text.Json.Serialization.Metadata.JsonTypeInfo<SearchAccountSyncRequest>>());
         Assert.Equal([$$"""{"actor_id":"{{agent.Id:D}}"}"""], TestData.LiveEvents(liveEvents, LiveEventTypes.ActorChanged));
+    }
+
+    [Fact]
+    public async Task ARenameReadsTheAgentAgainUnderTheLock()
+    {
+        // Another rename committed while this one waited for the lock: the handle this one replaces is that one's.
+        var agent = ConnectedAgent();
+        store.ReloadAsync(agent, Arg.Any<CancellationToken>()).Returns(_ =>
+        {
+            Assert.Equal([AdvisoryLocks.OwnerAgents(OwnerId)], unitOfWork.Locks);
+            (agent.Handle, agent.NormalizedHandle) = ("tom.helper", "tom.helper");
+            return Task.CompletedTask;
+        });
+        store.ListAgentsAsync(OwnerId, Arg.Any<CancellationToken>()).Returns([new AgentRow(agent.Id, "tom.claude", "x", "Claude", TestData.Now, null, null, null)]);
+
+        var result = await CreateService().UpdateProfileAsync(OwnerId, agent.Id, new AgentProfileRequest("x", "claude", null), TestSupport.Ct);
+
+        Assert.True(result.IsSuccess);
+        // Its handle is no longer the one asked for, so that one is checked.
+        await store.Received(1).HandleTakenAsync("tom.claude", Arg.Any<CancellationToken>());
+        Assert.Equal("tom.claude", agent.NormalizedHandle);
     }
 
     [Fact]

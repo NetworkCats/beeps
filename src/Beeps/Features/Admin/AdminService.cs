@@ -19,7 +19,6 @@ public sealed partial class AdminService(
     IAccountStore accounts,
     ISessionStore sessions,
     IAgentStore agents,
-    AgentService agentService,
     AdminAccess access,
     IUnitOfWork unitOfWork,
     IOutbox outbox,
@@ -73,8 +72,9 @@ public sealed partial class AdminService(
             return UserNotFound();
         }
 
-        var userAgents = await agentService.ListAsync(userId, cancellationToken);
-        return new AdminUserDetails(user, avatars.For(user.Id, user.AvatarKey), userAgents);
+        // Deleted agents too: the records stay for audit (PLAN 3.6).
+        var userAgents = await store.ListOwnedAgentsAsync(userId, cancellationToken);
+        return new AdminUserDetails(user, avatars.For(user.Id, user.AvatarKey), [.. userAgents.Select(a => new AdminOwnedAgent(a, avatars.For(a.Id, a.AvatarKey)))]);
     }
 
     /// <summary>Bans the user, ends all their sessions and disables all their agents (PLAN 3.6).</summary>
@@ -319,16 +319,23 @@ public sealed partial class AdminService(
             return denied;
         }
 
-        var current = await accounts.GetRegistrationModeAsync(cancellationToken);
-        if (current == mode)
-        {
-            return Result.Success;
-        }
+        // Under the admin lock: two admins setting it for the first time would both find no row and both insert one.
+        return await unitOfWork.InTransactionAsync(
+            AdvisoryLocks.Admins,
+            async ct =>
+            {
+                var current = await accounts.GetRegistrationModeAsync(ct);
+                if (current == mode)
+                {
+                    return Result.Success;
+                }
 
-        await store.SetRegistrationModeAsync(mode, time.GetUtcNow(), cancellationToken);
-        Audit(adminId, AuditActions.SetRegistrationMode, AuditTargets.Site, null, $"{current} -> {mode}");
-        await unitOfWork.SaveChangesAsync(cancellationToken);
-        return Result.Success;
+                await store.SetRegistrationModeAsync(mode, time.GetUtcNow(), ct);
+                Audit(adminId, AuditActions.SetRegistrationMode, AuditTargets.Site, null, $"{current} -> {mode}");
+                await unitOfWork.SaveChangesAsync(ct);
+                return Result.Success;
+            },
+            cancellationToken);
     }
 
     public async Task<Result<IReadOnlyList<InviteRow>>> ListInvitesAsync(Guid adminId, CancellationToken cancellationToken)
@@ -442,7 +449,9 @@ public sealed partial class AdminService(
     /// <summary>
     /// Runs a change to an agent in one transaction with its audit entry, then drops the cached key lookups so
     /// the change applies to the agent's very next request. <paramref name="change"/> answers whether there was
-    /// anything to change: nothing to change is a success without an audit entry.
+    /// anything to change: nothing to change is a success without an audit entry. It runs under the admin lock, as
+    /// bans do: an agent enabled while its owner is being banned would otherwise stay on, as a ban only disables
+    /// the agents that are on.
     /// </summary>
     private async Task<Result> ChangeAgentAsync(
         Guid adminId,
@@ -463,7 +472,7 @@ public sealed partial class AdminService(
         }
 
         var result = await unitOfWork.InTransactionAsync(
-            null,
+            AdvisoryLocks.Admins,
             async ct =>
             {
                 var changed = await change(agent, time.GetUtcNow(), ct);

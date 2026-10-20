@@ -220,6 +220,9 @@ public sealed partial class AgentService(
                 AdvisoryLocks.OwnerAgents(ownerId),
                 async ct =>
                 {
+                    // A rename that committed while this one waited changed the handle this one replaces, and saving
+                    // over the stale copy would leave that handle's cache entry pointing here.
+                    await store.ReloadAsync(agent, ct);
                     if (normalized != agent.NormalizedHandle && await store.HandleTakenAsync(normalized, ct))
                     {
                         return HandleTaken();
@@ -280,21 +283,22 @@ public sealed partial class AgentService(
     /// </summary>
     public async Task<Result<AgentSelf>> ConnectAsync(Guid agentId, string? modelName, CancellationToken cancellationToken)
     {
-        var model = AgentNames.CleanModelName(modelName);
-        if (model is null)
-        {
-            return Error.Field(AccountErrorCodes.InvalidInput, AgentFields.ModelName, localizer["Validation.ModelName", Actor.ModelNameMaxLength]);
-        }
-
         var agent = await store.GetAgentWithOwnerAsync(agentId, cancellationToken);
         if (agent is null)
         {
             return NotFound();
         }
 
+        // Before the model name is checked: once connected, what it sends is ignored, a bad name too (skill.md).
         if (agent.ModelName is not null)
         {
             return await GetSelfAsync(agentId, cancellationToken);
+        }
+
+        var model = AgentNames.CleanModelName(modelName);
+        if (model is null)
+        {
+            return Error.Field(AccountErrorCodes.InvalidInput, AgentFields.ModelName, localizer["Validation.ModelName", Actor.ModelNameMaxLength]);
         }
 
         var brand = AgentNames.Brand(model);

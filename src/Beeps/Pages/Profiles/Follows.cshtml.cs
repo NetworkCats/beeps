@@ -29,6 +29,13 @@ public sealed class FollowsModel(ProfileService profiles) : PageModel
 
     public async Task<IActionResult> OnGetAsync(string handle, string list, CancellationToken cancellationToken)
     {
+        // The route takes the list in any case: one address for each, for the cache and for search engines.
+        var lower = list.ToLowerInvariant();
+        if (lower != list)
+        {
+            return LocalRedirect(SitePaths.ProfileTab(handle, lower) + Request.QueryString);
+        }
+
         var viewer = User.OptionalViewer();
         var profile = await profiles.GetAsync(viewer, handle, cancellationToken);
         if (!profile.IsSuccess || profile.Value.Actor.Kind != ActorKind.Human)

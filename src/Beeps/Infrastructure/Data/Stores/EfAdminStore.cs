@@ -80,6 +80,24 @@ public sealed class EfAdminStore(BeepsDbContext db) : IAdminStore
         return CursorPage.FromOverfetch(rows, limit, r => r.Id);
     }
 
+    public async Task<IReadOnlyList<AdminOwnedAgentRow>> ListOwnedAgentsAsync(Guid ownerId, CancellationToken cancellationToken) =>
+        await db.Set<Actor>()
+            .AsNoTracking()
+            .Where(a => a.Kind == ActorKind.Agent && a.OwnerId == ownerId)
+            .LeftJoin(db.Set<AgentKey>().Where(k => k.RevokedAt == null), a => a.Id, k => k.AgentId, (a, k) => new { a, k })
+            .OrderBy(x => x.a.Id)
+            .Select(x => new AdminOwnedAgentRow(
+                x.a.Id,
+                x.a.Handle,
+                x.a.DisplayName,
+                x.a.ModelName,
+                x.a.CreatedAt,
+                x.a.DisabledAt,
+                x.a.DeletedAt,
+                x.k == null ? null : x.k.KeyPrefix,
+                x.a.AvatarMedia == null || x.a.AvatarMedia.Status != MediaStatus.Ready ? null : x.a.AvatarMedia.StorageKey))
+            .ToListAsync(cancellationToken);
+
     public void AddAuditLog(AdminAuditLog entry) => db.Set<AdminAuditLog>().Add(entry);
 
     public async Task<CursorPage<AuditLogRow>> ListAuditLogAsync(Guid? before, int limit, CancellationToken cancellationToken)

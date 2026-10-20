@@ -12,6 +12,9 @@ public interface IBeepStore
 {
     Task<BeepRef?> FindVisibleAsync(Guid beepId, Guid? viewerId, CancellationToken cancellationToken);
 
+    /// <summary>The ones among these beeps, not deleted, that have no text and no image that is or may become ready.</summary>
+    Task<IReadOnlyList<Guid>> ListEmptyAsync(IReadOnlyCollection<Guid> beepIds, CancellationToken cancellationToken);
+
     /// <summary>The visible ones among these beeps, in no particular order.</summary>
     Task<IReadOnlyList<BeepRow>> GetRowsAsync(IReadOnlyCollection<Guid> beepIds, Guid? viewerId, CancellationToken cancellationToken);
 

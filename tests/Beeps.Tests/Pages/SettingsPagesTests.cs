@@ -68,6 +68,18 @@ public sealed class SettingsPagesTests : IDisposable
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
+    [Fact]
+    public async Task ASectionInAnotherCaseGoesOnToItsAddress()
+    {
+        var user = WebAuth.ArrangeUser(factory);
+        using var client = await WebAuth.SignInAsync(factory, user);
+
+        using var response = await Islands.GetAsync(client, "/settings/Sessions");
+
+        Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
+        Assert.Equal("/page-data/settings/sessions", response.Headers.Location?.OriginalString);
+    }
+
     [Theory]
     [InlineData("Profile", "/settings/profile")]
     [InlineData("Theme", "/settings/display")]

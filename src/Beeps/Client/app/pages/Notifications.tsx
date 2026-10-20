@@ -167,6 +167,9 @@ export function NotificationsPage({ props }: IslandProps<NotificationsProps>) {
   // An entry goes with its beep.
   const items = state.items.value.filter((entry) => beepSignal(entry.beep.id).value !== null);
   const unread = items.some((entry) => !entry.read);
+  // The newest entry shown: entries are in the order of their group's newest one, which may be from someone now hidden,
+  // so the first entry is not always the newest.
+  const newest = items.reduce<string | undefined>((max, entry) => (max === undefined || compareIds(entry.id, max) > 0 ? entry.id : max), undefined);
 
   const loadMore = async (): Promise<boolean> => {
     const next = state.next.value;
@@ -188,7 +191,7 @@ export function NotificationsPage({ props }: IslandProps<NotificationsProps>) {
         <h1 class="column-title">{t('Notifications.Title')}</h1>
         {/* Marks up to the newest one shown, so ones that arrive meanwhile stay unread; there once one is unread. */}
         <form class="column-actions" method="post" action={`${paths.notifications}?handler=Read`} hidden={!unread} onSubmit={sending()}>
-          <input type="hidden" name="upToId" value={items[0]?.id ?? ''} />
+          <input type="hidden" name="upToId" value={newest ?? ''} />
           <button class="btn btn-sm btn-ghost" type="submit">
             <Icon name="done_all" />
             {t('Notifications.MarkRead')}

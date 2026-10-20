@@ -1,5 +1,6 @@
 @using System.Globalization
 @using Beeps.Pages.Islands
+@using Microsoft.AspNetCore.Diagnostics
 @model SiteOptionsPlace
 @inject TimeProvider Time
 @* The site's own links and settings: the side column's footer, or where the screen has no side column, a "more" menu
@@ -8,11 +9,20 @@
 @{
     var inMenu = Model != SiteOptionsPlace.Footer;
     var rail = Model == SiteOptionsPlace.Rail;
+    // On an error page, the address that failed rather than the error page's own: a choice comes back to it.
+    // After an unhandled exception only the path is the error page's; the request keeps its query string.
+    var failed = Context.Features.Get<IStatusCodeReExecuteFeature>();
+    var crashed = Context.Features.Get<IExceptionHandlerPathFeature>();
+    var here = failed is not null
+        ? $"{new PathString(failed.OriginalPathBase)}{new PathString(failed.OriginalPath)}{failed.OriginalQueryString}"
+        : crashed is not null
+            ? $"{Context.Request.PathBase}{new PathString(crashed.Path)}{Context.Request.QueryString}"
+            : $"{Context.Request.PathBase}{Context.Request.Path}{Context.Request.QueryString}";
     var props = new SiteOptionsProps(
         inMenu,
         rail,
         User.IsHuman(),
-        $"{Context.Request.PathBase}{Context.Request.Path}{Context.Request.QueryString}",
+        here,
         CultureInfo.CurrentUICulture.Name,
         SiteOptionsProps.CulturesFor(L),
         Themes.For(User, Context.Request),

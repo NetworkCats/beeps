@@ -326,6 +326,13 @@ public sealed partial class IslandSamplesTests : IDisposable
         factory.Admin.IsActiveAdminAsync(tom.Id, Arg.Any<CancellationToken>()).Returns(true);
         var tomRow = new AdminUserRow(tom.Id, "tom", "tom", "tom@example.com", true, true, TestData.Now, null, null);
         factory.Admin.GetUserAsync(tom.Id, Arg.Any<CancellationToken>()).Returns(tomRow);
+        factory.Admin.ListOwnedAgentsAsync(tom.Id, Arg.Any<CancellationToken>()).Returns(
+        [
+            new AdminOwnedAgentRow(Id(40), "tom.claude", "tom's Claude", "Claude Opus", TestData.Now, null, null, "beeps_abc123", null),
+            new AdminOwnedAgentRow(Id(41), null, null, null, TestData.Now, null, null, "beeps_def456", null),
+            new AdminOwnedAgentRow(Id(42), "tom.gpt", "tom's GPT", "GPT", TestData.Now, TestData.Now, null, null, null),
+            new AdminOwnedAgentRow(Id(44), "tom.old", "tom's Old", "Claude", TestData.Now, null, TestData.Now, null, null),
+        ]);
         factory.Admin.ListUsersAsync(null, null, null, AdminService.PageSize, Arg.Any<CancellationToken>()).Returns(new CursorPage<AdminUserRow>(
             [tomRow, new AdminUserRow(alice.Id, "alice", "Alice", "alice@example.com", false, false, TestData.Now, TestData.Now, null)],
             Id(95)));

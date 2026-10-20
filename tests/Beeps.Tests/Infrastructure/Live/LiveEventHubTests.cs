@@ -86,6 +86,46 @@ public sealed class LiveEventHubTests : IAsyncDisposable
     }
 
     [Fact]
+    public async Task AnOldPositionWithNothingAfterItIsNoGap()
+    {
+        options.ReplayWindow = TimeSpan.FromMinutes(10);
+        var seen = store.Add("seen");
+        var hub = await StartAsync();
+        time.Now = TestData.Now + TimeSpan.FromMinutes(11);
+        using var subscription = hub.Subscribe(LiveEventId.Parse(seen));
+        var events = subscription.ReadAllAsync(stop.Token).GetAsyncEnumerator(stop.Token);
+        var first = events.MoveNextAsync().AsTask();
+
+        // Once the replay looked at where the stream ends (the hub looked once on starting).
+        while (store.LastIdReads < 2)
+        {
+            await Task.Delay(1, TestSupport.Ct);
+        }
+
+        store.Add("after");
+
+        Assert.True(await first.WaitAsync(TimeSpan.FromSeconds(5), TestSupport.Ct));
+        Assert.Equal("after", events.Current.Type);
+        await events.DisposeAsync();
+    }
+
+    [Fact]
+    public async Task AGapSaysWhereTheReaderStandsOnceCaughtUp()
+    {
+        options.MaxReplay = 1;
+        var seen = store.Add("seen");
+        store.Add("1");
+        var last = store.Add("2");
+        var hub = await StartAsync();
+        using var subscription = hub.Subscribe(LiveEventId.Parse(seen));
+        var events = subscription.ReadAllAsync(stop.Token).GetAsyncEnumerator(stop.Token);
+
+        Assert.True(await events.MoveNextAsync().AsTask().WaitAsync(TimeSpan.FromSeconds(5), TestSupport.Ct));
+        Assert.Equal(new LiveEvent(last, LiveEventTypes.Gap, ""), events.Current);
+        await events.DisposeAsync();
+    }
+
+    [Fact]
     public async Task AStreamTrimmedPastThePositionIsAGap()
     {
         var seen = store.Add("seen");
@@ -335,10 +375,13 @@ public sealed class LiveEventHubTests : IAsyncDisposable
             }
         }
 
+        public int LastIdReads { get; private set; }
+
         public Task<LiveEventId?> LastIdAsync(CancellationToken cancellationToken)
         {
             lock (gate)
             {
+                LastIdReads++;
                 return Task.FromResult<LiveEventId?>(events.Count == 0 ? null : LiveEventId.Parse(events[^1].Id));
             }
         }

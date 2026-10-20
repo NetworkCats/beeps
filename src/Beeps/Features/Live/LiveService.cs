@@ -167,7 +167,8 @@ public sealed partial class LiveService(
                     continue;
                 }
 
-                if (item.Type != LiveEventTypes.Gap)
+                // A gap's id is where the reader stands once it has caught up (none when the stream is not read here).
+                if (item.Id.Length > 0)
                 {
                     lastId = item.Id;
                 }
@@ -204,9 +205,11 @@ public sealed partial class LiveService(
     {
         try
         {
-            if (item.Type == LiveEventTypes.RelationChanged && !connection.InboxOnly)
+            if (item.Type == LiveEventTypes.RelationChanged)
             {
-                return await RelationChangedAsync(connection, item, cancellationToken);
+                return connection.InboxOnly
+                    ? await AgentRelationChangedAsync(connection, item, cancellationToken)
+                    : await RelationChangedAsync(connection, item, cancellationToken);
             }
 
             if (connection.InboxOnly && MayEndAgentKey(connection, item))
@@ -229,7 +232,8 @@ public sealed partial class LiveService(
                     return [Message(LiveMessages.SignedOut, new EmptyMessage(), LiveJsonContext.Default.EmptyMessage)];
                 }
 
-                var reset = Message(LiveMessages.Reset, new EmptyMessage(), LiveJsonContext.Default.EmptyMessage);
+                // With the position caught up from, so a later reconnect does not start from before the gap again.
+                var reset = Message(LiveMessages.Reset, new EmptyMessage(), LiveJsonContext.Default.EmptyMessage, NonEmpty(item.Id));
                 return connection.AccountOnly ? [reset] : [reset, await InboxAsync(connection, null, cancellationToken)];
             }
 
@@ -244,7 +248,7 @@ public sealed partial class LiveService(
                 {
                     LiveEventTypes.Inbox when Read(item, LiveJsonContext.Default.InboxEvent) is var inbox && inbox.RecipientIds.Contains(connection.Viewer.ActorId) =>
                         [await InboxChangedAsync(connection, item.Id, inbox, cancellationToken)],
-                    LiveEventTypes.Gap when connection.InboxOnly => [await InboxAsync(connection, null, cancellationToken)],
+                    LiveEventTypes.Gap when connection.InboxOnly => [await InboxAsync(connection, NonEmpty(item.Id), cancellationToken)],
                     _ => [],
                 };
 
@@ -330,6 +334,18 @@ public sealed partial class LiveService(
             Message(LiveMessages.Resync, new EmptyMessage(), LiveJsonContext.Default.EmptyMessage, item.Id),
             await InboxAsync(connection, item.Id, cancellationToken),
         ];
+    }
+
+    /// <summary>
+    /// An agent sees its inbox through its owner's blocks too (and its own): when they block or unblock someone, entries
+    /// from them leave or come back, and with them the unread count.
+    /// </summary>
+    private async Task<IReadOnlyList<LiveMessage>> AgentRelationChangedAsync(Connection connection, LiveEvent item, CancellationToken cancellationToken)
+    {
+        var actorIds = Read(item, LiveJsonContext.Default.RelationChangedEvent).ActorIds;
+        return actorIds.Contains(connection.Viewer.ActorId) || connection.Viewer.OwnerId is { } owner && actorIds.Contains(owner)
+            ? [await InboxAsync(connection, item.Id, cancellationToken)]
+            : [];
     }
 
     /// <summary>
@@ -573,6 +589,8 @@ public sealed partial class LiveService(
 
     private static T Read<T>(LiveEvent item, JsonTypeInfo<T> type)
         where T : class => item.Read(type);
+
+    private static string? NonEmpty(string id) => id.Length > 0 ? id : null;
 
     private static LiveMessage Message<T>(string type, T payload, JsonTypeInfo<T> payloadType, string? id = null) =>
         new(type, JsonSerializer.Serialize(payload, payloadType), id);

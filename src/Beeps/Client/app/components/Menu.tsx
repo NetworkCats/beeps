@@ -1,7 +1,9 @@
 // A menu (<details>): it opens without script, as a plain <details>; drawn here it also closes on a click
-// elsewhere or on Escape, as people expect from a menu. Its owner may hold its state, to close it after an action.
+// elsewhere or on Escape, as people expect from a menu, and as a link in it is followed or another page is shown: one in
+// the layout stays as the page changes under it. Its owner may hold its state, to close it after an action.
 import type { ComponentChildren } from 'preact';
 import { useEffect, useRef, useState } from 'preact/hooks';
+import { PAGE_SHOWN } from '../router.ts';
 
 interface MenuProps {
   class: string;
@@ -23,18 +25,22 @@ export function Menu({ class: className, summary, children, open: controlled, on
   useEffect(() => {
     if (!open) return;
     const click = (event: MouseEvent): void => {
-      if (!element.current?.contains(event.target as Node)) setOpen(false);
+      const target = event.target as Element;
+      if (!element.current?.contains(target) || target.closest('a[href]')) setOpen(false);
     };
     const key = (event: KeyboardEvent): void => {
       if (event.key !== 'Escape') return;
       setOpen(false);
       element.current?.querySelector('summary')?.focus();
     };
+    const shown = (): void => setOpen(false);
     document.addEventListener('click', click);
     document.addEventListener('keydown', key);
+    document.addEventListener(PAGE_SHOWN, shown);
     return () => {
       document.removeEventListener('click', click);
       document.removeEventListener('keydown', key);
+      document.removeEventListener(PAGE_SHOWN, shown);
     };
   }, [open]);
 

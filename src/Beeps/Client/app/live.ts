@@ -123,10 +123,13 @@ function connect(): void {
   on(events, 'signed_out', () => void showWhole(events));
   on(events, 'reload', () => void showWhole(events));
   // Events were missed: anything may have changed, so everything shown is fetched again.
-  on(events, 'reset', () => {
-    // From here on the page catches up by fetching; a later reconnect replays from now, not from the gap again.
-    lastEventId = undefined;
-    document.body.dataset.liveFrom = String(Date.now());
+  on(events, 'reset', (_, moved) => {
+    // From here on the page catches up by fetching; a later reconnect replays from where the server caught up (the
+    // reset's id), or else from now, not from the gap again.
+    if (!moved) {
+      lastEventId = undefined;
+      document.body.dataset.liveFrom = String(Date.now());
+    }
     resync();
     redraw(shownIds());
     // A sign-out may be among the missed events, too.
@@ -143,13 +146,15 @@ function connect(): void {
 // Messages that say nothing about the site's content.
 const NOT_CONTENT = new Set(['ping', 'inbox', 'close', 'signed_out', 'reload', 'theme', 'sessions']);
 
-function on<T>(events: EventSource, type: string, handle: (data: T) => void): void {
+/** `moved`: the message came with an id of its own, which is now where a reconnect starts from. */
+function on<T>(events: EventSource, type: string, handle: (data: T, moved: boolean) => void): void {
   events.addEventListener(type, (event) => {
+    const before = lastEventId;
     if (event.lastEventId) lastEventId = event.lastEventId;
     // The admin pages show figures and lists about everything: whatever changed may be among them.
     if (pageLive.value.on === 'admin' && !NOT_CONTENT.has(type)) refreshPage(ADMIN_INTERVAL);
     try {
-      handle(JSON.parse(event.data) as T);
+      handle(JSON.parse(event.data) as T, lastEventId !== before);
     } catch {
       // A malformed event only means one missed update.
     }

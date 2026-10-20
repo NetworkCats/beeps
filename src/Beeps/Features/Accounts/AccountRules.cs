@@ -62,12 +62,12 @@ public static partial class AccountRules
 
     public static bool IsWellFormedCode(string? code) => code is not null && CodePattern().IsMatch(code);
 
-    [GeneratedRegex("^[A-Za-z0-9_]{3,20}$")]
+    [GeneratedRegex(@"^[A-Za-z0-9_]{3,20}\z")]
     private static partial Regex UsernamePattern();
 
-    [GeneratedRegex(@"^[A-Za-z0-9_]+(\.[A-Za-z0-9_]+)?$")]
+    [GeneratedRegex(@"^[A-Za-z0-9_]+(\.[A-Za-z0-9_]+)?\z")]
     private static partial Regex HandlePattern();
 
-    [GeneratedRegex("^[0-9]{6}$")]
+    [GeneratedRegex(@"^[0-9]{6}\z")]
     private static partial Regex CodePattern();
 }

@@ -2,7 +2,6 @@ using System.Globalization;
 using System.Text.Json.Serialization;
 using Beeps.Features.Accounts;
 using Beeps.Features.Admin;
-using Beeps.Features.Agents;
 using Beeps.Features.Media;
 using Beeps.Features.Moderation;
 using Microsoft.AspNetCore.Mvc;
@@ -80,12 +79,15 @@ public sealed record AdminOwnedAgentProps(
     Uri AvatarUrl,
     DateTimeOffset CreatedAt,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] bool Disabled,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] bool Deleted,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] bool HasKey)
 {
-    public static AdminOwnedAgentProps From(AgentSummary agent)
+    public static AdminOwnedAgentProps From(AdminOwnedAgent owned)
     {
-        ArgumentNullException.ThrowIfNull(agent);
-        return new AdminOwnedAgentProps(agent.Id, agent.Handle, agent.DisplayName, agent.ModelName, agent.AvatarUrl, agent.CreatedAt, agent.IsDisabled, agent.KeyPrefix is not null);
+        ArgumentNullException.ThrowIfNull(owned);
+        var agent = owned.Agent;
+        return new AdminOwnedAgentProps(
+            agent.Id, agent.Handle, agent.DisplayName, agent.ModelName, owned.AvatarUrl, agent.CreatedAt, agent.DisabledAt is not null, agent.DeletedAt is not null, agent.KeyPrefix is not null);
     }
 }
 

@@ -83,6 +83,20 @@ public sealed class LiveUpdatesTests
     }
 
     [Fact]
+    public async Task CountsThatFailToGoOutAreTakenAgainNextTime()
+    {
+        var a = Guid.NewGuid();
+        store.TakeChangedCountsAsync(LiveUpdates.CountsBatchSize, Arg.Any<CancellationToken>()).Returns([a]);
+        counters.GetAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, BeepCounts> { [a] = new(1, 0) });
+        store.AppendAsync(LiveEventTypes.Counts, Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(Task.FromException(new RedisException("Valkey is down")));
+        var live = TestData.Live(store, counters);
+
+        await Assert.ThrowsAsync<RedisException>(() => live.PublishCountsAsync(TestSupport.Ct));
+
+        await store.Received(1).MarkCountsChangedAsync(Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Single() == a), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task NoChangedCountsNoEvent()
     {
         store.TakeChangedCountsAsync(default, TestSupport.Ct).ReturnsForAnyArgs([]);

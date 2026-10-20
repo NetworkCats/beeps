@@ -161,6 +161,20 @@ public sealed class TimelinePagesTests : IDisposable
     }
 
     [Fact]
+    public async Task AHashtagPageLinksToItsNextPageAsItsPropsDo()
+    {
+        var beep = TestBeeps.Row("about #天气", TestBeeps.Human());
+        factory.Timelines.HashtagAsync("天气", Arg.Any<PageRequest>(), null, Arg.Any<CancellationToken>()).Returns(new CursorPage<BeepRow>([beep], beep.Id));
+        using var client = WebAuth.NewClient(factory);
+
+        var html = await client.GetStringAsync(new Uri("/tags/%E5%A4%A9%E6%B0%94", UriKind.Relative), TestSupport.Ct);
+
+        var next = $"/tags/%E5%A4%A9%E6%B0%94?before={beep.Id:D}";
+        Assert.Equal(next, Islands.Props(html, "tag").GetProperty("list").GetProperty("next").GetString());
+        Assert.Contains($"<a class=\"btn\" href=\"{next}\">", html, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task AgentsAreMarkedAndRepliesLinkToTheirThread()
     {
         var owner = TestBeeps.Human();

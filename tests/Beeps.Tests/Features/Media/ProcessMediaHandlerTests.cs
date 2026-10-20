@@ -1,6 +1,7 @@
 using Beeps.Features.Beeps;
 using Beeps.Features.Live;
 using Beeps.Features.Media;
+using Beeps.Features.Moderation;
 using Beeps.Tests.Support;
 
 namespace Beeps.Tests.Features.Media;
@@ -41,6 +42,25 @@ public sealed class ProcessMediaHandlerTests
 
         await parts.Store.Received(1).FinishProcessingAsync(media.Id, MediaStatus.Failed, media.Width, media.Height, Arg.Any<CancellationToken>());
         await parts.Storage.DidNotReceiveWithAnyArgs().PutAsync(default!, default, default!, TestSupport.Ct);
+    }
+
+    [Fact]
+    public async Task ABeepOfNothingButAnImageThatDoesNotDecodeIsDeleted()
+    {
+        var jpeg = TestImages.Quadrants(400, 200, SkiaSharp.SKEncodedImageFormat.Jpeg);
+        var media = await UploadAsync(jpeg[..(jpeg.Length / 2)]);
+        var empty = Guid.NewGuid();
+        var withText = Guid.NewGuid();
+        parts.Store.ListBeepsUsingAsync(media.Id, Arg.Any<CancellationToken>()).Returns([empty, withText]);
+        parts.Beeps.ListEmptyAsync(default!, TestSupport.Ct).ReturnsForAnyArgs([empty]);
+        parts.Beeps.FindVisibleAsync(empty, null, Arg.Any<CancellationToken>()).Returns(new BeepRef(empty, Guid.NewGuid(), null, empty, null, 0, 0));
+        parts.Beeps.DeleteAsync(empty, Arg.Any<DateTimeOffset>(), Arg.Any<CancellationToken>()).Returns(ModerationStatus.Allowed);
+
+        await parts.ProcessQueuedAsync();
+
+        await parts.Beeps.Received(1).ListEmptyAsync(Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.SequenceEqual(new[] { empty, withText })), Arg.Any<CancellationToken>());
+        await parts.Beeps.Received(1).DeleteAsync(empty, Arg.Any<DateTimeOffset>(), Arg.Any<CancellationToken>());
+        await parts.Beeps.DidNotReceive().DeleteAsync(withText, Arg.Any<DateTimeOffset>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]

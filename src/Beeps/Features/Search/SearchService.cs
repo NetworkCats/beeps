@@ -160,7 +160,7 @@ public sealed partial class SearchService(
     }
 
     /// <summary>A username, or an agent's <c>owner.name</c> with its name begun or not yet (as <see cref="BeepText"/> reads mentions).</summary>
-    [GeneratedRegex(@"^[A-Za-z0-9_]+(\.[A-Za-z0-9_]*)?$")]
+    [GeneratedRegex(@"^[A-Za-z0-9_]+(\.[A-Za-z0-9_]*)?\z")]
     private static partial Regex HandlePrefixPattern();
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Search failed")]

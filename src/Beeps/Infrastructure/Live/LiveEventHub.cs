@@ -40,11 +40,16 @@ public sealed partial class LiveEventHub(
     /// <summary>Completed once the hub knows where the stream ends; replays wait for it, so they and live delivery meet without a gap.</summary>
     private readonly TaskCompletionSource ready = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
+    /// <summary>The last event handed to the subscriptions (under <see cref="gate"/>); null until the hub knows where the stream ends.</summary>
+    private LiveEventId? delivered;
+
     public ILiveSubscription Subscribe(LiveEventId? after)
     {
         var subscription = new Subscription(this, after);
         lock (gate)
         {
+            // Everything after this reaches the subscription live: where its reader stands once a gap is caught up.
+            subscription.Joined = delivered;
             if (stopped)
             {
                 // Shutting down: end at once, so the client reconnects to an instance that delivers.
@@ -82,7 +87,20 @@ public sealed partial class LiveEventHub(
             {
                 // Before the first read, so nothing added after it goes unheard. Polling covers the time without it.
                 subscribed = subscribed || await TrySubscribeAsync(stoppingToken);
-                position ??= await store.LastIdAsync(stoppingToken) ?? LiveEventId.Zero;
+                if (position is null)
+                {
+                    position = await store.LastIdAsync(stoppingToken) ?? LiveEventId.Zero;
+                    lock (gate)
+                    {
+                        delivered = position;
+                        // Subscribed before this was known: every event after it reaches them.
+                        foreach (var subscription in subscriptions)
+                        {
+                            subscription.Joined ??= position;
+                        }
+                    }
+                }
+
                 ready.TrySetResult();
                 var events = await store.ReadAfterAsync(position.Value, BatchSize, stoppingToken);
                 if (events.Count > 0)
@@ -150,6 +168,7 @@ public sealed partial class LiveEventHub(
     {
         lock (gate)
         {
+            delivered = LiveEventId.Parse(events[^1].Id);
             for (var i = subscriptions.Count - 1; i >= 0; i--)
             {
                 var subscription = subscriptions[i];
@@ -189,6 +208,8 @@ public sealed partial class LiveEventHub(
     /// Null when the events after <paramref name="start"/> cannot all be replayed: too old, too many, trimmed away, or
     /// unreadable (Valkey away). The stream has started by then, so failing would only drop it for the client to
     /// reconnect into the same failure, again and again; a gap has it catch up from the pages instead.
+    /// An old position with nothing after it (a quiet site: pings carry the last event's id) misses nothing, unless the
+    /// stream itself is gone (it expires once nothing is added for a day), which may have taken events after it along.
     /// </summary>
     private async Task<IReadOnlyList<LiveEvent>?> ReplayAsync(LiveEventId start, CancellationToken cancellationToken)
     {
@@ -197,7 +218,12 @@ public sealed partial class LiveEventHub(
         try
         {
             if (start.Time < time.GetUtcNow() - settings.ReplayWindow
-                || await store.TrimmedUpToAsync(cancellationToken) is { } trimmed && trimmed > start)
+                && (await store.LastIdAsync(cancellationToken) is not { } last || last > start))
+            {
+                return null;
+            }
+
+            if (await store.TrimmedUpToAsync(cancellationToken) is { } trimmed && trimmed > start)
             {
                 return null;
             }
@@ -218,6 +244,9 @@ public sealed partial class LiveEventHub(
     /// </summary>
     private sealed class Subscription(LiveEventHub hub, LiveEventId? after) : ILiveSubscription
     {
+        /// <summary>The last event delivered before this subscription was added (set under the hub's gate); null while the hub does not know yet.</summary>
+        public LiveEventId? Joined { get; set; }
+
         private readonly Channel<LiveEvent> channel = Channel.CreateBounded<LiveEvent>(
             new BoundedChannelOptions(SubscriberCapacity) { SingleReader = true, SingleWriter = true, FullMode = BoundedChannelFullMode.Wait });
 
@@ -234,7 +263,8 @@ public sealed partial class LiveEventHub(
                 var replayed = await hub.ReplayAsync(start, cancellationToken);
                 if (replayed is null)
                 {
-                    yield return new LiveEvent("", LiveEventTypes.Gap, "");
+                    // Where the reader stands once it catches up: what comes live is everything after it.
+                    yield return new LiveEvent(Joined?.ToString() ?? "", LiveEventTypes.Gap, "");
                     last = null;
                 }
                 else

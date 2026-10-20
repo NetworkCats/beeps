@@ -53,6 +53,16 @@ public sealed partial class BeepService(
             return TextError(parsed.Problem);
         }
 
+        var allowed = await MayPostAsync(author, replyToId, cancellationToken);
+        return allowed.IsSuccess ? await PostAllowedAsync(author, parsed, allowed.Value, images, cancellationToken) : allowed.Error;
+    }
+
+    /// <summary>
+    /// Whether the author may post now (and reply to <paramref name="replyToId"/>): the parent is there for them and
+    /// its author did not block them, and they are within the posting limits, which this counts against. Its value is the parent.
+    /// </summary>
+    private async Task<Result<BeepRef?>> MayPostAsync(Viewer author, Guid? replyToId, CancellationToken cancellationToken)
+    {
         BeepRef? parent = null;
         if (replyToId is { } parentId)
         {
@@ -69,11 +79,11 @@ public sealed partial class BeepService(
         }
 
         var limited = await rateLimits.CheckAsync(PostLimits(author, parent), cancellationToken);
-        if (!limited.IsSuccess)
-        {
-            return limited.Error;
-        }
+        return limited.IsSuccess ? Result.Of(parent) : limited.Error;
+    }
 
+    private async Task<Result<BeepView>> PostAllowedAsync(Viewer author, ParsedBeepText parsed, BeepRef? parent, IReadOnlyList<Guid> images, CancellationToken cancellationToken)
+    {
         IReadOnlyList<ActorRow> mentioned = parsed.MentionHandles.Count == 0
             ? []
             : await store.FindActorsByHandlesAsync(parsed.MentionHandles, cancellationToken);
@@ -144,8 +154,9 @@ public sealed partial class BeepService(
     }
 
     /// <summary>
-    /// A beep written on the web, with its image files: they are uploaded, then posted with the text. The
-    /// text and the number of images are checked first, so a beep that cannot be posted uploads nothing.
+    /// A beep written on the web, with its image files: they are uploaded, then posted with the text. Everything
+    /// else is checked first (the text, the number of images, the parent, blocks, the posting limits), so a beep that
+    /// cannot be posted uploads nothing.
     /// </summary>
     public async Task<Result<BeepView>> PostWithUploadsAsync(Viewer author, string? text, Guid? replyToId, IReadOnlyList<MediaContent> files, CancellationToken cancellationToken)
     {
@@ -161,8 +172,14 @@ public sealed partial class BeepService(
             return TextError(parsed.Problem);
         }
 
+        var allowed = await MayPostAsync(author, replyToId, cancellationToken);
+        if (!allowed.IsSuccess)
+        {
+            return allowed.Error;
+        }
+
         var uploaded = await media.UploadAllAsync(author, files, cancellationToken);
-        return uploaded.IsSuccess ? await PostAsync(author, text, replyToId, uploaded.Value, cancellationToken) : uploaded.Error;
+        return uploaded.IsSuccess ? await PostAllowedAsync(author, parsed, allowed.Value, [.. uploaded.Value.Distinct()], cancellationToken) : uploaded.Error;
     }
 
     public async Task<Result<BeepView>> GetAsync(Viewer? viewer, Guid beepId, CancellationToken cancellationToken)
@@ -232,6 +249,34 @@ public sealed partial class BeepService(
             return Error.Forbidden(BeepErrorCodes.NotYourBeep, localizer["Error.NotYourBeep"]);
         }
 
+        if (await RemoveAsync(beep, viewer.ActorId, cancellationToken))
+        {
+            LogDeleted(logger, beepId, viewer.ActorId);
+        }
+
+        return Result.Success;
+    }
+
+    /// <summary>
+    /// Beeps of images alone whose last image could not be decoded (PLAN 6.11): posted while it was processing, they
+    /// would stay up with nothing in them.
+    /// </summary>
+    public async Task DeleteEmptyAsync(IReadOnlyCollection<Guid> beepIds, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(beepIds);
+        foreach (var beepId in beepIds.Count == 0 ? [] : await store.ListEmptyAsync(beepIds, cancellationToken))
+        {
+            if (await store.FindVisibleAsync(beepId, null, cancellationToken) is { } beep && await RemoveAsync(beep, null, cancellationToken))
+            {
+                LogDeletedEmpty(logger, beepId);
+            }
+        }
+    }
+
+    /// <summary>Deletes the beep and takes it off pages, inboxes and its parent's count; false when it was gone already.</summary>
+    private async Task<bool> RemoveAsync(BeepRef beep, Guid? actorId, CancellationToken cancellationToken)
+    {
+        var beepId = beep.Id;
         ModerationStatus? deleted = null;
         await unitOfWork.InTransactionAsync(
             null,
@@ -249,19 +294,18 @@ public sealed partial class BeepService(
             cancellationToken);
         if (deleted is null)
         {
-            return Result.Success;
+            return false;
         }
 
-        LogDeleted(logger, beepId, viewer.ActorId);
         await live.BeepRemovedAsync(beepId, cancellationToken);
         await inboxes.RecountAsync([beepId], [], cancellationToken);
         // Its author still sees a hidden reply, but its parent's count already left it out.
         if (beep.ReplyToId is { } parentId && deleted != ModerationStatus.Hidden)
         {
-            await ReplyCountChangedAsync(parentId, viewer.ActorId, -1, cancellationToken);
+            await ReplyCountChangedAsync(parentId, actorId, -1, cancellationToken);
         }
 
-        return Result.Success;
+        return true;
     }
 
     /// <summary>
@@ -477,6 +521,9 @@ public sealed partial class BeepService(
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Beep {BeepId} deleted by {ActorId}")]
     private static partial void LogDeleted(ILogger logger, Guid beepId, Guid actorId);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Beep {BeepId} deleted: its images could not be decoded and it has no text")]
+    private static partial void LogDeletedEmpty(ILogger logger, Guid beepId);
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Updating the live counts of beep {BeepId} failed")]
     private static partial void LogCounterFailed(ILogger logger, Exception exception, Guid beepId);

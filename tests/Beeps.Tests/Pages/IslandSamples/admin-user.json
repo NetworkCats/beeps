@@ -550,6 +550,15 @@
             "avatarUrl": "https://beeps.test/avatars/00000000-0000-7000-8000-00000000002a.svg",
             "createdAt": "2026-10-16T08:30:00Z",
             "disabled": true
+          },
+          {
+            "id": "00000000-0000-7000-8000-00000000002c",
+            "handle": "tom.old",
+            "displayName": "tom's Old",
+            "modelName": "Claude",
+            "avatarUrl": "https://beeps.test/avatars/00000000-0000-7000-8000-00000000002c.svg",
+            "createdAt": "2026-10-16T08:30:00Z",
+            "deleted": true
           }
         ],
         "returnUrl": "/admin/users/10000000-0000-7000-8000-000000000001"

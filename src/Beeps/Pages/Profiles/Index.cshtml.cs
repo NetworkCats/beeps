@@ -36,6 +36,12 @@ public sealed class IndexModel(ProfileService profiles, TimelineService timeline
 
     public async Task<IActionResult> OnGetAsync(string handle, string? tab, CancellationToken cancellationToken)
     {
+        // The route takes the tab in any case: one address for each, for the cache and for search engines.
+        if (tab?.ToLowerInvariant() is { } lower && lower != tab)
+        {
+            return LocalRedirect(SitePaths.ProfileTab(handle, lower) + Request.QueryString);
+        }
+
         var viewer = User.OptionalViewer();
         var profile = await profiles.GetAsync(viewer, handle, cancellationToken);
         if (!profile.IsSuccess)

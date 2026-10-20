@@ -16,6 +16,13 @@ public sealed class EfBeepStore(BeepsDbContext db, ContentReads reads, PendingCa
             .Select(b => new BeepRef(b.Id, b.AuthorId, b.Author.OwnerId, b.RootId, b.ReplyToId, b.LikeCount, b.ReplyCount))
             .FirstOrDefaultAsync(cancellationToken);
 
+    public async Task<IReadOnlyList<Guid>> ListEmptyAsync(IReadOnlyCollection<Guid> beepIds, CancellationToken cancellationToken) =>
+        await db.Set<Beep>()
+            .Where(b => beepIds.Contains(b.Id) && b.DeletedAt == null && b.Text == "")
+            .Where(b => !db.Set<BeepMedia>().Any(m => m.BeepId == b.Id && db.Set<MediaItem>().Any(i => i.Id == m.MediaId && i.Status != MediaStatus.Failed)))
+            .Select(b => b.Id)
+            .ToListAsync(cancellationToken);
+
     public async Task<IReadOnlyList<BeepRow>> GetRowsAsync(IReadOnlyCollection<Guid> beepIds, Guid? viewerId, CancellationToken cancellationToken)
     {
         if (beepIds.Count == 0)

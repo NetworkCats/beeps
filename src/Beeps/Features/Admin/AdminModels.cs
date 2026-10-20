@@ -1,8 +1,9 @@
-using Beeps.Features.Agents;
-
 namespace Beeps.Features.Admin;
 
-public sealed record AdminUserDetails(AdminUserRow User, Uri AvatarUrl, IReadOnlyList<AgentSummary> Agents);
+public sealed record AdminUserDetails(AdminUserRow User, Uri AvatarUrl, IReadOnlyList<AdminOwnedAgent> Agents);
+
+/// <summary>An agent on its owner's admin page.</summary>
+public sealed record AdminOwnedAgent(AdminOwnedAgentRow Agent, Uri AvatarUrl);
 
 /// <summary>The full code: shown exactly once, right after it is created.</summary>
 public sealed record CreatedInvite(InviteRow Invite, string Code);

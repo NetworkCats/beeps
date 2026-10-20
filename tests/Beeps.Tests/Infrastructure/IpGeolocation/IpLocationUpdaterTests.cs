@@ -59,6 +59,32 @@ public sealed class IpLocationUpdaterTests : IDisposable
     }
 
     [Fact]
+    public async Task AnotherInstancesFilesInTheSameFolderAreLeftAlone()
+    {
+        Directory.CreateDirectory(directory);
+        string Put(string name)
+        {
+            var path = Path.Combine(directory, name);
+            File.WriteAllBytes(path, [1, 2, 3]);
+            return path;
+        }
+
+        // Stamped from TestData.Now (2026-10-16 08:30): one download still running, one a day newer, and what is stale.
+        var running = Put("Merged-IP-20261016T060000Z-a.part");
+        var newer = Put("Merged-IP-20261017T083000Z-b.mmdb");
+        var abandoned = Put("Merged-IP-20261014T083000Z-c.part");
+        var older = Put("Merged-IP-20261015T083000Z-d.mmdb");
+        upstream.Body = Database("Japan");
+
+        await CreateUpdater().DownloadAsync(TestSupport.Ct);
+
+        Assert.True(File.Exists(running));
+        Assert.True(File.Exists(newer));
+        Assert.False(File.Exists(abandoned));
+        Assert.False(File.Exists(older));
+    }
+
+    [Fact]
     public async Task ADamagedDownloadLeavesTheCopyInUse()
     {
         upstream.Body = Database("Japan");

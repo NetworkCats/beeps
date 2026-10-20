@@ -273,15 +273,19 @@ export function Composer({ composer, errors }: { composer: ComposerProps; errors
       answeredBy: 'compose',
       onErrors: (answer) => setOwnErrors(answer),
       onDone: () => {
-        // What was typed or added while it was on its way is the next beep, and stays.
-        const files = Array.from(fileInput.current?.files ?? []);
-        const unchanged = textarea.current?.value === sentText
-          && files.length === sentFiles.length && files.every((file, i) => file === sentFiles[i]);
-        if (unchanged) {
-          element.reset();
-          setText('');
-          setPreviews([]);
+        // What was typed or added while it was on its way is the next beep, and stays; what went with this one goes.
+        // Text changed within what was sent stays whole, to be looked over.
+        const value = textarea.current?.value ?? '';
+        const rest = sentText !== undefined && value.startsWith(sentText) ? value.slice(sentText.length).trimStart() : value;
+        const added = Array.from(fileInput.current?.files ?? []).filter((file) => !sentFiles.includes(file));
+        element.reset();
+        setText('');
+        setPreviews([]);
+        if (rest && textarea.current) {
+          textarea.current.value = rest;
+          setText(rest);
         }
+        addImages(added);
         setOwnErrors(null);
         closeSuggestions();
       },

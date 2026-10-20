@@ -38,6 +38,8 @@ public sealed class EfAgentStore(BeepsDbContext db, HybridCache cache, CacheInva
     public Task<Actor?> FindAgentAsync(Guid agentId, CancellationToken cancellationToken) =>
         Agents().FirstOrDefaultAsync(a => a.Id == agentId, cancellationToken);
 
+    public Task ReloadAsync(Actor agent, CancellationToken cancellationToken) => db.Entry(agent).ReloadAsync(cancellationToken);
+
     public Task RevokeKeysAsync(Guid agentId, DateTimeOffset now, CancellationToken cancellationToken) =>
         db.Set<AgentKey>()
             .Where(k => k.AgentId == agentId && k.RevokedAt == null)

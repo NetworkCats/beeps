@@ -7,7 +7,6 @@ using Beeps.Features.Search;
 using Beeps.Features.Shared;
 using Beeps.Tests.Support;
 using Microsoft.Extensions.Logging.Abstractions;
-using Microsoft.Extensions.Options;
 
 namespace Beeps.Tests.Features.Admin;
 
@@ -82,16 +81,19 @@ public sealed class AdminServiceTests
     }
 
     [Fact]
-    public async Task UserDetailsIncludeTheirAgents()
+    public async Task UserDetailsIncludeAllTheirAgentsDeletedOnesToo()
     {
         var user = Row(Guid.NewGuid());
         store.GetUserAsync(user.Id, Arg.Any<CancellationToken>()).Returns(user);
-        agents.ListAgentsAsync(user.Id, Arg.Any<CancellationToken>()).Returns([new AgentRow(Guid.NewGuid(), null, null, null, TestData.Now, null, null, null)]);
+        var deleted = new AdminOwnedAgentRow(Guid.NewGuid(), "tom.gpt", "tom's GPT", "GPT", TestData.Now, null, TestData.Now, null, null);
+        store.ListOwnedAgentsAsync(user.Id, Arg.Any<CancellationToken>()).Returns([new AdminOwnedAgentRow(Guid.NewGuid(), null, null, null, TestData.Now, null, null, null, null), deleted]);
 
         var result = await CreateService().GetUserAsync(AdminId, user.Id, TestSupport.Ct);
         var missing = await CreateService().GetUserAsync(AdminId, Guid.NewGuid(), TestSupport.Ct);
 
-        Assert.Single(result.Value.Agents);
+        Assert.Equal(2, result.Value.Agents.Count);
+        Assert.Equal(deleted, result.Value.Agents[1].Agent);
+        Assert.Equal(new Uri($"https://beeps.test/avatars/{deleted.Id:D}.svg"), result.Value.Agents[1].AvatarUrl);
         Assert.Equal(ErrorKind.NotFound, missing.Error?.Kind);
     }
 
@@ -286,6 +288,8 @@ public sealed class AdminServiceTests
         Assert.Equal("Open -> InviteOnly", Assert.Single(audit).Detail);
         Assert.Equal(RegistrationMode.Open, mode.Value);
         Assert.Equal(1, unitOfWork.Saves);
+        // Read and written under the admin lock, so two admins setting it for the first time cannot both insert it.
+        Assert.Equal([AdvisoryLocks.Admins, AdvisoryLocks.Admins], unitOfWork.Locks);
     }
 
     [Fact]
@@ -403,6 +407,8 @@ public sealed class AdminServiceTests
         Assert.NotNull(agent.DisabledAt);
         Assert.Empty(audit);
         Assert.Equal(1, unitOfWork.Rollbacks);
+        // The owner is checked under the lock bans hold, so a ban cannot slip in between.
+        Assert.Equal([AdvisoryLocks.Admins], unitOfWork.Locks);
     }
 
     [Fact]
@@ -473,9 +479,7 @@ public sealed class AdminServiceTests
     {
         var avatars = TestData.Avatars;
         var localizer = new TestLocalizer();
-        var agentService = new AgentService(
-            agents, unitOfWork, outbox, TestData.Live(Substitute.For<ILiveEventStore>()), TestData.Inboxes(Substitute.For<ILiveEventStore>()), TestData.AllowingRateLimits(), avatars, Options.Create(new AgentOptions()), TestData.Time(), localizer, NullLogger<AgentService>.Instance);
         var access = new AdminAccess(store, TestData.Time(), localizer);
-        return new AdminService(store, accounts, sessions, agents, agentService, access, unitOfWork, outbox, TestData.Live(liveEvents), TestData.Inboxes(liveEvents), avatars, TestData.Time(), localizer, NullLogger<AdminService>.Instance);
+        return new AdminService(store, accounts, sessions, agents, access, unitOfWork, outbox, TestData.Live(liveEvents), TestData.Inboxes(liveEvents), avatars, TestData.Time(), localizer, NullLogger<AdminService>.Instance);
     }
 }

@@ -534,6 +534,20 @@ public sealed class BeepServiceTests
     }
 
     [Fact]
+    public async Task AWebPostThatMayNotBePostedUploadsNothing()
+    {
+        decision = RateLimitDecision.Denied(TimeSpan.FromMinutes(5));
+
+        var limited = await CreateService().PostWithUploadsAsync(Human, "hi", null, [TestImages.Content(TestImages.Png())], TestSupport.Ct);
+        var orphan = await CreateService().PostWithUploadsAsync(Human, "hi", Guid.NewGuid(), [TestImages.Content(TestImages.Png())], TestSupport.Ct);
+
+        Assert.Equal(ErrorKind.RateLimited, limited.Error?.Kind);
+        Assert.Equal(ErrorKind.NotFound, orphan.Error?.Kind);
+        media.Images.DidNotReceiveWithAnyArgs().ReadHeader(default);
+        await media.RateLimits.DidNotReceiveWithAnyArgs().TryAcquireAsync(default!, TestSupport.Ct);
+    }
+
+    [Fact]
     public async Task AWebPostUploadsItsImagesThenPostsThem()
     {
         media.OwnEverything();

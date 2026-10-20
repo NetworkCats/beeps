@@ -55,6 +55,8 @@ interface Snapshot {
   bodyAttributes: Array<[string, string]>;
   islands: Map<string, Envelope>;
   scroll: number;
+  /** An error page's status (show()), which the live connection reads. */
+  status?: string;
 }
 
 const MAX_SNAPSHOTS = 20;
@@ -129,6 +131,7 @@ function save(): void {
     bodyAttributes: [...document.body.attributes].map((a) => [a.name, a.value]),
     islands: snapshotIslands(),
     scroll: window.scrollY,
+    status: document.documentElement.dataset.liveStatus,
   });
   while (snapshots.size > MAX_SNAPSHOTS) snapshots.delete(snapshots.keys().next().value as string);
 }
@@ -163,23 +166,26 @@ function addMissingStyles(hrefs: Iterable<string>): Promise<void> {
 
 /**
  * The stylesheets a page sent as JSON names (PageShell.cs), by the addresses the layout links them under or fetched
- * them ahead under (data-style): fingerprinted, which only the server knows how to do.
+ * them ahead under (data-style): fingerprinted, which only the server knows how to do. Undefined when the layout has
+ * no address for one: the admin pages', for someone made an admin since it was drawn.
  */
-function stylesNamed(names: string[]): string[] {
-  return names.flatMap((name) => {
-    const link = document.querySelector<HTMLLinkElement>(`link[data-style="${name}"]`);
-    return link ? [link.href] : [];
-  });
+function stylesNamed(names: string[]): string[] | undefined {
+  const hrefs = names.map((name) => document.querySelector<HTMLLinkElement>(`link[data-style="${name}"]`)?.href);
+  return hrefs.every((href) => href !== undefined) ? hrefs : undefined;
 }
 
 function stylesOf(fresh: Document): string[] {
   return [...fresh.querySelectorAll<HTMLLinkElement>('link[rel="stylesheet"]')].map((link) => link.getAttribute('href') ?? '');
 }
 
-function shown(detail: PageShown): void {
-  // Called once the page is drawn, so after its address is in the history.
+function setPagePath(): void {
   const url = new URL(pageUrl());
   pagePath.value = url.pathname + url.search;
+}
+
+function shown(detail: PageShown): void {
+  // Called once the page is drawn, so after its address is in the history.
+  setPagePath();
   document.dispatchEvent(new CustomEvent<PageShown>(PAGE_SHOWN, { detail }));
 }
 
@@ -252,6 +258,8 @@ function restore(snapshot: Snapshot): Promise<void> {
   document.title = snapshot.title;
   setBodyAttributes(snapshot.bodyAttributes);
   document.body.innerHTML = snapshot.body;
+  if (snapshot.status) document.documentElement.dataset.liveStatus = snapshot.status;
+  else delete document.documentElement.dataset.liveStatus;
   keepViewer();
   readConfig();
   return mount(document.body, snapshot.islands).then(() => {
@@ -297,10 +305,12 @@ async function prepare(response: Response): Promise<Swap | typeof ELSEWHERE | nu
     const answer = (await response.json()) as IslandsPage;
     const view = answer.page;
     const main = document.getElementById('main');
-    if (!main || (view.auth ?? '') !== auth || view.lang !== document.documentElement.lang) return ELSEWHERE;
+    // A stylesheet the layout has no address for is linked by the layout of the page loaded in full.
+    const styles = stylesNamed(view.shell.styles);
+    if (!main || !styles || (view.auth ?? '') !== auth || view.lang !== document.documentElement.lang) return ELSEWHERE;
     // One that cannot be loaded has the page loaded in full once it is shown (mount).
     const components = Object.keys(answer.islands).map((name) => loadComponent(name).catch(() => undefined));
-    await Promise.all([addMissingStyles(stylesNamed(view.shell.styles)), ...components]);
+    await Promise.all([addMissingStyles(styles), ...components]);
     return (ahead) => swapView(main, answer, view, ahead);
   }
   if (!isHtml(response)) return null;
@@ -411,6 +421,13 @@ export function reload(): Promise<void> {
 /** Sends a form the plain way and shows the page that comes back: what the browser itself would do. */
 export function submitPage(action: string, data: FormData): Promise<void> {
   return request(new URL(action, window.location.href).href, { method: 'POST', body: data }, { replace: true }).catch(() => {});
+}
+
+/** The page shown has another address now (a profile renamed): the address bar shows it, and the page is known by it. */
+export function replaceAddress(url: string): void {
+  window.history.replaceState(window.history.state, '', url);
+  shownUrl = window.location.href;
+  setPagePath();
 }
 
 // ---- Fetched ahead on hover --------------------------------------------------------------------
@@ -545,9 +562,13 @@ async function onSubmit(event: SubmitEvent): Promise<void> {
 
 function onPop(event: PopStateEvent): void {
   let entry = entryOf(event.state);
+  // A link within the page (to the reply box, say), or going back or forward across one: the page stays as it is, with
+  // what was typed in it, and the browser scrolls.
+  if ((!entry || entry.key === current.key) && samePage(window.location.href, shownUrl)) {
+    shownUrl = window.location.href;
+    return;
+  }
   if (!entry) {
-    // A link within the page, or going back or forward to one: the browser scrolls to it.
-    if (samePage(window.location.href, shownUrl)) return;
     // Gone back to where a link within another page led (that page, its link, another page, then back): that page is
     // shown again, from the entry that followed it.
     entry = { key: newKey(), index: Math.max(0, current.index - 1) };
@@ -562,7 +583,7 @@ function onPop(event: PopStateEvent): void {
   shownUrl = window.location.href;
   current = entry;
   const snapshot = snapshots.get(entry.key);
-  if (snapshot && snapshot.url === window.location.href) void restore(snapshot);
+  if (snapshot && samePage(snapshot.url, window.location.href)) void restore(snapshot);
   else void request(window.location.href, {}, { replace: true, hash: window.location.hash }).catch(() => {});
 }
 

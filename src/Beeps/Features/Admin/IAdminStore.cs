@@ -25,6 +25,9 @@ public interface IAdminStore
     /// <param name="handlePrefix">Normalized handle prefix, or null.</param>
     Task<CursorPage<AdminAgentRow>> ListAgentsAsync(string? handlePrefix, Guid? before, int limit, CancellationToken cancellationToken);
 
+    /// <summary>The user's agents, oldest first, deleted ones included.</summary>
+    Task<IReadOnlyList<AdminOwnedAgentRow>> ListOwnedAgentsAsync(Guid ownerId, CancellationToken cancellationToken);
+
     void AddAuditLog(AdminAuditLog entry);
 
     Task<CursorPage<AuditLogRow>> ListAuditLogAsync(Guid? before, int limit, CancellationToken cancellationToken);
@@ -76,6 +79,19 @@ public sealed record AdminAgentRow(
     DateTimeOffset? DisabledAt,
     DateTimeOffset? DeletedAt,
     string? KeyPrefix);
+
+/// <param name="Handle">Null until the agent connects.</param>
+/// <param name="KeyPrefix">Of its live key; null once revoked.</param>
+public sealed record AdminOwnedAgentRow(
+    Guid Id,
+    string? Handle,
+    string? DisplayName,
+    string? ModelName,
+    DateTimeOffset CreatedAt,
+    DateTimeOffset? DisabledAt,
+    DateTimeOffset? DeletedAt,
+    string? KeyPrefix,
+    string? AvatarKey);
 
 public sealed record InviteRow(
     Guid Id,

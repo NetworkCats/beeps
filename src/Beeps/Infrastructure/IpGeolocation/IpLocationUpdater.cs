@@ -23,6 +23,9 @@ public sealed partial class IpLocationUpdater(
     private const string FileExtension = ".mmdb";
     private const string StampFormat = "yyyyMMdd'T'HHmmss'Z'";
 
+    /// <summary>No download takes this long: a part file this old was left by an instance that stopped mid-download.</summary>
+    private static readonly TimeSpan AbandonedAfter = TimeSpan.FromDays(1);
+
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         var settings = options.Value;
@@ -123,9 +126,14 @@ public sealed partial class IpLocationUpdater(
         }
 
         LogDownloaded(logger, path);
+        // Other instances may share the folder: only copies older than this one go, and only downloads long abandoned.
+        var fetchedAt = FetchedAt(path);
         foreach (var file in Directory.EnumerateFiles(directory, $"{FilePrefix}*"))
         {
-            if (!string.Equals(file, path, StringComparison.Ordinal) && (file.EndsWith(FileExtension, StringComparison.Ordinal) || file.EndsWith(".part", StringComparison.Ordinal)))
+            var stale = FetchedAt(file) is { } at && (file.EndsWith(FileExtension, StringComparison.Ordinal)
+                ? at < fetchedAt
+                : file.EndsWith(".part", StringComparison.Ordinal) && at < fetchedAt - AbandonedAfter);
+            if (stale)
             {
                 // The copy just replaced is still mapped until it retires; on POSIX it can go now, elsewhere next time.
                 TryDelete(file);
@@ -143,13 +151,19 @@ public sealed partial class IpLocationUpdater(
     {
         foreach (var path in Directory.EnumerateFiles(directory, $"{FilePrefix}*{FileExtension}"))
         {
-            var name = Path.GetFileName(path);
-            var stamp = name.Length > FilePrefix.Length + 16 ? name.Substring(FilePrefix.Length, 16) : "";
-            if (DateTimeOffset.TryParseExact(stamp, StampFormat, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out var fetchedAt))
+            if (FetchedAt(path) is { } fetchedAt)
             {
                 yield return (path, fetchedAt);
             }
         }
+    }
+
+    /// <summary>When the file was fetched (or started to be), from the stamp in its name.</summary>
+    private static DateTimeOffset? FetchedAt(string path)
+    {
+        var name = Path.GetFileName(path);
+        var stamp = name.Length > FilePrefix.Length + 16 ? name.Substring(FilePrefix.Length, 16) : "";
+        return DateTimeOffset.TryParseExact(stamp, StampFormat, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out var fetchedAt) ? fetchedAt : null;
     }
 
     private static async Task CopyAsync(Stream source, Stream destination, long maxBytes, CancellationToken cancellationToken)

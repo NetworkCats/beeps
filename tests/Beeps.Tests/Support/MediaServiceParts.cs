@@ -1,12 +1,16 @@
 using System.Text.Json;
 using System.Text.Json.Serialization.Metadata;
 using Beeps.Features.Accounts;
+using Beeps.Features.Beeps;
 using Beeps.Features.Live;
 using Beeps.Features.Media;
+using Beeps.Features.Moderation;
+using Beeps.Features.Notifications;
 using Beeps.Features.RateLimiting;
 using Beeps.Features.Shared;
 using Beeps.Infrastructure.Media;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 
 namespace Beeps.Tests.Support;
 
@@ -33,6 +37,9 @@ internal sealed class MediaServiceParts
     public IAccountStore Accounts { get; } = Substitute.For<IAccountStore>();
 
     public ILiveEventStore LiveEvents { get; } = Substitute.For<ILiveEventStore>();
+
+    /// <summary>The beeps an image is posted with, for a processor that deletes a beep left with nothing in it.</summary>
+    public IBeepStore Beeps { get; } = Substitute.For<IBeepStore>();
 
     public ImmediateUnitOfWork UnitOfWork { get; init; } = new();
 
@@ -74,8 +81,30 @@ internal sealed class MediaServiceParts
         Storage,
         UnitOfWork,
         Accounts,
+        CreateBeepService(),
         TestData.Live(LiveEvents),
         NullLogger<ProcessMediaHandler>.Instance);
+
+    private BeepService CreateBeepService()
+    {
+        var counters = Substitute.For<IBeepCounterStore>();
+        return new BeepService(
+            Beeps,
+            counters,
+            Store,
+            Create(),
+            TestServices.Views(Beeps, counters),
+            UnitOfWork,
+            Outbox,
+            Substitute.For<IModerationJobs>(),
+            TestData.RateLimits(RateLimits),
+            TestData.Live(LiveEvents, counters),
+            TestData.Inboxes(LiveEvents, Substitute.For<INotificationStore>()),
+            Options.Create(new ModerationOptions()),
+            TestData.Time(),
+            new TestLocalizer(),
+            NullLogger<BeepService>.Instance);
+    }
 
     /// <summary>The processing messages queued so far, as the outbox would deliver them.</summary>
     public IReadOnlyList<OutboxEnvelope> Queued() =>

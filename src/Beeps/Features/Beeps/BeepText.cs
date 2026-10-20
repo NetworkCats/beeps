@@ -150,8 +150,20 @@ public static class BeepText
             return false;
         }
 
-        normalized = NormalizeHashtag(tag);
-        return Length(normalized) <= MaxHashtagLength;
+        normalized = NormalizedHashtag(tag) ?? "";
+        return normalized.Length > 0 && Length(normalized) <= MaxHashtagLength;
+    }
+
+    /// <summary>
+    /// The tag's normalized form, or null when that is no longer one hashtag: a few letters expand to words with
+    /// spaces between them (U+FDFA), and a tag page or link for that could never be reached. Such a tag is plain text.
+    /// </summary>
+    private static string? NormalizedHashtag(string tag)
+    {
+        var normalized = NormalizeHashtag(tag);
+        return normalized == tag || Tokenize("#" + normalized) is [{ Kind: BeepTextTokenKind.Hashtag } token] && token.Length == normalized.Length + 1
+            ? normalized
+            : null;
     }
 
     /// <summary>The normalized hashtags of stored text, for API responses.</summary>
@@ -219,7 +231,7 @@ public static class BeepText
 
             var written = text.AsSpan(token.Start, token.Length);
             var path = token.Kind == BeepTextTokenKind.Hashtag
-                ? SitePaths.Tag(NormalizeHashtag(token.Value))
+                ? NormalizedHashtag(token.Value) is { } tag ? SitePaths.Tag(tag) : null
                 : linkedHandles.Contains(AccountRules.NormalizeHandle(token.Value)) ? SitePaths.Profile(token.Value) : null;
             if (path is null)
             {
@@ -284,7 +296,7 @@ public static class BeepText
     private static ParsedBeepText Rejected(string text, BeepTextProblem problem) => new(text, problem, [], []);
 
     private static List<string> Hashtags(IReadOnlyList<BeepTextToken> tokens) =>
-        [.. tokens.Where(t => t.Kind == BeepTextTokenKind.Hashtag).Select(t => NormalizeHashtag(t.Value)).Distinct(StringComparer.Ordinal)];
+        [.. tokens.Where(t => t.Kind == BeepTextTokenKind.Hashtag).Select(t => NormalizedHashtag(t.Value)).OfType<string>().Distinct(StringComparer.Ordinal)];
 
     private static void AppendText(StringBuilder html, ReadOnlySpan<char> text)
     {

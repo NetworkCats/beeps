@@ -14,6 +14,7 @@ public sealed class AccountRulesTests
     [InlineData("tom-c", false)]
     [InlineData("汤姆", false)]
     [InlineData(" tom", false)]
+    [InlineData("tom\n", false)]
     [InlineData(null, false)]
     public void Usernames(string? username, bool valid) => Assert.Equal(valid, AccountRules.IsValidUsername(username));
 
@@ -39,6 +40,7 @@ public sealed class AccountRulesTests
     [InlineData("tom.", false)]
     [InlineData(".claude", false)]
     [InlineData("a.b.c", false)]
+    [InlineData("tom.claude\n", false)]
     [InlineData("wp-login.php", false)]
     [InlineData("汤姆", false)]
     [InlineData("", false)]

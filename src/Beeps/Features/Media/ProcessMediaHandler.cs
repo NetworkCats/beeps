@@ -1,4 +1,5 @@
 using Beeps.Features.Accounts;
+using Beeps.Features.Beeps;
 using Beeps.Features.Live;
 using Beeps.Features.Shared;
 
@@ -23,6 +24,7 @@ public sealed partial class ProcessMediaHandler(
     IMediaStorage storage,
     IUnitOfWork unitOfWork,
     IAccountStore accounts,
+    BeepService beeps,
     LiveUpdates live,
     ILogger<ProcessMediaHandler> logger) : IOutboxHandler
 {
@@ -46,8 +48,10 @@ public sealed partial class ProcessMediaHandler(
         {
             await FinishAsync(mediaId, MediaStatus.Failed, upload.Width, upload.Height, cancellationToken);
             LogUnreadable(logger, mediaId);
-            // Members never saw it; the admin page of the beep shows it as failed now.
-            await live.BeepsChangedAsync(await store.ListBeepsUsingAsync(mediaId, cancellationToken), cancellationToken);
+            // Members never saw it; the admin page of the beep shows it as failed now. A beep of nothing else goes.
+            var usedBy = await store.ListBeepsUsingAsync(mediaId, cancellationToken);
+            await beeps.DeleteEmptyAsync(usedBy, cancellationToken);
+            await live.BeepsChangedAsync(usedBy, cancellationToken);
             return;
         }
 

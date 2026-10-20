@@ -115,7 +115,9 @@ public sealed class EfUnitOfWork(BeepsDbContext db, PendingCacheChanges cacheCha
 
     /// <summary>
     /// Saves the tracked changes. When the save is what commits them, a failure drops their invalidations, which
-    /// never happened, with the outbox copy staged for them.
+    /// never happened, with the outbox copy staged for them, and the changes themselves, as a rolled-back transaction
+    /// does: the request reads its entities again afterwards (a page showing the error) and must not see them as saved,
+    /// nor save them with its next change.
     /// </summary>
     private async Task SaveAsync(bool committing, CancellationToken cancellationToken)
     {
@@ -128,6 +130,7 @@ public sealed class EfUnitOfWork(BeepsDbContext db, PendingCacheChanges cacheCha
             if (committing)
             {
                 cacheChanges.Discard();
+                db.ChangeTracker.Clear();
             }
 
             if (exception is DbUpdateException { InnerException: PostgresException { SqlState: PostgresErrorCodes.UniqueViolation } postgres })
