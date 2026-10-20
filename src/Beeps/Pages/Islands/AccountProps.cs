@@ -31,6 +31,7 @@ public sealed record ProfileLimits(int DisplayNameMaxLength, int BioMaxLength);
 /// <param name="PendingEmail">The address a code was sent to, which the email page then asks for.</param>
 /// <param name="ResendAt">When another code may be sent to <paramref name="PendingEmail"/>.</param>
 /// <param name="HasPassword">False for an account that signs in only with Google or GitHub: it sets a password, with none to give first.</param>
+/// <param name="PasswordCodeResendAt">Without a password, while the code to set one with can be entered: when another may be sent.</param>
 /// <param name="Connections">Google and GitHub, linked or not.</param>
 /// <param name="Devices">The devices signed in, this one first; only on the devices page.</param>
 /// <param name="PasskeyTwoFactor">The passkeys are the second step after the password, not a way to sign in by themselves.</param>
@@ -58,6 +59,7 @@ public sealed record SettingsProps(
     int CodeLength,
     int CodeLifetimeMinutes,
     bool HasPassword,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] DateTimeOffset? PasswordCodeResendAt,
     IReadOnlyList<ConnectionProps> Connections,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] IReadOnlyList<DeviceProps>? Devices,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] bool PasskeyTwoFactor,

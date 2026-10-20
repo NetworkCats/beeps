@@ -13,7 +13,7 @@ import { completeMention, mentionAt, mentionRanges, type MentionAt } from '../me
 import { paths } from '../paths.ts';
 import type { ActorProps, ComposerProps, Errors } from '../props.ts';
 import { checkImages, countCharacters, IMAGE_TYPES, isImageType } from '../text.ts';
-import { Antiforgery, FieldError, field } from './Forms.tsx';
+import { Antiforgery, FieldError, FormErrors, field } from './Forms.tsx';
 import { Icon } from './Icon.tsx';
 
 const IMAGES_FIELD = 'Images';
@@ -386,6 +386,8 @@ export function Composer({ composer, errors }: { composer: ComposerProps; errors
           </button>
         </div>
         <FieldError errors={shown} name={IMAGES_FIELD} />
+        {/* Refusals of the whole beep (too many, a blocked or removed parent): a composer on another page has no other place for them. */}
+        <FormErrors errors={shown} />
       </div>
       <Antiforgery />
     </form>

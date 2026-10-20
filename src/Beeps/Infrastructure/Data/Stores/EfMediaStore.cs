@@ -59,10 +59,11 @@ public sealed class EfMediaStore(BeepsDbContext db, PendingCacheChanges cacheCha
     {
         var ids = mediaIds.ToArray();
         string[] usable = [EnumText.ToValue(MediaStatus.Processing), EnumText.ToValue(MediaStatus.Ready)];
-        // KEY SHARE: the weakest lock that still blocks a delete, and the one a foreign key check takes anyway.
-        // Media still processing can be used; they are shown once ready.
+        // SHARE, not KEY SHARE: besides blocking a delete it makes the processing worker's status update wait for this
+        // transaction, so the beeps, avatars and banners it then looks up (to refresh, or to drop a beep left empty by a
+        // failed image) include this one. Media still processing can be used; they are shown once ready.
         return await db.Database
-            .SqlQuery<Guid>($"""SELECT id AS "Value" FROM media WHERE id = ANY({ids}) AND owner_actor_id = {ownerActorId} AND status = ANY({usable}) FOR KEY SHARE""")
+            .SqlQuery<Guid>($"""SELECT id AS "Value" FROM media WHERE id = ANY({ids}) AND owner_actor_id = {ownerActorId} AND status = ANY({usable}) FOR SHARE""")
             .ToListAsync(cancellationToken);
     }
 

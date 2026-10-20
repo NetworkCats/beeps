@@ -139,13 +139,18 @@ public sealed class SettingsModel(
     public async Task<IActionResult> OnPostThemeAsync(CancellationToken cancellationToken) =>
         await DoneAsync(await this.ChooseThemeAsync(accounts, Theme, cancellationToken), SettingsSections.Display, notice: null, cancellationToken);
 
-    // Sent without the current password only by an account that has none, which this sets the first of.
+    // Sent without the current password only by an account that has none, which this sets the first of with the code
+    // sent to its address (OnPostPasswordCode).
     public async Task<IActionResult> OnPostPasswordAsync(CancellationToken cancellationToken) =>
         await DoneAsync(
-            await accounts.ChangePasswordAsync(User.ActorId(), User.SessionId(), CurrentPassword, NewPassword, cancellationToken),
+            await accounts.ChangePasswordAsync(User.ActorId(), User.SessionId(), CurrentPassword, NewPassword, Code, cancellationToken),
             SettingsSections.Password,
             string.IsNullOrEmpty(CurrentPassword) ? "Settings.PasswordSet" : "Settings.PasswordChanged",
             cancellationToken);
+
+    // The page then asks for the code with the new password.
+    public async Task<IActionResult> OnPostPasswordCodeAsync(CancellationToken cancellationToken) =>
+        await DoneAsync(await accounts.SendPasswordCodeAsync(User.ActorId(), this.Origin(), cancellationToken), SettingsSections.Password, notice: null, cancellationToken);
 
     // Linking goes out to the provider and back (Pages/Account/External); unlinking is done here.
     public async Task<IActionResult> OnPostUnlinkAsync(CancellationToken cancellationToken)

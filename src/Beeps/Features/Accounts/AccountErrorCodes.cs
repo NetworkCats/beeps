@@ -29,6 +29,12 @@ public static class AccountErrorCodes
     /// <summary>The last way left to sign in, which cannot be unlinked before a password is set.</summary>
     public const string LastSignInMethod = "last_sign_in_method";
 
+    /// <summary>
+    /// Moving an account without a password to another address: it sets one first, so that the session alone cannot
+    /// take the account to an address of someone else's (PLAN 6.14).
+    /// </summary>
+    public const string PasswordNeeded = "password_needed";
+
     /// <summary>What the authenticator answered did not hold up, came too late, or is for a passkey nobody has here.</summary>
     public const string PasskeyFailed = "passkey_failed";
 

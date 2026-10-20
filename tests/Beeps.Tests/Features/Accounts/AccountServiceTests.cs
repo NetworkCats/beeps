@@ -687,7 +687,7 @@ public sealed partial class AccountServiceTests
         store.FindUserAsync(user.Id, Arg.Any<CancellationToken>()).Returns(user);
         Deny(RateLimitPolicies.LoginAccount);
 
-        var result = await CreateService().ChangePasswordAsync(user.Id, null, "old password", "new password!", TestSupport.Ct);
+        var result = await CreateService().ChangePasswordAsync(user.Id, null, "old password", "new password!", null, TestSupport.Ct);
 
         Assert.True(result.IsSuccess);
     }
@@ -928,7 +928,7 @@ public sealed partial class AccountServiceTests
         var settings = await CreateService().GetSettingsAsync(user.Id, TestSupport.Ct);
         var missing = await CreateService().GetSettingsAsync(Guid.NewGuid(), TestSupport.Ct);
 
-        Assert.Equal(new AccountSettings("tom", "tom", "hello", "https://tom.example", "tom@example.com", null, "en", new ProfilePrivacy(false, false, true), true, settings.Value.Logins, false), settings.Value);
+        Assert.Equal(new AccountSettings("tom", "tom", "hello", "https://tom.example", "tom@example.com", null, "en", new ProfilePrivacy(false, false, true), true, null, settings.Value.Logins, false), settings.Value);
         Assert.Equal([new LinkedLogin(ExternalProviders.GitHub, "octocat")], settings.Value.Logins);
         Assert.Equal(ErrorKind.NotFound, missing.Error?.Kind);
     }
@@ -996,7 +996,7 @@ public sealed partial class AccountServiceTests
         store.FindUserAsync(user.Id, Arg.Any<CancellationToken>()).Returns(user);
         var current = Guid.NewGuid();
 
-        var result = await CreateService().ChangePasswordAsync(user.Id, current, "old password", "new password!", TestSupport.Ct);
+        var result = await CreateService().ChangePasswordAsync(user.Id, current, "old password", "new password!", null, TestSupport.Ct);
 
         Assert.True(result.IsSuccess);
         Assert.Equal("hashed:new password!", user.PasswordHash);
@@ -1017,7 +1017,7 @@ public sealed partial class AccountServiceTests
         var user = TestData.User(passwordHash: "hashed:old password");
         store.FindUserAsync(user.Id, Arg.Any<CancellationToken>()).Returns(user);
 
-        await CreateService().ChangePasswordAsync(user.Id, null, "old password", "new password!", TestSupport.Ct);
+        await CreateService().ChangePasswordAsync(user.Id, null, "old password", "new password!", null, TestSupport.Ct);
 
         await sessions.Received(1).RevokeAllAsync(user.Id, TestData.Now, Arg.Any<CancellationToken>());
     }
@@ -1028,7 +1028,7 @@ public sealed partial class AccountServiceTests
         var user = TestData.User(passwordHash: "hashed:old password");
         store.FindUserAsync(user.Id, Arg.Any<CancellationToken>()).Returns(user);
 
-        var result = await CreateService().ChangePasswordAsync(user.Id, Guid.NewGuid(), "guess", "new password!", TestSupport.Ct);
+        var result = await CreateService().ChangePasswordAsync(user.Id, Guid.NewGuid(), "guess", "new password!", null, TestSupport.Ct);
 
         Assert.Equal(AccountErrorCodes.InvalidCredentials, result.Error?.Code);
         Assert.Equal(ErrorKind.Validation, result.Error?.Kind);
@@ -1046,7 +1046,7 @@ public sealed partial class AccountServiceTests
         rateLimitStore.TryAcquireAsync(Arg.Do<IReadOnlyList<RateLimitCounter>>(c => counted = c), Arg.Any<CancellationToken>())
             .Returns(RateLimitDecision.Denied(TimeSpan.FromMinutes(3)));
 
-        var result = await CreateService().ChangePasswordAsync(user.Id, Guid.NewGuid(), "old password", "new password!", TestSupport.Ct);
+        var result = await CreateService().ChangePasswordAsync(user.Id, Guid.NewGuid(), "old password", "new password!", null, TestSupport.Ct);
 
         Assert.Equal(ErrorKind.RateLimited, result.Error?.Kind);
         // The account's own, apart from signing in, which anyone can run up (and is not refused past it).
@@ -1057,7 +1057,7 @@ public sealed partial class AccountServiceTests
     [Fact]
     public async Task ANewPasswordMustFollowThePasswordRules()
     {
-        var result = await CreateService().ChangePasswordAsync(Guid.NewGuid(), null, "", "short", TestSupport.Ct);
+        var result = await CreateService().ChangePasswordAsync(Guid.NewGuid(), null, "", "short", null, TestSupport.Ct);
 
         Assert.Equal([AccountFields.NewPassword], result.Error!.Fields!.Keys);
         await store.DidNotReceiveWithAnyArgs().FindUserAsync(default, TestSupport.Ct);
@@ -1069,28 +1069,52 @@ public sealed partial class AccountServiceTests
         var user = TestData.User(passwordHash: "hashed:old password");
         store.FindUserAsync(user.Id, Arg.Any<CancellationToken>()).Returns(user);
 
-        var result = await CreateService().ChangePasswordAsync(user.Id, null, "", "new password!", TestSupport.Ct);
+        var result = await CreateService().ChangePasswordAsync(user.Id, null, "", "new password!", null, TestSupport.Ct);
 
         Assert.Equal([AccountFields.CurrentPassword], result.Error!.Fields!.Keys);
         Assert.Equal("hashed:old password", user.PasswordHash);
     }
 
     [Fact]
-    public async Task AnAccountWithoutAPasswordSetsItsFirstWithoutOne()
+    public async Task AnAccountWithoutAPasswordSetsItsFirstWithACodeSentToItsAddress()
     {
         var user = TestData.User();
         user.PasswordHash = null;
+        EmailCode? stored = null;
         store.FindUserAsync(user.Id, Arg.Any<CancellationToken>()).Returns(user);
+        store.When(s => s.AddEmailCode(Arg.Any<EmailCode>())).Do(ci => stored = ci.Arg<EmailCode>());
         var keep = Guid.NewGuid();
 
-        var result = await CreateService().ChangePasswordAsync(user.Id, keep, null, "new password!", TestSupport.Ct);
+        var sent = await CreateService().SendPasswordCodeAsync(user.Id, TestData.Origin, TestSupport.Ct);
+        store.FindEmailCodeAsync(EmailCodePurpose.ResetPassword, user.NormalizedEmail, Arg.Any<CancellationToken>()).Returns(stored);
+        var result = await CreateService().ChangePasswordAsync(user.Id, keep, null, "new password!", Unprotect(sentCodes[^1]), TestSupport.Ct);
 
+        Assert.True(sent.IsSuccess);
+        Assert.Equal((EmailCodePurpose.ResetPassword, user.Email), (sentCodes[^1].Purpose, sentCodes[^1].To));
         Assert.True(result.IsSuccess);
         Assert.Equal("hashed:new password!", user.PasswordHash);
+        store.Received(1).RemoveEmailCode(stored!);
         await sessions.Received(1).RevokeOthersAsync(user.Id, keep, Arg.Any<DateTimeOffset>(), Arg.Any<CancellationToken>());
         // Counted as a change to the account; there is no password to guess.
         await rateLimitStore.Received().TryAcquireAsync(Arg.Is<IReadOnlyList<RateLimitCounter>>(c => c.All(x => x.Key.StartsWith("AccountChange:", StringComparison.Ordinal))), Arg.Any<CancellationToken>());
         hasher.DidNotReceiveWithAnyArgs().VerifyHashedPassword(default!, default!, default!);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("123456")]
+    public async Task TheSessionAloneDoesNotSetTheFirstPassword(string? code)
+    {
+        // Whoever holds it could otherwise set one, end the owner's sessions and switch on two-step sign-in.
+        var user = TestData.User();
+        user.PasswordHash = null;
+        store.FindUserAsync(user.Id, Arg.Any<CancellationToken>()).Returns(user);
+
+        var result = await CreateService().ChangePasswordAsync(user.Id, Guid.NewGuid(), null, "new password!", code, TestSupport.Ct);
+
+        Assert.Equal(AccountErrorCodes.CodeInvalid, result.Error?.Code);
+        Assert.Null(user.PasswordHash);
+        await sessions.DidNotReceiveWithAnyArgs().RevokeOthersAsync(default, default, default, TestSupport.Ct);
     }
 
     [Fact]
@@ -1203,17 +1227,18 @@ public sealed partial class AccountServiceTests
     }
 
     [Fact]
-    public async Task AnAccountWithoutAPasswordChangesItsEmailWithoutOne()
+    public async Task AnAccountWithoutAPasswordSetsOneBeforeChangingItsEmail()
     {
+        // The session alone would otherwise take the account, and its resets, to an address of someone else's.
         var user = TestData.User();
         user.PasswordHash = null;
         store.FindUserAsync(user.Id, Arg.Any<CancellationToken>()).Returns(user);
 
         var result = await CreateService().RequestEmailChangeAsync(user.Id, "new@example.org", null, TestData.Origin, TestSupport.Ct);
 
-        Assert.True(result.IsSuccess);
-        Assert.Equal("new@example.org", user.PendingEmail);
-        Assert.Equal("new@example.org", Assert.Single(sentCodes).To);
+        Assert.Equal(AccountErrorCodes.PasswordNeeded, result.Error?.Code);
+        Assert.Null(user.PendingEmail);
+        Assert.Empty(sentCodes);
     }
 
     [Fact]
@@ -1268,6 +1293,20 @@ public sealed partial class AccountServiceTests
         Assert.Equal(AccountErrorCodes.CodeInvalid, result.Error?.Code);
         Assert.Equal(("tom@example.com", "new@example.org"), (user.NormalizedEmail, user.PendingEmail));
         await store.Received(1).TryCountCodeAttemptAsync(EmailCodePurpose.ChangeEmail, "tom@example.com", TestData.Now, AccountService.MaxCodeAttempts, Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task ACodeOnlyMovesTheAccountToTheAddressItWasSentTo()
+    {
+        var user = TestData.User(passwordHash: "hashed:old password");
+        var (code, _) = await IssueEmailChangeCodeAsync(user, "mine@example.org");
+        // A request for another address committed under a resend of this code, which then saved over the new one.
+        user.PendingEmail = "theirs@example.org";
+
+        var result = await CreateService().ConfirmEmailChangeAsync(user.Id, code, TestSupport.Ct);
+
+        Assert.Equal(AccountErrorCodes.CodeInvalid, result.Error?.Code);
+        Assert.Equal("tom@example.com", user.NormalizedEmail);
     }
 
     [Fact]

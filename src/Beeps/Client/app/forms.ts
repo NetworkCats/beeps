@@ -2,6 +2,7 @@
 // its redirect: when that is this page, its islands just catch up (and say what was done); when the form was refused,
 // the errors go next to it; anything else is shown as a page.
 import type { TargetedSubmitEvent } from 'preact';
+import { useReducer } from 'preact/hooks';
 import { markSending } from './busy.ts';
 import { confirmAction } from './dialogs.ts';
 import { postIslands, type IslandsAnswer } from './http.ts';
@@ -19,6 +20,8 @@ interface SendOptions {
   onErrors?: (errors: Errors) => void;
   /** It went through and this page caught up. */
   onDone?: () => void;
+  /** Nothing came of it and no page answered to show what is saved (offline, a server error, too many requests). */
+  onFailed?: () => void;
 }
 
 function samePage(url: URL): boolean {
@@ -40,6 +43,7 @@ export async function sendForm(form: HTMLFormElement, submitter: HTMLElement | n
     answer = await postIslands(action, data);
   } catch {
     showToast(t('Error.Offline'), true);
+    options.onFailed?.();
     return;
   } finally {
     sent();
@@ -55,6 +59,7 @@ export async function sendForm(form: HTMLFormElement, submitter: HTMLElement | n
   // another device) and nothing was done. The form keeps what was in it, which leaving for that page would lose.
   if (document.body.dataset.auth && answer.page && !answer.page.page.auth && new URL(answer.url, window.location.href).pathname === paths.login) {
     showToast(t('Error.ActionFailed'), true);
+    options.onFailed?.();
     return;
   }
   if (showAnswer(answer, samePage)) {
@@ -85,12 +90,14 @@ export async function sendForm(form: HTMLFormElement, submitter: HTMLElement | n
   // The form stays as it was, to send again by hand.
   if (answer.status >= 500) {
     showToast(t('Error.ActionFailed'), true);
+    options.onFailed?.();
     return;
   }
   // Refused before it reached the page (too many requests, or a body larger than allowed): sending it again would
   // only be refused again, and the error page it shows would take the place of this one and what was typed in it.
   if (answer.status === 429 || answer.status === 413) {
     showToast(answer.page?.alert ?? t('Error.ActionFailed'), true);
+    options.onFailed?.();
     return;
   }
   // Anything else (a refusal with no page to show it): sent again the plain way, which nothing came of the first
@@ -98,11 +105,20 @@ export async function sendForm(form: HTMLFormElement, submitter: HTMLElement | n
   await submitPage(action, data);
 }
 
-/** An onSubmit that sends the form in the background; `done` once it went through. */
-export function sending(done?: (form: HTMLFormElement) => void) {
+/** An onSubmit that sends the form in the background; `done` once it went through, `failed` if nothing came of it. */
+export function sending(done?: (form: HTMLFormElement) => void, failed?: () => void) {
   return (event: TargetedSubmitEvent<HTMLFormElement>): void => {
     event.preventDefault();
     const form = event.currentTarget;
-    void sendForm(form, event.submitter ?? null, { onDone: () => done?.(form) });
+    void sendForm(form, event.submitter ?? null, { onDone: () => done?.(form), onFailed: failed });
   };
+}
+
+/**
+ * For a form sent as soon as a switch in it is flipped: draws the component again, which sets each switch back to
+ * what its props say is saved (Preact compares `checked` with the page's). Pass it as `sending`'s `failed`.
+ */
+export function useSwitchBack(): () => void {
+  const [, redraw] = useReducer<number, void>((count) => count + 1, 0);
+  return redraw;
 }

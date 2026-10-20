@@ -156,7 +156,7 @@ public sealed partial class AccountService(
         }
 
         var email = user.NormalizedEmail;
-        var consumed = await ConsumeCodeAsync(EmailCodePurpose.VerifyEmail, email, code!, cancellationToken);
+        var consumed = await ConsumeCodeAsync(EmailCodePurpose.VerifyEmail, email, code!, null, cancellationToken);
         if (!consumed.IsSuccess)
         {
             return consumed;
@@ -412,7 +412,7 @@ public sealed partial class AccountService(
         }
 
         // Every guess counts, right or wrong (ConsumeCodeAsync).
-        var consumed = await ConsumeCodeAsync(EmailCodePurpose.SignIn, user.NormalizedEmail, code!, cancellationToken);
+        var consumed = await ConsumeCodeAsync(EmailCodePurpose.SignIn, user.NormalizedEmail, code!, null, cancellationToken);
         if (!consumed.IsSuccess)
         {
             return consumed.Error;
@@ -516,7 +516,7 @@ public sealed partial class AccountService(
         }
 
         // Outside the transaction: a wrong guess must stay counted even though nothing else is saved.
-        var consumed = await ConsumeCodeAsync(EmailCodePurpose.ResetPassword, user.NormalizedEmail, request.Code!, cancellationToken);
+        var consumed = await ConsumeCodeAsync(EmailCodePurpose.ResetPassword, user.NormalizedEmail, request.Code!, null, cancellationToken);
         if (!consumed.IsSuccess)
         {
             return consumed;
@@ -623,6 +623,13 @@ public sealed partial class AccountService(
         var waiting = pending is not null && pending.ExpiresAt > time.GetUtcNow() && pending.Attempts < MaxCodeAttempts
             ? new CodeSent(user.PendingEmail!, pending.CreatedAt + ResendInterval)
             : null;
+        // The code an account without a password sets its first with, while it can still be entered.
+        var passwordCode = user.PasswordHash is not null
+            ? null
+            : await store.FindEmailCodeAsync(EmailCodePurpose.ResetPassword, user.NormalizedEmail, cancellationToken);
+        var passwordCodeWaiting = passwordCode is not null && passwordCode.ExpiresAt > time.GetUtcNow() && passwordCode.Attempts < MaxCodeAttempts
+            ? passwordCode.CreatedAt + ResendInterval
+            : (DateTimeOffset?)null;
         return new AccountSettings(
             user.Actor.Handle!,
             user.Actor.DisplayName!,
@@ -633,6 +640,7 @@ public sealed partial class AccountService(
             user.Locale,
             new ProfilePrivacy(user.HideLikes, user.HideFollows, user.HideFollowCounts),
             user.PasswordHash is not null,
+            passwordCodeWaiting,
             [.. (await store.ListLoginsAsync(user.Id, cancellationToken)).Select(l => new LinkedLogin(l.Provider, l.Name))],
             user.PasskeyTwoFactor);
     }
@@ -711,10 +719,14 @@ public sealed partial class AccountService(
     /// <summary>
     /// Needs the current password. Every other session ends; the one the change was made in stays, since it
     /// just proved it knows the password. Guesses count against the same limit as signing in to the account.
-    /// An account that signs in only with Google or GitHub has none to give: this sets its first.
+    /// An account that signs in only with Google, GitHub or a passkey has none to give: this sets its first, with the
+    /// code <see cref="SendPasswordCodeAsync"/> sent to its address instead, as a reset would ask for. The session
+    /// alone must not do it: a password set by whoever holds one ends the owner's sessions and lets two-step sign-in
+    /// be switched on with their own passkey, which locks the owner out for good.
     /// </summary>
     /// <param name="currentSessionId">The session making the change; null ends every session.</param>
-    public async Task<Result> ChangePasswordAsync(Guid userId, Guid? currentSessionId, string? currentPassword, string? newPassword, CancellationToken cancellationToken)
+    /// <param name="code">For an account without a password, the code sent to its address.</param>
+    public async Task<Result> ChangePasswordAsync(Guid userId, Guid? currentSessionId, string? currentPassword, string? newPassword, string? code, CancellationToken cancellationToken)
     {
         if (!AccountRules.IsValidPassword(newPassword))
         {
@@ -728,6 +740,21 @@ public sealed partial class AccountService(
         }
 
         var user = checkedPassword.Value;
+        if (user.PasswordHash is null)
+        {
+            if (!AccountRules.IsWellFormedCode(code))
+            {
+                return CodeInvalid();
+            }
+
+            // Outside the save: a wrong guess must stay counted even though nothing else is saved.
+            var consumed = await ConsumeCodeAsync(EmailCodePurpose.ResetPassword, user.NormalizedEmail, code!, null, cancellationToken);
+            if (!consumed.IsSuccess)
+            {
+                return consumed;
+            }
+        }
+
         await unitOfWork.InTransactionAsync(
             null,
             async ct =>
@@ -743,6 +770,42 @@ public sealed partial class AccountService(
         // The other tabs of the sessions just ended sign out.
         await live.SessionsEndedAsync(user.Id, cancellationToken);
         LogPasswordChanged(logger, user.Id);
+        return Result.Success;
+    }
+
+    /// <summary>
+    /// Sends the code an account without a password gives to set its first (<see cref="ChangePasswordAsync"/>), to its
+    /// own address: the reset's, which the reset page takes as well.
+    /// </summary>
+    public async Task<Result> SendPasswordCodeAsync(Guid userId, RequestOrigin origin, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(origin);
+        var user = await store.FindUserAsync(userId, cancellationToken);
+        if (user is null)
+        {
+            return AccountNotFound();
+        }
+
+        if (user.PasswordHash is not null)
+        {
+            // Nothing to send: the account gives its password instead.
+            return Result.Success;
+        }
+
+        var tooSoon = TooSoon(await store.FindEmailCodeAsync(EmailCodePurpose.ResetPassword, user.NormalizedEmail, cancellationToken));
+        if (!tooSoon.IsSuccess)
+        {
+            return tooSoon;
+        }
+
+        var limited = await CheckCodeLimitsAsync(user, user.NormalizedEmail, origin, cancellationToken);
+        if (!limited.IsSuccess)
+        {
+            return limited;
+        }
+
+        await IssueCodeAsync(EmailCodePurpose.ResetPassword, user, cancellationToken);
+        await unitOfWork.SaveChangesAsync(cancellationToken);
         return Result.Success;
     }
 
@@ -840,7 +903,7 @@ public sealed partial class AccountService(
         }
 
         // Outside the save: a wrong guess must stay counted even though nothing else is saved.
-        var consumed = await ConsumeCodeAsync(EmailCodePurpose.ChangeEmail, user.NormalizedEmail, code!, cancellationToken);
+        var consumed = await ConsumeCodeAsync(EmailCodePurpose.ChangeEmail, user.NormalizedEmail, code!, email, cancellationToken);
         if (!consumed.IsSuccess)
         {
             return consumed;
@@ -1052,8 +1115,9 @@ public sealed partial class AccountService(
     /// </summary>
     private static string DummyCodeStamp() => RandomNumberGenerator.GetString("0123456789", 13);
 
-    private static string HashCode(EmailCodePurpose purpose, string normalizedEmail, string code) =>
-        TextHashes.Sha256Hex($"{purpose}:{normalizedEmail}:{code}");
+    /// <param name="sentTo">For a move to another address, the address the code went to: a code then stands for that one only.</param>
+    private static string HashCode(EmailCodePurpose purpose, string normalizedEmail, string code, string? sentTo = null) =>
+        TextHashes.Sha256Hex(sentTo is null ? $"{purpose}:{normalizedEmail}:{code}" : $"{purpose}:{normalizedEmail}:{sentTo}:{code}");
 
     private string TimingDummyHash() => timingDummyHash ??= passwordHasher.HashPassword(TimingDummy, "timing-dummy-password");
 
@@ -1069,7 +1133,8 @@ public sealed partial class AccountService(
     {
         var code = RandomNumberGenerator.GetInt32(0, 1_000_000).ToString("D6", CultureInfo.InvariantCulture);
         var now = time.GetUtcNow();
-        var hash = HashCode(purpose, user.NormalizedEmail, code);
+        // A resend racing a new request could otherwise leave the new address pending with a code that went to the old one.
+        var hash = HashCode(purpose, user.NormalizedEmail, code, purpose == EmailCodePurpose.ChangeEmail ? AccountRules.NormalizeEmail(to) : null);
         var existing = await store.FindEmailCodeAsync(purpose, user.NormalizedEmail, cancellationToken);
         if (existing is null)
         {
@@ -1098,7 +1163,7 @@ public sealed partial class AccountService(
     }
 
     /// <summary>Checks a code and stages its removal on success; every guess counts, right or wrong.</summary>
-    private async Task<Result> ConsumeCodeAsync(EmailCodePurpose purpose, string normalizedEmail, string code, CancellationToken cancellationToken)
+    private async Task<Result> ConsumeCodeAsync(EmailCodePurpose purpose, string normalizedEmail, string code, string? sentTo, CancellationToken cancellationToken)
     {
         if (!await store.TryCountCodeAttemptAsync(purpose, normalizedEmail, time.GetUtcNow(), MaxCodeAttempts, cancellationToken))
         {
@@ -1106,7 +1171,7 @@ public sealed partial class AccountService(
         }
 
         var stored = await store.FindEmailCodeAsync(purpose, normalizedEmail, cancellationToken);
-        if (stored is null || !TextHashes.FixedTimeEquals(stored.CodeHash, HashCode(purpose, normalizedEmail, code)))
+        if (stored is null || !TextHashes.FixedTimeEquals(stored.CodeHash, HashCode(purpose, normalizedEmail, code, sentTo)))
         {
             return CodeInvalid();
         }
@@ -1117,7 +1182,8 @@ public sealed partial class AccountService(
 
     /// <summary>
     /// What both ways of moving to another address check, in order: the form, the password (its guesses are limited as
-    /// <see cref="CheckPasswordAsync"/> says), and that the address is a new one nobody has.
+    /// <see cref="CheckPasswordAsync"/> says; an account without one sets one first), and that the address is a new one
+    /// nobody has.
     /// </summary>
     private async Task<Result<(User User, string Email)>> CheckNewEmailAsync(Guid userId, string? newEmail, string? currentPassword, CancellationToken cancellationToken)
     {
@@ -1133,6 +1199,12 @@ public sealed partial class AccountService(
         }
 
         var user = checkedPassword.Value;
+        if (user.PasswordHash is null)
+        {
+            // The session alone would otherwise take the account, and its resets, to an address of someone else's.
+            return Error.Conflict(AccountErrorCodes.PasswordNeeded, localizer["Error.EmailChangePassword"]);
+        }
+
         var email = AccountRules.NormalizeEmail(newEmail!);
         if (email == user.NormalizedEmail)
         {

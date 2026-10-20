@@ -1951,13 +1951,10 @@
     <value>Sign in with your email too</value>
   </data>
   <data name="Settings.SetPassword.Intro" xml:space="preserve">
-    <value>You sign in with Google or GitHub. Set a password to sign in with your email too; you're signed out everywhere else.</value>
+    <value>You sign in without a password. Set one to sign in with your email too; you're signed out everywhere else. First we send a code to {0}, to make sure it's you.</value>
   </data>
   <data name="Settings.PasswordSet" xml:space="preserve">
     <value>Password set. You were signed out everywhere else.</value>
-  </data>
-  <data name="Settings.Email.Help.NoPassword" xml:space="preserve">
-    <value>Your email is {0}. Enter the new one, and we will send a code to the new address.</value>
   </data>
   <data name="Feed.ShowNew" xml:space="preserve">
     <value>Show {0} new beeps</value>
@@ -2114,5 +2111,14 @@
   </data>
   <data name="Passkeys.TwoFactor.TurnOn" xml:space="preserve">
     <value>Turn on</value>
+  </data>
+  <data name="Settings.Email.NeedsPassword" xml:space="preserve">
+    <value>Your email is {0}. To move to another one, set a password first.</value>
+  </data>
+  <data name="Settings.SetPassword.SendCode" xml:space="preserve">
+    <value>Send the code</value>
+  </data>
+  <data name="Error.EmailChangePassword" xml:space="preserve">
+    <value>Set a password before you change your email.</value>
   </data>
 </root>

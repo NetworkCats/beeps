@@ -1,7 +1,7 @@
 {
   "url": "/compose",
   "config": {
-    "stringsUrl": "/strings/en.json?v=25240595ff",
+    "stringsUrl": "/strings/en.json?v=b1136c470c",
     "antiforgery": {
       "field": "__RequestVerificationToken",
       "token": "TOKEN"
@@ -371,7 +371,7 @@
     "Settings.Display.Help": "Choose the colour scheme and the language of beeps",
     "Settings.Email.CodeSent": "We sent a 6-digit code to {0}. It expires in {1} minutes.",
     "Settings.Email.Help": "Your email is {0}. Enter the new one and your password, and we will send a code to the new address.",
-    "Settings.Email.Help.NoPassword": "Your email is {0}. Enter the new one, and we will send a code to the new address.",
+    "Settings.Email.NeedsPassword": "Your email is {0}. To move to another one, set a password first.",
     "Settings.Email.Send": "Send code",
     "Settings.Language": "Language",
     "Settings.Language.Field": "Display language",
@@ -397,7 +397,8 @@
     "Settings.Sessions.Help": "See where you're logged in, and remove devices you don't recognise",
     "Settings.SetPassword": "Set a password",
     "Settings.SetPassword.Help": "Sign in with your email too",
-    "Settings.SetPassword.Intro": "You sign in with Google or GitHub. Set a password to sign in with your email too; you're signed out everywhere else.",
+    "Settings.SetPassword.Intro": "You sign in without a password. Set one to sign in with your email too; you're signed out everywhere else. First we send a code to {0}, to make sure it's you.",
+    "Settings.SetPassword.SendCode": "Send the code",
     "Settings.Theme": "Colour scheme",
     "Settings.Theme.Help": "Saved to your account and used on every device you sign in on.",
     "Settings.Title": "Settings",

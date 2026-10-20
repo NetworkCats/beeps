@@ -208,6 +208,10 @@ public sealed partial class IslandSamplesTests : IDisposable
 
         await MatchSampleAsync("settings-linked-account", "/settings/account", await DrawnAsync(client, "/settings/account"));
         await MatchSampleAsync("settings-linked-password", "/settings/password", await DrawnAsync(client, "/settings/password"));
+        // The code to set one with went to the account's address a moment ago.
+        factory.Accounts.FindEmailCodeAsync(EmailCodePurpose.ResetPassword, tom.NormalizedEmail, Arg.Any<CancellationToken>())
+            .Returns(new EmailCode { Purpose = EmailCodePurpose.ResetPassword, NormalizedEmail = tom.NormalizedEmail, CodeHash = "x", CreatedAt = TestData.Now, ExpiresAt = TestData.Now.AddMinutes(10) });
+        await MatchSampleAsync("settings-linked-password-code", "/settings/password", await DrawnAsync(client, "/settings/password"));
     }
 
     [Fact]
@@ -302,7 +306,7 @@ public sealed partial class IslandSamplesTests : IDisposable
         // The facts above draw these; the theories draw their pages.
         string[] others =
         [
-            "verify", "compose-refused", "settings-refused", "settings-linked-account", "settings-linked-password", "settings-devices", "settings-passkeys",
+            "verify", "compose-refused", "settings-refused", "settings-linked-account", "settings-linked-password", "settings-linked-password-code", "settings-devices", "settings-passkeys",
             "signed-out-login-passkey", "agents-new-key", "onboarding-key",
         ];
         string[] drawn =

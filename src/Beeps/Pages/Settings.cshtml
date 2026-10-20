@@ -34,6 +34,7 @@
         AccountRules.CodeLength,
         (int)AccountService.CodeLifetime.TotalMinutes,
         Model.Settings.HasPassword,
+        Model.Settings.PasswordCodeResendAt,
         [.. ExternalProviders.All.Select(p => new ConnectionProps(p, ExternalProviders.DisplayName(p), Model.Settings.Logins.FirstOrDefault(l => l.Provider == p)?.Name))],
         Model.Devices?.Select(DeviceProps.From).ToList(),
         Model.Settings.PasskeyTwoFactor,

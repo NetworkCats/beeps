@@ -155,8 +155,9 @@ public interface IMediaStore
     Task<IReadOnlyList<Guid>> ListActorsUsingAsync(Guid mediaId, CancellationToken cancellationToken);
 
     /// <summary>
-    /// Which of these media the actor uploaded (and that neither failed to process nor were removed), locking them (<c>FOR KEY SHARE</c>) until the transaction
-    /// ends, so <see cref="DeleteUnusedAsync"/> cannot remove one that is about to be used. Runs immediately;
+    /// Which of these media the actor uploaded (and that neither failed to process nor were removed), locking them (<c>FOR SHARE</c>) until the transaction
+    /// ends, so <see cref="DeleteUnusedAsync"/> cannot remove one that is about to be used and processing cannot finish
+    /// one before the new use is visible to it. Runs immediately;
     /// call inside a transaction.
     /// </summary>
     Task<IReadOnlyList<Guid>> LockOwnedAsync(Guid ownerActorId, IReadOnlyCollection<Guid> mediaIds, CancellationToken cancellationToken);

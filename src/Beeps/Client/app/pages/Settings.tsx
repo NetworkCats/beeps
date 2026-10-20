@@ -19,7 +19,7 @@ import { Icon } from '../components/Icon.tsx';
 import { CodeResend } from '../components/CodeResend.tsx';
 import { Time } from '../components/Time.tsx';
 import { ProfileImages, type AvatarEditorProps, type BannerEditorProps } from '../components/ProfileImageEditor.tsx';
-import { sending, sendForm } from '../forms.ts';
+import { sending, sendForm, useSwitchBack } from '../forms.ts';
 import { formData } from '../http.ts';
 import { t } from '../i18n.ts';
 import type { IslandProps } from '../islands.tsx';
@@ -111,6 +111,8 @@ interface SettingsProps {
   codeLifetimeMinutes: number;
   /** False for an account that signs in only with Google or GitHub: it sets a password, with none to give first. */
   hasPassword: boolean;
+  /** Without a password, while the code to set one with can be entered: when another may be sent. */
+  passwordCodeResendAt?: string;
   connections: Connection[];
   /** The devices logged in, this one first; only on their page. */
   devices?: Device[];
@@ -247,10 +249,11 @@ const PRIVACY: Array<{ name: 'HideLikes' | 'HideFollows' | 'HideFollowCounts'; k
  * is saved: the answer's props, so one refused flips back.
  */
 function PrivacySection({ props }: { props: SettingsProps }) {
+  const switchBack = useSwitchBack();
   return (
     <>
       <p class="settings-intro">{t('Settings.Privacy.Intro')}</p>
-      <form class="settings-switches" method="post" action={action('privacy', 'Privacy')} onSubmit={sending()}>
+      <form class="settings-switches" method="post" action={action('privacy', 'Privacy')} onSubmit={sending(undefined, switchBack)}>
         {PRIVACY.map((option) => (
           <label key={option.name} class="settings-link switch">
             <span class="settings-link-text">
@@ -388,9 +391,18 @@ function EmailSection({ props, errors }: SectionProps) {
       </>
     );
   }
+  // Only the password stops a session alone from taking the account to another address.
+  if (!props.hasPassword) {
+    return (
+      <p class="settings-intro">
+        {t('Settings.Email.NeedsPassword', props.email)}{' '}
+        <a href={paths.settingsSection('password')}>{t('Settings.SetPassword')}</a>
+      </p>
+    );
+  }
   return (
     <>
-      <p class="settings-intro">{props.hasPassword ? t('Settings.Email.Help', props.email) : t('Settings.Email.Help.NoPassword', props.email)}</p>
+      <p class="settings-intro">{t('Settings.Email.Help', props.email)}</p>
       <form class="settings-form" method="post" action={action('email', 'Email')} onSubmit={sending()}>
         <input type="hidden" name="username" value={props.handle} autocomplete="username" />
         <FloatField errors={errors} name="NewEmail" label={t('Field.NewEmail')}>
@@ -408,13 +420,46 @@ function EmailSection({ props, errors }: SectionProps) {
   );
 }
 
+/**
+ * Changing the password asks for the current one. An account without one sets its first with a code sent to its
+ * address: the session alone must not, or whoever holds it could lock the owner out (PLAN 6.14).
+ */
 function PasswordSection({ props, errors }: SectionProps) {
+  const codeSent = !props.hasPassword && props.passwordCodeResendAt !== undefined;
+  if (!props.hasPassword && !codeSent) {
+    return (
+      <>
+        <p class="settings-intro">{t('Settings.SetPassword.Intro', props.email)}</p>
+        <form class="settings-form" method="post" action={action('password', 'PasswordCode')} onSubmit={sending()}>
+          <div class="form-actions">
+            <button class="btn btn-primary" type="submit">
+              {t('Settings.SetPassword.SendCode')}
+            </button>
+          </div>
+          <Antiforgery />
+        </form>
+      </>
+    );
+  }
   return (
     <>
-      <p class="settings-intro">{props.hasPassword ? t('Settings.Password.Help') : t('Settings.SetPassword.Intro')}</p>
+      <p class="settings-intro">{codeSent ? t('Settings.Email.CodeSent', props.email, props.codeLifetimeMinutes) : t('Settings.Password.Help')}</p>
       <form class="settings-form" method="post" action={action('password', 'Password')} onSubmit={sending((form) => form.reset())}>
         <input type="hidden" name="username" value={props.handle} autocomplete="username" />
         <CurrentPassword props={props} errors={errors} />
+        {codeSent && (
+          <FloatField errors={errors} name="Code" label={t('Field.Code')}>
+            <input
+              class="float-field-input"
+              {...field(errors, 'Code')}
+              inputMode="numeric"
+              autocomplete="one-time-code"
+              pattern={`[0-9]{${props.codeLength}}`}
+              maxLength={props.codeLength}
+              required
+            />
+          </FloatField>
+        )}
         <FloatField errors={errors} name="NewPassword" label={t('Field.NewPassword')} help={t('Field.Password.Help', props.passwordMinLength)}>
           <input
             class="float-field-input"
@@ -433,6 +478,7 @@ function PasswordSection({ props, errors }: SectionProps) {
         </div>
         <Antiforgery />
       </form>
+      {codeSent && <CodeResend class="settings-aside" action={action('password', 'PasswordCode')} resendAt={props.passwordCodeResendAt} />}
     </>
   );
 }
@@ -473,6 +519,7 @@ function PasskeyRow({ passkey }: { passkey: Passkey }) {
 function PasskeysSection({ props, errors }: SectionProps) {
   const passkeys = props.passkeys ?? [];
   const [turningOn, setTurningOn] = useState(false);
+  const switchBack = useSwitchBack();
   // Kept while a wrong password is answered, until switched back.
   const asking = turningOn && !props.passkeyTwoFactor;
   const needsPassword = !props.hasPassword && !props.passkeyTwoFactor;
@@ -519,7 +566,7 @@ function PasskeysSection({ props, errors }: SectionProps) {
         </form>
       </section>
       {passkeys.length > 0 && (
-        <form class="settings-switches" method="post" action={action('passkeys', 'PasskeyTwoFactor')} onSubmit={sending(() => setTurningOn(false))}>
+        <form class="settings-switches" method="post" action={action('passkeys', 'PasskeyTwoFactor')} onSubmit={sending(() => setTurningOn(false), switchBack)}>
           <label class="settings-link switch">
             <span class="settings-link-text">
               <span class="settings-link-title">{t('Passkeys.TwoFactor')}</span>
@@ -560,6 +607,7 @@ function PasskeysSection({ props, errors }: SectionProps) {
 
 /** Twitter's "Display": the schemes as cards drawn in their own colours, applied as soon as one is picked. */
 function DisplaySection({ props, errors }: SectionProps) {
+  const switchBack = useSwitchBack();
   return (
     <>
       <p class="settings-intro">{t('Settings.Display.Help')}</p>
@@ -569,7 +617,7 @@ function DisplaySection({ props, errors }: SectionProps) {
         action={action('display', 'Theme')}
         onSubmit={sending((form) => {
           theme.value = String(new FormData(form).get('Theme') ?? 'system');
-        })}
+        }, switchBack)}
       >
         <fieldset class="settings-group">
           <legend class="settings-heading">{t('Settings.Theme')}</legend>

@@ -114,6 +114,10 @@ public sealed record AccountState(
 /// <summary>The account as its owner edits it on the settings page.</summary>
 /// <param name="PendingEmail">The address it is moving to while the code sent there is still good.</param>
 /// <param name="HasPassword">False for an account that signs in only with the providers in <paramref name="Logins"/> (or passkeys).</param>
+/// <param name="PasswordCodeResendAt">
+/// Without a password, while the code to set one with (<see cref="AccountService.SendPasswordCodeAsync"/>) can be
+/// entered: when another may be sent.
+/// </param>
 /// <param name="PasskeyTwoFactor">Its passkeys are the second step after the password, not a way to sign in by themselves.</param>
 public sealed record AccountSettings(
     string Handle,
@@ -125,6 +129,7 @@ public sealed record AccountSettings(
     string Locale,
     ProfilePrivacy Privacy,
     bool HasPassword,
+    DateTimeOffset? PasswordCodeResendAt,
     IReadOnlyList<LinkedLogin> Logins,
     bool PasskeyTwoFactor);
 

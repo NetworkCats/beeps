@@ -169,10 +169,16 @@ test('the settings list the sections, each a page of its own with its forms', as
   assert.match(linked, /<input type="hidden" name="Provider" value="github"\/>/);
   assert.match(linked, /action="\/oauth\/google\?handler=Link"/);
   assert.match(linked, /Set a password/);
+  // The session alone does not set it: a code goes to the account's address first, then comes with the new password.
   const setPassword = await draw('settings-linked-password.json', 'settings');
   assert.match(setPassword, /<h1 class="column-title">Set a password<\/h1>/);
-  assert.match(setPassword, /name="NewPassword"/);
-  assert.doesNotMatch(setPassword, /name="CurrentPassword"/);
+  assert.match(setPassword, /action="\/settings\/password\?handler=PasswordCode"/);
+  assert.doesNotMatch(setPassword, /name="NewPassword"/);
+  const setWithCode = await draw('settings-linked-password-code.json', 'settings');
+  assert.match(setWithCode, /name="Code"/);
+  assert.match(setWithCode, /name="NewPassword"/);
+  assert.doesNotMatch(setWithCode, /name="CurrentPassword"/);
+  assert.match(setWithCode, /action="\/settings\/password\?handler=PasswordCode"/);
   // The email: the new address and the password first, then the code sent there.
   const email = await draw('settings-email.json', 'settings');
   assert.match(email, /<a class="column-back" href="\/settings\/account"/);

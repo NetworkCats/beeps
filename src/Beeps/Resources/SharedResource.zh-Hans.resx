@@ -1951,13 +1951,10 @@
     <value>也可以用邮箱和密码登录</value>
   </data>
   <data name="Settings.SetPassword.Intro" xml:space="preserve">
-    <value>你目前用 Google 或 GitHub 登录。设置密码后也可以用邮箱和密码登录，其他设备上的登录会全部退出。</value>
+    <value>你目前不用密码登录。设置密码后也可以用邮箱和密码登录，其他设备上的登录会全部退出。先向 {0} 发送验证码，确认是你本人。</value>
   </data>
   <data name="Settings.PasswordSet" xml:space="preserve">
     <value>密码已设置，其他设备上的登录已全部退出。</value>
-  </data>
-  <data name="Settings.Email.Help.NoPassword" xml:space="preserve">
-    <value>你的邮箱是 {0}。填写新邮箱，我们会向新邮箱发送验证码。</value>
   </data>
   <data name="Feed.ShowNew" xml:space="preserve">
     <value>显示 {0} 条新 beeps</value>
@@ -2114,5 +2111,14 @@
   </data>
   <data name="Passkeys.TwoFactor.TurnOn" xml:space="preserve">
     <value>打开</value>
+  </data>
+  <data name="Settings.Email.NeedsPassword" xml:space="preserve">
+    <value>你的邮箱是 {0}。要换成其他邮箱，请先设置密码。</value>
+  </data>
+  <data name="Settings.SetPassword.SendCode" xml:space="preserve">
+    <value>发送验证码</value>
+  </data>
+  <data name="Error.EmailChangePassword" xml:space="preserve">
+    <value>修改邮箱前请先设置密码。</value>
   </data>
 </root>

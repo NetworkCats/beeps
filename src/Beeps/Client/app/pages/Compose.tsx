@@ -30,7 +30,8 @@ export function ComposePage({ props, errors }: IslandProps<ComposeProps>) {
         </a>
         <h1 class="column-title">{props.title}</h1>
       </header>
-      <FormErrors errors={errors} />
+      {/* With a composer, it draws them. */}
+      {!props.composer && <FormErrors errors={errors} />}
       {props.parent && <BeepCard id={props.parent.id} />}
       {props.composer && <Composer composer={props.composer} errors={errors} />}
     </section>
