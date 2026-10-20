@@ -11,7 +11,8 @@ namespace Beeps.Features.Accounts;
 /// session could add their own and keep signing in after the password is reset; the owner hears of it this way.
 /// </summary>
 /// <param name="Provider">The provider's name; null for a passkey.</param>
-public sealed record SignInMethodEmail(string To, string Locale, string? Provider)
+/// <param name="TwoFactor">Passkeys were made the second step instead: from then on only they let anyone in.</param>
+public sealed record SignInMethodEmail(string To, string Locale, string? Provider, bool TwoFactor = false)
 {
     public const string MessageType = "accounts.sign_in_method_email";
 }
@@ -37,9 +38,9 @@ public sealed class SignInMethodEmailHandler(IEmailSender sender, IStringLocaliz
         try
         {
             var method = payload.Provider ?? localizer["Email.MethodAdded.Passkey"].Value;
-            var subject = localizer["Email.MethodAdded.Subject"].Value;
-            var intro = localizer["Email.MethodAdded.Intro", method].Value;
-            var ignore = localizer["Email.MethodAdded.Ignore"].Value;
+            var subject = localizer[payload.TwoFactor ? "Email.TwoFactorOn.Subject" : "Email.MethodAdded.Subject"].Value;
+            var intro = payload.TwoFactor ? localizer["Email.TwoFactorOn.Intro"].Value : localizer["Email.MethodAdded.Intro", method].Value;
+            var ignore = localizer[payload.TwoFactor ? "Email.TwoFactorOn.Ignore" : "Email.MethodAdded.Ignore"].Value;
             var text = $"{intro}\n\n{ignore}\n";
             var html = $"<p>{WebUtility.HtmlEncode(intro)}</p><p>{WebUtility.HtmlEncode(ignore)}</p>";
             return new EmailMessage(payload.To, subject, text, html);

@@ -63,13 +63,26 @@ public sealed class RedisSharedContentCache(RedisConnection redis) : ISharedCont
         ArgumentNullException.ThrowIfNull(handler);
         ArgumentNullException.ThrowIfNull(restored);
         var connection = await redis.GetAsync();
-        await connection.GetSubscriber().SubscribeAsync(InvalidationChannel, (_, message) =>
+        var subscriber = connection.GetSubscriber();
+        Action<RedisChannel, RedisValue> received = (_, message) =>
         {
             if (!message.IsNullOrEmpty)
             {
                 handler((byte[])message!);
             }
-        });
+        };
+        try
+        {
+            await subscriber.SubscribeAsync(InvalidationChannel, received);
+        }
+        catch
+        {
+            // The handler is registered before the server is asked, and stays (and is resubscribed on reconnect)
+            // when asking fails: each retry would add another, applying every message once more.
+            subscriber.Unsubscribe(InvalidationChannel, received, CommandFlags.FireAndForget);
+            throw;
+        }
+
         // Any reconnect, not only the subscription's: with RESP3 Pub/Sub shares the interactive connection.
         connection.ConnectionRestored += (_, _) => restored();
     }

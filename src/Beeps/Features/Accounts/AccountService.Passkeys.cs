@@ -161,9 +161,10 @@ public sealed partial class AccountService
 
     /// <summary>
     /// Whether the passkeys sign in by themselves (off) or follow the password, or Google and GitHub (on). On needs a
-    /// passkey to ask for, and a first step to follow: a password or a linked provider.
+    /// passkey to ask for and the current password: a stolen session could otherwise add its own passkey, switch this
+    /// on and lock the owner out for good, as nothing gets past it (not a password reset). The owner is told by email.
     /// </summary>
-    public async Task<Result> SetPasskeyTwoFactorAsync(Guid userId, bool on, CancellationToken cancellationToken)
+    public async Task<Result> SetPasskeyTwoFactorAsync(Guid userId, bool on, string? currentPassword, CancellationToken cancellationToken)
     {
         var user = await store.FindUserAsync(userId, cancellationToken);
         if (user is null)
@@ -181,15 +182,29 @@ public sealed partial class AccountService
             return Error.Conflict(AccountErrorCodes.NoPasskeys, localizer["Error.NoPasskeys"]);
         }
 
-        if (on && user.PasswordHash is null && (await store.ListLoginsAsync(userId, cancellationToken)).Count == 0)
+        if (on)
         {
-            return Error.Conflict(AccountErrorCodes.LastSignInMethod, localizer["Error.PasskeyTwoFactorFirstStep"]);
-        }
+            // Without a password the session is all there is to go by, which is what has to be ruled out.
+            if (user.PasswordHash is null)
+            {
+                return Error.Conflict(AccountErrorCodes.LastSignInMethod, localizer["Error.PasskeyTwoFactorPassword"]);
+            }
 
-        var limited = await rateLimits.CheckAsync(RateLimitPolicies.AccountChange, RateLimitPartitions.Account(userId), cancellationToken);
-        if (!limited.IsSuccess)
+            var checkedPassword = await CheckPasswordAsync(userId, currentPassword, cancellationToken);
+            if (!checkedPassword.IsSuccess)
+            {
+                return checkedPassword.Error;
+            }
+
+            NotifySignInMethodAdded(user, provider: null, twoFactor: true);
+        }
+        else
         {
-            return limited;
+            var limited = await rateLimits.CheckAsync(RateLimitPolicies.AccountChange, RateLimitPartitions.Account(userId), cancellationToken);
+            if (!limited.IsSuccess)
+            {
+                return limited;
+            }
         }
 
         user.PasskeyTwoFactor = on;

@@ -246,11 +246,14 @@ public sealed partial class AccountService
         return Result.Success;
     }
 
-    /// <summary>Stages the notice that a way to sign in was added (<see cref="SignInMethodEmail"/>); the caller saves.</summary>
-    private void NotifySignInMethodAdded(User user, string? provider) =>
+    /// <summary>
+    /// Stages the notice that a way to sign in was added, or two-step sign-in switched on (<see cref="SignInMethodEmail"/>);
+    /// the caller saves.
+    /// </summary>
+    private void NotifySignInMethodAdded(User user, string? provider, bool twoFactor = false) =>
         outbox.Enqueue(
             SignInMethodEmail.MessageType,
-            new SignInMethodEmail(user.Email, user.Locale, provider),
+            new SignInMethodEmail(user.Email, user.Locale, provider, twoFactor),
             AccountsJsonContext.Default.SignInMethodEmail);
 
     /// <summary>

@@ -88,7 +88,20 @@ public sealed partial class ContentCache : IDisposable
             return found;
         }
 
+        var started = time.GetTimestamp();
         var loaded = await load(missing, cancellationToken);
+        if (time.GetElapsedTime(started) >= options.Value.SecondPassDelay)
+        {
+            // A change committed while this read was on its way may have had both invalidation passes already:
+            // what was read could be from before it, and written back now it would stay for the entry's lifetime.
+            foreach (var (id, value) in loaded)
+            {
+                found[id] = value;
+            }
+
+            return found;
+        }
+
         List<KeyValuePair<string, byte[]>> writes = new(loaded.Count);
         foreach (var (id, value) in loaded)
         {

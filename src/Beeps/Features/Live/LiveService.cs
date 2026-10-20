@@ -263,6 +263,13 @@ public sealed partial class LiveService(
             LogUnreadableEvent(logger, exception, item.Id, item.Type);
             return [];
         }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            // A shape missing a list reads it as null; a read can fail. Ending the stream would not help: the tab
+            // reconnects from before this event within a second and meets it again, and nothing after it arrives.
+            LogEventFailed(logger, exception, item.Id, item.Type);
+            return [];
+        }
     }
 
     /// <summary>What an event means for this connection, when that needs no database; null when it means nothing or needs it.</summary>
@@ -422,12 +429,25 @@ public sealed partial class LiveService(
         }
 
         // The page is about to show it, so its counts and removal concern this connection too.
-        if (connection.Watched.Count < MaxTrackedBeeps)
-        {
-            connection.Watched.Add(beep.Id);
-        }
+        Watch(connection, beep.Id);
 
         return Message(LiveMessages.Beep, new IdMessage(beep.Id), LiveJsonContext.Default.IdMessage, item.Id);
+    }
+
+    /// <summary>
+    /// Past what one connection follows, it follows every beep: the page still shows each new one (its client counts
+    /// it as known), and one left out would stay up after it is removed.
+    /// </summary>
+    private static void Watch(Connection connection, Guid beepId)
+    {
+        if (connection.Watched.Count < MaxTrackedBeeps)
+        {
+            connection.Watched.Add(beepId);
+        }
+        else
+        {
+            connection.WatchesAll = true;
+        }
     }
 
     private static LiveMessage? Counts(Connection connection, LiveEvent item)
@@ -443,12 +463,7 @@ public sealed partial class LiveService(
         {
             foreach (var beepId in inbox.BeepIds ?? [])
             {
-                if (connection.Watched.Count >= MaxTrackedBeeps)
-                {
-                    break;
-                }
-
-                connection.Watched.Add(beepId);
+                Watch(connection, beepId);
             }
         }
 
@@ -623,7 +638,7 @@ public sealed partial class LiveService(
         public DateTimeOffset? RenderedAt { get; init; }
 
         /// <summary>The page shows more beeps than it could list: everything about any beep concerns it.</summary>
-        public bool WatchesAll { get; init; }
+        public bool WatchesAll { get; set; }
 
         /// <summary>A tab of an account whose email is not verified yet: only the account's own changes concern it.</summary>
         public bool AccountOnly { get; init; }
@@ -633,6 +648,9 @@ public sealed partial class LiveService(
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Skipped live event {EventId} ({EventType}): its data could not be read")]
     private static partial void LogUnreadableEvent(ILogger logger, Exception exception, string eventId, string eventType);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Handling live event {EventId} ({EventType}) failed; skipped")]
+    private static partial void LogEventFailed(ILogger logger, Exception exception, string eventId, string eventType);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Counting the live connections of {ActorId} failed")]
     private static partial void LogConnectionBookkeepingFailed(ILogger logger, Exception exception, Guid actorId);

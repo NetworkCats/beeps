@@ -79,8 +79,10 @@ public sealed partial class IpLocationUpdater(
                 LogLoaded(logger, path);
                 return fetchedAt;
             }
-            catch (Exception exception) when (exception is InvalidDatabaseException or IOException)
+            catch (Exception exception)
             {
+                // Not only InvalidDatabaseException: an empty file left by a crash throws ArgumentException, and an
+                // exception out of here would stop the host on every start.
                 LogCachedUnusable(logger, exception, path);
                 TryDelete(path);
             }

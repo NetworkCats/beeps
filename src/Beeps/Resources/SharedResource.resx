@@ -666,6 +666,15 @@
   <data name="Email.MethodAdded.Ignore" xml:space="preserve">
     <value>If it wasn't you, someone else is signed in to your account: reset your password, then remove it in Settings → Your account.</value>
   </data>
+  <data name="Email.TwoFactorOn.Subject" xml:space="preserve">
+    <value>Two-step verification is on for your beeps account</value>
+  </data>
+  <data name="Email.TwoFactorOn.Intro" xml:space="preserve">
+    <value>Two-step verification was just switched on for your beeps account: signing in now asks for one of its passkeys after the password, Google or GitHub.</value>
+  </data>
+  <data name="Email.TwoFactorOn.Ignore" xml:space="preserve">
+    <value>If it wasn't you, someone else knows your password: on a device still signed in, turn it off and remove the passkeys you don't know in Settings → Your account → Passkeys, then change your password.</value>
+  </data>
   <data name="Email.Code.Expiry" xml:space="preserve">
     <value>The code expires in {0} minutes.</value>
   </data>
@@ -2028,8 +2037,8 @@
   <data name="Error.LastPasskey" xml:space="preserve">
     <value>This passkey is your only way to sign in. Set a password before removing it.</value>
   </data>
-  <data name="Error.PasskeyTwoFactorFirstStep" xml:space="preserve">
-    <value>Two-step verification needs a first step: set a password or connect Google or GitHub first.</value>
+  <data name="Error.PasskeyTwoFactorPassword" xml:space="preserve">
+    <value>Two-step verification asks for your password before the passkey: set a password first.</value>
   </data>
   <data name="Error.SecondStepExpired" xml:space="preserve">
     <value>Signing in took too long. Please start again.</value>
@@ -2093,5 +2102,11 @@
   </data>
   <data name="Passkeys.TwoFactor.Help" xml:space="preserve">
     <value>After your password, Google or GitHub, signing in also asks for a passkey, which then no longer signs in by itself. Without a passkey you can't sign in, so it's worth adding a spare.</value>
+  </data>
+  <data name="Passkeys.TwoFactor.Confirm" xml:space="preserve">
+    <value>Enter your password to turn it on.</value>
+  </data>
+  <data name="Passkeys.TwoFactor.TurnOn" xml:space="preserve">
+    <value>Turn on</value>
   </data>
 </root>

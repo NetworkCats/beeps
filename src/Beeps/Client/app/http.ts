@@ -2,6 +2,7 @@
 // /live fetches, and forms sent in the background.
 import { config } from './config.ts';
 import type { IslandsPage } from './props.ts';
+import { markFetched, removalMark } from './removals.ts';
 
 const PAGE_DATA = '/page-data';
 
@@ -47,16 +48,18 @@ export interface IslandsAnswer {
   page: IslandsPage | null;
 }
 
-async function islandsAnswer(response: Response): Promise<IslandsAnswer> {
+async function islandsAnswer(response: Response, since: number): Promise<IslandsAnswer> {
   const json = response.headers.get('Content-Type')?.includes('application/json');
-  return { url: pageOf(response.url), status: response.status, redirected: response.redirected, page: json ? ((await response.json()) as IslandsPage) : null };
+  const page = json ? markFetched((await response.json()) as IslandsPage, since) : null;
+  return { url: pageOf(response.url), status: response.status, redirected: response.redirected, page };
 }
 
 /** The data of the page at `url`, for this viewer, as a reload would draw it. */
 export async function getIslands(url: string): Promise<IslandsAnswer> {
+  const since = removalMark();
   const response = await fetch(pageDataUrl(url), { credentials: 'same-origin', cache: 'no-store', headers: { Accept: 'application/json' } });
   if (response.status >= 500 || response.status === 429) throw new HttpError(response.status);
-  return islandsAnswer(response);
+  return islandsAnswer(response, since);
 }
 
 /**
@@ -64,8 +67,9 @@ export async function getIslands(url: string): Promise<IslandsAnswer> {
  * form's own page drawn again with what was wrong.
  */
 export async function postIslands(action: string, body: FormData): Promise<IslandsAnswer> {
+  const since = removalMark();
   const response = await fetch(pageDataUrl(action), { method: 'POST', body, credentials: 'same-origin', headers: { Accept: 'application/json' } });
-  return islandsAnswer(response);
+  return islandsAnswer(response, since);
 }
 
 export async function getJson<T>(url: string): Promise<T> {

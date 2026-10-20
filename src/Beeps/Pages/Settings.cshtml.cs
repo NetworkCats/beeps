@@ -175,7 +175,7 @@ public sealed class SettingsModel(
 
     // A switch, sent as it is flipped, and staying as it was flipped: no notice needed.
     public async Task<IActionResult> OnPostPasskeyTwoFactorAsync(CancellationToken cancellationToken) =>
-        await DoneAsync(await accounts.SetPasskeyTwoFactorAsync(User.ActorId(), TwoFactor, cancellationToken), SettingsSections.Passkeys, notice: null, cancellationToken);
+        await DoneAsync(await accounts.SetPasskeyTwoFactorAsync(User.ActorId(), TwoFactor, CurrentPassword, cancellationToken), SettingsSections.Passkeys, notice: null, cancellationToken);
 
     // The page then asks for the code sent to the new address.
     public async Task<IActionResult> OnPostEmailAsync(CancellationToken cancellationToken) =>

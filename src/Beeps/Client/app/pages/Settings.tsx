@@ -198,7 +198,7 @@ export function SettingsPage({ props, errors }: IslandProps<SettingsProps>) {
       {section === 'account' && <AccountSection props={props} />}
       {section === 'email' && <EmailSection props={props} errors={errors} />}
       {section === 'password' && <PasswordSection props={props} errors={errors} />}
-      {section === 'passkeys' && <PasskeysSection props={props} />}
+      {section === 'passkeys' && <PasskeysSection props={props} errors={errors} />}
       {section === 'display' && <DisplaySection props={props} errors={errors} />}
       {section === 'sessions' && <SessionsSection props={props} />}
     </section>
@@ -467,9 +467,15 @@ function PasskeyRow({ passkey }: { passkey: Passkey }) {
  * The account's passkeys, oldest first, each of which can be removed, and a button that adds another: the server's
  * options, the browser's dialog, then what the authenticator made, posted as the page's other forms are. Below them, a
  * switch between signing in with a passkey alone (off, as a new account starts) and asking for one after the password.
+ * Switched off it is sent at once; switched on it asks for the password first, so a stolen session cannot lock the owner
+ * out with a passkey of its own.
  */
-function PasskeysSection({ props }: { props: SettingsProps }) {
+function PasskeysSection({ props, errors }: SectionProps) {
   const passkeys = props.passkeys ?? [];
+  const [turningOn, setTurningOn] = useState(false);
+  // Kept while a wrong password is answered, until switched back.
+  const asking = turningOn && !props.passkeyTwoFactor;
+  const needsPassword = !props.hasPassword && !props.passkeyTwoFactor;
   const form = useRef<HTMLFormElement>(null);
   const credential = useRef<HTMLInputElement>(null);
   const ticket = useRef<HTMLInputElement>(null);
@@ -513,20 +519,38 @@ function PasskeysSection({ props }: { props: SettingsProps }) {
         </form>
       </section>
       {passkeys.length > 0 && (
-        <form class="settings-switches" method="post" action={action('passkeys', 'PasskeyTwoFactor')} onSubmit={sending()}>
+        <form class="settings-switches" method="post" action={action('passkeys', 'PasskeyTwoFactor')} onSubmit={sending(() => setTurningOn(false))}>
           <label class="settings-link switch">
             <span class="settings-link-text">
               <span class="settings-link-title">{t('Passkeys.TwoFactor')}</span>
-              <span class="settings-link-help">{t('Passkeys.TwoFactor.Help')}</span>
+              <span class="settings-link-help">{t(needsPassword ? 'Error.PasskeyTwoFactorPassword' : 'Passkeys.TwoFactor.Help')}</span>
             </span>
             <input
               type="checkbox"
               name="TwoFactor"
               value="true"
-              checked={props.passkeyTwoFactor ?? false}
-              onChange={(event) => event.currentTarget.form?.requestSubmit()}
+              checked={(props.passkeyTwoFactor ?? false) || asking}
+              disabled={needsPassword}
+              onChange={(event) => {
+                const input = event.currentTarget;
+                if (input.checked && !props.passkeyTwoFactor) setTurningOn(true);
+                else if (asking) setTurningOn(false);
+                else input.form?.requestSubmit();
+              }}
             />
           </label>
+          {asking && (
+            <div class="settings-form">
+              <p class="help">{t('Passkeys.TwoFactor.Confirm')}</p>
+              <input type="hidden" name="username" value={props.handle} autocomplete="username" />
+              <CurrentPassword props={props} errors={errors} />
+              <div class="form-actions">
+                <button class="btn btn-primary" type="submit">
+                  {t('Passkeys.TwoFactor.TurnOn')}
+                </button>
+              </div>
+            </div>
+          )}
           <Antiforgery />
         </form>
       )}

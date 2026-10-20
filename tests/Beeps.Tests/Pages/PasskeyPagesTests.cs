@@ -91,7 +91,7 @@ public sealed class PasskeyPagesTests : IDisposable
         using (var signedIn = await WebAuth.SignInAsync(factory, tom))
         {
             using var added = await AddPasskeyAsync(signedIn);
-            using var on = await WebAuth.PostFormAsync(signedIn, "/settings/passkeys", "/settings/passkeys?handler=PasskeyTwoFactor", ("TwoFactor", "true"));
+            using var on = await WebAuth.PostFormAsync(signedIn, "/settings/passkeys", "/settings/passkeys?handler=PasskeyTwoFactor", ("TwoFactor", "true"), ("CurrentPassword", WebAuth.Password));
             Assert.Equal(HttpStatusCode.Redirect, on.StatusCode);
         }
 

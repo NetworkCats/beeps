@@ -23,6 +23,7 @@ import { pageDataUrl, pageOf } from './http.ts';
 import { loadStrings } from './i18n.ts';
 import { loadComponent, mountIslands, snapshotIslands, unmountIslands } from './islands.tsx';
 import type { Envelope, IslandsPage, PageShell, PageView } from './props.ts';
+import { markFetched, removalMark } from './removals.ts';
 import { showToast } from './toasts.ts';
 
 /**
@@ -88,11 +89,19 @@ function signedIn(): boolean {
   return Boolean(document.body.dataset.auth);
 }
 
+// The removal count each page fetched started at, for its data (removals.ts).
+const fetchedSince = new WeakMap<Response, number>();
+
 /** Signed in, a page is fetched as its data, for the components to draw; signed out as HTML, which the server draws. */
 function fetchPage(url: string, init: RequestInit = {}): Promise<Response> {
-  return signedIn()
+  const since = removalMark();
+  const response = signedIn()
     ? fetch(pageDataUrl(url), { ...init, credentials: 'same-origin', headers: { Accept: 'application/json' } })
     : fetch(url, { ...init, credentials: 'same-origin', headers: { Accept: 'text/html' } });
+  return response.then((answer) => {
+    fetchedSince.set(answer, since);
+    return answer;
+  });
 }
 
 /** Whether two addresses are the same page: path and query, whatever their fragments. */
@@ -269,9 +278,18 @@ function restore(snapshot: Snapshot): Promise<void> {
 }
 
 function scrollToTarget(hash: string): void {
-  const target = hash ? document.getElementById(decodeURIComponent(hash.slice(1))) : null;
+  const target = hash ? document.getElementById(fragmentId(hash.slice(1))) : null;
   if (target) target.scrollIntoView();
   else window.scrollTo(0, 0);
+}
+
+/** A fragment as an id; one with a broken escape (#%zz, as anyone can link to) as it is, not thrown on after the page is in. */
+function fragmentId(fragment: string): string {
+  try {
+    return decodeURIComponent(fragment);
+  } catch {
+    return fragment;
+  }
 }
 
 interface ShowOptions {
@@ -302,7 +320,7 @@ const ELSEWHERE = 'elsewhere';
 async function prepare(response: Response): Promise<Swap | typeof ELSEWHERE | null> {
   const auth = document.body.dataset.auth ?? '';
   if (isJson(response)) {
-    const answer = (await response.json()) as IslandsPage;
+    const answer = markFetched((await response.json()) as IslandsPage, fetchedSince.get(response) ?? removalMark());
     const view = answer.page;
     const main = document.getElementById('main');
     // A stylesheet the layout has no address for is linked by the layout of the page loaded in full.

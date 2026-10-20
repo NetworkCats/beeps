@@ -7,6 +7,9 @@ import { getJson } from './http.ts';
 import type { BeepProps } from './props.ts';
 import { schedule } from './schedule.ts';
 import { mergeIds } from './live-url.ts';
+import { countRemoval, fetchedMark, removalMark } from './removals.ts';
+
+export { removalMark };
 
 const LIVE_BEEPS = '/live/beeps';
 
@@ -26,27 +29,25 @@ export function beepSignal(id: string): Signal<BeepProps | null | undefined> {
   return entry;
 }
 
-// Removals counted as they come, with the count each beep and author went at: an answer fetched before one must not
-// bring back what it removed (fetched as a beep was posted, say, and hidden by review on the way).
-let removals = 0;
+// The removal count each beep and author went at: an answer fetched before one must not bring back what it removed
+// (fetched as a beep was posted, say, and hidden by review on the way).
 const beepRemovedAt = new Map<string, number>();
 const authorRemovedAt = new Map<string, number>();
 
-/** Taken as a fetch starts, and given back to `putBeeps` with what it brought. */
-export function removalMark(): number {
-  return removals;
-}
-
-/** Puts these beeps in place; with `since` (a `removalMark`), not those removed after it, which went for good. */
+/**
+ * Puts these beeps in place; with `since` (a `removalMark`), not those removed after it, which went for good. Without
+ * it, beeps from a page's data go by the mark their fetch started at (removals.ts).
+ */
 export function putBeeps(list: readonly BeepProps[], since?: number): void {
   for (const beep of list) {
-    if (since !== undefined && Math.max(beepRemovedAt.get(beep.id) ?? 0, authorRemovedAt.get(beep.author.id) ?? 0) > since) continue;
+    const mark = since ?? fetchedMark(beep);
+    if (mark !== undefined && Math.max(beepRemovedAt.get(beep.id) ?? 0, authorRemovedAt.get(beep.author.id) ?? 0) > mark) continue;
     beepSignal(beep.id).value = beep;
   }
 }
 
 export function removeBeep(id: string): void {
-  beepRemovedAt.set(id, ++removals);
+  beepRemovedAt.set(id, countRemoval());
   const entry = beeps.get(id);
   if (entry) entry.value = null;
 }
@@ -54,8 +55,8 @@ export function removeBeep(id: string): void {
 /** A banned or deleted account: everything by it goes, wherever it is shown. */
 export function removeAuthors(ids: readonly string[]): void {
   const gone = new Set(ids);
-  removals++;
-  for (const id of gone) authorRemovedAt.set(id, removals);
+  const at = countRemoval();
+  for (const id of gone) authorRemovedAt.set(id, at);
   for (const entry of beeps.values()) {
     if (entry.value && gone.has(entry.value.author.id)) entry.value = null;
   }

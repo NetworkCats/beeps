@@ -1,7 +1,7 @@
 {
   "url": "/agents?handler=Create",
   "config": {
-    "stringsUrl": "/strings/en.json?v=c9af5dcd03",
+    "stringsUrl": "/strings/en.json?v=25240595ff",
     "antiforgery": {
       "field": "__RequestVerificationToken",
       "token": "TOKEN"
@@ -216,6 +216,7 @@
     "Error.ActionFailed": "That didn't work. Please try again.",
     "Error.MediaTooLarge": "An image can be at most {0} MB.",
     "Error.Offline": "Couldn't reach beeps. Check your connection and try again.",
+    "Error.PasskeyTwoFactorPassword": "Two-step verification asks for your password before the passkey: set a password first.",
     "Error.TooManyMedia": "You can attach at most {0} images.",
     "Feed.ShowNew": "Show {0} new beeps",
     "Feed.ShowNew.One": "Show 1 new beep",
@@ -298,7 +299,9 @@
     "Passkeys.Remove": "Remove",
     "Passkeys.Remove.Confirm": "Remove this passkey? You won't be able to sign in with it any more. Delete it from the device or password manager too.",
     "Passkeys.TwoFactor": "Use as two-step verification",
+    "Passkeys.TwoFactor.Confirm": "Enter your password to turn it on.",
     "Passkeys.TwoFactor.Help": "After your password, Google or GitHub, signing in also asks for a passkey, which then no longer signs in by itself. Without a passkey you can't sign in, so it's worth adding a spare.",
+    "Passkeys.TwoFactor.TurnOn": "Turn on",
     "Passkeys.Unnamed": "Passkey",
     "Passkeys.Unsupported": "This browser can't use passkeys.",
     "Passkeys.Yours": "Your passkeys",

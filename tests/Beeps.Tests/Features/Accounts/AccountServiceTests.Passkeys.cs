@@ -185,22 +185,41 @@ public sealed partial class AccountServiceTests
     }
 
     [Fact]
-    public async Task TwoStepSignInNeedsAPasskeyAndAFirstStep()
+    public async Task TwoStepSignInNeedsAPasskeyAndThePassword()
     {
         var user = ArrangePasskeyUser();
+        user.PasswordHash = "hashed:secret";
 
-        var noPasskeys = await CreateService().SetPasskeyTwoFactorAsync(user.Id, true, TestSupport.Ct);
+        var noPasskeys = await CreateService().SetPasskeyTwoFactorAsync(user.Id, true, "secret", TestSupport.Ct);
         store.ListPasskeysAsync(user.Id, Arg.Any<CancellationToken>()).Returns([StoredPasskey(user.Id)]);
+        var noPassword = await CreateService().SetPasskeyTwoFactorAsync(user.Id, true, null, TestSupport.Ct);
+        var wrongPassword = await CreateService().SetPasskeyTwoFactorAsync(user.Id, true, "guess", TestSupport.Ct);
         user.PasswordHash = null;
-        var noFirstStep = await CreateService().SetPasskeyTwoFactorAsync(user.Id, true, TestSupport.Ct);
-        user.PasswordHash = "hash";
-        var on = await CreateService().SetPasskeyTwoFactorAsync(user.Id, true, TestSupport.Ct);
+        var noneSet = await CreateService().SetPasskeyTwoFactorAsync(user.Id, true, null, TestSupport.Ct);
+        user.PasswordHash = "hashed:secret";
+        var on = await CreateService().SetPasskeyTwoFactorAsync(user.Id, true, "secret", TestSupport.Ct);
 
         Assert.Equal(AccountErrorCodes.NoPasskeys, noPasskeys.Error?.Code);
-        Assert.Equal(AccountErrorCodes.LastSignInMethod, noFirstStep.Error?.Code);
+        Assert.Equal(AccountErrorCodes.InvalidInput, noPassword.Error?.Code);
+        Assert.Equal(AccountErrorCodes.InvalidCredentials, wrongPassword.Error?.Code);
+        Assert.Equal(AccountErrorCodes.LastSignInMethod, noneSet.Error?.Code);
         Assert.True(on.IsSuccess);
         Assert.True(user.PasskeyTwoFactor);
         Assert.Equal(1, unitOfWork.Saves);
+        outbox.Received(1).Enqueue(SignInMethodEmail.MessageType, new SignInMethodEmail(user.Email, user.Locale, null, TwoFactor: true), Arg.Any<System.Text.Json.Serialization.Metadata.JsonTypeInfo<SignInMethodEmail>>());
+    }
+
+    [Fact]
+    public async Task TwoStepSignInGoesOffWithoutThePassword()
+    {
+        var user = ArrangePasskeyUser();
+        user.PasskeyTwoFactor = true;
+
+        var off = await CreateService().SetPasskeyTwoFactorAsync(user.Id, false, null, TestSupport.Ct);
+
+        Assert.True(off.IsSuccess);
+        Assert.False(user.PasskeyTwoFactor);
+        hasher.DidNotReceiveWithAnyArgs().VerifyHashedPassword(default!, default!, default!);
     }
 
     [Fact]

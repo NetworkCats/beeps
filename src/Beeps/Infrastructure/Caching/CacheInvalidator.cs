@@ -99,7 +99,7 @@ public sealed partial class CacheInvalidator(
     public async Task RunAsync(IReadOnlyList<CacheChange> changes, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(changes);
-        await PublishAsync(await ResolveAsync([new Pass(changes, null)], cancellationToken), cancellationToken);
+        await PublishAsync(await ResolveAsync([.. changes], cancellationToken), cancellationToken);
     }
 
     /// <summary>What a message asks of this instance: drop the entries and evict the pages.</summary>
@@ -134,9 +134,11 @@ public sealed partial class CacheInvalidator(
                 }
 
                 batch = Bound(batch);
-                var resolved = await ResolveAsync(batch, stoppingToken);
-                await PublishAsync(resolved, stoppingToken);
-                ScheduleSecondPass(batch, resolved, stoppingToken);
+                var fresh = await ResolveAsync([.. batch.Where(p => p.Resolved is null).SelectMany(p => p.Changes)], stoppingToken);
+                await PublishAsync(Merge([fresh, .. batch.Select(p => p.Resolved).OfType<Resolved>()]), stoppingToken);
+                // Only what this batch's first passes found: a second pass that carried the ones it was batched with
+                // would hand them on again, and the chain would never end under steady writes.
+                ScheduleSecondPass(batch, fresh, stoppingToken);
                 batch = [];
                 failures = 0;
             }
@@ -222,27 +224,28 @@ public sealed partial class CacheInvalidator(
         return kept;
     }
 
-    /// <summary>The entries and pages a batch affects; a second pass reuses what its first pass found.</summary>
-    private async Task<Resolved> ResolveAsync(List<Pass> batch, CancellationToken cancellationToken)
+    /// <summary>Everything several passes affect; a second pass reuses what its first pass found.</summary>
+    private static Resolved Merge(IEnumerable<Resolved> passes)
     {
         HashSet<string> keys = new(StringComparer.Ordinal);
         HashSet<string> tags = new(StringComparer.Ordinal);
         HashSet<string> hybridKeys = new(StringComparer.Ordinal);
-        List<CacheChange> unresolved = [];
-        foreach (var pass in batch)
+        foreach (var done in passes)
         {
-            if (pass.Resolved is { } done)
-            {
-                keys.UnionWith(done.Keys);
-                tags.UnionWith(done.PageTags);
-                hybridKeys.UnionWith(done.HybridKeys);
-            }
-            else
-            {
-                unresolved.AddRange(pass.Changes);
-            }
+            keys.UnionWith(done.Keys);
+            tags.UnionWith(done.PageTags);
+            hybridKeys.UnionWith(done.HybridKeys);
         }
 
+        return new Resolved([.. keys], [.. tags], [.. hybridKeys]);
+    }
+
+    /// <summary>The entries and pages changes affect.</summary>
+    private async Task<Resolved> ResolveAsync(List<CacheChange> unresolved, CancellationToken cancellationToken)
+    {
+        HashSet<string> keys = new(StringComparer.Ordinal);
+        HashSet<string> tags = new(StringComparer.Ordinal);
+        HashSet<string> hybridKeys = new(StringComparer.Ordinal);
         foreach (var change in unresolved)
         {
             keys.UnionWith(KeysOf(change));

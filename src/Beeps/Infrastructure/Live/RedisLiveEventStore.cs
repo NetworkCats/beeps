@@ -56,7 +56,18 @@ public sealed class RedisLiveEventStore(RedisConnection redis, IOptions<LiveOpti
     public async Task SubscribeAppendedAsync(Action appended, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(appended);
-        await (await redis.GetAsync()).GetSubscriber().SubscribeAsync(AppendedChannel, (_, _) => appended());
+        var subscriber = (await redis.GetAsync()).GetSubscriber();
+        Action<RedisChannel, RedisValue> received = (_, _) => appended();
+        try
+        {
+            await subscriber.SubscribeAsync(AppendedChannel, received);
+        }
+        catch
+        {
+            // A failed subscribe leaves the handler registered; without this every retry would add one more.
+            subscriber.Unsubscribe(AppendedChannel, received, CommandFlags.FireAndForget);
+            throw;
+        }
     }
 
     public async Task<IReadOnlyList<LiveEvent>> ReadAfterAsync(LiveEventId after, int max, CancellationToken cancellationToken)

@@ -2,6 +2,7 @@
 import { useEffect, useRef } from 'preact/hooks';
 import { confirmDialogReady, pendingConfirm } from '../dialogs.ts';
 import { t } from '../i18n.ts';
+import { PAGE_SHOWN } from '../router.ts';
 
 export function ConfirmDialog() {
   const dialog = useRef<HTMLDialogElement>(null);
@@ -9,8 +10,17 @@ export function ConfirmDialog() {
 
   useEffect(() => {
     confirmDialogReady.value = typeof dialog.current?.showModal === 'function';
+    // Asked on the page left (Back while the dialog was open): confirming must not act on a page no longer shown.
+    const cancel = (): void => {
+      pendingConfirm.value?.answer(false);
+      pendingConfirm.value = null;
+      if (dialog.current?.open) dialog.current.close('cancel');
+    };
+    document.addEventListener(PAGE_SHOWN, cancel);
     return () => {
       confirmDialogReady.value = false;
+      document.removeEventListener(PAGE_SHOWN, cancel);
+      cancel();
     };
   }, []);
 

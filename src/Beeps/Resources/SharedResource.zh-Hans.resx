@@ -666,6 +666,15 @@
   <data name="Email.MethodAdded.Ignore" xml:space="preserve">
     <value>如果不是你本人添加的，说明有别人登录了你的账号：请重置密码，再到 设置 → 你的账号 中移除它。</value>
   </data>
+  <data name="Email.TwoFactorOn.Subject" xml:space="preserve">
+    <value>你的 beeps 账号打开了两步验证</value>
+  </data>
+  <data name="Email.TwoFactorOn.Intro" xml:space="preserve">
+    <value>你的 beeps 账号刚刚打开了两步验证：之后用密码、Google 或 GitHub 登录时，还要用账号的一个通行密钥验证。</value>
+  </data>
+  <data name="Email.TwoFactorOn.Ignore" xml:space="preserve">
+    <value>如果不是你本人操作的，说明有别人知道你的密码：请在仍然登录着的设备上到 设置 → 你的账号 → 通行密钥 关闭它，移除你不认识的通行密钥，再修改密码。</value>
+  </data>
   <data name="Email.Code.Expiry" xml:space="preserve">
     <value>验证码 {0} 分钟内有效。</value>
   </data>
@@ -2028,8 +2037,8 @@
   <data name="Error.LastPasskey" xml:space="preserve">
     <value>这个通行密钥是你唯一的登录方式，请先设置密码再移除。</value>
   </data>
-  <data name="Error.PasskeyTwoFactorFirstStep" xml:space="preserve">
-    <value>两步验证需要先有第一步：请先设置密码，或关联 Google、GitHub。</value>
+  <data name="Error.PasskeyTwoFactorPassword" xml:space="preserve">
+    <value>两步验证在通行密钥之前要先输入密码：请先设置密码。</value>
   </data>
   <data name="Error.SecondStepExpired" xml:space="preserve">
     <value>登录已超时，请重新登录。</value>
@@ -2093,5 +2102,11 @@
   </data>
   <data name="Passkeys.TwoFactor.Help" xml:space="preserve">
     <value>用密码、Google 或 GitHub 登录后，还要再用通行密钥验证；通行密钥不再能单独登录。没有通行密钥就无法登录，建议再添加一个备用。</value>
+  </data>
+  <data name="Passkeys.TwoFactor.Confirm" xml:space="preserve">
+    <value>输入密码以打开。</value>
+  </data>
+  <data name="Passkeys.TwoFactor.TurnOn" xml:space="preserve">
+    <value>打开</value>
   </data>
 </root>
