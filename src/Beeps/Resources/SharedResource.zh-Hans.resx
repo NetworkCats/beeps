@@ -624,6 +624,9 @@
   <data name="Email.Verify.Subject" xml:space="preserve">
     <value>beeps 验证码：{0}</value>
   </data>
+  <data name="Email.Verify.Title" xml:space="preserve">
+    <value>验证你的邮箱</value>
+  </data>
   <data name="Email.Verify.Intro" xml:space="preserve">
     <value>欢迎来到 beeps！请输入以下验证码完成邮箱验证：</value>
   </data>
@@ -632,6 +635,9 @@
   </data>
   <data name="Email.Reset.Subject" xml:space="preserve">
     <value>beeps 重置密码验证码：{0}</value>
+  </data>
+  <data name="Email.Reset.Title" xml:space="preserve">
+    <value>重置密码</value>
   </data>
   <data name="Email.Reset.Intro" xml:space="preserve">
     <value>有人请求重置你的 beeps 账号密码。请输入以下验证码设置新密码：</value>
@@ -642,6 +648,9 @@
   <data name="Email.Change.Subject" xml:space="preserve">
     <value>beeps 修改邮箱验证码：{0}</value>
   </data>
+  <data name="Email.Change.Title" xml:space="preserve">
+    <value>确认新邮箱</value>
+  </data>
   <data name="Email.Change.Intro" xml:space="preserve">
     <value>有人请求把这个邮箱设为 beeps 账号的邮箱。请输入以下验证码确认：</value>
   </data>
@@ -651,6 +660,9 @@
   <data name="Email.SignIn.Subject" xml:space="preserve">
     <value>beeps 登录验证码：{0}</value>
   </data>
+  <data name="Email.SignIn.Title" xml:space="preserve">
+    <value>完成登录</value>
+  </data>
   <data name="Email.SignIn.Intro" xml:space="preserve">
     <value>有人在多次登录失败后输入了你的 beeps 账号的正确密码。请输入以下验证码完成登录：</value>
   </data>
@@ -659,6 +671,9 @@
   </data>
   <data name="Email.MethodAdded.Subject" xml:space="preserve">
     <value>你的 beeps 账号添加了新的登录方式</value>
+  </data>
+  <data name="Email.MethodAdded.Title" xml:space="preserve">
+    <value>新的登录方式</value>
   </data>
   <data name="Email.MethodAdded.Intro" xml:space="preserve">
     <value>你的 beeps 账号刚刚添加了新的登录方式：{0}。</value>
@@ -671,6 +686,9 @@
   </data>
   <data name="Email.TwoFactorOn.Subject" xml:space="preserve">
     <value>你的 beeps 账号打开了两步验证</value>
+  </data>
+  <data name="Email.TwoFactorOn.Title" xml:space="preserve">
+    <value>两步验证已打开</value>
   </data>
   <data name="Email.TwoFactorOn.Intro" xml:space="preserve">
     <value>你的 beeps 账号刚刚打开了两步验证：之后用密码、Google 或 GitHub 登录时，还要用账号的一个通行密钥验证。</value>

@@ -37,16 +37,17 @@ public sealed class SignInMethodEmailHandlerTests
     }
 
     [Theory]
-    [InlineData("en", "Two-step verification is on", "turn it off")]
-    [InlineData("zh-Hans", "打开了两步验证", "关闭它")]
-    public void TellsOfTwoStepSignInSwitchedOn(string locale, string subject, string advice)
+    [InlineData("en", "Two-step verification is on", "Two-step verification is on", "turn it off")]
+    [InlineData("zh-Hans", "打开了两步验证", "两步验证已打开", "关闭它")]
+    public void TellsOfTwoStepSignInSwitchedOn(string locale, string subject, string title, string advice)
     {
         var email = CreateHandler().Compose(new SignInMethodEmail("tom@example.com", locale, null, TwoFactor: true));
 
         Assert.Contains(subject, email.Subject, StringComparison.Ordinal);
+        Assert.Contains($">{title}</h1>", email.HtmlBody, StringComparison.Ordinal);
         Assert.Contains(advice, email.TextBody, StringComparison.Ordinal);
         Assert.Contains(advice, email.HtmlBody, StringComparison.Ordinal);
     }
 
-    private SignInMethodEmailHandler CreateHandler() => new(sender, RealLocalizer.Create());
+    private SignInMethodEmailHandler CreateHandler() => new(sender, new EmailLayout(RealLocalizer.Create(), TestData.Site), RealLocalizer.Create());
 }

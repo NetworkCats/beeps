@@ -1,5 +1,3 @@
-using System.Globalization;
-using System.Net;
 using Beeps.Features.Email;
 using Beeps.Features.Shared;
 using Microsoft.Extensions.Localization;
@@ -18,7 +16,7 @@ public sealed record SignInMethodEmail(string To, string Locale, string? Provide
 }
 
 /// <summary>Sends the notice in the recipient's language.</summary>
-public sealed class SignInMethodEmailHandler(IEmailSender sender, IStringLocalizer<SharedResource> localizer) : IOutboxHandler
+public sealed class SignInMethodEmailHandler(IEmailSender sender, EmailLayout layout, IStringLocalizer<SharedResource> localizer) : IOutboxHandler
 {
     public string Type => SignInMethodEmail.MessageType;
 
@@ -33,21 +31,15 @@ public sealed class SignInMethodEmailHandler(IEmailSender sender, IStringLocaliz
     public EmailMessage Compose(SignInMethodEmail payload)
     {
         ArgumentNullException.ThrowIfNull(payload);
-        var previous = CultureInfo.CurrentUICulture;
-        CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(payload.Locale);
-        try
+        return layout.Compose(payload.To, payload.Locale, () =>
         {
+            var prefix = payload.TwoFactor ? "Email.TwoFactorOn" : "Email.MethodAdded";
             var method = payload.Provider ?? localizer["Email.MethodAdded.Passkey"].Value;
-            var subject = localizer[payload.TwoFactor ? "Email.TwoFactorOn.Subject" : "Email.MethodAdded.Subject"].Value;
-            var intro = payload.TwoFactor ? localizer["Email.TwoFactorOn.Intro"].Value : localizer["Email.MethodAdded.Intro", method].Value;
-            var ignore = localizer[payload.TwoFactor ? "Email.TwoFactorOn.Ignore" : "Email.MethodAdded.Ignore"].Value;
-            var text = $"{intro}\n\n{ignore}\n";
-            var html = $"<p>{WebUtility.HtmlEncode(intro)}</p><p>{WebUtility.HtmlEncode(ignore)}</p>";
-            return new EmailMessage(payload.To, subject, text, html);
-        }
-        finally
-        {
-            CultureInfo.CurrentUICulture = previous;
-        }
+            return new EmailContent(
+                Subject: localizer[$"{prefix}.Subject"].Value,
+                Title: localizer[$"{prefix}.Title"].Value,
+                Intro: localizer[$"{prefix}.Intro", method].Value,
+                Outro: localizer[$"{prefix}.Ignore"].Value);
+        });
     }
 }

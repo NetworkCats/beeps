@@ -624,6 +624,9 @@
   <data name="Email.Verify.Subject" xml:space="preserve">
     <value>{0} is your beeps verification code</value>
   </data>
+  <data name="Email.Verify.Title" xml:space="preserve">
+    <value>Verify your email</value>
+  </data>
   <data name="Email.Verify.Intro" xml:space="preserve">
     <value>Welcome to beeps! Enter this code to verify your email address:</value>
   </data>
@@ -632,6 +635,9 @@
   </data>
   <data name="Email.Reset.Subject" xml:space="preserve">
     <value>{0} is your beeps password reset code</value>
+  </data>
+  <data name="Email.Reset.Title" xml:space="preserve">
+    <value>Reset your password</value>
   </data>
   <data name="Email.Reset.Intro" xml:space="preserve">
     <value>Someone asked to reset the password of your beeps account. Enter this code to choose a new one:</value>
@@ -642,6 +648,9 @@
   <data name="Email.Change.Subject" xml:space="preserve">
     <value>{0} is your beeps code to change your email</value>
   </data>
+  <data name="Email.Change.Title" xml:space="preserve">
+    <value>Confirm your new email</value>
+  </data>
   <data name="Email.Change.Intro" xml:space="preserve">
     <value>Someone asked to use this address for their beeps account. Enter this code to confirm it:</value>
   </data>
@@ -651,6 +660,9 @@
   <data name="Email.SignIn.Subject" xml:space="preserve">
     <value>{0} is your beeps sign-in code</value>
   </data>
+  <data name="Email.SignIn.Title" xml:space="preserve">
+    <value>Finish signing in</value>
+  </data>
   <data name="Email.SignIn.Intro" xml:space="preserve">
     <value>Someone entered the right password for your beeps account, after many failed sign-ins. Enter this code to finish signing in:</value>
   </data>
@@ -659,6 +671,9 @@
   </data>
   <data name="Email.MethodAdded.Subject" xml:space="preserve">
     <value>A new way to sign in to your beeps account</value>
+  </data>
+  <data name="Email.MethodAdded.Title" xml:space="preserve">
+    <value>New way to sign in</value>
   </data>
   <data name="Email.MethodAdded.Intro" xml:space="preserve">
     <value>A new way to sign in was just added to your beeps account: {0}.</value>
@@ -671,6 +686,9 @@
   </data>
   <data name="Email.TwoFactorOn.Subject" xml:space="preserve">
     <value>Two-step verification is on for your beeps account</value>
+  </data>
+  <data name="Email.TwoFactorOn.Title" xml:space="preserve">
+    <value>Two-step verification is on</value>
   </data>
   <data name="Email.TwoFactorOn.Intro" xml:space="preserve">
     <value>Two-step verification was just switched on for your beeps account: signing in now asks for one of its passkeys after the password, Google or GitHub.</value>

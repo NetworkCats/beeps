@@ -38,22 +38,27 @@ public sealed class AccountCodeEmailHandlerTests
     }
 
     [Theory]
-    [InlineData("en", EmailCodePurpose.VerifyEmail, "is your beeps verification code", "expires in 10 minutes")]
-    [InlineData("zh-Hans", EmailCodePurpose.VerifyEmail, "beeps 验证码", "10 分钟内有效")]
-    [InlineData("en", EmailCodePurpose.ResetPassword, "password reset code", "expires in 10 minutes")]
-    [InlineData("zh-Hans", EmailCodePurpose.ResetPassword, "重置密码验证码", "10 分钟内有效")]
-    [InlineData("en", EmailCodePurpose.ChangeEmail, "code to change your email", "expires in 10 minutes")]
-    [InlineData("zh-Hans", EmailCodePurpose.ChangeEmail, "修改邮箱验证码", "10 分钟内有效")]
-    public void IsWrittenInTheRecipientsLanguage(string locale, EmailCodePurpose purpose, string subject, string expiry)
+    [InlineData("en", EmailCodePurpose.VerifyEmail, "is your beeps verification code", "Verify your email", "expires in 10 minutes")]
+    [InlineData("zh-Hans", EmailCodePurpose.VerifyEmail, "beeps 验证码", "验证你的邮箱", "10 分钟内有效")]
+    [InlineData("en", EmailCodePurpose.ResetPassword, "password reset code", "Reset your password", "expires in 10 minutes")]
+    [InlineData("zh-Hans", EmailCodePurpose.ResetPassword, "重置密码验证码", "重置密码", "10 分钟内有效")]
+    [InlineData("en", EmailCodePurpose.ChangeEmail, "code to change your email", "Confirm your new email", "expires in 10 minutes")]
+    [InlineData("zh-Hans", EmailCodePurpose.ChangeEmail, "修改邮箱验证码", "确认新邮箱", "10 分钟内有效")]
+    [InlineData("en", EmailCodePurpose.SignIn, "sign-in code", "Finish signing in", "expires in 10 minutes")]
+    [InlineData("zh-Hans", EmailCodePurpose.SignIn, "登录验证码", "完成登录", "10 分钟内有效")]
+    public void IsWrittenInTheRecipientsLanguage(string locale, EmailCodePurpose purpose, string subject, string title, string expiry)
     {
         var email = CreateHandler().Compose(new AccountCodeEmail("tom@example.com", locale, purpose, ""), "123456");
 
         Assert.Contains(subject, email.Subject, StringComparison.Ordinal);
         Assert.Contains(expiry, email.TextBody, StringComparison.Ordinal);
-        Assert.Contains("<strong>123456</strong>", email.HtmlBody, StringComparison.Ordinal);
+        Assert.Contains($"<html lang=\"{locale}\">", email.HtmlBody, StringComparison.Ordinal);
+        Assert.Contains($">{title}</h1>", email.HtmlBody, StringComparison.Ordinal);
+        Assert.Contains(">123456</div>", email.HtmlBody, StringComparison.Ordinal);
+        Assert.Contains(expiry, email.HtmlBody, StringComparison.Ordinal);
     }
 
     private string Protect(string code) => dataProtection.CreateProtector(AccountCodeEmail.ProtectorPurpose).Protect(code);
 
-    private AccountCodeEmailHandler CreateHandler() => new(sender, dataProtection, RealLocalizer.Create());
+    private AccountCodeEmailHandler CreateHandler() => new(sender, dataProtection, new EmailLayout(RealLocalizer.Create(), TestData.Site), RealLocalizer.Create());
 }

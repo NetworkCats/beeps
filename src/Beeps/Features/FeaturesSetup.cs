@@ -3,6 +3,7 @@ using Beeps.Features.Admin;
 using Beeps.Features.Agents;
 using Beeps.Features.Avatars;
 using Beeps.Features.Beeps;
+using Beeps.Features.Email;
 using Beeps.Features.Live;
 using Beeps.Features.Media;
 using Beeps.Features.Moderation;
@@ -53,6 +54,7 @@ public static class FeaturesSetup
         services.AddScoped<AdminAccess>();
         services.AddScoped<ReviewService>();
         services.AddScoped<SystemService>();
+        services.AddSingleton<EmailLayout>();
         services.AddScoped<IOutboxHandler, AccountCodeEmailHandler>();
         services.AddScoped<IOutboxHandler, SignInMethodEmailHandler>();
         services.AddScoped<IOutboxHandler, BeepNotificationsHandler>();

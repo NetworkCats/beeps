@@ -1,5 +1,3 @@
-using System.Globalization;
-using System.Net;
 using System.Text.Json.Serialization;
 using Beeps.Features.Email;
 using Beeps.Features.Shared;
@@ -28,6 +26,7 @@ internal sealed partial class AccountsJsonContext : JsonSerializerContext;
 public sealed class AccountCodeEmailHandler(
     IEmailSender sender,
     IDataProtectionProvider dataProtection,
+    EmailLayout layout,
     IStringLocalizer<SharedResource> localizer) : IOutboxHandler
 {
     private readonly IDataProtector protector = dataProtection.CreateProtector(AccountCodeEmail.ProtectorPurpose);
@@ -46,9 +45,7 @@ public sealed class AccountCodeEmailHandler(
     public EmailMessage Compose(AccountCodeEmail payload, string code)
     {
         ArgumentNullException.ThrowIfNull(payload);
-        var previous = CultureInfo.CurrentUICulture;
-        CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(payload.Locale);
-        try
+        return layout.Compose(payload.To, payload.Locale, () =>
         {
             var prefix = payload.Purpose switch
             {
@@ -58,21 +55,13 @@ public sealed class AccountCodeEmailHandler(
                 EmailCodePurpose.SignIn => "Email.SignIn",
                 _ => throw new ArgumentOutOfRangeException(nameof(payload), payload.Purpose, null),
             };
-            var subject = localizer[$"{prefix}.Subject", code].Value;
-            var intro = localizer[$"{prefix}.Intro"].Value;
-            var expiry = localizer["Email.Code.Expiry", (int)AccountService.CodeLifetime.TotalMinutes].Value;
-            var ignore = localizer[$"{prefix}.Ignore"].Value;
-            var text = $"{intro}\n\n{code}\n\n{expiry}\n\n{ignore}\n";
-            var html =
-                $"<p>{WebUtility.HtmlEncode(intro)}</p>" +
-                $"<p><strong>{WebUtility.HtmlEncode(code)}</strong></p>" +
-                $"<p>{WebUtility.HtmlEncode(expiry)}</p>" +
-                $"<p>{WebUtility.HtmlEncode(ignore)}</p>";
-            return new EmailMessage(payload.To, subject, text, html);
-        }
-        finally
-        {
-            CultureInfo.CurrentUICulture = previous;
-        }
+            return new EmailContent(
+                Subject: localizer[$"{prefix}.Subject", code].Value,
+                Title: localizer[$"{prefix}.Title"].Value,
+                Intro: localizer[$"{prefix}.Intro"].Value,
+                Outro: localizer[$"{prefix}.Ignore"].Value,
+                Code: code,
+                CodeNote: localizer["Email.Code.Expiry", (int)AccountService.CodeLifetime.TotalMinutes].Value);
+        });
     }
 }
