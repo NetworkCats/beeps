@@ -10,7 +10,10 @@ public sealed class RateLimitPolicyAttribute(string policy) : Attribute
     public string Policy { get; } = policy;
 }
 
-/// <summary>Exempts an endpoint from rate limiting. Only for static assets, which the CDN serves anyway.</summary>
+/// <summary>
+/// Exempts an endpoint from rate limiting. Only for static assets, which the CDN serves anyway, and the health check,
+/// which nginx does not pass on.
+/// </summary>
 [AttributeUsage(AttributeTargets.Class | AttributeTargets.Method)]
 public sealed class SkipRateLimitAttribute : Attribute;
 

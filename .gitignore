@@ -17,3 +17,10 @@ dev/certs/
 
 # OS
 .DS_Store
+
+# Terraform (deploy/terraform): local state and plans; .terraform.lock.hcl is committed
+.terraform/
+*.tfstate
+*.tfstate.*
+tfplan
+deploy/terraform/backend.hcl

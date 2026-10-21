@@ -1,0 +1,99 @@
+#!/usr/bin/env python3
+"""Keeps UFW and nginx in step with Cloudflare's published addresses (PLAN 9.2), from one list fetched once.
+
+UFW lets only these addresses reach port 443; nginx believes CF-Connecting-IP only from them (set_real_ip_from).
+Run daily by beeps-cloudflare-ips.timer, and by Ansible before nginx first starts. A failed or implausible fetch
+changes nothing: the rules already in place stay.
+"""
+
+import ipaddress
+import os
+import re
+import subprocess
+import sys
+import tempfile
+import urllib.request
+
+# IPv4 only: the server has no IPv6 (deploy/terraform), so Cloudflare reaches it over IPv4 alone.
+SOURCES = ("https://www.cloudflare.com/ips-v4",)
+REALIP_CONF = "/srv/beeps/nginx/cloudflare-realip.conf"
+COMPOSE = ["docker", "compose", "--project-directory", "/srv/beeps", "-f", "/srv/beeps/compose.prod.yml",
+           "--env-file", "/srv/beeps/release.env"]
+NGINX_CONF = "/etc/nginx/beeps/nginx.conf"
+PORT = "443"
+COMMENT = "cloudflare"
+# How `ufw show added` prints the rules update_ufw adds.
+RULE = re.compile(rf"^ufw allow from (\S+) to any port {PORT} proto tcp comment '{COMMENT}'$")
+
+
+def fetch():
+    networks = set()
+    for url in SOURCES:
+        request = urllib.request.Request(url, headers={"User-Agent": "beeps-cloudflare-ips"})
+        with urllib.request.urlopen(request, timeout=30) as response:
+            lines = [line.strip() for line in response.read().decode("ascii").splitlines() if line.strip()]
+        if not lines:
+            sys.exit(f"{url} listed no addresses; nothing changed")
+        networks.update(ipaddress.ip_network(line) for line in lines)
+    # Cloudflare has published about 15 IPv4 ranges for years; far fewer means a broken answer.
+    if len(networks) < 5:
+        sys.exit(f"only {len(networks)} ranges listed; nothing changed")
+    return sorted(networks, key=lambda n: (int(n.network_address), n.prefixlen))
+
+
+def ufw(*args):
+    return subprocess.run(["ufw", *args], check=True, capture_output=True, text=True).stdout
+
+
+def update_ufw(networks):
+    wanted = {str(n) for n in networks}
+    present = set()
+    for line in ufw("show", "added").splitlines():
+        match = RULE.match(line.strip())
+        if match:
+            present.add(match.group(1))
+    # New ranges first, so there is never a moment with fewer allowed than either list.
+    for network in sorted(wanted - present):
+        ufw("allow", "proto", "tcp", "from", network, "to", "any", "port", PORT, "comment", COMMENT)
+    for network in sorted(present - wanted):
+        ufw("delete", "allow", "proto", "tcp", "from", network, "to", "any", "port", PORT)
+    return len(wanted - present), len(present - wanted)
+
+
+def update_nginx(networks):
+    text = "# Written by beeps-cloudflare-ips: Cloudflare's addresses, the only ones whose CF-Connecting-IP is believed.\n"
+    text += "".join(f"set_real_ip_from {n};\n" for n in networks)
+    try:
+        with open(REALIP_CONF, encoding="ascii") as current:
+            if current.read() == text:
+                return False
+    except FileNotFoundError:
+        pass
+    directory = os.path.dirname(REALIP_CONF)
+    with tempfile.NamedTemporaryFile("w", dir=directory, delete=False, encoding="ascii") as new:
+        new.write(text)
+    os.chmod(new.name, 0o644)
+    os.replace(new.name, REALIP_CONF)
+    return True
+
+
+def reload_nginx():
+    running = subprocess.run(["docker", "ps", "-q", "--filter", "name=^beeps-nginx-1$"],
+                             check=True, capture_output=True, text=True).stdout.strip()
+    if not running:
+        return
+    subprocess.run([*COMPOSE, "exec", "-T", "nginx", "nginx", "-t", "-q", "-c", NGINX_CONF], check=True)
+    subprocess.run([*COMPOSE, "exec", "-T", "nginx", "nginx", "-s", "reload", "-c", NGINX_CONF], check=True)
+
+
+def main():
+    networks = fetch()
+    added, removed = update_ufw(networks)
+    changed = update_nginx(networks)
+    if changed:
+        reload_nginx()
+    print(f"{len(networks)} Cloudflare ranges: UFW +{added} -{removed}, nginx {'updated' if changed else 'unchanged'}")
+
+
+if __name__ == "__main__":
+    main()

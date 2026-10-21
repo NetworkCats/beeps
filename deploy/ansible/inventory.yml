@@ -1,0 +1,11 @@
+# The one production server (deploy/terraform creates it). Its address comes in DEPLOY_HOST: the deploy workflow
+# reads it from `terraform output ipv4_address`; run by hand, export it yourself. Its host key is
+# neither checked nor remembered, so a rebuilt server needs nothing updated; the cost, accepted, is that whoever could
+# intercept the connection would be sent what the playbooks send.
+beeps:
+  hosts:
+    production:
+      ansible_host: "{{ lookup('ansible.builtin.env', 'DEPLOY_HOST') }}"
+      ansible_user: deploy
+      ansible_port: 22
+      ansible_ssh_extra_args: -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR

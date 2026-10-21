@@ -65,6 +65,12 @@ make check   # npm run build、npm test、dotnet build、dotnet test，和 CI �
 
 测试不依赖任何外部服务：数据库、Redis 等都通过接口 mock。
 
+## 线上部署
+
+推送版本 tag（`git tag v1.2.3 && git push origin v1.2.3`，提交必须已在 `main` 上）后 GitHub Actions 自动部署（`.github/workflows/deploy.yml`）；推送到 `main` 只跑 CI。部署时先跑 CI，再构建镜像推到 GHCR，最后用 Ansible 在服务器上蓝绿发布，不中断服务。服务器是 Vultr 洛杉矶的一台 High Performance AMD 2 核 2 GB（Debian 13），由 Terraform 创建（`deploy/terraform/`，state 在 R2；第一个版本 tag 部署时自动创建，之后的改动手动运行 Infrastructure workflow）；Cloudflare 在后台手动配置。线上配置全部放在 GitHub 的 `production` 环境：机密是 secrets，其余是 variables。第一次上线的步骤、全部配置项、回滚和备份恢复见 [`docs/deployment.md`](docs/deployment.md)，站长的手动步骤见 [`docs/launch-checklist.md`](docs/launch-checklist.md)。
+
+迁移在旧版本仍在运行时执行，所以必须与上一个版本兼容：先加列、加表，等下一次发布再删除。
+
 ## 新增数据库迁移
 
 ```sh

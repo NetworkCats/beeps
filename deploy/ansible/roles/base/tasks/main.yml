@@ -1,0 +1,174 @@
+# An empty list would lock everyone out: exclusive replaces the keys below.
+- name: Check the login keys are given
+  ansible.builtin.assert:
+    that:
+      - beeps_ssh_public_keys | trim | length > 0
+    fail_msg: SSH_PUBLIC_KEYS is empty
+
+# On a new server, unattended-upgrades may hold the lock for a while after boot.
+- name: Upgrade the installed packages
+  ansible.builtin.apt:
+    lock_timeout: 600
+    update_cache: true
+    cache_valid_time: 3600
+    upgrade: dist
+
+- name: Install the base packages
+  ansible.builtin.apt:
+    name:
+      - ca-certificates
+      - curl
+      - gnupg
+      - python3
+      # For deb822_repository (roles/docker).
+      - python3-debian
+      - systemd-timesyncd
+      - ufw
+      - unattended-upgrades
+    state: present
+
+- name: Use UTC
+  community.general.timezone:
+    name: Etc/UTC
+
+- name: Install security updates automatically, without rebooting
+  ansible.builtin.copy:
+    dest: /etc/apt/apt.conf.d/20auto-upgrades
+    content: |
+      APT::Periodic::Update-Package-Lists "1";
+      APT::Periodic::Unattended-Upgrade "1";
+      APT::Periodic::AutocleanInterval "7";
+    mode: "0644"
+
+- name: Create the journald drop-in directory
+  ansible.builtin.file:
+    path: /etc/systemd/journald.conf.d
+    state: directory
+    mode: "0755"
+
+- name: Keep the journal small
+  ansible.builtin.copy:
+    dest: /etc/systemd/journald.conf.d/50-beeps.conf
+    content: |
+      [Journal]
+      SystemMaxUse=200M
+    mode: "0644"
+  notify: Restart journald
+
+- name: Check for the swap file
+  tags: [kernel]
+  ansible.builtin.stat:
+    path: /swapfile
+  register: base_swapfile
+
+# 2 GB of memory holds everything, with two app instances for a minute during each deploy; swap absorbs the peaks.
+- name: Create the swap file
+  tags: [kernel]
+  ansible.builtin.command: "{{ item }}"
+  loop:
+    - fallocate -l {{ beeps_swap_size_mb }}M /swapfile
+    - chmod 0600 /swapfile
+    - mkswap /swapfile
+  when: not base_swapfile.stat.exists
+  changed_when: true
+
+- name: Use the swap file at boot
+  tags: [kernel]
+  ansible.posix.mount:
+    src: /swapfile
+    path: none
+    fstype: swap
+    opts: sw
+    state: present
+
+- name: Use the swap file now
+  tags: [kernel]
+  ansible.builtin.command: swapon /swapfile
+  when: ansible_facts.swaptotal_mb == 0
+  changed_when: true
+
+# Loaded before the settings that need them: BBR, and connection tracking (UFW and Docker use it).
+- name: Load the kernel modules at boot
+  tags: [kernel]
+  ansible.builtin.copy:
+    dest: /etc/modules-load.d/beeps.conf
+    content: |
+      tcp_bbr
+      nf_conntrack
+    mode: "0644"
+
+- name: Load the kernel modules now
+  tags: [kernel]
+  community.general.modprobe:
+    name: "{{ item }}"
+    state: present
+  loop:
+    - tcp_bbr
+    - nf_conntrack
+
+- name: Tune the kernel and the network
+  tags: [kernel]
+  ansible.builtin.copy:
+    src: sysctl.conf
+    dest: /etc/sysctl.d/60-beeps.conf
+    mode: "0644"
+  notify: Apply the kernel settings
+
+# Valkey and PostgreSQL both warn against transparent huge pages always on (latency spikes, memory use); madvise
+# leaves them to programs that ask.
+- name: Use transparent huge pages only where asked for
+  tags: [kernel]
+  ansible.builtin.copy:
+    dest: /etc/tmpfiles.d/beeps-thp.conf
+    content: |
+      w /sys/kernel/mm/transparent_hugepage/enabled - - - - madvise
+      w /sys/kernel/mm/transparent_hugepage/defrag - - - - defer+madvise
+    mode: "0644"
+  notify: Apply transparent huge pages
+
+- name: Raise the open file limits
+  ansible.builtin.copy:
+    dest: /etc/security/limits.d/60-beeps.conf
+    content: |
+      *    soft nofile 1048576
+      *    hard nofile 1048576
+      root soft nofile 1048576
+      root hard nofile 1048576
+    mode: "0644"
+
+- name: Create the systemd drop-in directory
+  ansible.builtin.file:
+    path: /etc/systemd/system.conf.d
+    state: directory
+    mode: "0755"
+
+- name: Raise the open file limit for services
+  ansible.builtin.copy:
+    dest: /etc/systemd/system.conf.d/60-beeps.conf
+    content: |
+      [Manager]
+      DefaultLimitNOFILE=1048576
+    mode: "0644"
+  notify: Reload systemd
+
+- name: Let only these keys log in as deploy
+  ansible.posix.authorized_key:
+    user: deploy
+    key: "{{ beeps_ssh_public_keys }}"
+    exclusive: true
+
+# Read before cloud-init's 50-cloud-init.conf: for sshd the first value given wins.
+- name: Allow only key logins, and not as root
+  ansible.builtin.copy:
+    dest: /etc/ssh/sshd_config.d/10-beeps.conf
+    content: |
+      PermitRootLogin no
+      PasswordAuthentication no
+      KbdInteractiveAuthentication no
+      PubkeyAuthentication yes
+      AllowUsers deploy
+      MaxAuthTries 3
+      LoginGraceTime 30
+      X11Forwarding no
+    mode: "0644"
+  notify: Check the ssh configuration

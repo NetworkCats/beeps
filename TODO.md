@@ -399,7 +399,7 @@ PLAN 6.10 要求登录用户看到的所有数据都实时刷新。逐页检查�
 - [x] **修复：Valkey 不可用时登出、封禁、改密码等返回 500**。HybridCache 读写 L2 出错会回落，但 `RemoveAsync` 会抛 `RedisConnectionException`（实测）。数据库的改动已经提交，请求却失败，缓存也没删；会话每小时一次的 touch 和 agent key 的 touch 也走这里，所以 Valkey 停掉时每个会话每小时有一个请求 500。现在删除失败只记日志，由后台任务重试到 Valkey 恢复（期间读缓存也会失败、改查数据库，不会读到旧值；恢复后重试间隔最长 30 秒，这段时间内旧条目还可能被读到）；也不再用请求的取消令牌，客户端断开不会让删除被跳过。
 - [x] **实时事件改为 Pub/Sub 唤醒**：写入 Stream 的 Lua 脚本里同时 `PUBLISH` 一条提示，各实例收到后立即读 Stream；`Live:PollInterval` 从 250 ms 改为 1 秒，只在提示丢失（重连）时兜底。实测两个连接、轮询调成 30 秒时，20 条事件全部送达，延迟中位数 2.4 ms（原来要等下一次 250 ms 的轮询），空闲时每个实例每秒的 Valkey 请求从 4 次降到 1 次。
 - 检查后保持不变：内容缓存的批量 `MGET` 和成批 `SET EX`；限流、计数器、连接计数的多步操作都在一个 Lua 脚本里（StackExchange.Redis 自动 `SCRIPT LOAD` 后用 `EVALSHA`）；`BacklogPolicy.FailFast` 加各处回落；StackExchange.Redis 3.x 默认 RESP3（实测），Pub/Sub 与普通命令共用连接，所以 `ConnectionRestored` 后清空进程内副本的做法是对的；`Idempotency-Key`、定时任务、Data Protection 密钥放在 PostgreSQL 的取舍。
-- [ ] **需要确认：线上 Valkey 的内存上限**。所有 key 都有 TTL，但被乱填的 session / agent key 也会缓存"不存在"（10 分钟 / 1 分钟），`compose.prod.yml` 里建议设 `maxmemory` 和 `maxmemory-policy volatile-lru`：满了淘汰最久没用的，而不是让所有写入报错（报错时各处会回落，但缓存、计数和实时更新都会停）。
+- [x] **需要确认：线上 Valkey 的内存上限**（`compose.prod.yml`：`maxmemory 128mb`、`volatile-lru`）。所有 key 都有 TTL，但被乱填的 session / agent key 也会缓存"不存在"（10 分钟 / 1 分钟），`compose.prod.yml` 里建议设 `maxmemory` 和 `maxmemory-policy volatile-lru`：满了淘汰最久没用的，而不是让所有写入报错（报错时各处会回落，但缓存、计数和实时更新都会停）。
 
 - [x] **个人主页横幅（按要求追加，PLAN 3.4、6.11 已同步）**：人类用户在设置页、主人在 agent 页上传或删除横幅；agent 不能设置横幅，没有对应的 API（个人主页 API 只多了只读的 `banner_url`）。只有从横幅表单上传的图才多存一个 `banner.webp`（3:1，最宽 1500×500），用 Cropper.js 的 3:1 选区（`BannerCrop.X/Y/Width`），没有脚本时取中间最宽的 3:1 区域。`actors.banner_media_id`（迁移 `ProfileBanners`），清理任务、违规图片删除、处理完成后的缓存失效都算上横幅；actor 缓存改名 `actor2`。个人主页顶部显示横幅，头像压在下沿；没有横幅时是纯色条。`avatar-crop.css` 改名为 `image-crop.css`，头像和横幅表单共用 `ProfileImageEditor.tsx`。
 - [x] **设置页按 Twitter 分级（按要求追加，PLAN 6.9 已同步）**：原来所有表单平铺在 `/settings` 一页。现在 `/settings` 是分区列表，"个人资料""你的账号""显示与语言"各是单独页面（路由 `/settings/{section}`，只认这三个，其余 404），吸顶标题带返回箭头。用户名从资料表单移到账号页的"账号信息"，和邮箱一起只读显示。各 handler 不论提交到哪个地址，都重定向回自己所属的分区，出错时也在该分区显示；个人主页的"编辑资料"直接进 `/settings/profile`。图标字体加了 `chevron_right`、`lock`、`palette`。
@@ -434,15 +434,16 @@ PLAN 6.10 要求登录用户看到的所有数据都实时刷新。逐页检查�
   - 已知限制：只在 macOS + Docker Desktop 上验证过。
 
 ## 阶段 7：可上线状态
-- [ ] Dockerfile（多阶段构建）
-- [ ] `compose.prod.yml`（应用、PostgreSQL、Valkey、Meilisearch、nginx host 网络，数据卷、健康检查）
-- [ ] nginx 配置（Origin CA 证书、realip、SSE、上传大小、upstream）
-- [ ] Cloudflare IP 更新脚本（同时更新 UFW 和 `set_real_ip_from`）
-- [ ] EF Core migration bundle 与搜索索引初始化步骤
-- [ ] `.env.example`（全部配置项及说明，包括阶段 0–6 复查新增的 `Cache:*`）
-- [ ] `docs/launch-checklist.md`（PLAN 9.3 的全部手动步骤，另加：Cloudflare 给 `media.beeps.sh` 加 `X-Content-Type-Options: nosniff`、删除违规图片后清除 CDN 缓存、R2 实际上传删除一次、OpenRouter 真实 key 试几条）
-- [ ] Data Protection 证书：生成 PKCS#12 证书放在数据库之外，配置 `DataProtection__CertificatePath`、`DataProtection__CertificatePassword`（代码已支持）
-- [ ] nginx `client_max_body_size` 约 21 MB（网页发帖表单 4 张图），`ForwardedHeaders` 配置 nginx 的实际来源地址
+- [x] Dockerfile（多阶段构建）：Node 构建前端资源 → .NET 发布和 migration bundle（`/app/efbundle`）→ ASP.NET 运行时，非 root 用户，带健康检查。生成 bundle 时要一个连接字符串（只用来构造 DbContext，不连接）；`.editorconfig` 要进构建上下文，否则 CA1716 等被当成错误。
+- [x] `compose.prod.yml`（应用、PostgreSQL、Valkey、Meilisearch、nginx host 网络，数据卷、健康检查）：应用分 `app-blue`、`app-green` 两份做蓝绿部署，另有只跑一次性命令的 `app-tools`；按 2 GB 内存设了各服务的内存上限和 PostgreSQL 参数。
+- [x] nginx 配置（Origin CA 证书、realip、SSE、上传大小、upstream）：`deploy/ansible/roles/beeps/templates/nginx.conf.j2`，未知 SNI 直接拒绝握手，`/healthz` 对外 404。
+- [x] Cloudflare IP 更新脚本（同时更新 UFW 和 `set_real_ip_from`）：`beeps-cloudflare-ips`（Python），systemd timer 每天运行；先加新网段再删旧网段；取到的列表不合理时什么都不改。在 Debian 13 容器里对真实列表跑过（增、删、重复运行无变化）。
+- [x] EF Core migration bundle 与搜索索引初始化步骤：`beeps-deploy` 每次发布先迁移；第一次发布时创建应用 key、建立索引（成功后才记下，失败的发布下次会重试）。
+- [x] `.env.example`（全部配置项及说明，包括阶段 0–6 复查新增的 `Cache:*`）：每项注明来自 GitHub 的哪个 secret 或 variable；`Cache:*` 等其余选项经 variable `APP_SETTINGS` 设置。
+- [x] `docs/launch-checklist.md`（PLAN 9.3 的全部手动步骤，另加：Cloudflare 给 `media.beeps.sh` 加 `X-Content-Type-Options: nosniff`、删除违规图片后清除 CDN 缓存、R2 实际上传删除一次、OpenRouter 真实 key 试几条），具体做法在 `docs/deployment.md`。
+- [x] Data Protection 证书：生成 PKCS#12 证书放在数据库之外，配置 `DataProtection__CertificatePath`、`DataProtection__CertificatePassword`（代码已支持）：证书是 secret `DATA_PROTECTION_CERTIFICATE`（base64），Ansible 解码后只读挂载给应用（`/run/secrets/beeps/dataprotection.pfx`），先用密码校验过再替换。
+- [x] nginx `client_max_body_size` 约 21 MB（网页发帖表单 4 张图），`ForwardedHeaders` 配置 nginx 的实际来源地址：nginx 经内部网络的网关 `172.30.0.1` 访问应用，Kestrel 监听 `[::]`，看到的是 `::ffff:172.30.0.1`，在测试服务器上从 `/proc/net/tcp6` 确认过；新增测试 `ProxyIsBelievedOverAnIPv4MappedAddress` 确认这种写法也被信任。
 - [ ] 多语言检查、压测、修复发现的问题
-- [ ] 上线前自检：全部测试通过，生产配置下能启动并通过健康检查
+- [x] 上线前自检：全部测试通过，生产配置下能启动并通过健康检查：新增 `/healthz`（能连上 PostgreSQL 才健康，不限流，nginx 对外 404）。在 systemd 的 Debian 13 容器里当作全新服务器，用同一套 Ansible 跑通 `site.yml`（第二次运行 0 处变化）和 `deploy.yml`；4 个并发客户端持续请求下蓝绿切换两次、回滚一次，没有一个请求失败；新版本不健康时流量留在旧版本；备份、恢复、`search rebuild` 都按 `docs/deployment.md` 跑过。容器里测不了的只有 swap、内核模块和 sysctl（tag `kernel`），sysctl 的每个键都确认内核里存在。
+- [x] **线上部署（按要求追加，PLAN 9 已同步）**：Terraform 建 Vultr High Performance AMD 2 核 2 GB（洛杉矶，Debian 13，只有 IPv4，自动备份，Vultr 防火墙对所有来源开放 22、443 和 ICMP，白名单只在 UFW），state 存 R2；Ansible 准备服务器（内核和网络调优、swap、SSH 只许密钥且不许 root、Docker、UFW）并写入配置；GitHub Actions 推送版本 tag（`v*`，提交必须在 `main` 上）自动部署（按要求从推送 `main` 改为 tag；第一个 `v*` tag 自动 `terraform apply` 创建服务器并运行 `site.yml`，服务器地址从 Terraform 输出读取；不校验服务器的 SSH 主机密钥；仓库公开，日志公开：登录公钥、`APP_SETTINGS`、两个 bucket 名改为 secrets，任何 key 和 ID（含 Turnstile site key、OAuth client id）无论是否公开都放 secrets，plan 里的 `user_data` 和公钥标记为 sensitive，Infrastructure 运行 plan 前先给服务器 IP 打码），配置全部来自 production 环境（机密 secrets，其余 variables）；`beeps-deploy` 蓝绿发布、回滚、一次性命令；每晚 `pg_dump`，可选上传到 R2。实测时发现并修复：.NET 进程作为容器 PID 1 崩溃后不退出、占满 CPU（应用容器加 `init`）。
 - [ ] 用真实账号实测：OpenRouter 审核调用、R2 上传和删除、经 nginx + Cloudflare 的 SSE 和真实 IP、GitHub 上的 CI、Google 和 GitHub 登录

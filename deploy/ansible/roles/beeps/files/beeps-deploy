@@ -1,0 +1,245 @@
+#!/usr/bin/env bash
+# Blue-green deploys of beeps on this server (compose.prod.yml in /srv/beeps). Run as root; Ansible runs `deploy` for
+# every version tag (.github/workflows/deploy.yml).
+#
+#   beeps-deploy deploy <image>   migrate, start the idle colour with <image>, switch nginx to it once healthy, stop the other
+#   beeps-deploy rollback         start the stopped colour again with the release it last ran, and switch back to it
+#   beeps-deploy status           which colour takes traffic, and what each runs
+#   beeps-deploy run <args…>      a one-off command with the live release, e.g. `beeps-deploy run search rebuild`
+#
+# A release's migrations run while the previous release still takes traffic, so each one must keep working with the
+# schema the next one migrates to (add first, remove a release later).
+set -euo pipefail
+
+readonly ROOT=/srv/beeps
+readonly STATE="$ROOT/state"
+readonly RELEASE="$ROOT/release.env"
+readonly UPSTREAM="$ROOT/nginx/upstream.conf"
+readonly HEALTH_TIMEOUT=${BEEPS_HEALTH_TIMEOUT:-180}
+# Requests already sent to the old colour finish before it stops; streams are told to reconnect as it stops.
+readonly DRAIN_SECONDS=${BEEPS_DRAIN_SECONDS:-15}
+
+log() { printf '%s beeps-deploy: %s\n' "$(date -u +%FT%TZ)" "$*" >&2; }
+die() { log "$*"; exit 1; }
+
+compose() {
+    docker compose --project-directory "$ROOT" -f "$ROOT/compose.prod.yml" --env-file "$RELEASE" "$@"
+}
+
+address_of() {
+    case "$1" in
+        blue) echo 172.30.0.11 ;;
+        green) echo 172.30.0.12 ;;
+        *) die "no such colour: $1" ;;
+    esac
+}
+
+other_than() { [[ "$1" == blue ]] && echo green || echo blue; }
+
+active_colour() { cat "$STATE/active-colour" 2>/dev/null || true; }
+
+image_of() {
+    local key="BEEPS_${1^^}_IMAGE"
+    sed -n "s/^$key=//p" "$RELEASE" | tail -n 1
+}
+
+set_image() {
+    local key="BEEPS_${1^^}_IMAGE" tmp
+    tmp=$(mktemp "$RELEASE.XXXXXX")
+    grep -v "^$key=" "$RELEASE" > "$tmp" || true
+    printf '%s=%s\n' "$key" "$2" >> "$tmp"
+    chmod 0600 "$tmp"
+    mv "$tmp" "$RELEASE"
+}
+
+# A one-off container of the given image on the beeps network, with the app's configuration.
+tools() {
+    local image=$1
+    shift
+    BEEPS_TOOLS_IMAGE="$image" compose --profile tools run --rm --no-deps -T "$@"
+}
+
+# The same with the Meilisearch master key, for the search commands that create indexes, change settings and make
+# keys (`search create-key`, `search rebuild`). The app's own key may only search and write documents.
+admin_tools() {
+    local image=$1 master
+    shift
+    master=$(sed -n "s/^MEILI_MASTER_KEY='\\(.*\\)'$/\\1/p" "$ROOT/meilisearch.env")
+    [[ -n "$master" ]] || die "MEILI_MASTER_KEY is missing from meilisearch.env"
+    # ApiKey too: the app will not start without one, and search.env may not hold it yet.
+    tools "$image" -e "Search__ApiKey=$master" -e "Search__AdminKey=$master" app-tools "$@"
+}
+
+ensure_services() {
+    compose up -d --wait postgres valkey meilisearch
+}
+
+# The app searches with a key that can only search and write documents (PLAN 6.18), created once with the master key.
+ensure_search_key() {
+    local image=$1 output key
+    if grep -q '^Search__ApiKey=' "$ROOT/search.env" 2>/dev/null; then
+        return
+    fi
+    log "creating the app's Meilisearch key"
+    output=$(admin_tools "$image" search create-key)
+    key=$(printf '%s\n' "$output" | sed -n 's/^Search__ApiKey=//p' | tail -n 1)
+    [[ "$key" =~ ^[A-Za-z0-9_-]+$ ]] || die "search create-key printed no key"
+    (umask 077 && printf "Search__ApiKey='%s'\n" "$key" > "$ROOT/search.env.tmp")
+    mv "$ROOT/search.env.tmp" "$ROOT/search.env"
+}
+
+# The indexes are filled from PostgreSQL once, on the first deploy; the app keeps them in step from then on. Marked
+# only once it succeeded, so a deploy that failed before tries again.
+ensure_search_indexes() {
+    local image=$1
+    [[ -f "$STATE/search-indexes-filled" ]] && return
+    log "filling the search indexes"
+    admin_tools "$image" search rebuild
+    touch "$STATE/search-indexes-filled"
+}
+
+wait_healthy() {
+    local colour=$1 address deadline
+    address=$(address_of "$colour")
+    deadline=$((SECONDS + HEALTH_TIMEOUT))
+    log "waiting for app-$colour at $address to be healthy"
+    until curl -fsS --max-time 5 "http://$address:8080/healthz" > /dev/null 2>&1; do
+        if ((SECONDS >= deadline)); then
+            compose logs --tail 100 "app-$colour" >&2 || true
+            return 1
+        fi
+        if [[ "$(docker inspect -f '{{.State.Running}}' "beeps-app-$colour-1" 2>/dev/null)" != true ]]; then
+            compose logs --tail 100 "app-$colour" >&2 || true
+            return 1
+        fi
+        sleep 2
+    done
+}
+
+# Points nginx at a colour; nginx's reload lets requests already under way finish where they are.
+switch_to() {
+    local colour=$1 previous
+    previous=$(mktemp "$UPSTREAM.XXXXXX")
+    cp -p "$UPSTREAM" "$previous" 2>/dev/null || true
+    cat > "$UPSTREAM.new" <<EOF
+# Written by beeps-deploy: the colour taking traffic.
+upstream beeps_app {
+    server $(address_of "$colour"):8080;
+    keepalive 32;
+}
+EOF
+    chmod 0644 "$UPSTREAM.new"
+    mv "$UPSTREAM.new" "$UPSTREAM"
+    compose up -d --wait nginx
+    if ! compose exec -T nginx nginx -t -q -c /etc/nginx/beeps/nginx.conf; then
+        mv "$previous" "$UPSTREAM"
+        die "nginx refused the new upstream; kept the previous one"
+    fi
+    rm -f "$previous"
+    compose exec -T nginx nginx -s reload -c /etc/nginx/beeps/nginx.conf
+    echo "$colour" > "$STATE/active-colour"
+    log "nginx now sends traffic to app-$colour"
+}
+
+retire() {
+    local colour=$1
+    log "draining app-$colour for ${DRAIN_SECONDS}s"
+    sleep "$DRAIN_SECONDS"
+    compose stop "app-$colour"
+}
+
+# Starts a colour and waits for it; on failure stops it again, and traffic stays where it was.
+start_colour() {
+    local colour=$1
+    compose up -d --no-deps --force-recreate "app-$colour" || return 1
+    if ! wait_healthy "$colour"; then
+        compose stop "app-$colour" || true
+        return 1
+    fi
+}
+
+deploy() {
+    local image=$1 active target previous
+    [[ "$image" =~ ^[a-z0-9./_:@-]+$ ]] || die "not an image reference: $image"
+    active=$(active_colour)
+    if [[ -n "$active" ]]; then target=$(other_than "$active"); else target=blue; fi
+
+    log "deploying $image as app-$target (live: ${active:-none})"
+    # By digest from CI, so an image already here is the very one asked for.
+    docker image inspect "$image" > /dev/null 2>&1 || docker pull --quiet "$image" > /dev/null
+    ensure_services
+    ensure_search_key "$image"
+
+    log "applying database migrations"
+    tools "$image" --entrypoint /app/efbundle app-tools
+    ensure_search_indexes "$image"
+
+    # Recorded before it starts (Compose reads it from release.env); put back if it fails, so a rollback never picks it.
+    previous=$(image_of "$target")
+    set_image "$target" "$image"
+    if ! start_colour "$target"; then
+        set_image "$target" "$previous"
+        die "app-$target did not become healthy with $image; traffic stays on ${active:-nothing}"
+    fi
+    switch_to "$target"
+    if [[ -n "$active" ]]; then retire "$active"; fi
+
+    # Images no container uses, older than a week; the stopped colour keeps its image for a rollback.
+    docker image prune -af --filter until=168h > /dev/null || true
+    log "deployed $image"
+}
+
+rollback() {
+    local active target image
+    active=$(active_colour)
+    [[ -n "$active" ]] || die "nothing is deployed"
+    target=$(other_than "$active")
+    image=$(image_of "$target")
+    [[ -n "$image" ]] || die "app-$target has never run a release"
+    log "rolling back to $image on app-$target"
+    start_colour "$target" || die "app-$target did not become healthy; traffic stays on app-$active"
+    switch_to "$target"
+    retire "$active"
+}
+
+status() {
+    local active
+    active=$(active_colour)
+    echo "live: ${active:-none}"
+    echo "blue: $(image_of blue)"
+    echo "green: $(image_of green)"
+    compose ps --all
+}
+
+run() {
+    local active image
+    active=$(active_colour)
+    [[ -n "$active" ]] || die "nothing is deployed"
+    image=$(image_of "$active")
+    if [[ "$1" == search ]]; then
+        admin_tools "$image" "$@"
+    else
+        tools "$image" app-tools "$@"
+    fi
+}
+
+main() {
+    [[ $EUID -eq 0 ]] || die "run as root"
+    mkdir -p "$STATE"
+    touch "$RELEASE"
+    # One deploy at a time: a second waits for the first.
+    exec 9> "$STATE/lock"
+    flock 9
+
+    local command=${1:-}
+    shift || true
+    case "$command" in
+        deploy) [[ $# -eq 1 ]] || die "usage: beeps-deploy deploy <image>"; deploy "$1" ;;
+        rollback) rollback ;;
+        status) status ;;
+        run) [[ $# -ge 1 ]] || die "usage: beeps-deploy run <args…>"; run "$@" ;;
+        *) die "usage: beeps-deploy deploy <image> | rollback | status | run <args…>" ;;
+    esac
+}
+
+main "$@"

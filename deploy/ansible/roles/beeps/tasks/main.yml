@@ -1,0 +1,258 @@
+# The app on the server: /srv/beeps as compose.prod.yml describes it, then a blue-green deploy of beeps_image.
+
+- name: Check the secrets
+  ansible.builtin.assert:
+    that:
+      - beeps_postgres_password | length >= 16
+      - beeps_meili_master_key | length >= 16
+      - beeps_origin_certificate is search('BEGIN CERTIFICATE')
+      - beeps_origin_private_key is search('PRIVATE KEY')
+      - beeps_data_protection_certificate | length > 0
+      - beeps_cloudflare_account_id is match('^[0-9a-f]{32}$')
+      # Both go inside a connection string or a single-quoted value.
+      - "';' not in beeps_postgres_password and \"'\" not in beeps_postgres_password"
+      - "\"'\" not in beeps_meili_master_key"
+    fail_msg: >-
+      POSTGRES_PASSWORD and MEILI_MASTER_KEY must be at least 16 characters without ; or ' (openssl rand -hex 32),
+      ORIGIN_CERTIFICATE and ORIGIN_PRIVATE_KEY in PEM, DATA_PROTECTION_CERTIFICATE set, CLOUDFLARE_ACCOUNT_ID the
+      32-character account id (docs/deployment.md)
+    quiet: true
+
+- name: Check the required settings are given
+  ansible.builtin.assert:
+    that:
+      - beeps_app_settings[item] | length > 0
+    fail_msg: "{{ item }} is empty (docs/deployment.md says which GitHub secret or variable sets it)"
+    quiet: true
+  loop: "{{ beeps_required_settings }}"
+  # Without moderation there is no model to call.
+  when: not (item == 'OpenRouter__ApiKey' and beeps_app_settings.Moderation__Enabled | lower == 'false')
+
+- name: Check no setting holds a quote or a line break
+  ansible.builtin.assert:
+    that:
+      - "\"'\" not in item.value"
+      - "'\n' not in item.value"
+    fail_msg: "{{ item.key }} holds a ' or a line break"
+    quiet: true
+  loop: "{{ beeps_app_settings | dict2items }}"
+  loop_control:
+    label: "{{ item.key }}"
+  no_log: true
+
+- name: Check the extra settings are KEY=VALUE lines
+  ansible.builtin.assert:
+    that:
+      - item is match("^[A-Za-z][A-Za-z0-9_]*=[^']*$")
+    fail_msg: "APP_SETTINGS has a line that is not KEY=VALUE without '"
+    quiet: true
+  loop: "{{ beeps_extra_settings.splitlines() | map('trim') | select | list }}"
+  no_log: true
+
+- name: Create the directories
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: directory
+    owner: "{{ item.owner | default('root') }}"
+    group: "{{ item.group | default('root') }}"
+    mode: "{{ item.mode }}"
+  loop:
+    - { path: /srv/beeps, mode: "0755" }
+    - { path: /srv/beeps/nginx, mode: "0755" }
+    - { path: /srv/beeps/state, mode: "0700" }
+    - { path: /srv/beeps/backups, mode: "0700" }
+    - { path: /srv/beeps/secrets, mode: "0711" }
+    - { path: /srv/beeps/secrets/tls, mode: "0700" }
+    # The app runs as uid 1654 (the .NET image's app user).
+    - { path: /srv/beeps/secrets/app, owner: "1654", group: "1654", mode: "0500" }
+
+- name: Install the compose file
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../../compose.prod.yml"
+    dest: /srv/beeps/compose.prod.yml
+    mode: "0644"
+
+- name: Create release.env (beeps-deploy writes it after this)
+  ansible.builtin.copy:
+    dest: /srv/beeps/release.env
+    content: ""
+    force: false
+    mode: "0600"
+
+- name: Write the app's configuration
+  ansible.builtin.template:
+    src: app.env.j2
+    dest: /srv/beeps/app.env
+    mode: "0600"
+  no_log: true
+
+- name: Write the PostgreSQL password
+  ansible.builtin.copy:
+    dest: /srv/beeps/postgres.env
+    content: |
+      POSTGRES_PASSWORD='{{ beeps_postgres_password }}'
+    mode: "0600"
+  no_log: true
+
+- name: Write the Meilisearch master key
+  ansible.builtin.copy:
+    dest: /srv/beeps/meilisearch.env
+    content: |
+      MEILI_MASTER_KEY='{{ beeps_meili_master_key }}'
+    mode: "0600"
+  no_log: true
+  notify: Forget the app's Meilisearch key
+
+- name: Write the backup destination
+  ansible.builtin.template:
+    src: backup.env.j2
+    dest: /srv/beeps/backup.env
+    mode: "0600"
+  no_log: true
+
+- name: Install the Origin CA certificate
+  ansible.builtin.copy:
+    dest: /srv/beeps/secrets/tls/origin.pem
+    content: "{{ beeps_origin_certificate | trim }}\n"
+    mode: "0644"
+  notify: Reload nginx
+
+- name: Install the Origin CA private key
+  ansible.builtin.copy:
+    dest: /srv/beeps/secrets/tls/origin.key
+    content: "{{ beeps_origin_private_key | trim }}\n"
+    mode: "0600"
+  no_log: true
+  notify: Reload nginx
+
+# Binary, so it travels as base64 and is decoded on the server.
+- name: Copy the Data Protection certificate
+  ansible.builtin.copy:
+    dest: /srv/beeps/secrets/dataprotection.pfx.b64
+    content: "{{ beeps_data_protection_certificate | regex_replace('\\s', '') }}\n"
+    mode: "0600"
+  register: beeps_dp_b64
+  no_log: true
+
+- name: Check for the decoded Data Protection certificate
+  ansible.builtin.stat:
+    path: /srv/beeps/secrets/app/dataprotection.pfx
+  register: beeps_dp_pfx
+
+- name: Decode the Data Protection certificate
+  ansible.builtin.shell: |
+    set -euo pipefail
+    umask 077
+    base64 -d /srv/beeps/secrets/dataprotection.pfx.b64 > /srv/beeps/secrets/app/dataprotection.pfx.new
+    openssl pkcs12 -in /srv/beeps/secrets/app/dataprotection.pfx.new -noout -passin env:PFX_PASSWORD
+    chown 1654:1654 /srv/beeps/secrets/app/dataprotection.pfx.new
+    chmod 0400 /srv/beeps/secrets/app/dataprotection.pfx.new
+    mv /srv/beeps/secrets/app/dataprotection.pfx.new /srv/beeps/secrets/app/dataprotection.pfx
+  args:
+    executable: /bin/bash
+  environment:
+    PFX_PASSWORD: "{{ beeps_data_protection_password }}"
+  when: beeps_dp_b64.changed or not beeps_dp_pfx.stat.exists
+  changed_when: true
+  no_log: true
+
+- name: Write the nginx configuration
+  ansible.builtin.template:
+    src: nginx.conf.j2
+    dest: /srv/beeps/nginx/nginx.conf
+    mode: "0644"
+  notify: Reload nginx
+
+# Only the first time: from then on it names the colour taking traffic, which beeps-deploy switches.
+- name: Point nginx at app-blue until the first deploy
+  ansible.builtin.copy:
+    dest: /srv/beeps/nginx/upstream.conf
+    content: |
+      # Written by beeps-deploy: the colour taking traffic.
+      upstream beeps_app {
+          server 172.30.0.11:8080;
+          keepalive 32;
+      }
+    force: false
+    mode: "0644"
+
+- name: Check Cloudflare's addresses are written (site.yml, roles/firewall)
+  ansible.builtin.stat:
+    path: /srv/beeps/nginx/cloudflare-realip.conf
+  register: beeps_realip
+  failed_when: not beeps_realip.stat.exists
+
+- name: Install the deploy and backup scripts
+  ansible.builtin.copy:
+    src: "{{ item }}"
+    dest: /usr/local/sbin/{{ item }}
+    mode: "0755"
+  loop:
+    - beeps-deploy
+    - beeps-backup
+
+- name: Install the backup service and timer
+  ansible.builtin.copy:
+    src: "{{ item }}"
+    dest: /etc/systemd/system/{{ item }}
+    mode: "0644"
+  loop:
+    - beeps-backup.service
+    - beeps-backup.timer
+  register: beeps_backup_units
+
+# Now, not as a handler: the timer is started next.
+- name: Reload systemd  # noqa: no-handler
+  ansible.builtin.systemd_service:
+    daemon_reload: true
+  when: beeps_backup_units.changed
+
+- name: Back up the database nightly
+  ansible.builtin.systemd_service:
+    name: beeps-backup.timer
+    enabled: true
+    state: started
+
+# Never the app colours: one of them takes traffic, and only beeps-deploy may restart them.
+- name: Start PostgreSQL, Valkey, Meilisearch and nginx
+  ansible.builtin.command: >-
+    docker compose --project-directory /srv/beeps -f /srv/beeps/compose.prod.yml --env-file /srv/beeps/release.env
+    up -d --wait --remove-orphans postgres valkey meilisearch nginx
+  register: beeps_services
+  changed_when: beeps_services.stderr is search('(Created|Recreated|Started)')
+
+# POSTGRES_PASSWORD only sets the password when the database is first created; this keeps it the secret's.
+- name: Keep the database password in step with the secret
+  ansible.builtin.command: >-
+    docker compose --project-directory /srv/beeps -f /srv/beeps/compose.prod.yml --env-file /srv/beeps/release.env
+    exec -T postgres psql -U beeps -d beeps -v ON_ERROR_STOP=1 -q -c "ALTER ROLE beeps PASSWORD '{{ beeps_postgres_password }}'"
+  changed_when: false
+  no_log: true
+
+- name: Apply the nginx changes
+  ansible.builtin.meta: flush_handlers
+
+- name: Deploy {{ beeps_image }}
+  when: beeps_image | length > 0
+  block:
+    - name: Log in to the registry
+      ansible.builtin.command:
+        cmd: docker login ghcr.io --username {{ beeps_registry_user }} --password-stdin
+        stdin: "{{ beeps_registry_token }}"
+      when: beeps_registry_token | length > 0
+      changed_when: false
+      no_log: true
+
+    - name: Deploy blue-green
+      ansible.builtin.command: /usr/local/sbin/beeps-deploy deploy {{ beeps_image }}
+      register: beeps_deploy
+      changed_when: true
+
+    - name: Show the deploy's log
+      ansible.builtin.debug:
+        var: beeps_deploy.stderr_lines
+  always:
+    - name: Log out of the registry
+      ansible.builtin.command: docker logout ghcr.io
+      when: beeps_registry_token | length > 0
+      changed_when: false

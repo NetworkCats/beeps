@@ -1,0 +1,4 @@
+# Copy to backend.hcl (not committed) for `terraform init -backend-config=backend.hcl`; the GitHub workflow writes its
+# own from the TF_STATE_BUCKET and CLOUDFLARE_ACCOUNT_ID secrets.
+bucket    = "beeps-terraform"
+endpoints = { s3 = "https://<account id>.r2.cloudflarestorage.com" }

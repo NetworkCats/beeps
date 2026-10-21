@@ -1,0 +1,192 @@
+# Production, on one server (PLAN 9.2, 9.3). deploy/ansible copies this file to /srv/beeps with the files it reads:
+#   release.env      which image each app colour runs, written by beeps-deploy (only used to fill in this file)
+#   app.env          the app's configuration (.env.example lists every key), from the GitHub environment
+#   search.env       the app's own Meilisearch key, created by beeps-deploy on the first deploy
+#   postgres.env, meilisearch.env   those services' passwords
+#   nginx/           nginx's configuration; nginx/upstream.conf names the colour taking traffic
+#   secrets/tls/     the Cloudflare Origin CA certificate (nginx only)
+#   secrets/app/     the Data Protection certificate (the app only)
+#
+# Blue-green: app-blue and app-green are the same app; one takes traffic, the other is stopped or starting the next
+# release. beeps-deploy starts the idle one, waits for /healthz, points nginx at it and stops the other. Never run
+# `docker compose up` without naming services: it would restart the colour taking traffic.
+#
+# Nothing listens on a public address but nginx, which uses the host network so UFW applies to it (Docker's own port
+# forwarding would bypass UFW). nginx reaches the app at its fixed address on the beeps network, so the app sees every
+# request come from that network's gateway, 172.30.0.1, the only proxy it trusts (ForwardedHeaders__KnownProxies__0).
+name: beeps
+
+x-app: &app
+  # Not PID 1: a .NET process that crashes as PID 1 never exits (abort's SIGABRT is ignored), it spins at full CPU.
+  init: true
+  env_file:
+    - path: app.env
+    - path: search.env
+      required: false
+  environment:
+    ASPNETCORE_ENVIRONMENT: Production
+    ForwardedHeaders__KnownProxies__0: 172.30.0.1
+    DataProtection__CertificatePath: /run/secrets/beeps/dataprotection.pfx
+  volumes:
+    - ./secrets/app:/run/secrets/beeps:ro
+  restart: unless-stopped
+  # Long enough for open streams to be told to reconnect and in-flight requests to finish.
+  stop_grace_period: 30s
+  mem_limit: 640m
+  logging: &logging
+    driver: local
+    options:
+      max-size: 20m
+      max-file: "5"
+
+services:
+  postgres:
+    image: postgres:18.6
+    env_file: postgres.env
+    environment:
+      POSTGRES_USER: beeps
+      POSTGRES_DB: beeps
+    # Sized for a 2 GB server shared with everything else.
+    command:
+      - postgres
+      - -c
+      - shared_buffers=256MB
+      - -c
+      - effective_cache_size=768MB
+      - -c
+      - work_mem=4MB
+      - -c
+      - maintenance_work_mem=64MB
+      - -c
+      - max_connections=100
+      - -c
+      - random_page_cost=1.1
+      - -c
+      - wal_buffers=16MB
+      - -c
+      - wal_compression=on
+      - -c
+      - max_wal_size=1GB
+      - -c
+      - checkpoint_completion_target=0.9
+      # NVMe: many reads can be in flight at once.
+      - -c
+      - effective_io_concurrency=200
+      # The app's queries are short; compiling them costs more than it saves.
+      - -c
+      - jit=off
+    volumes:
+      - postgres-data:/var/lib/postgresql
+    networks:
+      - beeps
+    shm_size: 256mb
+    mem_limit: 640m
+    stop_grace_period: 60s
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U beeps -d beeps"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+    logging: *logging
+
+  # Every key has a TTL, so when memory runs out the least recently used are dropped instead of writes failing.
+  valkey:
+    image: valkey/valkey:9.1.2
+    command: ["valkey-server", "--appendonly", "yes", "--maxmemory", "128mb", "--maxmemory-policy", "volatile-lru"]
+    volumes:
+      - valkey-data:/data
+    networks:
+      - beeps
+    mem_limit: 256m
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+    logging: *logging
+
+  meilisearch:
+    image: getmeili/meilisearch:v1.55.0
+    env_file: meilisearch.env
+    environment:
+      MEILI_ENV: production
+      MEILI_NO_ANALYTICS: "true"
+      MEILI_MAX_INDEXING_MEMORY: 256MiB
+      MEILI_MAX_INDEXING_THREADS: "1"
+    volumes:
+      - meili-data:/meili_data
+    networks:
+      - beeps
+    mem_limit: 512m
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:7700/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+    logging: *logging
+
+  app-blue:
+    <<: *app
+    image: ${BEEPS_BLUE_IMAGE:-beeps:none}
+    volumes:
+      - ./secrets/app:/run/secrets/beeps:ro
+      - blue-data:/var/lib/beeps
+    networks:
+      beeps:
+        ipv4_address: 172.30.0.11
+
+  app-green:
+    <<: *app
+    image: ${BEEPS_GREEN_IMAGE:-beeps:none}
+    volumes:
+      - ./secrets/app:/run/secrets/beeps:ro
+      - green-data:/var/lib/beeps
+    networks:
+      beeps:
+        ipv4_address: 172.30.0.12
+
+  # One-off commands with a release's image (beeps-deploy): the migration bundle, `search create-key`, `search rebuild`.
+  # It never serves traffic and takes no fixed address.
+  app-tools:
+    <<: *app
+    image: ${BEEPS_TOOLS_IMAGE:-beeps:none}
+    profiles: ["tools"]
+    restart: "no"
+    networks:
+      - beeps
+
+  # The directory is mounted rather than single files: the deploy replaces upstream.conf by renaming a new file over it,
+  # which a file mount would never see.
+  nginx:
+    image: nginx:1.30.6
+    network_mode: host
+    command: ["nginx", "-c", "/etc/nginx/beeps/nginx.conf", "-g", "daemon off;"]
+    volumes:
+      - ./nginx:/etc/nginx/beeps:ro
+      - ./secrets/tls:/etc/nginx/tls:ro
+    mem_limit: 128m
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8088/nginx-health || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    restart: unless-stopped
+    logging: *logging
+
+networks:
+  beeps:
+    name: beeps
+    ipam:
+      config:
+        - subnet: 172.30.0.0/24
+          gateway: 172.30.0.1
+
+volumes:
+  postgres-data:
+  valkey-data:
+  meili-data:
+  blue-data:
+  green-data:

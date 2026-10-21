@@ -1,0 +1,67 @@
+# UFW holds the allow list (PLAN 9.2): SSH from anywhere (keys only), 443 from Cloudflare only, nothing else. Vultr's
+# firewall in front only opens 22 and 443 to everyone (deploy/terraform). nginx uses the host network so these rules
+# apply to it; no container publishes a port.
+# The server has no IPv6 (deploy/terraform, roles/base): IPv4 rules only.
+- name: Keep UFW to IPv4
+  ansible.builtin.lineinfile:
+    path: /etc/default/ufw
+    regexp: ^IPV6=
+    line: IPV6=no
+
+- name: Deny incoming connections by default
+  community.general.ufw:
+    default: deny
+    direction: incoming
+
+- name: Allow outgoing connections
+  community.general.ufw:
+    default: allow
+    direction: outgoing
+
+- name: Allow SSH
+  community.general.ufw:
+    rule: allow
+    port: "{{ beeps_ssh_port }}"
+    proto: tcp
+    comment: ssh
+
+- name: Turn UFW on
+  community.general.ufw:
+    state: enabled
+
+- name: Create the nginx configuration directory
+  ansible.builtin.file:
+    path: /srv/beeps/nginx
+    state: directory
+    mode: "0755"
+
+- name: Install the Cloudflare address updater
+  ansible.builtin.copy:
+    src: beeps-cloudflare-ips
+    dest: /usr/local/sbin/beeps-cloudflare-ips
+    mode: "0755"
+
+# Before nginx first starts: its configuration includes the list this writes.
+- name: Allow Cloudflare to 443, and tell nginx its addresses
+  ansible.builtin.command: /usr/local/sbin/beeps-cloudflare-ips
+  register: firewall_cloudflare_ips
+  changed_when: "'UFW +0 -0, nginx unchanged' not in firewall_cloudflare_ips.stdout"
+
+- name: Install the updater's service and timer
+  ansible.builtin.copy:
+    src: "{{ item }}"
+    dest: /etc/systemd/system/{{ item }}
+    mode: "0644"
+  loop:
+    - beeps-cloudflare-ips.service
+    - beeps-cloudflare-ips.timer
+  notify: Reload systemd
+
+- name: Flush handlers
+  ansible.builtin.meta: flush_handlers
+
+- name: Update Cloudflare's addresses daily
+  ansible.builtin.systemd_service:
+    name: beeps-cloudflare-ips.timer
+    enabled: true
+    state: started

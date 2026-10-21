@@ -1,0 +1,127 @@
+# {{ ansible_managed }}
+# nginx in front of the app (PLAN 9.2). Only Cloudflare reaches port 443 (UFW, see roles/firewall), so this file does
+# no access control of its own. Mounted at /etc/nginx/beeps; two files beside it are written by scripts, not Ansible:
+#   cloudflare-realip.conf  Cloudflare's addresses, kept current by beeps-cloudflare-ips
+#   upstream.conf           the app colour taking traffic, switched by beeps-deploy
+
+user nginx;
+worker_processes auto;
+worker_rlimit_nofile 16384;
+pid /run/nginx.pid;
+error_log /dev/stderr warn;
+# After a reload, old workers still serving a stream close it after this long; the deploy stops the old colour sooner.
+worker_shutdown_timeout 60s;
+
+events {
+    worker_connections 8192;
+    multi_accept on;
+}
+
+http {
+    include /etc/nginx/mime.types;
+    default_type application/octet-stream;
+    server_tokens off;
+
+    # $remote_addr is the visitor: realip has taken it from CF-Connecting-IP.
+    log_format main '$remote_addr [$time_local] "$request" $status $body_bytes_sent $request_time '
+                    '"$http_referer" "$http_user_agent" ray=$http_cf_ray';
+    access_log /dev/stdout main;
+
+    sendfile on;
+    tcp_nopush on;
+    tcp_nodelay on;
+    # Longer than Cloudflare keeps an idle connection to the origin (900 s), so nginx never closes one Cloudflare is
+    # about to reuse (a 520 for the visitor).
+    keepalive_timeout 905s;
+    keepalive_requests 10000;
+
+    # The web composer sends four 5 MB images in one form (PLAN 9.2).
+    client_max_body_size 21m;
+    client_body_buffer_size 256k;
+
+    # Believed only from Cloudflare's own addresses; the app reads X-Forwarded-For, which is set from this below.
+    include /etc/nginx/beeps/cloudflare-realip.conf;
+    real_ip_header CF-Connecting-IP;
+    real_ip_recursive off;
+
+    include /etc/nginx/beeps/upstream.conf;
+
+    # Static assets come precompressed from the app. text/event-stream is left out: compressing it would hold events back.
+    gzip on;
+    gzip_proxied any;
+    gzip_vary on;
+    gzip_comp_level 5;
+    gzip_min_length 1024;
+    gzip_types application/json application/problem+json application/javascript text/css text/markdown text/plain image/svg+xml;
+
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_prefer_server_ciphers off;
+    ssl_session_cache shared:TLS:10m;
+    ssl_session_timeout 1d;
+    ssl_session_tickets off;
+
+    # Any other name: no certificate, the handshake is refused. IPv4 only: the server has no IPv6 (deploy/terraform).
+    # reuseport gives each worker its own accept queue, spreading new connections across both cores.
+    server {
+        listen 443 ssl default_server reuseport backlog=4096;
+        ssl_reject_handshake on;
+    }
+
+    server {
+        listen 443 ssl;
+        http2 on;
+        server_name {{ beeps_server_name }};
+
+        # Cloudflare Origin CA (PLAN 9.2): trusted by Cloudflare alone, for Full (strict).
+        ssl_certificate /etc/nginx/tls/origin.pem;
+        ssl_certificate_key /etc/nginx/tls/origin.key;
+
+        proxy_http_version 1.1;
+        proxy_set_header Connection "";
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $remote_addr;
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_connect_timeout 5s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+
+        # For the deploy and Docker, from the host only.
+        location = /healthz {
+            return 404;
+        }
+
+        # Server-sent events (PLAN 6.10): passed on as they come. The app also sends X-Accel-Buffering: no, and a
+        # ping every 20 seconds, well inside the timeout.
+        location = /stream {
+            proxy_pass http://beeps_app;
+            proxy_buffering off;
+            proxy_cache off;
+            proxy_read_timeout 1h;
+        }
+
+        location = /api/v1/stream {
+            proxy_pass http://beeps_app;
+            proxy_buffering off;
+            proxy_cache off;
+            proxy_read_timeout 1h;
+        }
+
+        location / {
+            proxy_pass http://beeps_app;
+        }
+    }
+
+    # The container's health check.
+    server {
+        listen 127.0.0.1:8088;
+        access_log off;
+
+        location = /nginx-health {
+            return 200 "ok\n";
+        }
+
+        location / {
+            return 404;
+        }
+    }
+}

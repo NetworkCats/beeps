@@ -1,0 +1,18 @@
+# Meilisearch derives every key from the master key, so the app's key stopped working; the deploy creates a new one.
+- name: Forget the app's Meilisearch key
+  ansible.builtin.file:
+    path: /srv/beeps/search.env
+    state: absent
+
+# Checked first, so a broken file never replaces the running configuration.
+- name: Reload nginx
+  ansible.builtin.shell: |
+    set -euo pipefail
+    compose="docker compose --project-directory /srv/beeps -f /srv/beeps/compose.prod.yml --env-file /srv/beeps/release.env"
+    if [ -n "$($compose ps -q --status running nginx)" ]; then
+      $compose exec -T nginx nginx -t -q -c /etc/nginx/beeps/nginx.conf
+      $compose exec -T nginx nginx -s reload -c /etc/nginx/beeps/nginx.conf
+    fi
+  args:
+    executable: /bin/bash
+  changed_when: true

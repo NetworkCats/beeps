@@ -37,6 +37,16 @@ public sealed class ForwardedHeadersTests
     }
 
     [Fact]
+    public async Task ProxyIsBelievedOverAnIPv4MappedAddress()
+    {
+        // As in production (compose.prod.yml): Kestrel listens on [::], so nginx at the network gateway arrives as
+        // ::ffff:172.30.0.1, while the trusted proxy is written 172.30.0.1.
+        var seen = await RequestAsync(peer: "::ffff:172.30.0.1", forwardedFor: "203.0.113.9", trusted: [("KnownProxies:0", "172.30.0.1")]);
+
+        Assert.Equal("203.0.113.9|https", seen);
+    }
+
+    [Fact]
     public async Task DirectClientsCannotSpoofTheirAddress()
     {
         var seen = await RequestAsync(peer: "198.51.100.4", forwardedFor: "203.0.113.9", trusted: [("KnownProxies:0", "127.0.0.1")]);

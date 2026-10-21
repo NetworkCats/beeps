@@ -716,6 +716,7 @@ tests/Beeps.Tests/
 
 ### 9.0 组件总览
 - **线上一律使用 Docker 部署**：应用、PostgreSQL、Valkey、nginx 全部以容器运行，由 Docker Compose 统一管理，服务器上除 Docker 和 UFW 外不直接安装其他运行环境。
+- **服务器**：一台 Vultr High Performance AMD（2 vCPU / 2 GB，洛杉矶 `lax`），Debian 13，只有 IPv4，开启 Vultr 自动备份。Terraform 创建（`deploy/terraform/`，state 存在 R2），Ansible 配置（`deploy/ansible/`），GitHub Actions 发布：推送版本 tag（`v1.2.3`，必须在 `main` 上）自动蓝绿部署，不中断服务（见 9.4）。做法和全部配置项见 `docs/deployment.md`。
 - **本地开发时只有依赖服务跑在 Docker 中**，应用本身直接在本机运行，方便调试和热重载。
 
 自己运行的核心组件有四个：
@@ -726,7 +727,8 @@ tests/Beeps.Tests/
 
 | 组件 | 线上 | 本地 |
 |---|---|---|
-| 应用 | Docker | 本机运行（`dotnet watch`） |
+| 服务器 | Vultr（Terraform + Ansible） | 本机 |
+| 应用 | Docker（蓝绿两个实例，轮流接收流量） | 本机运行（`dotnet watch`） |
 | PostgreSQL / Valkey / Meilisearch | Docker | Docker |
 | 反向代理 | nginx（Docker，host 网络） | 不使用，直连应用 |
 | 对象存储 | Cloudflare R2 | SeaweedFS（Docker） |
@@ -761,8 +763,9 @@ tests/Beeps.Tests/
 
 **请求链路**
 ```
-访客 ──HTTPS──▶ Cloudflare ──HTTPS（源站证书）──▶ nginx ──HTTP（内网）──▶ 应用实例 × N
+访客 ──HTTPS──▶ Cloudflare ──HTTPS（源站证书）──▶ Vultr 防火墙 ──▶ UFW ──▶ nginx ──HTTP（内网）──▶ 应用（blue 或 green）
 ```
+源站只有 IPv4：Cloudflare 经 IPv4 回源，访客照样可以用 IPv6 访问 Cloudflare。
 图片走 `media.beeps.sh`（R2 自定义域名），直接由 Cloudflare 提供，不经过 nginx 和应用。
 
 **Cloudflare**
@@ -775,19 +778,19 @@ tests/Beeps.Tests/
 - 使用 **Cloudflare Origin CA 证书**（在 Cloudflare 后台签发，有效期可达 15 年，只被 Cloudflare 信任）。
 
 **源站访问限制（UFW）**
-- 只用 UFW 做白名单，nginx 不做任何 IP 访问控制。
+- 白名单只在 UFW 里，nginx 不做任何 IP 访问控制。Vultr 防火墙只决定哪些端口能到服务器（22、443 和 ICMP 对所有来源开放），不重复白名单，免得 Cloudflare 新增网段时两处不一致。
 - UFW 只允许 Cloudflare 的 IPv4、IPv6 网段访问 443 端口；80 端口不对外开放；SSH 端口单独放行。
 - 这样只有经过 Cloudflare 的流量才能到达 nginx。
 - **注意 Docker 发布的端口会绕过 UFW**：Docker 在 iptables 的 nat 表中转发流量，数据包在到达 UFW 使用的 INPUT 链之前就被转走了。
-- 因此 nginx 容器使用 `network_mode: host`：host 网络下 Docker 不创建转发规则，UFW 照常生效。nginx 通过 `127.0.0.1` 访问应用。
-- 应用、PostgreSQL、Valkey 的容器端口只绑定到 `127.0.0.1`（如 `127.0.0.1:8080:8080`）或只在内部网络中，不对外发布。
+- 因此 nginx 容器使用 `network_mode: host`：host 网络下 Docker 不创建转发规则，UFW 照常生效。nginx 直接访问应用在内部网络 `beeps`（`172.30.0.0/24`）上的固定地址（blue `172.30.0.11`、green `172.30.0.12`），来源地址是这个网络的网关 `172.30.0.1`。
+- 应用、PostgreSQL、Valkey、Meilisearch 只在内部网络中，没有任何容器发布端口。
 
 **恢复访客真实 IP**
 - 在 nginx 用 `realip` 模块恢复：为 Cloudflare 的每个 IPv4、IPv6 网段配置 `set_real_ip_from`，并设置 `real_ip_header CF-Connecting-IP`。
 - `set_real_ip_from` 不是访问控制，只是告诉 nginx 哪些来源传来的 `CF-Connecting-IP` 可信；不配置它就拿不到真实 IP。
 - Cloudflare IP 段从官方列表（`https://www.cloudflare.com/ips-v4`、`https://www.cloudflare.com/ips-v6`）获取，用一个定时脚本同时更新 UFW 规则和 nginx 的 `set_real_ip_from` 配置，两处始终使用同一份列表。
 - nginx 转发给应用时设置 `X-Forwarded-For $remote_addr`（此时已是真实 IP）和 `X-Forwarded-Proto https`。
-- 应用的 `ForwardedHeaders` 只信任 nginx 的内网地址，**不直接读取 `CF-Connecting-IP`**。这样即使有人绕过 Cloudflare 直连，也无法伪造 IP。
+- 应用的 `ForwardedHeaders` 只信任 nginx 的内网地址（`ForwardedHeaders__KnownProxies__0=172.30.0.1`；Kestrel 监听 `[::]`，看到的是 `::ffff:172.30.0.1`，同样匹配），**不直接读取 `CF-Connecting-IP`**。这样即使有人绕过 Cloudflare 直连，也无法伪造 IP。
 - 结果：日志、限流、审计记录中的 IP 都是访客真实 IP。
 
 **nginx 其他配置**
@@ -814,6 +817,10 @@ tests/Beeps.Tests/
 - **Cloudflare IP 更新脚本**：同时更新 UFW 规则和 nginx 的 `set_real_ip_from`，并重载 nginx。
 - **环境变量示例**（`.env.example`）：列出全部配置项及说明，不含真实密钥。
 - **数据库迁移**：使用 EF Core migration bundle 作为独立步骤执行，不在每个实例启动时自动迁移（避免多实例同时迁移）。
+- **Terraform**（`deploy/terraform/`）：Vultr 实例（Debian 13、洛杉矶、IPv4、自动备份）、Vultr 防火墙；state 存在 R2。Cloudflare 不用 Terraform，在后台手动配置。
+- **Ansible**（`deploy/ansible/`）：`site.yml` 从全新的 Debian 13 准备服务器（升级、内核和网络调优、swap、SSH 加固、Docker、UFW、Cloudflare IP 列表），`deploy.yml` 写入配置并蓝绿发布；配置全部来自 GitHub 的 production 环境（机密用 secrets，其余用 variables）。
+- **GitHub Actions**：`deploy.yml`（推送版本 tag：确认在 `main` 上 → CI → 镜像推到 GHCR → Ansible 蓝绿部署；仓库里还没有别的 `v*` tag 时算第一次，先 `terraform apply` 创建服务器、运行 `site.yml`）、`infrastructure.yml`（之后手动运行 Terraform）；推送到 `main` 只跑 CI。服务器地址每次从 Terraform 的输出读取。
+- **部署说明**（`docs/deployment.md`）：全部 secrets 和 variables、第一次上线的步骤、日常操作、备份恢复、性能调优。
 - **上线清单**（`docs/launch-checklist.md`）：站长手动完成的步骤，包括：
   - Cloudflare：DNS 代理、SSL 模式 Full (strict)、Always Use HTTPS、HSTS、缓存规则、签发 Origin CA 证书
   - Turnstile：创建站点，获取正式 site key 和 secret
@@ -825,6 +832,14 @@ tests/Beeps.Tests/
   - 启动 PostgreSQL、Valkey 和 Meilisearch，执行数据库迁移，初始化搜索索引，再用 `docker compose -f compose.prod.yml up -d` 启动全部服务
   - 站长第一个注册，成为管理员，按需关闭开放注册
 - **上线前自检**：所有测试通过、`npm run build` 通过、生产配置下应用能够正常启动并通过健康检查。
+
+### 9.4 发布：蓝绿部署
+- `compose.prod.yml` 里应用有两个一样的服务 `app-blue`、`app-green`，同一时间只有一个接收流量。`beeps-deploy`（Ansible 装在服务器上）每次发布：执行迁移（旧版本仍在服务）→ 用新镜像启动空闲的颜色 → 等 `/healthz`（能连上 PostgreSQL）通过 → 改写 nginx 的 upstream 并 reload → 等 15 秒后停掉旧颜色。新版本不健康就停掉它，流量留在旧版本。
+- 停掉的颜色和它的镜像保留，`beeps-deploy rollback` 不中断地切回去（不回滚迁移）。
+- 因为迁移在旧版本仍运行时执行，**每次迁移都必须与上一个版本兼容**：先加，等不再使用的版本下线后再删。
+- 第一次部署时创建应用专用的 Meilisearch key（`search create-key`）并建立索引（`search rebuild`）。
+- 同时只运行一个部署（GitHub Actions `concurrency`，服务器上再加文件锁），后来的排队，不会打断进行中的部署。
+- 应用容器带 `init`：.NET 进程作为 PID 1 崩溃时不会退出（`abort` 的 SIGABRT 被忽略），一直占满 CPU。
 
 ---
 
@@ -910,6 +925,8 @@ tests/Beeps.Tests/
 - 线上所有服务都以 Docker 容器运行，不在服务器上直接安装运行环境。
 - 本地开发时应用直接在本机运行，`compose.dev.yml` 只包含依赖服务，不得加入应用本身。
 - 所有容器端口只绑定到 `127.0.0.1` 或内部网络；nginx 使用 host 网络。
+- 线上发布是蓝绿部署，迁移在旧版本仍运行时执行：迁移必须与上一个版本兼容（先加列、加表，下一次发布再删）。
+- 线上配置只来自 GitHub 的 production 环境（机密是 secrets，其余是 variables），由 Ansible 写到服务器。仓库和 Actions 日志都是公开的，日志里 variables 原样显示：任何 key 和 ID（账户 ID、client id、site key 等）无论是否公开都放 secrets，variables 只放域名、bucket 名这类设置，服务器 IP 在日志里打码；新增配置项时同步 `.env.example`、`deploy/ansible/group_vars/all.yml`、`.github/workflows/deploy.yml` 和 `docs/deployment.md`。
 
 ### 数据库
 - DbContext 使用 `AddDbContextPool` 注册。

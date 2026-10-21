@@ -1,0 +1,67 @@
+name: Infrastructure
+
+# The Vultr server (deploy/terraform), by hand: "plan" shows what would change, "apply" changes it. State lives in R2.
+# The first deploy creates the server by itself (deploy.yml); this is for changing it afterwards.
+on:
+  workflow_dispatch:
+    inputs:
+      command:
+        description: What to run
+        type: choice
+        options: [plan, apply]
+        default: plan
+
+permissions:
+  contents: read
+
+jobs:
+  terraform:
+    runs-on: ubuntu-latest
+    environment: production
+    # The same group as the deploy, which also runs Terraform: never both at once.
+    concurrency:
+      group: production
+      cancel-in-progress: false
+    defaults:
+      run:
+        working-directory: deploy/terraform
+    env:
+      TF_IN_AUTOMATION: "1"
+      TF_INPUT: "0"
+      VULTR_API_KEY: ${{ secrets.VULTR_API_KEY }}
+      # The R2 key for the state bucket.
+      AWS_ACCESS_KEY_ID: ${{ secrets.TF_STATE_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.TF_STATE_SECRET_ACCESS_KEY }}
+      TF_VAR_ssh_public_keys: ${{ secrets.SSH_PUBLIC_KEYS }}
+      TF_VAR_region: ${{ vars.VULTR_REGION || 'lax' }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: 1.16.6
+          terraform_wrapper: false
+
+      - name: Init
+        env:
+          TF_STATE_BUCKET: ${{ secrets.TF_STATE_BUCKET }}
+          # A secret, so the account id is masked wherever the address shows up in the log.
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          printf 'bucket = "%s"\nendpoints = { s3 = "https://%s.r2.cloudflarestorage.com" }\n' \
+            "$TF_STATE_BUCKET" "$CLOUDFLARE_ACCOUNT_ID" > backend.hcl
+          terraform init -backend-config=backend.hcl
+
+      # The logs of a public repository are public: the address is masked before anything could print it.
+      - name: Mask the server's address
+        run: |
+          if address=$(terraform output -raw ipv4_address 2> /dev/null) && [ -n "$address" ]; then
+            echo "::add-mask::$address"
+          fi
+
+      - name: Plan
+        run: terraform plan -out=tfplan
+
+      - name: Apply
+        if: inputs.command == 'apply'
+        run: terraform apply tfplan

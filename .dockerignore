@@ -1,0 +1,23 @@
+# Only what the Dockerfile copies matters; the rest is kept out of the build context.
+**/bin/
+**/obj/
+**/node_modules/
+**/.DS_Store
+.git/
+.github/
+.claude/
+.vs/
+.idea/
+TestResults/
+tests/
+dev/
+deploy/
+docs/
+src/Beeps/wwwroot/dist/
+src/Beeps/appsettings.Development.json
+*.user
+.env
+.env.*
+/PLAN.md
+/TODO.md
+/README.md

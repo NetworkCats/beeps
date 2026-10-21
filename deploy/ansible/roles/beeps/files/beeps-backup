@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+# The nightly PostgreSQL dump (beeps-backup.timer): kept in /srv/beeps/backups for 7 days and, when backup.env names a
+# bucket, copied there too. docs/deployment.md says how to restore one.
+set -euo pipefail
+
+readonly ROOT=/srv/beeps
+readonly DIR="$ROOT/backups"
+readonly KEEP_DAYS=7
+readonly RCLONE_IMAGE=rclone/rclone:1.75.2
+
+file="beeps-$(date -u +%Y%m%dT%H%M%SZ).dump"
+umask 077
+docker compose --project-directory "$ROOT" -f "$ROOT/compose.prod.yml" --env-file "$ROOT/release.env" \
+    exec -T postgres pg_dump -U beeps -d beeps --format=custom > "$DIR/$file.partial"
+mv "$DIR/$file.partial" "$DIR/$file"
+find "$DIR" -name 'beeps-*.dump' -mtime +"$KEEP_DAYS" -delete
+find "$DIR" -name '*.partial' -mmin +60 -delete
+
+bucket=$(sed -n 's/^BACKUP_BUCKET=//p' "$ROOT/backup.env")
+if [[ -n "$bucket" ]]; then
+    docker run --rm --env-file "$ROOT/backup.env" -v "$DIR:/backups:ro" "$RCLONE_IMAGE" \
+        copyto "/backups/$file" "backup:$bucket/postgres/$file"
+fi
+echo "backed up $file${bucket:+ to $bucket}"

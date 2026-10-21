@@ -1,0 +1,14 @@
+#cloud-config
+# First boot only: the deploy user Ansible and GitHub Actions log in as.
+users:
+  - name: deploy
+    groups: [sudo]
+    shell: /bin/bash
+    sudo: "ALL=(ALL) NOPASSWD:ALL"
+    lock_passwd: true
+    ssh_authorized_keys: ${jsonencode(ssh_public_keys)}
+disable_root: true
+ssh_pwauth: false
+package_update: true
+packages:
+  - python3

@@ -1,0 +1,8 @@
+# Writes the app's configuration and, given BEEPS_IMAGE, deploys that image blue-green (beeps-deploy). Every version
+# tag (v*) runs this (.github/workflows/deploy.yml); site.yml must have set up the server once before.
+#   BEEPS_IMAGE=ghcr.io/networkcats/beeps@sha256:… ansible-playbook deploy.yml
+- name: Configure and deploy beeps
+  hosts: beeps
+  become: true
+  roles:
+    - beeps

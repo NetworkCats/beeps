@@ -1,0 +1,218 @@
+name: Deploy
+
+# Every version tag (v1.2.3) pushed for a commit on main: the checks (ci.yml), then the image (pushed to GHCR), then a
+# blue-green deploy with no downtime (deploy/ansible/deploy.yml, which runs beeps-deploy on the server).
+#
+# The first version tag (no other v* tag yet) also creates the server (deploy/terraform) and sets it up from scratch
+# (deploy/ansible/site.yml) before deploying. Later changes to the server itself go through the Infrastructure
+# workflow; run this by hand on a tag with "provision" after changing the server's own setup (roles/base, docker,
+# firewall). Running it by hand on an older tag deploys that version again.
+#
+# Configuration comes from the "production" environment (Settings → Environments): secrets for anything secret,
+# variables for the rest. Every key and every id is a secret, whether or not it is public anyway; the repository and
+# these logs are public, and variables show in them as they are. docs/deployment.md lists every one.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      provision:
+        description: Also set up the server (site.yml), not only deploy
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  # Only what has reached main is released: a tag on a branch that was never merged is refused.
+  tag:
+    runs-on: ubuntu-latest
+    outputs:
+      first: ${{ steps.first.outputs.first }}
+    steps:
+      - name: Check this runs for a version tag
+        if: github.ref_type != 'tag' || !startsWith(github.ref_name, 'v')
+        run: |
+          echo "::error::Deploy runs for a version tag (v1.2.3); pick one under \"Use workflow from\"."
+          exit 1
+
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Check the tagged commit is on main
+        run: |
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
+            echo "::error::$GITHUB_REF_NAME is not on main."
+            exit 1
+          fi
+
+      - name: Check whether this is the first release
+        id: first
+        run: |
+          others=$(git tag --list 'v*' | grep -cvx "$GITHUB_REF_NAME" || true)
+          if [ "$others" -gt 0 ]; then
+            echo "first=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "first=true" >> "$GITHUB_OUTPUT"
+          fi
+
+  ci:
+    needs: tag
+    uses: ./.github/workflows/ci.yml
+
+  image:
+    needs: ci
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      image: ${{ steps.name.outputs.repository }}@${{ steps.build.outputs.digest }}
+    steps:
+      - uses: actions/checkout@v5
+
+      # GHCR wants the repository name in lower case.
+      - name: Name the image
+        id: name
+        run: echo "repository=ghcr.io/${GITHUB_REPOSITORY,,}" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/setup-buildx-action@v4
+
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        id: build
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ${{ steps.name.outputs.repository }}:${{ github.ref_name }}
+            ${{ steps.name.outputs.repository }}:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy:
+    needs: [tag, image]
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: ${{ vars.SITE_BASE_URL || 'https://beeps.sh' }}
+    # One deploy at a time, and never one cut off halfway: a newer tag waits for the one under way.
+    concurrency:
+      group: production
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      packages: read
+    timeout-minutes: 45
+    env:
+      # Terraform: the Vultr API, the R2 key for the state bucket, and the server's settings.
+      VULTR_API_KEY: ${{ secrets.VULTR_API_KEY }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.TF_STATE_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.TF_STATE_SECRET_ACCESS_KEY }}
+      TF_VAR_ssh_public_keys: ${{ secrets.SSH_PUBLIC_KEYS }}
+      TF_VAR_region: ${{ vars.VULTR_REGION || 'lax' }}
+      TF_IN_AUTOMATION: "1"
+      TF_INPUT: "0"
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: 1.16.6
+          terraform_wrapper: false
+
+      - name: Terraform init
+        working-directory: deploy/terraform
+        env:
+          TF_STATE_BUCKET: ${{ secrets.TF_STATE_BUCKET }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          printf 'bucket = "%s"\nendpoints = { s3 = "https://%s.r2.cloudflarestorage.com" }\n' \
+            "$TF_STATE_BUCKET" "$CLOUDFLARE_ACCOUNT_ID" > backend.hcl
+          terraform init -backend-config=backend.hcl
+
+      # Only for the first release. Changing the server later (its plan, its firewall) is left to the Infrastructure
+      # workflow, where the plan is read before it is applied.
+      - name: Create the server
+        if: needs.tag.outputs.first == 'true'
+        working-directory: deploy/terraform
+        run: terraform apply -auto-approve
+
+      # Masked: it is the origin address Cloudflare hides.
+      - name: Find the server
+        working-directory: deploy/terraform
+        run: |
+          address=$(terraform output -raw ipv4_address)
+          echo "::add-mask::$address"
+          echo "DEPLOY_HOST=$address" >> "$GITHUB_ENV"
+
+      - name: Install Ansible
+        run: pipx install --include-deps ansible==14.5.0
+
+      # The server's host key is not checked (deploy/ansible/inventory.yml).
+      - name: Set up SSH
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+        run: |
+          install -d -m 0700 ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/beeps
+          chmod 0600 ~/.ssh/beeps
+
+      - name: Run Ansible
+        working-directory: deploy/ansible
+        env:
+          PLAYBOOK: ${{ (needs.tag.outputs.first == 'true' || (github.event_name == 'workflow_dispatch' && inputs.provision)) && 'site.yml' || 'deploy.yml' }}
+          ANSIBLE_FORCE_COLOR: "1"
+          BEEPS_IMAGE: ${{ needs.image.outputs.image }}
+          GHCR_USER: ${{ github.actor }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # The server (DEPLOY_HOST comes from Terraform, above)
+          SSH_PUBLIC_KEYS: ${{ secrets.SSH_PUBLIC_KEYS }}
+          # TLS and keys
+          ORIGIN_CERTIFICATE: ${{ secrets.ORIGIN_CERTIFICATE }}
+          ORIGIN_PRIVATE_KEY: ${{ secrets.ORIGIN_PRIVATE_KEY }}
+          DATA_PROTECTION_CERTIFICATE: ${{ secrets.DATA_PROTECTION_CERTIFICATE }}
+          DATA_PROTECTION_CERTIFICATE_PASSWORD: ${{ secrets.DATA_PROTECTION_CERTIFICATE_PASSWORD }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          MEILI_MASTER_KEY: ${{ secrets.MEILI_MASTER_KEY }}
+          # The app
+          SERVER_NAME: ${{ vars.SERVER_NAME }}
+          SITE_BASE_URL: ${{ vars.SITE_BASE_URL }}
+          MEDIA_PUBLIC_BASE_URL: ${{ vars.MEDIA_PUBLIC_BASE_URL }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          STORAGE_BUCKET: ${{ vars.STORAGE_BUCKET }}
+          STORAGE_ACCESS_KEY_ID: ${{ secrets.STORAGE_ACCESS_KEY_ID }}
+          STORAGE_SECRET_ACCESS_KEY: ${{ secrets.STORAGE_SECRET_ACCESS_KEY }}
+          EMAIL_FROM: ${{ vars.EMAIL_FROM }}
+          RESEND_API_TOKEN: ${{ secrets.RESEND_API_TOKEN }}
+          TURNSTILE_SITE_KEY: ${{ secrets.TURNSTILE_SITE_KEY }}
+          TURNSTILE_SECRET_KEY: ${{ secrets.TURNSTILE_SECRET_KEY }}
+          MODERATION_ENABLED: ${{ vars.MODERATION_ENABLED }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          OAUTH_GOOGLE_CLIENT_ID: ${{ secrets.OAUTH_GOOGLE_CLIENT_ID }}
+          OAUTH_GOOGLE_CLIENT_SECRET: ${{ secrets.OAUTH_GOOGLE_CLIENT_SECRET }}
+          OAUTH_GITHUB_CLIENT_ID: ${{ secrets.OAUTH_GITHUB_CLIENT_ID }}
+          OAUTH_GITHUB_CLIENT_SECRET: ${{ secrets.OAUTH_GITHUB_CLIENT_SECRET }}
+          APP_SETTINGS: ${{ secrets.APP_SETTINGS }}
+          # Backups (optional)
+          BACKUP_BUCKET: ${{ secrets.BACKUP_BUCKET }}
+          BACKUP_ACCESS_KEY_ID: ${{ secrets.BACKUP_ACCESS_KEY_ID }}
+          BACKUP_SECRET_ACCESS_KEY: ${{ secrets.BACKUP_SECRET_ACCESS_KEY }}
+        run: ANSIBLE_PRIVATE_KEY_FILE="$HOME/.ssh/beeps" ansible-playbook "$PLAYBOOK"
+
+      # Through Cloudflare, as visitors reach it. beeps-deploy has already checked the app itself, so a challenge from
+      # Cloudflare's bot protection only warns.
+      - name: Check the site answers
+        continue-on-error: true
+        env:
+          SITE_BASE_URL: ${{ vars.SITE_BASE_URL || 'https://beeps.sh' }}
+        run: curl -fsS --retry 5 --retry-delay 5 --retry-all-errors -o /dev/null "$SITE_BASE_URL/skill.md"

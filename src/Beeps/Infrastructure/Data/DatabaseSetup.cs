@@ -36,6 +36,7 @@ public static class DatabaseSetup
         });
         services.AddDbContextPool<BeepsDbContext>((sp, options) =>
             Configure(options, sp.GetRequiredService<NpgsqlDataSource>()).AddInterceptors(sp.GetRequiredService<WorkSignalInterceptor>()));
+        services.AddHealthChecks().AddCheck<DatabaseHealthCheck>("postgres", timeout: TimeSpan.FromSeconds(5));
         return services;
     }
 

@@ -1,0 +1,79 @@
+# Every value comes from the environment. In GitHub Actions that is the production environment: its secrets for
+# anything secret, its variables for the rest (.github/workflows/deploy.yml maps each one). Run by hand, export the same
+# names (docs/deployment.md lists them all). Empty optional values are left out of app.env, so the app's own default in
+# appsettings.json applies.
+
+# --- The server -----------------------------------------------------------------------------------------------------
+# Public keys allowed to log in as `deploy`, one per line (the GitHub deploy key and your own). Replaces the list.
+beeps_ssh_public_keys: "{{ lookup('ansible.builtin.env', 'SSH_PUBLIC_KEYS') }}"
+beeps_ssh_port: 22
+beeps_swap_size_mb: 2048
+
+# --- The site -------------------------------------------------------------------------------------------------------
+beeps_server_name: "{{ lookup('ansible.builtin.env', 'SERVER_NAME') | default('beeps.sh', true) }}"
+# The image to deploy, e.g. ghcr.io/networkcats/beeps@sha256:…; without it the playbook only configures the server.
+beeps_image: "{{ lookup('ansible.builtin.env', 'BEEPS_IMAGE') }}"
+# To pull from GHCR: the workflow's own token, valid while the job runs.
+beeps_registry_user: "{{ lookup('ansible.builtin.env', 'GHCR_USER') }}"
+beeps_registry_token: "{{ lookup('ansible.builtin.env', 'GHCR_TOKEN') }}"
+
+# PEM; the Cloudflare Origin CA certificate for beeps_server_name and its private key.
+beeps_origin_certificate: "{{ lookup('ansible.builtin.env', 'ORIGIN_CERTIFICATE') }}"
+beeps_origin_private_key: "{{ lookup('ansible.builtin.env', 'ORIGIN_PRIVATE_KEY') }}"
+# Base64 of the PKCS#12 file that encrypts the Data Protection keys (PLAN 6.4), and its password.
+beeps_data_protection_certificate: "{{ lookup('ansible.builtin.env', 'DATA_PROTECTION_CERTIFICATE') }}"
+beeps_data_protection_password: "{{ lookup('ansible.builtin.env', 'DATA_PROTECTION_CERTIFICATE_PASSWORD') }}"
+
+# The Cloudflare account every R2 address is under (media and backups). A secret: it is nobody else's business.
+beeps_cloudflare_account_id: "{{ lookup('ansible.builtin.env', 'CLOUDFLARE_ACCOUNT_ID') }}"
+beeps_r2_endpoint: "https://{{ beeps_cloudflare_account_id }}.r2.cloudflarestorage.com"
+
+beeps_postgres_password: "{{ lookup('ansible.builtin.env', 'POSTGRES_PASSWORD') }}"
+beeps_meili_master_key: "{{ lookup('ansible.builtin.env', 'MEILI_MASTER_KEY') }}"
+
+# The app's configuration (.env.example explains each key). Values are written single-quoted, so none may hold a quote
+# or a line break; the play checks.
+beeps_app_settings:
+  ConnectionStrings__Postgres: "Host=postgres;Database=beeps;Username=beeps;Password={{ beeps_postgres_password }};Maximum Pool Size=40"
+  ConnectionStrings__Redis: "valkey:6379"
+  Search__Url: "http://meilisearch:7700"
+  Site__BaseUrl: "{{ lookup('ansible.builtin.env', 'SITE_BASE_URL') }}"
+  Media__PublicBaseUrl: "{{ lookup('ansible.builtin.env', 'MEDIA_PUBLIC_BASE_URL') }}"
+  Storage__ServiceUrl: "{{ beeps_r2_endpoint }}"
+  Storage__Bucket: "{{ lookup('ansible.builtin.env', 'STORAGE_BUCKET') }}"
+  Storage__AccessKeyId: "{{ lookup('ansible.builtin.env', 'STORAGE_ACCESS_KEY_ID') }}"
+  Storage__SecretAccessKey: "{{ lookup('ansible.builtin.env', 'STORAGE_SECRET_ACCESS_KEY') }}"
+  Email__From: "{{ lookup('ansible.builtin.env', 'EMAIL_FROM') }}"
+  Email__ResendApiToken: "{{ lookup('ansible.builtin.env', 'RESEND_API_TOKEN') }}"
+  Turnstile__SiteKey: "{{ lookup('ansible.builtin.env', 'TURNSTILE_SITE_KEY') }}"
+  Turnstile__SecretKey: "{{ lookup('ansible.builtin.env', 'TURNSTILE_SECRET_KEY') }}"
+  Moderation__Enabled: "{{ lookup('ansible.builtin.env', 'MODERATION_ENABLED') }}"
+  OpenRouter__ApiKey: "{{ lookup('ansible.builtin.env', 'OPENROUTER_API_KEY') }}"
+  OAuth__Google__ClientId: "{{ lookup('ansible.builtin.env', 'OAUTH_GOOGLE_CLIENT_ID') }}"
+  OAuth__Google__ClientSecret: "{{ lookup('ansible.builtin.env', 'OAUTH_GOOGLE_CLIENT_SECRET') }}"
+  OAuth__GitHub__ClientId: "{{ lookup('ansible.builtin.env', 'OAUTH_GITHUB_CLIENT_ID') }}"
+  OAuth__GitHub__ClientSecret: "{{ lookup('ansible.builtin.env', 'OAUTH_GITHUB_CLIENT_SECRET') }}"
+  DataProtection__CertificatePassword: "{{ beeps_data_protection_password }}"
+
+# Required, whatever appsettings.json says: without them the app does not start, or starts without a working part.
+beeps_required_settings:
+  - Site__BaseUrl
+  - Media__PublicBaseUrl
+  - Storage__Bucket
+  - Storage__AccessKeyId
+  - Storage__SecretAccessKey
+  - Email__ResendApiToken
+  - Turnstile__SiteKey
+  - Turnstile__SecretKey
+  - OpenRouter__ApiKey
+  - DataProtection__CertificatePassword
+
+# Any further settings, one KEY=VALUE a line (e.g. RateLimiting__Enabled=false), appended after the ones above.
+beeps_extra_settings: "{{ lookup('ansible.builtin.env', 'APP_SETTINGS') }}"
+
+# --- Backups (optional) ---------------------------------------------------------------------------------------------
+# A nightly pg_dump is always kept on the server for 7 days; with these it is also copied to an R2 bucket in the same
+# account.
+beeps_backup_bucket: "{{ lookup('ansible.builtin.env', 'BACKUP_BUCKET') }}"
+beeps_backup_access_key_id: "{{ lookup('ansible.builtin.env', 'BACKUP_ACCESS_KEY_ID') }}"
+beeps_backup_secret_access_key: "{{ lookup('ansible.builtin.env', 'BACKUP_SECRET_ACCESS_KEY') }}"

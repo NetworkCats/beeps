@@ -1,0 +1,8 @@
+[Unit]
+Description=Update UFW and nginx with Cloudflare's addresses
+Wants=network-online.target
+After=network-online.target docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/beeps-cloudflare-ips

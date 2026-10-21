@@ -1,0 +1,38 @@
+# Sets up the server from a fresh Debian 13 install, then deploys (deploy.yml). Safe to run again at any time.
+#   ansible-playbook site.yml
+- name: Set up the server
+  hosts: beeps
+  become: true
+  gather_facts: false
+  pre_tasks:
+    # A server Terraform just created takes a minute or two to boot and let deploy in.
+    - name: Wait for the server to accept logins
+      ansible.builtin.wait_for_connection:
+        delay: 5
+        timeout: 600
+
+    # cloud-init creates the deploy user and installs packages on first boot; apt is busy until it is done.
+    - name: Wait for cloud-init to finish
+      ansible.builtin.raw: if command -v cloud-init > /dev/null; then cloud-init status --wait > /dev/null || true; fi
+      changed_when: false
+
+    - name: Install Python for Ansible
+      ansible.builtin.raw: test -e /usr/bin/python3 || (apt-get update && apt-get install -y python3)
+      changed_when: false
+
+    - name: Gather facts
+      ansible.builtin.setup:
+
+    - name: Check this is Debian 13
+      ansible.builtin.assert:
+        that:
+          - ansible_facts.distribution == 'Debian'
+          - ansible_facts.distribution_major_version == '13'
+        fail_msg: "This playbook is written for Debian 13 (trixie), not {{ ansible_facts.distribution }} {{ ansible_facts.distribution_version }}"
+  roles:
+    - base
+    - docker
+    - firewall
+
+- name: Deploy
+  ansible.builtin.import_playbook: deploy.yml

@@ -15,6 +15,7 @@ using Beeps.Features.Site;
 using Beeps.Features.Skill;
 using Beeps.Features.Timelines;
 using Beeps.Infrastructure;
+using Beeps.Infrastructure.Data;
 using Beeps.Infrastructure.Search;
 using Beeps.Pages;
 using Beeps.Pages.Admin;
@@ -86,6 +87,8 @@ app.UseMiddleware<IdempotencyMiddleware>();
 app.UseMiddleware<ClientAssetsMiddleware>();
 
 app.MapStaticAssets().WithoutRateLimit();
+// For Docker and the blue-green deploy, from the host only: nginx does not pass it on.
+app.MapHealthChecks(DatabaseHealthCheck.Path).WithoutRateLimit();
 app.MapRazorPages().WithStaticAssets();
 app.MapAvatarEndpoints();
 app.MapSkillEndpoints();

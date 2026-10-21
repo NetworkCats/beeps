@@ -1,9 +1,11 @@
 name: CI
 
+# Pull requests and main; deploy.yml runs it once more for each version tag, and deploys only when it passes.
 on:
   push:
     branches: [main]
   pull_request:
+  workflow_call:
 
 permissions:
   contents: read
@@ -45,3 +47,38 @@ jobs:
 
       - name: Test
         run: dotnet test --no-build --configuration Release
+
+  # The deploy configuration: Terraform, Ansible and the server scripts.
+  deploy-config:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: 1.16.6
+
+      - name: Terraform format
+        run: terraform -chdir=deploy/terraform fmt -check -recursive
+
+      - name: Terraform validate
+        run: |
+          terraform -chdir=deploy/terraform init -backend=false -input=false
+          terraform -chdir=deploy/terraform validate
+        env:
+          VULTR_API_KEY: unused
+
+      - name: Install Ansible
+        run: pipx install --include-deps ansible==14.5.0
+
+      - name: Ansible syntax
+        working-directory: deploy/ansible
+        run: |
+          ansible-playbook --syntax-check site.yml
+          ansible-playbook --syntax-check deploy.yml
+
+      - name: Server scripts
+        run: |
+          shellcheck deploy/ansible/roles/beeps/files/beeps-deploy deploy/ansible/roles/beeps/files/beeps-backup
+          python3 -m py_compile deploy/ansible/roles/firewall/files/beeps-cloudflare-ips
+          docker compose -f compose.prod.yml config --quiet --no-env-resolution
