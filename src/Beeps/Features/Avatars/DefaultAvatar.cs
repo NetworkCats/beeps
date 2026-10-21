@@ -15,11 +15,14 @@ public static class DefaultAvatar
 
     public static string PathFor(Guid actorId) => $"/avatars/{actorId:D}.svg";
 
-    public static string RenderSvg(Guid actorId)
+    public static string RenderSvg(Guid actorId) => Icon(actorId, Size).ToSvg();
+
+    /// <summary>The pattern at <paramref name="size"/> pixels, for drawing it other than as SVG (link previews).</summary>
+    public static Identicon Icon(Guid actorId, int size)
     {
         var hash = SHA256.HashData(actorId.ToByteArray(bigEndian: true));
-        var icon = Identicon.FromHash(hash, Size);
+        var icon = Identicon.FromHash(hash, size);
         icon.Style = new IdenticonStyle { Padding = 0.12f };
-        return icon.ToSvg();
+        return icon;
     }
 }

@@ -27,6 +27,7 @@ using Beeps.Infrastructure.Media;
 using Beeps.Infrastructure.Moderation;
 using Beeps.Infrastructure.Outbox;
 using Beeps.Infrastructure.Passkeys;
+using Beeps.Infrastructure.Previews;
 using Beeps.Infrastructure.Redis;
 using Beeps.Infrastructure.Search;
 using Beeps.Infrastructure.Storage;
@@ -54,6 +55,7 @@ public static class InfrastructureSetup
         services.AddBeepsDisposableEmails();
         services.AddBeepsCrawlerAddresses();
         services.AddSingleton<IImageProcessor, SkiaImageProcessor>();
+        services.AddBeepsPreviews();
         services.AddSingleton<IRateLimitStore, RedisRateLimitStore>();
         services.AddSingleton<IIdempotencyStore, PostgresIdempotencyStore>();
         services.AddSingleton<IBeepCounterStore, RedisBeepCounterStore>();

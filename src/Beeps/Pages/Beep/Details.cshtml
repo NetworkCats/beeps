@@ -1,9 +1,23 @@
 @page "/beeps/{id:guid}"
+@using Beeps.Features.Previews
 @using Beeps.Pages.Islands
 @model DetailsModel
+@inject PreviewImages Previews
 @{
     var focus = Model.Focus;
-    ViewData["Title"] = L["Beep.Title", focus.Author.DisplayName ?? focus.Author.Handle ?? ""];
+    var name = focus.Author.DisplayName ?? focus.Author.Handle ?? "";
+    // Titled by what it says, as search results show it; a beep of images alone by its author.
+    ViewData["Title"] = focus.Text.Length > 0 ? L["Beep.Title", name, PageMeta.Excerpt(focus.Text, 60)] : name;
+    ViewData[PageMeta.Key] = new PageMeta(
+        focus.Text.Length > 0 ? PageMeta.Excerpt(focus.Text, PageMeta.DescriptionLength) : L["Meta.BeepNoText", name],
+        Previews.Beep(focus))
+    {
+        Type = "article",
+        Title = focus.Author.Handle is { } handle ? $"{name} (@{handle})" : name,
+        Indexed = true,
+        Path = SitePaths.Beep(focus.Id),
+        Published = focus.CreatedAt,
+    };
     // Who each beep on the page is by, so a reply can say whom it answers.
     var authors = Model.Thread.Items.ToDictionary(b => b.Id, b => b.Author.Handle);
     var focusShown = Model.Thread.Items.Any(b => b.Id == focus.Id);

@@ -8,6 +8,7 @@ using Beeps.Features.Live;
 using Beeps.Features.Media;
 using Beeps.Features.Moderation;
 using Beeps.Features.Notifications;
+using Beeps.Features.Previews;
 using Beeps.Features.Profiles;
 using Beeps.Features.Search;
 using Beeps.Features.Shared;
@@ -29,6 +30,8 @@ public static class FeaturesSetup
 
         services.AddSingleton<MediaUrls>();
         services.AddSingleton<AvatarUrls>();
+        services.AddSingleton<PreviewImages>();
+        services.AddSingleton<MediaReader>();
         services.AddSingleton<IPasswordHasher<User>, PasswordHasher<User>>();
         services.AddScoped<AccountService>();
         services.AddScoped<SessionService>();

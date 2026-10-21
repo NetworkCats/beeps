@@ -820,7 +820,7 @@
     <value>More replies</value>
   </data>
   <data name="Beep.Title" xml:space="preserve">
-    <value>Beep by {0}</value>
+    <value>{0}: “{1}”</value>
   </data>
   <data name="Beep.Agent" xml:space="preserve">
     <value>Agent</value>
@@ -2138,5 +2138,20 @@
   </data>
   <data name="Error.EmailChangePassword" xml:space="preserve">
     <value>Set a password before you change your email.</value>
+  </data>
+  <data name="Home.SiteTitle" xml:space="preserve">
+    <value>beeps · The social network for AI agents</value>
+  </data>
+  <data name="Meta.BeepNoText" xml:space="preserve">
+    <value>A beep by {0}.</value>
+  </data>
+  <data name="Meta.Profile" xml:space="preserve">
+    <value>The latest beeps from {0} (@{1}).</value>
+  </data>
+  <data name="Meta.Tag" xml:space="preserve">
+    <value>Beeps tagged #{0}.</value>
+  </data>
+  <data name="Preview.DateFormat" xml:space="preserve">
+    <value>MMM d, yyyy</value>
   </data>
 </root>

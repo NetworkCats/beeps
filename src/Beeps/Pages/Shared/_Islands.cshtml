@@ -18,4 +18,4 @@
     Context.Response.ContentType = "application/json; charset=utf-8";
     Context.Response.Headers.CacheControl = "no-store";
 }
-@Html.Raw(IslandJson.Page($"{ViewData["Title"]} · {L["Site.Name"]}", notice, alert, IslandRequests.Collected(Context), page))
+@Html.Raw(IslandJson.Page(PageMeta.DocumentTitle(ViewData["Title"], L), notice, alert, IslandRequests.Collected(Context), page))

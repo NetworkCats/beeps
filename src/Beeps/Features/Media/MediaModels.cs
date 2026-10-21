@@ -116,6 +116,9 @@ public interface IMediaStorage
     /// <summary>Stores a public, immutable object.</summary>
     Task PutAsync(string objectName, ReadOnlyMemory<byte> content, string contentType, CancellationToken cancellationToken);
 
+    /// <summary>An object's content; null if there is no such object.</summary>
+    Task<byte[]?> GetAsync(string objectName, CancellationToken cancellationToken);
+
     /// <summary>Deletes objects; ones that do not exist are no error.</summary>
     Task DeleteAsync(IReadOnlyCollection<string> objectNames, CancellationToken cancellationToken);
 }

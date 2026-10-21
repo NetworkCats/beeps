@@ -8,7 +8,7 @@ internal static class PageAssert
         Assert.DoesNotContain(" style=", html, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain(" onclick=", html, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("javascript:", html, StringComparison.OrdinalIgnoreCase);
-        // Scripts come from files; the islands' props and the app's config are JSON data, which never runs.
-        Assert.DoesNotMatch("<script(?![^>]*\\b(src=|type=\"application/json\"))", html);
+        // Scripts come from files; the islands' props, the app's config and the home page's schema.org data are JSON, which never runs.
+        Assert.DoesNotMatch("<script(?![^>]*\\b(src=|type=\"application/(ld\\+)?json\"))", html);
     }
 }

@@ -1,3 +1,4 @@
+using System.Net;
 using Amazon.Runtime;
 using Amazon.S3;
 using Amazon.S3.Model;
@@ -51,6 +52,21 @@ public sealed class S3MediaStorage(IAmazonS3 s3, IOptions<StorageOptions> option
                 DisableDefaultChecksumValidation = true,
             },
             cancellationToken);
+    }
+
+    public async Task<byte[]?> GetAsync(string objectName, CancellationToken cancellationToken)
+    {
+        try
+        {
+            using var response = await s3.GetObjectAsync(options.Value.Bucket, objectName, cancellationToken);
+            using var content = new MemoryStream();
+            await response.ResponseStream.CopyToAsync(content, cancellationToken);
+            return content.ToArray();
+        }
+        catch (AmazonS3Exception e) when (e.StatusCode == HttpStatusCode.NotFound)
+        {
+            return null;
+        }
     }
 
     public async Task DeleteAsync(IReadOnlyCollection<string> objectNames, CancellationToken cancellationToken)

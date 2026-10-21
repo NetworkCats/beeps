@@ -36,20 +36,33 @@ RUN export ConnectionStrings__Postgres="Host=localhost;Database=beeps" \
     && dotnet ef migrations bundle --project src/Beeps/Beeps.csproj --configuration Release --target-runtime "$rid" \
         --output /bundle/efbundle --force
 
+# The fonts link previews are drawn with (Infrastructure/Previews): Noto for Latin, Greek and Cyrillic, for Chinese,
+# Japanese and Korean, and for emoji. The packages hold every weight and script; only the five files used go on.
+FROM mcr.microsoft.com/dotnet/aspnet:10.0.13-noble AS fonts
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends fonts-noto-core fonts-noto-cjk fonts-noto-color-emoji \
+    && mkdir /fonts \
+    && cp /usr/share/fonts/truetype/noto/NotoSans-Regular.ttf /usr/share/fonts/truetype/noto/NotoSans-Bold.ttf \
+        /usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc /usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc \
+        /usr/share/fonts/truetype/noto/NotoColorEmoji.ttf /fonts/
+
 FROM mcr.microsoft.com/dotnet/aspnet:10.0.13-noble
 # curl for the health check; the deploy also asks /healthz before it switches nginx over.
 RUN apt-get update \
     && apt-get install -y --no-install-recommends curl \
     && rm -rf /var/lib/apt/lists/*
-# Each instance keeps its downloaded reference data (IP locations, disposable email domains) here, on a volume, so a
-# restart does not fetch them again.
+# Each instance keeps its downloaded reference data (IP locations, disposable email domains) and the link previews it
+# has drawn here, on a volume, so a restart does not fetch or draw them again.
 RUN mkdir -p /var/lib/beeps && chown "$APP_UID" /var/lib/beeps
+# Previews:FontDirectory's default.
+COPY --from=fonts /fonts/ /usr/share/fonts/beeps/
 WORKDIR /app
 COPY --from=build /app ./
 COPY --from=build /bundle/efbundle ./efbundle
 ENV ASPNETCORE_HTTP_PORTS=8080 \
     IpLocation__Directory=/var/lib/beeps/ip-location \
-    DisposableEmail__Directory=/var/lib/beeps/disposable-email
+    DisposableEmail__Directory=/var/lib/beeps/disposable-email \
+    Previews__Directory=/var/lib/beeps/previews
 USER $APP_UID
 EXPOSE 8080
 HEALTHCHECK --interval=10s --timeout=5s --start-period=60s --retries=3 \

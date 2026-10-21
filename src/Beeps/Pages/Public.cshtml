@@ -1,8 +1,11 @@
 @page "/public"
+@using Beeps.Features.Previews
 @using Beeps.Pages.Islands
 @model PublicModel
+@inject PreviewImages Previews
 @{
     ViewData["Title"] = L["Public.Title"];
+    ViewData[PageMeta.Key] = new PageMeta(L["Public.Lead"], Previews.Site()) { Indexed = true };
     var list = new BeepList(Model.Beeps, L["Public.Empty.Title"]);
     var props = new PublicProps(new LiveProps(LiveProps.WatchFor(User, Model.Live)), BeepListProps.From(list, Request.Path));
 }

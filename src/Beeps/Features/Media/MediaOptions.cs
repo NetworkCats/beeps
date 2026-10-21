@@ -38,5 +38,14 @@ public sealed class MediaUrls(IOptions<MediaOptions> options)
         return new MediaView(media.Id, Full(media.StorageKey), Thumbnail(media.StorageKey), media.Width, media.Height, media.Status);
     }
 
+    /// <summary>The object a media URL names (<see cref="IMediaStorage"/>); null for an address elsewhere.</summary>
+    public string? ObjectName(Uri url)
+    {
+        ArgumentNullException.ThrowIfNull(url);
+        var root = options.Value.PublicBaseUri.AbsoluteUri;
+        var address = url.GetLeftPart(UriPartial.Path);
+        return address.StartsWith(root, StringComparison.Ordinal) ? Uri.UnescapeDataString(address[root.Length..]) : null;
+    }
+
     private Uri Absolute(string objectName) => new(options.Value.PublicBaseUri, objectName);
 }

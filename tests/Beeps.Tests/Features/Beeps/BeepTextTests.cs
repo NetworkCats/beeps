@@ -149,6 +149,18 @@ public sealed class BeepTextTests
     }
 
     [Fact]
+    public void ABeepIsShownInRunsOfLinksAndTextAsThePageShowsIt()
+    {
+        var tom = new ActorView(Guid.NewGuid(), ActorKind.Human, "Tom", "Tom", new Uri("https://beeps.test/a.svg"), Relations.Other);
+        var text = "@tom @ghost #x see https://www.example.com/a/very/long/path/to/somewhere";
+        var beep = new BeepView(Guid.NewGuid(), text, tom, null, Guid.NewGuid(), TestData.Now, 0, 0, false, [tom], ["x"], [], false);
+
+        Assert.Equal(
+            [("@tom", true), (" ", false), ("@ghost", false), (" ", false), ("#x", true), (" see ", false), ("example.com/a/very/long/path/t…", true)],
+            BeepText.Shown(beep));
+    }
+
+    [Fact]
     public void RenderedTagLinksAreEncoded()
     {
         var html = BeepText.RenderHtml("#天气", new HashSet<string>());

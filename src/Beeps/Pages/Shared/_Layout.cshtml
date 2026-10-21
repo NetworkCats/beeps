@@ -1,9 +1,16 @@
 @using System.Globalization
+@using System.Text.Json
+@using Beeps.Features.Localization
+@using Beeps.Features.Previews
+@using Beeps.Features.Shared.Http
 @using Beeps.Pages.Islands
 @using Microsoft.AspNetCore.Authorization
+@using Microsoft.Extensions.Options
 @inject ClientConfig AppConfig
 @inject ClientChunks Chunks
 @inject IAuthorizationService Authorization
+@inject IOptions<SiteOptions> Site
+@inject PreviewImages Previews
 @{
     var currentCulture = CultureInfo.CurrentUICulture.Name;
     // Pages are drawn here and taken over by the app's Preact islands. Signed in they follow the site
@@ -23,6 +30,13 @@
     // they are used, and otherwise fetched once the page has loaded, as the scripts are (Client/app/main.tsx). The
     // admin pages' only for admins: no one else is given them (ClientAssetsMiddleware).
     var admin = signedIn && (await Authorization.AuthorizeAsync(User, AuthPolicies.Admin)).Succeeded;
+    // What search engines and the sites a link is shared on read of the page (PageMeta): the site's, unless the page
+    // says its own. A later page of a list (its cursor in the query) is never listed.
+    var meta = ViewData[PageMeta.Key] as PageMeta;
+    var title = appShell ? L["Site.Name"] : PageMeta.DocumentTitle(ViewData["Title"], L);
+    var url = Site.Value.Absolute(meta?.Path ?? (Context.Request.PathBase + Context.Request.Path).ToUriComponent());
+    var indexed = meta?.Indexed == true && PublicPageCache.CachedQuery(Context.Request) == QueryString.Empty;
+    var locale = currentCulture == SupportedCultures.ChineseSimplified ? "zh_CN" : "en_US";
 }
 <!DOCTYPE html>
 @* Razor writes a data-* attribute even when null; the theme is one of two fixed words. *@
@@ -33,8 +47,41 @@
     @* The app (state.ts) keeps these in step when the scheme is switched in place. *@
     <meta name="theme-color" content="#ffffff" data-scheme="light" media="@(theme switch { null => "(prefers-color-scheme: light)", Themes.Light => "all", _ => "not all" })">
     <meta name="theme-color" content="#0a0a0a" data-scheme="dark" media="@(theme switch { null => "(prefers-color-scheme: dark)", Themes.Dark => "all", _ => "not all" })">
-    <title>@(appShell ? L["Site.Name"] : $"{ViewData["Title"]} · {L["Site.Name"]}")</title>
-    <meta name="description" content="@L["Site.Tagline"]">
+    <title>@title</title>
+    <meta name="description" content="@(meta?.Description ?? L["Site.Tagline"])">
+    @if (indexed)
+    {
+        <link rel="canonical" href="@url">
+        <meta name="robots" content="max-image-preview:large">
+    }
+    else
+    {
+        <meta name="robots" content="noindex">
+    }
+    <meta property="og:site_name" content="@L["Site.Name"]">
+    <meta property="og:type" content="@(meta?.Type ?? "website")">
+    <meta property="og:title" content="@(meta?.Title ?? ViewData["Title"]?.ToString() ?? title)">
+    <meta property="og:description" content="@(meta?.Description ?? L["Site.Tagline"])">
+    <meta property="og:url" content="@url">
+    <meta property="og:locale" content="@locale">
+    <meta property="og:image" content="@(meta?.Image ?? Previews.Site())">
+    <meta property="og:image:type" content="image/png">
+    <meta property="og:image:width" content="@IPreviewRenderer.Width">
+    <meta property="og:image:height" content="@IPreviewRenderer.Height">
+    @if (meta?.Published is { } published)
+    {
+        <meta property="article:published_time" content="@published.UtcDateTime.ToString("yyyy-MM-ddTHH:mm:ssZ", CultureInfo.InvariantCulture)">
+    }
+    @if (meta?.Username is { } username)
+    {
+        <meta property="profile:username" content="@username">
+    }
+    <meta name="twitter:card" content="summary_large_image">
+    @if (meta?.IsHome == true)
+    {
+        @* Names the site in search results (schema.org's WebSite). Data, which never runs. *@
+        <!script type="application/ld+json">@Html.Raw(JsonSerializer.Serialize(new Dictionary<string, string> { ["@context"] = "https://schema.org", ["@type"] = "WebSite", ["name"] = L["Site.Name"], ["url"] = Site.Value.BaseUri.AbsoluteUri }))</!script>
+    }
     <link rel="icon" href="~/favicon.ico" sizes="16x16 32x32 48x48" asp-append-version="true">
     <link rel="apple-touch-icon" href="~/images/logo.png" asp-append-version="true">
     <link rel="preload" href="~/fonts/material-symbols-rounded.woff2" as="font" type="font/woff2" crossorigin>

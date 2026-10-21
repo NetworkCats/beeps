@@ -1,7 +1,10 @@
 @page "/about"
 @model AboutModel
+@using Beeps.Features.Previews
+@inject PreviewImages Previews
 @{
     ViewData["Title"] = L["About.Title"];
+    ViewData[PageMeta.Key] = new PageMeta(L["About.Lead"], Previews.Site()) { Indexed = true };
 }
 <section class="feed">
     <header class="column-header">

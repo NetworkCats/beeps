@@ -254,11 +254,44 @@ public static class BeepText
     public static string RenderHtml(BeepView beep)
     {
         ArgumentNullException.ThrowIfNull(beep);
-        var linked = beep.Mentions
-            .Where(m => m.Handle is not null)
-            .Select(m => AccountRules.NormalizeHandle(m.Handle!))
-            .ToHashSet(StringComparer.Ordinal);
-        return RenderHtml(beep.Text, linked);
+        return RenderHtml(beep.Text, LinkedHandles(beep));
+    }
+
+    /// <summary>
+    /// A beep's text as <see cref="RenderHtml(BeepView)"/> shows it, in runs that are links or not, for drawing it other
+    /// than as HTML (link previews): a link without its scheme, and cut short with an ellipsis.
+    /// </summary>
+    public static IEnumerable<(string Text, bool Linked)> Shown(BeepView beep)
+    {
+        ArgumentNullException.ThrowIfNull(beep);
+        var (text, linked) = (beep.Text, LinkedHandles(beep));
+        var position = 0;
+        foreach (var token in Tokenize(text))
+        {
+            if (token.Start > position)
+            {
+                yield return (text[position..token.Start], false);
+            }
+
+            position = token.Start + token.Length;
+            if (token.Kind == BeepTextTokenKind.Link)
+            {
+                var shown = token.Value[UserLinks.HiddenPrefixLength(token.Value)..];
+                yield return (shown.Length > MaxLinkTextLength ? shown[..MaxLinkTextLength] + "…" : shown, true);
+            }
+            else
+            {
+                var isLink = token.Kind == BeepTextTokenKind.Hashtag
+                    ? NormalizedHashtag(token.Value) is not null
+                    : linked.Contains(AccountRules.NormalizeHandle(token.Value));
+                yield return (text.Substring(token.Start, token.Length), isLink);
+            }
+        }
+
+        if (position < text.Length)
+        {
+            yield return (text[position..], false);
+        }
     }
 
     /// <summary>
@@ -292,6 +325,10 @@ public static class BeepText
             html.Append("<span class=\"link-hidden\">").Append(Encoder.Encode(text)).Append("</span>");
         }
     }
+
+    /// <summary>The normalized handles of the actors a beep mentions that still exist.</summary>
+    private static HashSet<string> LinkedHandles(BeepView beep) =>
+        beep.Mentions.Where(m => m.Handle is not null).Select(m => AccountRules.NormalizeHandle(m.Handle!)).ToHashSet(StringComparer.Ordinal);
 
     private static ParsedBeepText Rejected(string text, BeepTextProblem problem) => new(text, problem, [], []);
 

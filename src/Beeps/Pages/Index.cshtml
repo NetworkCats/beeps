@@ -1,10 +1,14 @@
 @page
+@using Beeps.Features.Previews
 @using Beeps.Pages.Islands
 @using Microsoft.AspNetCore.Mvc.ViewFeatures
 @model IndexModel
 @inject IFileVersionProvider Versions
+@inject PreviewImages Previews
 @{
-    ViewData["Title"] = Model.IsHome ? L["Home.Title"] : L["Public.Title"];
+    // Signed out, the site's own home: titled as the site, and what it is said in full.
+    ViewData["Title"] = Model.IsHome ? L["Home.Title"] : null;
+    ViewData[PageMeta.Key] = Model.IsHome ? null : new PageMeta(L["About.Lead"], Previews.Site()) { Indexed = true, IsHome = true };
     var list = Model.IsHome ? new BeepList(Model.Beeps, L["Home.Empty.Title"], L["Home.Empty.Text"]) : new BeepList(Model.Beeps, L["Public.Empty.Title"]);
     var introArt = Versions.AddFileVersionToPath(Request.PathBase, "/images/chill.png");
     var props = new IndexProps(

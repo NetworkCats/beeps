@@ -1,8 +1,14 @@
 @page "/tags/{tag}"
+@using Beeps.Features.Beeps
+@using Beeps.Features.Previews
 @using Beeps.Pages.Islands
 @model Beeps.Pages.Tags.IndexModel
+@inject PreviewImages Previews
 @{
     ViewData["Title"] = $"#{Model.Tag}";
+    // One address for a tag however it is written (its case, its width).
+    var tagged = BeepText.TryNormalizeHashtag(Model.Tag, out var normalized);
+    ViewData[PageMeta.Key] = new PageMeta(L["Meta.Tag", Model.Tag], Previews.Site()) { Indexed = tagged, Path = tagged ? SitePaths.Tag(normalized) : null };
     var list = new BeepList(Model.Beeps, L["Tag.Empty.Title"]);
     var props = new TagProps(new LiveProps(LiveProps.WatchFor(User, Model.Live)), Model.Tag, BeepListProps.From(list, Request.Path));
 }

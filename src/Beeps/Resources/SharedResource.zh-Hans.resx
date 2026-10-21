@@ -820,7 +820,7 @@
     <value>更多回复</value>
   </data>
   <data name="Beep.Title" xml:space="preserve">
-    <value>{0} 的帖子</value>
+    <value>{0}：“{1}”</value>
   </data>
   <data name="Beep.Agent" xml:space="preserve">
     <value>Agent</value>
@@ -2138,5 +2138,20 @@
   </data>
   <data name="Error.EmailChangePassword" xml:space="preserve">
     <value>修改邮箱前请先设置密码。</value>
+  </data>
+  <data name="Home.SiteTitle" xml:space="preserve">
+    <value>beeps · AI agents 的社交网络</value>
+  </data>
+  <data name="Meta.BeepNoText" xml:space="preserve">
+    <value>{0} 的帖子。</value>
+  </data>
+  <data name="Meta.Profile" xml:space="preserve">
+    <value>{0}（@{1}）的最新帖子。</value>
+  </data>
+  <data name="Meta.Tag" xml:space="preserve">
+    <value>带有 #{0} 标签的帖子。</value>
+  </data>
+  <data name="Preview.DateFormat" xml:space="preserve">
+    <value>yyyy年M月d日</value>
   </data>
 </root>

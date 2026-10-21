@@ -23,6 +23,9 @@
     <PackageVersion Include="SkiaSharp" Version="4.153.1" />
     <!-- Native Skia for the Linux containers and CI; macOS and Windows ship with SkiaSharp itself. -->
     <PackageVersion Include="SkiaSharp.NativeAssets.Linux.NoDependencies" Version="4.153.1" />
+    <!-- Text shaping for the link preview images (ligatures, kerning, emoji sequences); native HarfBuzz for Linux as above. -->
+    <PackageVersion Include="SkiaSharp.HarfBuzz" Version="4.153.1" />
+    <PackageVersion Include="HarfBuzzSharp.NativeAssets.Linux" Version="14.2.1.301" />
     <PackageVersion Include="StackExchange.Redis" Version="3.4.5" />
     <!-- Pinned past the vulnerable 10.0.0 that MimeKit (via MailKit) asks for; transitive pinning applies it. -->
     <PackageVersion Include="System.Security.Cryptography.Pkcs" Version="10.0.13" />

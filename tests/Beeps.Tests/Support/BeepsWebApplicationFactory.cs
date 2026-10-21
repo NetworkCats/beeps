@@ -125,6 +125,9 @@ public sealed class BeepsWebApplicationFactory : WebApplicationFactory<Program>
     /// <summary>A clock for tests whose pages must come out the same every time (the footer's year, relative times).</summary>
     public TimeProvider? Time { get; init; }
 
+    /// <summary>Where this factory's app keeps the previews it draws; deleted with the factory.</summary>
+    public string PreviewDirectory { get; } = Path.Combine(Path.GetTempPath(), $"beeps-tests-previews-{Guid.NewGuid():N}");
+
     /// <summary>Configuration on top of the tests' own, such as an app registered with GitHub.</summary>
     public IReadOnlyDictionary<string, string> Settings { get; init; } = new Dictionary<string, string>();
 
@@ -162,6 +165,7 @@ public sealed class BeepsWebApplicationFactory : WebApplicationFactory<Program>
         builder.UseSetting("Storage:SecretAccessKey", "test");
         // Tests sharing a factory change mocks between requests; a cached page would hide that. OutputCacheTests turn it on.
         builder.UseSetting("PublicPageCache:Enabled", "false");
+        builder.UseSetting("Previews:Directory", PreviewDirectory);
         foreach (var (key, value) in Settings)
         {
             builder.UseSetting(key, value);
@@ -208,6 +212,15 @@ public sealed class BeepsWebApplicationFactory : WebApplicationFactory<Program>
             services.RemoveAll<IDistributedCache>();
             services.AddDistributedMemoryCache();
         });
+    }
+
+    protected override void Dispose(bool disposing)
+    {
+        base.Dispose(disposing);
+        if (disposing && Directory.Exists(PreviewDirectory))
+        {
+            Directory.Delete(PreviewDirectory, recursive: true);
+        }
     }
 
     private static void Replace<T>(IServiceCollection services, T instance)

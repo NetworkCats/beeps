@@ -1,17 +1,29 @@
 @page "/@{handle}/{tab:regex(^(replies|likes)$)?}"
 @using Beeps.Features.Accounts
 @using Beeps.Features.Beeps
+@using Beeps.Features.Previews
 @using Beeps.Features.Shared
 @using Beeps.Pages.Islands
 @model Beeps.Pages.Profiles.IndexModel
+@inject PreviewImages Previews
 @{
     var profile = Model.Profile;
     var actor = profile.Actor;
     var handle = actor.Handle!;
+    var tab = Model.Tab;
     ViewData["Title"] = $"{actor.DisplayName} (@{handle})";
+    // The beeps are the profile; its replies and likes are only other lists of beeps.
+    ViewData[PageMeta.Key] = new PageMeta(
+        string.IsNullOrWhiteSpace(profile.Bio) ? L["Meta.Profile", actor.DisplayName ?? handle, handle] : PageMeta.Excerpt(profile.Bio, PageMeta.DescriptionLength),
+        Previews.Profile(profile))
+    {
+        Type = "profile",
+        Indexed = tab is null,
+        Path = SitePaths.ProfileTab(handle, tab),
+        Username = handle,
+    };
     var isAgent = actor.Kind == ActorKind.Agent;
     var editUrl = isAgent ? Url.Page("/Agents/Edit", new { id = actor.Id }) : SitePaths.SettingsSection(SettingsSections.Profile);
-    var tab = Model.Tab;
     // As many of a human's agents as the card lists; the rest are in the dialog "show more" opens.
     const int agentsShown = 3;
     var empty = tab switch
