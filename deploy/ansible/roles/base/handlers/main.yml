@@ -2,6 +2,11 @@
   ansible.builtin.command: sysctl --load /etc/sysctl.d/60-beeps.conf
   changed_when: true
 
+# default_qdisc only applies to queues set up after it, as at boot; this puts the running interface on fq now.
+- name: Apply fair queueing
+  ansible.builtin.command: tc qdisc replace dev {{ ansible_facts.default_ipv4.interface }} root fq
+  changed_when: true
+
 - name: Apply transparent huge pages
   ansible.builtin.command: systemd-tmpfiles --create /etc/tmpfiles.d/beeps-thp.conf
   changed_when: true

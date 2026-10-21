@@ -154,7 +154,7 @@ git tag v0.1.0 && git push origin v0.1.0
 1. 在 Vultr 后台找到实例 `beeps-production` 的 IPv4，在 Cloudflare DNS 加 `A beeps.sh → 这个 IP`，**开启代理**（橙色云朵）。不要加 AAAA 记录（服务器没有 IPv6），也不要加任何不经代理、指向这个 IP 的记录。在这之前站点从外面打不开，部署最后那一步站点检查只会给出警告。
 2. 打开 https://beeps.sh，**第一个注册的账号自动成为管理员**，再按需关闭开放注册。
 
-Vultr 自动备份默认开启（每天 UTC 4 点，价格的 20%），数据库也在这台机器上。实例设了 `prevent_destroy`，Terraform 不会删除它。之后要改服务器本身（套餐、地区、防火墙），用 Actions → Infrastructure：先 `plan` 看一遍，再 `apply`。
+不开 Vultr 的自动备份，数据库靠每晚的 `pg_dump`（见下文“备份”）。实例设了 `prevent_destroy`，Terraform 不会删除它。之后要改服务器本身（套餐、地区、防火墙），用 Actions → Infrastructure：先 `plan` 看一遍，再 `apply`。
 
 ## 日常操作
 
@@ -168,9 +168,12 @@ sudo beeps-deploy rollback              # 切回上一个版本（同样不中�
 sudo beeps-deploy run search rebuild    # 用当前版本运行一次性命令（search 命令自动带上 master key）
 cd /srv/beeps && sudo docker compose -f compose.prod.yml --env-file release.env logs -f app-blue nginx
 sudo systemctl start beeps-backup       # 立即备份一次
+# 总耗时最多的 20 条语句（pg_stat_statements）
+cd /srv/beeps && sudo docker compose -f compose.prod.yml --env-file release.env exec postgres psql -U beeps -d beeps \
+    -c 'SELECT calls, round(total_exec_time) AS total_ms, round(mean_exec_time::numeric, 2) AS mean_ms, left(query, 80) AS query FROM pg_stat_statements ORDER BY total_exec_time DESC LIMIT 20'
 ```
 
-**备份**：每天 UTC 3:30 左右 `pg_dump` 到 `/srv/beeps/backups`，保留 7 天；配置了 `BACKUP_*` 时同时上传到备份 bucket 的 `postgres/` 下。另有 Vultr 的整机自动备份。恢复：
+**备份**：每天 UTC 3:30 左右 `pg_dump` 到 `/srv/beeps/backups`，保留 7 天；配置了 `BACKUP_*` 时同时上传到备份 bucket 的 `postgres/` 下。没有 Vultr 的整机备份，不配 `BACKUP_*` 时唯一的备份和数据库在同一台机器上，服务器坏了就一起没了。恢复：
 
 ```sh
 cd /srv/beeps
@@ -205,9 +208,20 @@ BEEPS_IMAGE=ghcr.io/<owner>/beeps@sha256:… GHCR_USER=… GHCR_TOKEN=… ansibl
 
 都在 Ansible 里，`site.yml` 应用（`roles/base/files/sysctl.conf` 有逐项说明）：
 
-- **网络**：BBR + fq；更大的连接队列（`somaxconn` 65535、`tcp_max_syn_backlog` 8192、`netdev_max_backlog`）；最大 16 MB 的套接字缓冲；`tcp_notsent_lowat`（HTTP/2 优先级更准）；空闲后不回到慢启动（Cloudflare 的长连接）；TCP Fast Open；MTU 探测；`tcp_tw_reuse`、更宽的本地端口范围、更短的 FIN 超时；5 分钟起的 keepalive；conntrack 表 262144。
-- **内核和内存**：2 GB swap 文件，`swappiness` 10；`overcommit_memory=1`（Valkey 写快照要 fork）；更早、更小批量的脏页回写（PostgreSQL checkpoint 不卡）；透明大页改为 `madvise`（Valkey、PostgreSQL 都建议）；文件句柄上限 1048576。
-- **nginx**：`reuseport`、每 worker 8192 连接、`multi_accept`；到应用的 upstream keepalive；对 Cloudflare 的 keepalive 905 秒（长于 Cloudflare 的 900 秒，避免 520）；TLS 会话缓存；压缩 JSON / JS / CSS（SSE 不压缩，不缓冲）。
-- **PostgreSQL**（`compose.prod.yml`）：`shared_buffers` 256 MB、`effective_cache_size` 768 MB、`work_mem` 4 MB、`random_page_cost` 1.1、`effective_io_concurrency` 200（NVMe）、WAL 压缩、`jit=off`。
-- **内存上限**：PostgreSQL 640 MB、每个应用颜色 640 MB、Meilisearch 512 MB、Valkey 256 MB（`maxmemory` 128 MB，`volatile-lru`）、nginx 128 MB；部署时两个颜色短暂同时运行，swap 兜底。
+- **网络**：BBR + fq；更大的连接队列（`somaxconn` 65535、`tcp_max_syn_backlog` 8192、`netdev_max_backlog`）；最大 16 MB 的套接字缓冲；`tcp_notsent_lowat`（HTTP/2 优先级更准）；空闲后不回到慢启动（Cloudflare 的长连接）；TCP Fast Open；MTU 探测；`tcp_tw_reuse`、更宽的本地端口范围、更短的 FIN 超时；5 分钟起的 keepalive；conntrack 表 262144。大多数 `net.*` 按网络命名空间生效：管到用宿主机网络的 nginx（及它到应用的连接），管不到容器内部，所以 PostgreSQL 自己设 keepalive。`default_qdisc` 只对之后建立的队列生效，Ansible 应用时顺便把网卡换成 fq，不必重启。
+- **内核和内存**：2 GB swap 文件，`swappiness` 10；`overcommit_memory=1`（Valkey 写快照要 fork）；更早、更小批量的脏页回写（PostgreSQL checkpoint 不卡）；透明大页改为 `madvise`（Valkey、PostgreSQL 都建议）；每进程文件句柄上限 1048576（系统总量 systemd 已调到最大，不再设）。
+- **nginx**：`reuseport`、每 worker 8192 连接、`multi_accept`；到应用的 upstream keepalive；对 Cloudflare 的 keepalive 905 秒（长于 Cloudflare 的 900 秒，避免 520）；TLS 会话缓存；压缩 JSON / JS / CSS（SSE 不压缩，不缓冲）；代理缓冲 16 KB（默认 4 KB，登录时的 cookie 加跳转响应头超了会 502），多数页面不落临时文件。
+- **PostgreSQL**（`compose.prod.yml`，逐项有说明）：
+  - 内存：`shared_buffers` 256 MB；`effective_cache_size` 512 MB（数据文件的页缓存也算在容器 768 MB 上限里，能用作缓存的约一半）；`work_mem` 4 MB；`maintenance_work_mem` 64 MB。
+  - 连接：`max_connections` 60，应用每个颜色连接池 25（`Maximum Pool Size`），部署时两个颜色重叠也够；每个后端最多缓存 200 条预备语句，连接越多内存越多。`idle_in_transaction_session_timeout` 5 分钟；服务端 TCP keepalive 5 分钟。
+  - 规划和并行：`random_page_cost` 1.1、`effective_io_concurrency` 200（本地 NVMe）；`jit=off`；每个查询最多 1 个并行 worker（2 个 vCPU 还要跑应用）。
+  - WAL：`wal_compression=lz4`、TOAST 也用 lz4；`checkpoint_timeout` 15 分钟、`max_wal_size` 1 GB。
+  - autovacuum：2 个 worker；表变动 5% 就 vacuum / analyze（默认 20% / 10%）。
+  - 观测：`pg_stat_statements`（Ansible 建扩展）、`track_io_timing`；日志记 500 ms 以上的语句、锁等待、溢出到磁盘的排序，不记参数（可能含邮箱和 token）。
+- **内存上限**：PostgreSQL 768 MB、每个应用颜色 640 MB、Meilisearch 512 MB、Valkey 256 MB（`maxmemory` 128 MB，`volatile-lru`）、nginx 128 MB；部署时两个颜色短暂同时运行，swap 兜底。
+- **Valkey**：只用 AOF（每秒刷盘，存着还没写回 PostgreSQL 的计数和实时事件流），关掉默认的 RDB 快照，少 fork，免得写时复制的内存碰到容器上限；惰性释放（Valkey 9 默认已开）。
+- **Meilisearch**：索引用 1 个线程、256 MB；日志级别 WARN（INFO 会逐条记录每次搜索、健康检查和应用对每个写入任务的轮询）。
+- **健康检查**：PostgreSQL、Valkey、Meilisearch 启动时每秒检查一次（`up --wait` 就绪即返回），之后 30 秒一次。
+- **备份**：`pg_dump` 用 zstd 压缩，比默认的 gzip 快一倍，文件略小。
+- **应用**：镜像用 ReadyToRun 预编译（`Dockerfile`），新颜色启动时不用和正在服务的颜色抢两个线程做 JIT，热点方法仍按运行数据重新编译。
 - **Docker**：`local` 日志驱动（压缩、按大小轮转）、`live-restore`（重启 Docker 不停容器）、容器的文件句柄上限。应用容器带 `init`，进程崩溃时能正常退出。

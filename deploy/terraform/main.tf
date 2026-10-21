@@ -46,18 +46,11 @@ resource "vultr_instance" "beeps" {
   # IPv4 only: Cloudflare reaches the origin over IPv4, and visitors still get IPv6 from Cloudflare's edge.
   enable_ipv6       = false
   firewall_group_id = vultr_firewall_group.beeps.id
-  backups           = var.backups ? "enabled" : "disabled"
-  activation_email  = false
-  ddos_protection   = false
-  tags              = ["beeps", "production"]
-
-  dynamic "backups_schedule" {
-    for_each = var.backups ? [1] : []
-    content {
-      type = "daily"
-      hour = 4
-    }
-  }
+  # No Vultr backups: the nightly pg_dump (deploy/ansible, beeps-backup) backs up the database, to R2 when configured.
+  backups          = "disabled"
+  activation_email = false
+  ddos_protection  = false
+  tags             = ["beeps", "production"]
 
   # Sensitive, so plans print no login keys: the deploy logs of a public repository are public.
   user_data = sensitive(templatefile("${path.module}/cloud-init.yaml.tftpl", {

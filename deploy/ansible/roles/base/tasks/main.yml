@@ -19,6 +19,8 @@
       - ca-certificates
       - curl
       - gnupg
+      # tc, for fair queueing (handlers).
+      - iproute2
       - python3
       # For deb822_repository (roles/docker).
       - python3-debian
@@ -112,7 +114,9 @@
     src: sysctl.conf
     dest: /etc/sysctl.d/60-beeps.conf
     mode: "0644"
-  notify: Apply the kernel settings
+  notify:
+    - Apply the kernel settings
+    - Apply fair queueing
 
 # Valkey and PostgreSQL both warn against transparent huge pages always on (latency spikes, memory use); madvise
 # leaves them to programs that ask.

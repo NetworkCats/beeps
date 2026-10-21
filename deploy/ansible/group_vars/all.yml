@@ -34,7 +34,7 @@ beeps_meili_master_key: "{{ lookup('ansible.builtin.env', 'MEILI_MASTER_KEY') }}
 # The app's configuration (.env.example explains each key). Values are written single-quoted, so none may hold a quote
 # or a line break; the play checks.
 beeps_app_settings:
-  ConnectionStrings__Postgres: "Host=postgres;Database=beeps;Username=beeps;Password={{ beeps_postgres_password }};Maximum Pool Size=40"
+  ConnectionStrings__Postgres: "Host=postgres;Database=beeps;Username=beeps;Password={{ beeps_postgres_password }};Maximum Pool Size=25"
   ConnectionStrings__Redis: "valkey:6379"
   Search__Url: "http://meilisearch:7700"
   Site__BaseUrl: "{{ lookup('ansible.builtin.env', 'SITE_BASE_URL') }}"

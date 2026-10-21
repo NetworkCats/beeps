@@ -17,11 +17,15 @@ WORKDIR /src
 # .editorconfig holds analyzer settings the build treats as errors without.
 COPY .editorconfig global.json Directory.Build.props Directory.Packages.props dotnet-tools.json ./
 COPY src/Beeps/Beeps.csproj src/Beeps/
-RUN dotnet restore src/Beeps/Beeps.csproj -a "$TARGETARCH" && dotnet tool restore
+# Compiled ahead of time (ReadyToRun): a new colour starts while the other takes traffic on the same two threads, and
+# would otherwise spend them compiling for its first minutes. Hot methods are still recompiled with profile data.
+# Restored with the same setting, which brings in the compiler.
+RUN dotnet restore src/Beeps/Beeps.csproj -a "$TARGETARCH" -p:PublishReadyToRun=true && dotnet tool restore
 COPY src/Beeps/ src/Beeps/
 # MapStaticAssets fingerprints whatever is in wwwroot/dist when the app is built, so the assets go in first.
 COPY --from=client /src/src/Beeps/wwwroot/dist/ src/Beeps/wwwroot/dist/
-RUN dotnet publish src/Beeps/Beeps.csproj -c Release -a "$TARGETARCH" --no-restore -o /app -p:UseAppHost=false
+RUN dotnet publish src/Beeps/Beeps.csproj -c Release -a "$TARGETARCH" --no-restore -o /app -p:UseAppHost=false \
+    -p:PublishReadyToRun=true
 # Migrations run once per deploy, before the new version takes traffic, never at each instance's start (PLAN 9.3).
 # Making the bundle builds the DbContext, which wants a connection string; it is never opened here, and the bundle
 # reads the real one from the environment when it runs.

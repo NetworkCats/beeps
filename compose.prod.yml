@@ -46,54 +46,112 @@ services:
     environment:
       POSTGRES_USER: beeps
       POSTGRES_DB: beeps
-    # Sized for a 2 GB server shared with everything else.
+    # Sized for the Vultr plan (deploy/terraform): 2 vCPU threads, 2 GB and local NVMe, shared with everything else.
     command:
       - postgres
+      # Memory. shared_buffers and the page cache of the data files both count against mem_limit below, so the cache
+      # the planner may count on is what that leaves: about half of it.
       - -c
       - shared_buffers=256MB
       - -c
-      - effective_cache_size=768MB
+      - effective_cache_size=512MB
       - -c
       - work_mem=4MB
       - -c
       - maintenance_work_mem=64MB
+      # Connections: two app colours of 25 each (Maximum Pool Size, deploy/ansible/group_vars/all.yml) while a deploy
+      # overlaps them, plus the migration bundle, pg_dump and psql. Each backend keeps up to 200 prepared statements.
       - -c
-      - max_connections=100
+      - max_connections=60
+      # A backend left holding locks and old row versions by a forgotten transaction is ended.
+      - -c
+      - idle_in_transaction_session_timeout=5min
+      # Containers have their own network namespace, with the kernel's 2-hour keepalive whatever the host says: a
+      # backend whose client vanished without closing would hold its connection slot that long.
+      - -c
+      - tcp_keepalives_idle=300
+      - -c
+      - tcp_keepalives_interval=30
+      - -c
+      - tcp_keepalives_count=5
+      # Planner: NVMe reads at random cost about what they cost in order, and many can be in flight at once.
       - -c
       - random_page_cost=1.1
-      - -c
-      - wal_buffers=16MB
-      - -c
-      - wal_compression=on
-      - -c
-      - max_wal_size=1GB
-      - -c
-      - checkpoint_completion_target=0.9
-      # NVMe: many reads can be in flight at once.
       - -c
       - effective_io_concurrency=200
       # The app's queries are short; compiling them costs more than it saves.
       - -c
       - jit=off
+      # Two threads serve the app too: one query gets at most one helper.
+      - -c
+      - max_parallel_workers_per_gather=1
+      - -c
+      - max_parallel_maintenance_workers=1
+      # WAL: lz4 compresses full-page images for a fraction of pglz's CPU (wal_compression=on); fewer checkpoints
+      # write fewer of them.
+      - -c
+      - wal_buffers=16MB
+      - -c
+      - wal_compression=lz4
+      - -c
+      - default_toast_compression=lz4
+      - -c
+      - max_wal_size=1GB
+      - -c
+      - checkpoint_timeout=15min
+      - -c
+      - checkpoint_completion_target=0.9
+      # Autovacuum: counters and timelines rewrite a small share of large tables all day; vacuum and analyze them
+      # after 5% has changed instead of 20% and 10%. Two workers, so vacuum leaves the app a thread.
+      - -c
+      - autovacuum_max_workers=2
+      - -c
+      - autovacuum_vacuum_scale_factor=0.05
+      - -c
+      - autovacuum_analyze_scale_factor=0.05
+      # What to look at when tuning: per-statement figures (pg_stat_statements, created by deploy/ansible), slow
+      # statements, lock waits and sorts that spilled to disk. Never the parameters: they can hold addresses and tokens.
+      - -c
+      - shared_preload_libraries=pg_stat_statements
+      - -c
+      - pg_stat_statements.max=1000
+      - -c
+      - track_io_timing=on
+      - -c
+      - log_min_duration_statement=500ms
+      - -c
+      - log_parameter_max_length=0
+      - -c
+      - log_lock_waits=on
+      - -c
+      - log_temp_files=0
     volumes:
       - postgres-data:/var/lib/postgresql
     networks:
       - beeps
     shm_size: 256mb
-    mem_limit: 640m
+    # shared_buffers, about 300 MB with WAL buffers and locks, and up to 60 backends; it may swap as much again.
+    mem_limit: 768m
     stop_grace_period: 60s
+    # Every second while starting, so `up --wait` (deploy/ansible) returns as soon as it is ready; then every 30 s, as
+    # nothing acts on it but Docker's status. The same for Valkey and Meilisearch.
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U beeps -d beeps"]
-      interval: 5s
+      interval: 30s
       timeout: 3s
-      retries: 10
+      retries: 3
+      start_period: 60s
+      start_interval: 1s
     restart: unless-stopped
     logging: *logging
 
   # Every key has a TTL, so when memory runs out the least recently used are dropped instead of writes failing.
+  # The append-only file keeps what is not yet in PostgreSQL (counts waiting to be written back, the live event stream);
+  # the snapshots Valkey also takes by default would only fork it again, at times its copy-on-write pages count
+  # against mem_limit, so they are off.
   valkey:
     image: valkey/valkey:9.1.2
-    command: ["valkey-server", "--appendonly", "yes", "--maxmemory", "128mb", "--maxmemory-policy", "volatile-lru"]
+    command: ["valkey-server", "--appendonly", "yes", "--save", "", "--maxmemory", "128mb", "--maxmemory-policy", "volatile-lru"]
     volumes:
       - valkey-data:/data
     networks:
@@ -101,9 +159,11 @@ services:
     mem_limit: 256m
     healthcheck:
       test: ["CMD", "valkey-cli", "ping"]
-      interval: 5s
+      interval: 30s
       timeout: 3s
-      retries: 10
+      retries: 3
+      start_period: 60s
+      start_interval: 1s
     restart: unless-stopped
     logging: *logging
 
@@ -115,6 +175,8 @@ services:
       MEILI_NO_ANALYTICS: "true"
       MEILI_MAX_INDEXING_MEMORY: 256MiB
       MEILI_MAX_INDEXING_THREADS: "1"
+      # INFO logs every request: each search, the health check, and the app's polling of every write until it is done.
+      MEILI_LOG_LEVEL: WARN
     volumes:
       - meili-data:/meili_data
     networks:
@@ -122,9 +184,11 @@ services:
     mem_limit: 512m
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:7700/health"]
-      interval: 5s
+      interval: 30s
       timeout: 3s
-      retries: 10
+      retries: 3
+      start_period: 60s
+      start_interval: 1s
     restart: unless-stopped
     logging: *logging
 

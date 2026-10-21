@@ -229,6 +229,13 @@
   changed_when: false
   no_log: true
 
+# Per-statement figures for tuning (compose.prod.yml loads the library): SELECT … FROM pg_stat_statements.
+- name: Collect statement statistics
+  ansible.builtin.command: >-
+    docker compose --project-directory /srv/beeps -f /srv/beeps/compose.prod.yml --env-file /srv/beeps/release.env
+    exec -T postgres psql -U beeps -d beeps -v ON_ERROR_STOP=1 -q -c "CREATE EXTENSION IF NOT EXISTS pg_stat_statements"
+  changed_when: false
+
 - name: Apply the nginx changes
   ansible.builtin.meta: flush_handlers
 

@@ -52,7 +52,7 @@ http {
     gzip_vary on;
     gzip_comp_level 5;
     gzip_min_length 1024;
-    gzip_types application/json application/problem+json application/javascript text/css text/markdown text/plain image/svg+xml;
+    gzip_types application/json application/problem+json application/javascript text/javascript text/css text/markdown text/plain image/svg+xml;
 
     ssl_protocols TLSv1.2 TLSv1.3;
     ssl_prefer_server_ciphers off;
@@ -84,6 +84,10 @@ http {
         proxy_connect_timeout 5s;
         proxy_send_timeout 60s;
         proxy_read_timeout 60s;
+        # The response headers must fit in proxy_buffer_size, one 4 KB page by default: a sign-in's cookies and redirect
+        # can come close, and more is a 502. Most pages then fit in memory rather than a temporary file.
+        proxy_buffer_size 16k;
+        proxy_buffers 8 16k;
 
         # For the deploy and Docker, from the host only.
         location = /healthz {

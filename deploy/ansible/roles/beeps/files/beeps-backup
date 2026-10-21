@@ -10,8 +10,9 @@ readonly RCLONE_IMAGE=rclone/rclone:1.75.2
 
 file="beeps-$(date -u +%Y%m%dT%H%M%SZ).dump"
 umask 077
+# zstd: half gzip's time (the custom format's default), a little smaller; pg_restore reads either.
 docker compose --project-directory "$ROOT" -f "$ROOT/compose.prod.yml" --env-file "$ROOT/release.env" \
-    exec -T postgres pg_dump -U beeps -d beeps --format=custom > "$DIR/$file.partial"
+    exec -T postgres pg_dump -U beeps -d beeps --format=custom --compress=zstd > "$DIR/$file.partial"
 mv "$DIR/$file.partial" "$DIR/$file"
 find "$DIR" -name 'beeps-*.dump' -mtime +"$KEEP_DAYS" -delete
 find "$DIR" -name '*.partial' -mmin +60 -delete

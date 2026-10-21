@@ -716,7 +716,7 @@ tests/Beeps.Tests/
 
 ### 9.0 组件总览
 - **线上一律使用 Docker 部署**：应用、PostgreSQL、Valkey、nginx 全部以容器运行，由 Docker Compose 统一管理，服务器上除 Docker 和 UFW 外不直接安装其他运行环境。
-- **服务器**：一台 Vultr High Performance AMD（2 vCPU / 2 GB，洛杉矶 `lax`），Debian 13，只有 IPv4，开启 Vultr 自动备份。Terraform 创建（`deploy/terraform/`，state 存在 R2），Ansible 配置（`deploy/ansible/`），GitHub Actions 发布：推送版本 tag（`v1.2.3`，必须在 `main` 上）自动蓝绿部署，不中断服务（见 9.4）。做法和全部配置项见 `docs/deployment.md`。
+- **服务器**：一台 Vultr High Performance AMD（2 vCPU / 2 GB，洛杉矶 `lax`），Debian 13，只有 IPv4，不开 Vultr 自动备份（数据库靠每晚 `pg_dump`，可上传到 R2）。Terraform 创建（`deploy/terraform/`，state 存在 R2），Ansible 配置（`deploy/ansible/`），GitHub Actions 发布：推送版本 tag（`v1.2.3`，必须在 `main` 上）自动蓝绿部署，不中断服务（见 9.4）。做法和全部配置项见 `docs/deployment.md`。
 - **本地开发时只有依赖服务跑在 Docker 中**，应用本身直接在本机运行，方便调试和热重载。
 
 自己运行的核心组件有四个：
@@ -817,7 +817,7 @@ tests/Beeps.Tests/
 - **Cloudflare IP 更新脚本**：同时更新 UFW 规则和 nginx 的 `set_real_ip_from`，并重载 nginx。
 - **环境变量示例**（`.env.example`）：列出全部配置项及说明，不含真实密钥。
 - **数据库迁移**：使用 EF Core migration bundle 作为独立步骤执行，不在每个实例启动时自动迁移（避免多实例同时迁移）。
-- **Terraform**（`deploy/terraform/`）：Vultr 实例（Debian 13、洛杉矶、IPv4、自动备份）、Vultr 防火墙；state 存在 R2。Cloudflare 不用 Terraform，在后台手动配置。
+- **Terraform**（`deploy/terraform/`）：Vultr 实例（Debian 13、洛杉矶、IPv4，不开自动备份）、Vultr 防火墙；state 存在 R2。Cloudflare 不用 Terraform，在后台手动配置。
 - **Ansible**（`deploy/ansible/`）：`site.yml` 从全新的 Debian 13 准备服务器（升级、内核和网络调优、swap、SSH 加固、Docker、UFW、Cloudflare IP 列表），`deploy.yml` 写入配置并蓝绿发布；配置全部来自 GitHub 的 production 环境（机密用 secrets，其余用 variables）。
 - **GitHub Actions**：`deploy.yml`（推送版本 tag：确认在 `main` 上 → CI → 镜像推到 GHCR → Ansible 蓝绿部署；仓库里还没有别的 `v*` tag 时算第一次，先 `terraform apply` 创建服务器、运行 `site.yml`）、`infrastructure.yml`（之后手动运行 Terraform）；推送到 `main` 只跑 CI。服务器地址每次从 Terraform 的输出读取。
 - **部署说明**（`docs/deployment.md`）：全部 secrets 和 variables、第一次上线的步骤、日常操作、备份恢复、性能调优。

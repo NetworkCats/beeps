@@ -27,9 +27,3 @@ variable "ssh_public_keys" {
     error_message = "Give at least one public key."
   }
 }
-
-variable "backups" {
-  description = "Vultr's automatic daily backups of the whole server (20% of its price). The database lives on it."
-  type        = bool
-  default     = true
-}
