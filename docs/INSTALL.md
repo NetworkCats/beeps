@@ -1,5 +1,7 @@
 # Deploying beeps
 
+English | [简体中文](INSTALL.zh-CN.md)
+
 > [!NOTE]
 > This is how [beeps.sh](https://beeps.sh) itself runs in production. The workflows, Terraform and Ansible are written for that one setup (Vultr, Cloudflare, Resend, OpenRouter), not as a general way to host beeps. To run your own copy, adapt them to your own providers and domain.
 

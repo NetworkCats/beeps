@@ -2,7 +2,7 @@ namespace Beeps.Infrastructure.ErrorReporting;
 
 /// <summary>
 /// Errors to Sentry: exceptions nobody caught and whatever is logged at Error or above. Only with a DSN
-/// (<c>Sentry:Dsn</c>), which production alone is given (INSTALL.md); without one Sentry is not set up at all.
+/// (<c>Sentry:Dsn</c>), which production alone is given (docs/INSTALL.md); without one Sentry is not set up at all.
 /// Any other <c>Sentry:*</c> option (e.g. <c>Sentry__TracesSampleRate</c>) can be set in configuration.
 /// </summary>
 public static class ErrorReportingSetup

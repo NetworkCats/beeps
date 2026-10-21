@@ -60,7 +60,7 @@ The tests need no external services.
 
 ## Deployment
 
-Pushing a version tag deploys to a single server with GitHub Actions, blue-green and without downtime. [INSTALL.md](INSTALL.md) explains how to set it up.
+Pushing a version tag deploys to a single server with GitHub Actions, blue-green and without downtime. [docs/INSTALL.md](docs/INSTALL.md) ([简体中文](docs/INSTALL.zh-CN.md)) explains how to set it up.
 
 ## License
 

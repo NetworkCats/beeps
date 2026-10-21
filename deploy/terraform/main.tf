@@ -1,5 +1,5 @@
 # The production server: one Vultr High Performance AMD instance on Debian 13, set up by deploy/ansible.
-# Cloudflare (DNS, Origin CA, R2, Turnstile) is configured by hand (INSTALL.md).
+# Cloudflare (DNS, Origin CA, R2, Turnstile) is configured by hand (docs/INSTALL.md).
 
 provider "vultr" {
   # The API key comes from VULTR_API_KEY.
