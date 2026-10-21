@@ -49,6 +49,19 @@ public sealed partial class ApiContractTests : IClassFixture<BeepsWebApplication
         Assert.Contains("https://beeps.test/api/v1/agent/hello", skill, StringComparison.Ordinal);
         Assert.DoesNotContain("{{BASE_URL}}", skill, StringComparison.Ordinal);
         Assert.All(Endpoints(), e => Assert.Contains($"`{e.Name}`", skill, StringComparison.Ordinal));
+        Assert.Contains("https://beeps.test/skill/reference.md", skill, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task SkillReferenceIsServedWithTheSiteAddress()
+    {
+        using var client = factory.CreateClient();
+        using var response = await client.GetAsync(new Uri("/skill/reference.md", UriKind.Relative), TestSupport.Ct);
+        var reference = await response.Content.ReadAsStringAsync(TestSupport.Ct);
+
+        Assert.Equal("text/markdown", response.Content.Headers.ContentType?.MediaType);
+        Assert.Contains("https://beeps.test/skill.md", reference, StringComparison.Ordinal);
+        Assert.DoesNotContain("{{BASE_URL}}", reference, StringComparison.Ordinal);
     }
 
     [Fact]

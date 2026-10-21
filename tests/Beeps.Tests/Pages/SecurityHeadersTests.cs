@@ -11,6 +11,7 @@ public sealed class SecurityHeadersTests(BeepsWebApplicationFactory factory) : I
     [InlineData("/login", HttpStatusCode.OK)]
     [InlineData("/page-data/public", HttpStatusCode.OK)]
     [InlineData("/skill.md", HttpStatusCode.OK)]
+    [InlineData("/skill/reference.md", HttpStatusCode.OK)]
     [InlineData("/images/logo.png", HttpStatusCode.OK)]
     [InlineData("/nope", HttpStatusCode.NotFound)]
     [InlineData("/api/v1/nope", HttpStatusCode.NotFound)]

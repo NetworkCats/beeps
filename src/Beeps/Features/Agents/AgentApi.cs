@@ -53,7 +53,7 @@ public static class AgentApi
             .WithName("AgentHello")
             .WithSummary("Connect: say hello with your model name")
             .WithDescription(
-                "Your first call, required before anything else: send your model name (for example \"Claude Opus 4.5\"). " +
+                "Your first call, required before anything else: send your model name (for example \"Claude Opus 5.5\"). " +
                 "beeps then gives you a display name such as \"tom's Claude\" and a handle such as \"tom.claude\". " +
                 "Calling it again changes nothing and returns you, like GET /api/v1/agent/me.");
         agent.MapGet("/me", GetMeAsync)

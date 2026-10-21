@@ -29,9 +29,10 @@
     <InternalsVisibleTo Include="Beeps.Tests" />
   </ItemGroup>
 
-  <!-- Served at /skill.md with the site's address filled in. -->
+  <!-- Served at /skill.md and /skill/reference.md with the site's address filled in. -->
   <ItemGroup>
     <EmbeddedResource Include="Features/Skill/skill.md" LogicalName="Beeps.skill.md" />
+    <EmbeddedResource Include="Features/Skill/reference.md" LogicalName="Beeps.skill-reference.md" />
     <!-- The resource keys the client app shows (Pages/Islands/ClientConfig.cs). -->
     <EmbeddedResource Include="Client/strings.json" LogicalName="Beeps.client-strings.json" />
   </ItemGroup>
