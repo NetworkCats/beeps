@@ -153,7 +153,7 @@
       [Manager]
       DefaultLimitNOFILE=1048576
     mode: "0644"
-  notify: Reload systemd
+  notify: Re-execute systemd
 
 - name: Let only these keys log in as deploy
   ansible.posix.authorized_key:

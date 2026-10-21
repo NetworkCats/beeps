@@ -51,7 +51,7 @@ jobs:
       - name: Check whether this is the first release
         id: first
         run: |
-          others=$(git tag --list 'v*' | grep -cvx "$GITHUB_REF_NAME" || true)
+          others=$(git tag --list 'v*' | grep -cvxF "$GITHUB_REF_NAME" || true)
           if [ "$others" -gt 0 ]; then
             echo "first=false" >> "$GITHUB_OUTPUT"
           else

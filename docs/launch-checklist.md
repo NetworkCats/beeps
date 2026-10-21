@@ -9,7 +9,7 @@
 - [ ] R2：Terraform state bucket 和它的 token（1）
 - [ ] R2：媒体 bucket，绑定 `media.beeps.sh`，建只能读写它的 token（1）
 - [ ] Cloudflare：给 `media.beeps.sh` 的响应加 `X-Content-Type-Options: nosniff`（Transform Rules）（1）
-- [ ] R2（可选）：备份 bucket，30 天生命周期规则，只能写它的 token（1）
+- [ ] R2（可选）：备份 bucket，30 天生命周期规则，只能读写它的 token（1）
 - [ ] Turnstile：为 `beeps.sh` 建 widget，拿到正式 site key 和 secret（1）
 - [ ] Resend：验证发信域名（SPF、DKIM），创建 API key（2）
 - [ ] OpenRouter：创建 API key，设置用量上限（2）

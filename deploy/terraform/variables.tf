@@ -1,5 +1,5 @@
 variable "region" {
-  description = "Vultr region id (https://api.vultr.com/v2/regions): lax is Los Angeles."
+  description = "Vultr region id (https://api.vultr.com/v2/regions): lax is Los Angeles. Changing it would replace the server, which prevent_destroy refuses."
   type        = string
   default     = "lax"
 }
@@ -11,7 +11,7 @@ variable "plan" {
 }
 
 variable "hostname" {
-  description = "The server's host name. Changing it reinstalls the server on Vultr."
+  description = "The server's host name. Changing it would replace the server, which prevent_destroy refuses."
   type        = string
   default     = "beeps"
 }

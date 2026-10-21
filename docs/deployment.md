@@ -45,7 +45,7 @@ git tag v1.2.3 && git push origin v1.2.3
 
 **迁移必须向后兼容**：迁移在旧版本还在运行时执行，所以每次迁移都要让旧版本继续能用（先加列、加表，等不再用到的那个版本下线后，再在下一次发布里删除）。
 
-部署一次只跑一个（`concurrency: production`），后来的 tag 排队等前一个完成，不会打断进行中的部署。要重新部署旧版本，在 Actions → Deploy → Run workflow 里选那个 tag 运行（注意它不会撤销之后的数据库迁移）。
+部署一次只跑一个（`concurrency: production`），后来的 tag 排队等前一个完成，不会打断进行中的部署。GitHub 只保留一个排队的运行：排队时又来一个，先排队的那个会被取消，部署的总是最新的 tag（Infrastructure 也在这个组里）。要重新部署旧版本，在 Actions → Deploy → Run workflow 里选那个 tag 运行（注意它不会撤销之后的数据库迁移）。
 
 ## 第一次上线
 
@@ -57,7 +57,7 @@ git tag v1.2.3 && git push origin v1.2.3
    - Terraform state 的 bucket（如 `beeps-terraform`），和一个只能读写它的 R2 API token（`TF_STATE_ACCESS_KEY_ID` / `TF_STATE_SECRET_ACCESS_KEY`）。
    - 媒体 bucket（如 `beeps-media`），绑定自定义域名 `media.beeps.sh`，再建一个只能读写它的 token（`STORAGE_*`）。
    - Rules → Transform Rules 给 `media.beeps.sh` 的响应加 `X-Content-Type-Options: nosniff`（R2 对象元数据设不了这个头）。
-   - 可选：备份 bucket（如 `beeps-backups`），加一条 30 天后删除的生命周期规则，和只能写它的 token（`BACKUP_*`）。
+   - 可选：备份 bucket（如 `beeps-backups`），加一条 30 天后删除的生命周期规则，和只能读写它的 token（`BACKUP_*`）。
 4. **Turnstile**：为 `beeps.sh` 建一个 widget，site key 和 secret 分别是 `TURNSTILE_SITE_KEY`、`TURNSTILE_SECRET_KEY`。
 5. DNS 记录等服务器建好、知道 IP 之后再加（第 4 步）。
 
@@ -125,7 +125,7 @@ Settings → Environments → New environment，名字 `production`（可以在�
 
 | 名字 | 例子 | 必需 |
 |---|---|---|
-| `VULTR_REGION` | `lax`（默认，洛杉矶；默认值本来就写在公开的 Terraform 代码里） | 否 |
+| `VULTR_REGION` | `lax`（默认，洛杉矶；默认值本来就写在公开的 Terraform 代码里）。只在创建服务器时生效 | 否 |
 | `SERVER_NAME` | `beeps.sh`（默认） | 否 |
 | `SITE_BASE_URL` | `https://beeps.sh` | 是 |
 | `MEDIA_PUBLIC_BASE_URL` | `https://media.beeps.sh` | 是 |
@@ -156,7 +156,7 @@ git tag v0.1.0 && git push origin v0.1.0
 1. 在 Vultr 后台找到实例 `beeps-production` 的 IPv4，在 Cloudflare DNS 加 `A beeps.sh → 这个 IP`，**开启代理**（橙色云朵）。不要加 AAAA 记录（服务器没有 IPv6），也不要加任何不经代理、指向这个 IP 的记录。在这之前站点从外面打不开，部署最后那一步站点检查只会给出警告。
 2. 打开 https://beeps.sh，**第一个注册的账号自动成为管理员**，再按需关闭开放注册。
 
-不开 Vultr 的自动备份，数据库靠每晚的 `pg_dump`（见下文“备份”）。实例设了 `prevent_destroy`，Terraform 不会删除它。之后要改服务器本身（套餐、地区、防火墙），用 Actions → Infrastructure：先 `plan` 看一遍，再 `apply`。
+不开 Vultr 的自动备份，数据库靠每晚的 `pg_dump`（见下文“备份”）。实例设了 `prevent_destroy`，Terraform 不会删除它。之后要改服务器本身（套餐、防火墙），用 Actions → Infrastructure：先 `plan` 看一遍，再 `apply`。地区（`VULTR_REGION`）和主机名只在创建时生效：改了它们 Terraform 要换一台新服务器，`prevent_destroy` 会让 plan 直接报错；真要换，得另建服务器再迁移数据。
 
 ## 日常操作
 
@@ -175,18 +175,19 @@ cd /srv/beeps && sudo docker compose -f compose.prod.yml --env-file release.env 
     -c 'SELECT calls, round(total_exec_time) AS total_ms, round(mean_exec_time::numeric, 2) AS mean_ms, left(query, 80) AS query FROM pg_stat_statements ORDER BY total_exec_time DESC LIMIT 20'
 ```
 
-**备份**：每天 UTC 3:30 左右 `pg_dump` 到 `/srv/beeps/backups`，保留 7 天；配置了 `BACKUP_*` 时同时上传到备份 bucket 的 `postgres/` 下。没有 Vultr 的整机备份，不配 `BACKUP_*` 时唯一的备份和数据库在同一台机器上，服务器坏了就一起没了。恢复：
+**备份**：每天 UTC 3:30 左右 `pg_dump` 到 `/srv/beeps/backups`，保留 7 天；配置了 `BACKUP_*` 时同时上传到备份 bucket 的 `postgres/` 下。没有 Vultr 的整机备份，不配 `BACKUP_*` 时唯一的备份和数据库在同一台机器上，服务器坏了就一起没了。恢复（`backups/` 只有 root 能读，所以用 `sudo cat` 读出；Valkey 里缓存的会话、账号状态和待写回的计数属于恢复前的数据，要一并清空）：
 
 ```sh
 cd /srv/beeps
 compose="sudo docker compose -f compose.prod.yml --env-file release.env"
 $compose stop app-blue app-green
-$compose exec -T postgres pg_restore -U beeps -d beeps --clean --if-exists < backups/beeps-<时间>.dump
+sudo cat backups/beeps-<时间>.dump | $compose exec -T postgres pg_restore -U beeps -d beeps --clean --if-exists
+$compose exec valkey valkey-cli FLUSHDB
 $compose start "app-$(sudo cat state/active-colour)"
 sudo beeps-deploy run search rebuild
 ```
 
-**更换密钥**：改 GitHub 里的 secret 后运行一次 Deploy。`POSTGRES_PASSWORD` 会同步到数据库；换了 `MEILI_MASTER_KEY` 后旧的应用 key 失效，部署时自动创建新 key；Origin CA 证书换了 nginx 会重新加载。`DATA_PROTECTION_CERTIFICATE` 不要随意更换（见上文）。
+**更换密钥**：改 GitHub 里的 secret 后运行一次 Deploy。`POSTGRES_PASSWORD` 会同步到数据库；换了 `MEILI_MASTER_KEY` 后旧的应用 key 失效，部署时自动创建新 key。新的值在部署开始时就生效，到切换到新版本之前（一两分钟）旧版本还用着旧的：换数据库密码时，旧版本新开的数据库连接会失败（已经开着的不受影响）；换 master key 时，旧版本的搜索会失败。所以挑访问少的时候换。Origin CA 证书换了 nginx 会重新加载。`DATA_PROTECTION_CERTIFICATE` 不要随意更换（见上文）。
 
 **删除违规图片后**：图片带一年的 `immutable` 缓存头，R2 删除后 Cloudflare 边缘可能还在提供，要在 Cloudflare 后台按地址清除缓存。
 
@@ -211,7 +212,7 @@ BEEPS_IMAGE=ghcr.io/<owner>/beeps@sha256:… GHCR_USER=… GHCR_TOKEN=… ansibl
 都在 Ansible 里，`site.yml` 应用（`roles/base/files/sysctl.conf` 有逐项说明）：
 
 - **网络**：BBR + fq；更大的连接队列（`somaxconn` 65535、`tcp_max_syn_backlog` 8192、`netdev_max_backlog`）；最大 16 MB 的套接字缓冲；`tcp_notsent_lowat`（HTTP/2 优先级更准）；空闲后不回到慢启动（Cloudflare 的长连接）；TCP Fast Open；MTU 探测；`tcp_tw_reuse`、更宽的本地端口范围、更短的 FIN 超时；5 分钟起的 keepalive；conntrack 表 262144。大多数 `net.*` 按网络命名空间生效：管到用宿主机网络的 nginx（及它到应用的连接），管不到容器内部，所以 PostgreSQL 自己设 keepalive。`default_qdisc` 只对之后建立的队列生效，Ansible 应用时顺便把网卡换成 fq，不必重启。
-- **内核和内存**：2 GB swap 文件，`swappiness` 10；`overcommit_memory=1`（Valkey 写快照要 fork）；更早、更小批量的脏页回写（PostgreSQL checkpoint 不卡）；透明大页改为 `madvise`（Valkey、PostgreSQL 都建议）；每进程文件句柄上限 1048576（系统总量 systemd 已调到最大，不再设）。
+- **内核和内存**：2 GB swap 文件，`swappiness` 10；`overcommit_memory=1`（Valkey 重写 AOF 要 fork）；更早、更小批量的脏页回写（PostgreSQL checkpoint 不卡）；透明大页改为 `madvise`（Valkey、PostgreSQL 都建议）；每进程文件句柄上限 1048576（系统总量 systemd 已调到最大，不再设）。
 - **nginx**：`reuseport`、每 worker 8192 连接、`multi_accept`；到应用的 upstream keepalive；对 Cloudflare 的 keepalive 905 秒（长于 Cloudflare 的 900 秒，避免 520）；TLS 会话缓存；压缩 JSON / JS / CSS（SSE 不压缩，不缓冲）；代理缓冲 16 KB（默认 4 KB，登录时的 cookie 加跳转响应头超了会 502），多数页面不落临时文件。
 - **PostgreSQL**（`compose.prod.yml`，逐项有说明）：
   - 内存：`shared_buffers` 256 MB；`effective_cache_size` 512 MB（数据文件的页缓存也算在容器 768 MB 上限里，能用作缓存的约一半）；`work_mem` 4 MB；`maintenance_work_mem` 64 MB。

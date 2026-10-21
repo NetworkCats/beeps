@@ -89,8 +89,9 @@ http {
         proxy_buffer_size 16k;
         proxy_buffers 8 16k;
 
-        # For the deploy and Docker, from the host only.
-        location = /healthz {
+        # For the deploy and Docker, from the host only. In any case and with a trailing slash, as the app's routing
+        # matches those too.
+        location ~* ^/healthz/?$ {
             return 404;
         }
 
