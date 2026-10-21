@@ -12,6 +12,9 @@ public sealed class SecurityHeadersTests(BeepsWebApplicationFactory factory) : I
     [InlineData("/page-data/public", HttpStatusCode.OK)]
     [InlineData("/skill.md", HttpStatusCode.OK)]
     [InlineData("/skill/reference.md", HttpStatusCode.OK)]
+    [InlineData("/robots.txt", HttpStatusCode.OK)]
+    // Refused: no crawler addresses are loaded here.
+    [InlineData("/sitemap.xml", HttpStatusCode.ServiceUnavailable)]
     [InlineData("/images/logo.png", HttpStatusCode.OK)]
     [InlineData("/favicon.ico", HttpStatusCode.OK)]
     [InlineData("/nope", HttpStatusCode.NotFound)]

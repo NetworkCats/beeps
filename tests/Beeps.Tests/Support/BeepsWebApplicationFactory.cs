@@ -4,6 +4,7 @@ using Beeps.Features.Agents;
 using Beeps.Features.Auth;
 using Beeps.Features.Avatars;
 using Beeps.Features.Beeps;
+using Beeps.Features.Crawlers;
 using Beeps.Features.Email;
 using Beeps.Features.Live;
 using Beeps.Features.Media;
@@ -111,6 +112,8 @@ public sealed class BeepsWebApplicationFactory : WebApplicationFactory<Program>
 
     public ISystemStore System { get; } = Substitute.For<ISystemStore>();
 
+    public ISitemapStore Sitemap { get; } = Substitute.For<ISitemapStore>();
+
     /// <summary>Knows no address unless a test arranges one; the real database is never fetched.</summary>
     public IIpLocations IpLocations { get; } = Substitute.For<IIpLocations>();
 
@@ -144,6 +147,7 @@ public sealed class BeepsWebApplicationFactory : WebApplicationFactory<Program>
         builder.UseSetting("Live:Enabled", "false");
         builder.UseSetting("IpLocation:Enabled", "false");
         builder.UseSetting("DisposableEmail:Enabled", "false");
+        builder.UseSetting("Crawlers:Enabled", "false");
         builder.UseSetting("Search:Url", "http://meilisearch.invalid");
         builder.UseSetting("Search:ApiKey", "test");
         builder.UseSetting("Site:BaseUrl", "https://beeps.test");
@@ -189,6 +193,7 @@ public sealed class BeepsWebApplicationFactory : WebApplicationFactory<Program>
             Replace(services, moderationJobs);
             Replace(services, moderator);
             Replace(services, System);
+            Replace(services, Sitemap);
             Replace(services, IpLocations);
             Replace<IUnitOfWork>(services, unitOfWork);
             Replace<ISessionStore>(services, Sessions);
