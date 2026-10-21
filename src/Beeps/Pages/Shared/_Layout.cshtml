@@ -35,7 +35,7 @@
     <meta name="theme-color" content="#0a0a0a" data-scheme="dark" media="@(theme switch { null => "(prefers-color-scheme: dark)", Themes.Dark => "all", _ => "not all" })">
     <title>@(appShell ? L["Site.Name"] : $"{ViewData["Title"]} · {L["Site.Name"]}")</title>
     <meta name="description" content="@L["Site.Tagline"]">
-    <link rel="icon" type="image/png" href="~/images/logo.png" asp-append-version="true">
+    <link rel="icon" href="~/favicon.ico" sizes="16x16 32x32 48x48" asp-append-version="true">
     <link rel="apple-touch-icon" href="~/images/logo.png" asp-append-version="true">
     <link rel="preload" href="~/fonts/material-symbols-rounded.woff2" as="font" type="font/woff2" crossorigin>
     @foreach (var style in shell.Styles)
