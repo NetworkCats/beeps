@@ -17,6 +17,7 @@ using Beeps.Features.Timelines;
 using Beeps.Infrastructure;
 using Beeps.Infrastructure.Data;
 using Beeps.Infrastructure.ErrorReporting;
+using Beeps.Infrastructure.Http;
 using Beeps.Infrastructure.Search;
 using Beeps.Pages;
 using Beeps.Pages.Admin;
@@ -61,6 +62,8 @@ if (SearchCommand.Matches(args))
 
 // First, so everything after it (logs, rate limits, audit) sees the visitor's real IP.
 app.UseForwardedHeaders();
+// Outside everything that answers, error pages included.
+app.UseMiddleware<SecurityHeadersMiddleware>();
 // A page's data is asked for as the page itself, before the error pages, so a page not found answers as JSON too.
 app.UseMiddleware<PageDataMiddleware>();
 

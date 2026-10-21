@@ -23,7 +23,8 @@ public sealed class OutputCacheTests : IDisposable
     {
         Show("first");
         using var client = cached.CreateClient();
-        var before = await client.GetStringAsync(new Uri("/public", UriKind.Relative), TestSupport.Ct);
+        using var first = await client.GetAsync(new Uri("/public", UriKind.Relative), TestSupport.Ct);
+        var before = await first.Content.ReadAsStringAsync(TestSupport.Ct);
 
         Show("second");
         using var response = await client.GetAsync(new Uri("/public", UriKind.Relative), TestSupport.Ct);
@@ -33,6 +34,9 @@ public sealed class OutputCacheTests : IDisposable
         Assert.Contains("first", after, StringComparison.Ordinal);
         Assert.NotNull(response.Headers.Age);
         Assert.False(response.Headers.Contains("Set-Cookie"));
+        // The server's copy only: nothing on the way keeps it (the same address differs by cookie).
+        Assert.Equal("no-cache", first.Headers.CacheControl?.ToString());
+        Assert.Equal("no-cache", response.Headers.CacheControl?.ToString());
     }
 
     [Fact]

@@ -54,6 +54,7 @@ public static class PublicPageCache
         services.AddOptions<OutputCacheOptions>().Configure<IOptions<PublicPageCacheOptions>>((options, page) =>
             options.AddPolicy(Policy, builder =>
             {
+                builder.AddPolicy<RevalidatePolicy>();
                 if (!page.Value.Enabled)
                 {
                     builder.NoCache();
@@ -70,5 +71,23 @@ public static class PublicPageCache
                     .SetVaryByQuery(QueryKeys);
             }));
         return services;
+    }
+
+    /// <summary>
+    /// The copy is the server's alone. The same address is drawn for each language, colour scheme and person, by
+    /// cookie, so no cache on the way (a CDN told to cache pages) or browser may keep one. Set before the page runs:
+    /// stored with the copy, and replaced by what a signed-in answer says (no-store).
+    /// </summary>
+    private sealed class RevalidatePolicy : IOutputCachePolicy
+    {
+        public ValueTask CacheRequestAsync(OutputCacheContext context, CancellationToken cancellation)
+        {
+            context.HttpContext.Response.Headers.CacheControl = "no-cache";
+            return ValueTask.CompletedTask;
+        }
+
+        public ValueTask ServeFromCacheAsync(OutputCacheContext context, CancellationToken cancellation) => ValueTask.CompletedTask;
+
+        public ValueTask ServeResponseAsync(OutputCacheContext context, CancellationToken cancellation) => ValueTask.CompletedTask;
     }
 }
