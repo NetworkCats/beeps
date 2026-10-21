@@ -22,9 +22,12 @@ public sealed class SkiaImageProcessorTests
     [Fact]
     public void EverySizeIsWebPWithoutAnyMetadata()
     {
-        var variants = processor.Encode(TestImages.JpegWithExif(400, 200, orientation: 1))!;
+        var jpeg = TestImages.JpegWithExif(400, 200, orientation: 1);
+        var beep = processor.Encode(jpeg, MediaPurpose.Beep)!;
+        var avatar = processor.Encode(jpeg, MediaPurpose.Avatar)!;
+        var banner = processor.Encode(jpeg, MediaPurpose.Banner, bannerCrop: new BannerCrop(0, 0, 300))!;
 
-        foreach (var output in new[] { variants.Full, variants.Thumbnail, variants.Avatar })
+        foreach (var output in new[] { beep.Full!, beep.Thumbnail!, avatar.Avatar!, banner.Banner! })
         {
             Assert.Equal(ImageFormat.WebP, MediaRules.Sniff(output));
             Assert.DoesNotContain(TestImages.SecretMarker, Encoding.ASCII.GetString(output), StringComparison.Ordinal);
@@ -36,15 +39,15 @@ public sealed class SkiaImageProcessorTests
     public void ThePhotoIsTurnedUprightByItsExifOrientation()
     {
         // Stored 400 × 200 on its side; orientation 6 means "turn 90° clockwise to view".
-        var variants = processor.Encode(TestImages.JpegWithExif(400, 200, orientation: 6))!;
+        var variants = processor.Encode(TestImages.JpegWithExif(400, 200, orientation: 6), MediaPurpose.Beep)!;
 
         Assert.Equal((200, 400), (variants.Width, variants.Height));
-        Assert.Equal((200, 400), TestImages.SizeOf(variants.Full));
+        Assert.Equal((200, 400), TestImages.SizeOf(variants.Full!));
         // Turned clockwise, the stored bottom-left corner is now at the top left.
-        Assert.True(TestImages.Near(TestImages.ColorAt(variants.Full, 0.1f, 0.1f), TestImages.BottomLeft));
-        Assert.True(TestImages.Near(TestImages.ColorAt(variants.Full, 0.9f, 0.1f), TestImages.TopLeft));
-        Assert.True(TestImages.Near(TestImages.ColorAt(variants.Full, 0.1f, 0.9f), TestImages.BottomRight));
-        Assert.True(TestImages.Near(TestImages.ColorAt(variants.Full, 0.9f, 0.9f), TestImages.TopRight));
+        Assert.True(TestImages.Near(TestImages.ColorAt(variants.Full!, 0.1f, 0.1f), TestImages.BottomLeft));
+        Assert.True(TestImages.Near(TestImages.ColorAt(variants.Full!, 0.9f, 0.1f), TestImages.TopLeft));
+        Assert.True(TestImages.Near(TestImages.ColorAt(variants.Full!, 0.1f, 0.9f), TestImages.BottomRight));
+        Assert.True(TestImages.Near(TestImages.ColorAt(variants.Full!, 0.9f, 0.9f), TestImages.TopRight));
     }
 
     [Theory]
@@ -67,17 +70,42 @@ public sealed class SkiaImageProcessorTests
     }
 
     [Fact]
-    public void LargeImagesAreScaledDownAndTheAvatarIsACenteredSquare()
+    public void ABeepImageIsScaledDownToTheFullSizeAndTheThumbnailAlone()
     {
-        var variants = processor.Encode(TestImages.Quadrants(3000, 1000))!;
+        var variants = processor.Encode(TestImages.Quadrants(3000, 1000), MediaPurpose.Beep)!;
 
         Assert.Equal((2048, 683), (variants.Width, variants.Height));
-        Assert.Equal((2048, 683), TestImages.SizeOf(variants.Full));
-        Assert.Equal((800, 267), TestImages.SizeOf(variants.Thumbnail));
-        Assert.Equal((MediaRules.AvatarSide, MediaRules.AvatarSide), TestImages.SizeOf(variants.Avatar));
+        Assert.Equal((2048, 683), TestImages.SizeOf(variants.Full!));
+        Assert.Equal((800, 267), TestImages.SizeOf(variants.Thumbnail!));
+        Assert.Null(variants.Avatar);
+        Assert.Null(variants.Banner);
+    }
+
+    [Fact]
+    public void AnAvatarIsTheCenteredSquareAlone()
+    {
+        var variants = processor.Encode(TestImages.Quadrants(3000, 1000), MediaPurpose.Avatar)!;
+
+        Assert.Equal((MediaRules.AvatarSide, MediaRules.AvatarSide), (variants.Width, variants.Height));
+        Assert.Equal((MediaRules.AvatarSide, MediaRules.AvatarSide), TestImages.SizeOf(variants.Avatar!));
+        Assert.Null(variants.Full);
+        Assert.Null(variants.Thumbnail);
+        Assert.Null(variants.Banner);
         // The middle third of a 3:1 image: the left half of the square comes from the top-left quadrant.
-        Assert.True(TestImages.Near(TestImages.ColorAt(variants.Avatar, 0.25f, 0.25f), TestImages.TopLeft));
-        Assert.True(TestImages.Near(TestImages.ColorAt(variants.Avatar, 0.75f, 0.75f), TestImages.BottomRight));
+        Assert.True(TestImages.Near(TestImages.ColorAt(variants.Avatar!, 0.25f, 0.25f), TestImages.TopLeft));
+        Assert.True(TestImages.Near(TestImages.ColorAt(variants.Avatar!, 0.75f, 0.75f), TestImages.BottomRight));
+    }
+
+    [Fact]
+    public void ABannerIsItsStripAlone()
+    {
+        var variants = processor.Encode(TestImages.Quadrants(400, 200), MediaPurpose.Banner, bannerCrop: new BannerCrop(210, 120, 150))!;
+
+        Assert.Equal((150, 50), (variants.Width, variants.Height));
+        Assert.Equal((150, 50), TestImages.SizeOf(variants.Banner!));
+        Assert.Null(variants.Full);
+        Assert.Null(variants.Avatar);
+        Assert.True(TestImages.Near(TestImages.ColorAt(variants.Banner!, 0.5f, 0.5f), TestImages.BottomRight));
     }
 
     [Fact]
@@ -88,39 +116,35 @@ public sealed class SkiaImageProcessorTests
     public void AnAvatarCropIsTakenFromTheUprightImage()
     {
         // Upright, the photo is 200 × 400 and its top-left quadrant is the stored bottom-left one.
-        var variants = processor.Encode(TestImages.JpegWithExif(400, 200, orientation: 6), new AvatarCrop(0, 0, 100))!;
+        var variants = processor.Encode(TestImages.JpegWithExif(400, 200, orientation: 6), MediaPurpose.Avatar, new AvatarCrop(0, 0, 100))!;
 
-        Assert.Equal((100, 100), TestImages.SizeOf(variants.Avatar));
-        Assert.True(TestImages.Near(TestImages.ColorAt(variants.Avatar, 0.5f, 0.5f), TestImages.BottomLeft));
-        // The other sizes are not cropped.
-        Assert.Equal((200, 400), TestImages.SizeOf(variants.Full));
+        Assert.Equal((100, 100), TestImages.SizeOf(variants.Avatar!));
+        Assert.True(TestImages.Near(TestImages.ColorAt(variants.Avatar!, 0.5f, 0.5f), TestImages.BottomLeft));
     }
 
     [Fact]
     public void ALargeCropIsScaledDownToTheAvatarSize()
     {
-        var variants = processor.Encode(TestImages.Quadrants(1200, 1000), new AvatarCrop(600, 500, 500))!;
+        var variants = processor.Encode(TestImages.Quadrants(1200, 1000), MediaPurpose.Avatar, new AvatarCrop(600, 500, 500))!;
 
-        Assert.Equal((MediaRules.AvatarSide, MediaRules.AvatarSide), TestImages.SizeOf(variants.Avatar));
-        Assert.True(TestImages.Near(TestImages.ColorAt(variants.Avatar, 0.5f, 0.5f), TestImages.BottomRight));
+        Assert.Equal((MediaRules.AvatarSide, MediaRules.AvatarSide), TestImages.SizeOf(variants.Avatar!));
+        Assert.True(TestImages.Near(TestImages.ColorAt(variants.Avatar!, 0.5f, 0.5f), TestImages.BottomRight));
     }
 
     [Fact]
     public void SmallImagesAreNeverEnlarged()
     {
-        var variants = processor.Encode(TestImages.Png(64, 48))!;
-
-        Assert.Equal((64, 48), TestImages.SizeOf(variants.Full));
-        Assert.Equal((48, 48), TestImages.SizeOf(variants.Avatar));
+        Assert.Equal((64, 48), TestImages.SizeOf(processor.Encode(TestImages.Png(64, 48), MediaPurpose.Beep)!.Full!));
+        Assert.Equal((48, 48), TestImages.SizeOf(processor.Encode(TestImages.Png(64, 48), MediaPurpose.Avatar)!.Avatar!));
     }
 
     [Fact]
     public void AnAnimationKeepsOnlyItsFirstFrame()
     {
-        var variants = processor.Encode(TestImages.AnimatedGif())!;
+        var full = processor.Encode(TestImages.AnimatedGif(), MediaPurpose.Beep)!.Full!;
 
-        Assert.True(TestImages.Near(TestImages.ColorAt(variants.Full, 0.5f, 0.5f), SKColors.Red));
-        Assert.DoesNotContain("ANIM", Encoding.ASCII.GetString(variants.Full), StringComparison.Ordinal);
+        Assert.True(TestImages.Near(TestImages.ColorAt(full, 0.5f, 0.5f), SKColors.Red));
+        Assert.DoesNotContain("ANIM", Encoding.ASCII.GetString(full), StringComparison.Ordinal);
     }
 
     [Fact]
@@ -129,9 +153,9 @@ public sealed class SkiaImageProcessorTests
         var jpeg = TestImages.Quadrants(400, 200, SKEncodedImageFormat.Jpeg);
 
         Assert.NotNull(processor.ReadHeader(jpeg.AsMemory(0, jpeg.Length / 2)));
-        Assert.Null(processor.Encode(jpeg.AsMemory(0, jpeg.Length / 2)));
+        Assert.Null(processor.Encode(jpeg.AsMemory(0, jpeg.Length / 2), MediaPurpose.Beep));
     }
 
     [Fact]
-    public void GarbageIsRejected() => Assert.Null(processor.Encode("GIF89a but not really"u8.ToArray()));
+    public void GarbageIsRejected() => Assert.Null(processor.Encode("GIF89a but not really"u8.ToArray(), MediaPurpose.Avatar));
 }

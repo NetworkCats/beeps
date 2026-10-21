@@ -27,8 +27,9 @@ public interface IAvatarStore
 }
 
 /// <summary>
-/// Custom avatars (PLAN 3.4, 6.11): an image the viewer uploaded becomes their avatar, or one of their agents'
-/// if the viewer is a human; an agent only ever changes its own. Removing it brings the default pattern back.
+/// Custom avatars (PLAN 3.4, 6.11): an image uploaded as an avatar becomes the viewer's, or one of their agents' if the
+/// viewer is a human; an agent only ever changes its own. Each change is a new upload: beep images cannot be used.
+/// Removing it brings the default pattern back.
 /// </summary>
 public sealed partial class AvatarService(
     IAvatarStore store,
@@ -41,16 +42,9 @@ public sealed partial class AvatarService(
     IStringLocalizer<SharedResource> localizer,
     ILogger<AvatarService> logger)
 {
-    /// <summary>Makes an image the viewer uploaded (<c>POST /api/v1/media</c>) the avatar of <paramref name="actorId"/>.</summary>
-    public async Task<Result> SetAsync(Viewer viewer, Guid actorId, Guid mediaId, CancellationToken cancellationToken)
-    {
-        var target = await CheckAsync(viewer, actorId, cancellationToken);
-        return target.IsSuccess ? await ChangeAsync(viewer, target.Value, mediaId, cancellationToken) : target.Error;
-    }
-
     /// <summary>
-    /// Uploads an image and makes it the avatar in one step, as the web forms do. <paramref name="crop"/> is
-    /// the square the person picked in the cropper; without it (no script) the centered square is used.
+    /// Uploads an image and makes it the avatar of <paramref name="actorId"/>. <paramref name="crop"/> is the square
+    /// the person picked in the cropper; without it (no script, and the API) the centered square is used.
     /// </summary>
     public async Task<Result> UploadAsync(Viewer viewer, Guid actorId, MediaContent file, AvatarCrop? crop, CancellationToken cancellationToken)
     {
@@ -60,8 +54,8 @@ public sealed partial class AvatarService(
             return target.Error;
         }
 
-        var uploaded = await media.UploadAsync(viewer, file, crop, cancellationToken);
-        return uploaded.IsSuccess ? await ChangeAsync(viewer, target.Value, uploaded.Value.Id, cancellationToken) : uploaded.Error;
+        var uploaded = await media.UploadAvatarAsync(viewer, file, crop, cancellationToken);
+        return uploaded.IsSuccess ? await ChangeAsync(viewer, target.Value, uploaded.Value, cancellationToken) : uploaded.Error;
     }
 
     /// <summary>Back to the default pattern. The image itself is deleted later, once nothing uses it.</summary>
@@ -91,10 +85,11 @@ public sealed partial class AvatarService(
             null,
             async ct =>
             {
-                // Locked until commit, so the cleanup of unused uploads cannot take it meanwhile.
-                if (mediaId is { } id && (await mediaStore.LockOwnedAsync(viewer.ActorId, [id], ct)).Count == 0)
+                // Locked until commit, so the cleanup of unused uploads cannot take it meanwhile. Only just uploaded, it
+                // can only be missing if it already failed to decode.
+                if (mediaId is { } id && (await mediaStore.LockOwnedAsync(viewer.ActorId, [id], MediaPurpose.Avatar, ct)).Count == 0)
                 {
-                    return media.NotFound(MediaFields.MediaId);
+                    return media.Unreadable();
                 }
 
                 await store.SetAvatarAsync(target.Id, mediaId, ct);

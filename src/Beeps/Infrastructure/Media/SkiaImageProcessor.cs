@@ -34,7 +34,7 @@ public sealed class SkiaImageProcessor : IImageProcessor
         return new ImageHeader(format, width, height);
     }
 
-    public ImageVariants? Encode(ReadOnlyMemory<byte> data, AvatarCrop? avatarCrop = null, BannerCrop? bannerCrop = null)
+    public ImageVariants? Encode(ReadOnlyMemory<byte> data, MediaPurpose purpose, AvatarCrop? avatarCrop = null, BannerCrop? bannerCrop = null)
     {
         using var skData = SKData.CreateCopy(data.Span);
         using var codec = SKCodec.Create(skData);
@@ -54,29 +54,29 @@ public sealed class SkiaImageProcessor : IImageProcessor
         using var image = SKImage.FromBitmap(decoded);
         var origin = codec.EncodedOrigin;
         var (width, height) = Upright(image.Width, image.Height, origin);
-        var whole = new SKRect(0, 0, width, height);
-        var (fullWidth, fullHeight) = MediaRules.FitWithin(width, height, MediaRules.FullMaxSide);
-        var (thumbWidth, thumbHeight) = MediaRules.FitWithin(width, height, MediaRules.ThumbnailMaxSide);
-        var side = avatarCrop?.Size ?? Math.Min(width, height);
-        var square = avatarCrop is { } crop
-            ? SKRect.Create(crop.X, crop.Y, crop.Size, crop.Size)
-            : SKRect.Create((width - side) / 2f, (height - side) / 2f, side, side);
-        var avatarSide = Math.Min(side, MediaRules.AvatarSide);
-
-        var full = Render(image, origin, whole, fullWidth, fullHeight, FullQuality);
-        var thumbnail = Render(image, origin, whole, thumbWidth, thumbHeight, ThumbnailQuality);
-        var avatar = Render(image, origin, square, avatarSide, avatarSide, AvatarQuality);
-        var banner = bannerCrop is { } strip ? RenderBanner(image, origin, strip) : null;
-        return full is null || thumbnail is null || avatar is null || (bannerCrop is not null && banner is null)
-            ? null
-            : new ImageVariants(full, fullWidth, fullHeight, thumbnail, avatar, banner);
-    }
-
-    private static byte[]? RenderBanner(SKImage image, SKEncodedOrigin origin, BannerCrop strip)
-    {
-        var width = Math.Min(strip.Width, MediaRules.BannerWidth);
-        return Render(
-            image, origin, SKRect.Create(strip.X, strip.Y, strip.Width, strip.Height), width, Math.Max(1, width / MediaRules.BannerAspect), BannerQuality);
+        var (storedWidth, storedHeight) = MediaRules.StoredSize(purpose, width, height, avatarCrop, bannerCrop);
+        switch (purpose)
+        {
+            case MediaPurpose.Avatar:
+                var side = avatarCrop?.Size ?? Math.Min(width, height);
+                var square = avatarCrop is { } crop
+                    ? SKRect.Create(crop.X, crop.Y, side, side)
+                    : SKRect.Create((width - side) / 2f, (height - side) / 2f, side, side);
+                return Render(image, origin, square, storedWidth, storedHeight, AvatarQuality) is { } avatar
+                    ? new ImageVariants(storedWidth, storedHeight, Avatar: avatar)
+                    : null;
+            case MediaPurpose.Banner:
+                var strip = SKRect.Create(bannerCrop!.X, bannerCrop.Y, bannerCrop.Width, bannerCrop.Height);
+                return Render(image, origin, strip, storedWidth, storedHeight, BannerQuality) is { } banner
+                    ? new ImageVariants(storedWidth, storedHeight, Banner: banner)
+                    : null;
+            default:
+                var whole = new SKRect(0, 0, width, height);
+                var (thumbWidth, thumbHeight) = MediaRules.FitWithin(width, height, MediaRules.ThumbnailMaxSide);
+                var full = Render(image, origin, whole, storedWidth, storedHeight, FullQuality);
+                var thumbnail = Render(image, origin, whole, thumbWidth, thumbHeight, ThumbnailQuality);
+                return full is null || thumbnail is null ? null : new ImageVariants(storedWidth, storedHeight, full, thumbnail);
+        }
     }
 
     /// <summary>The first frame, fully decoded; null unless every pixel decoded (a truncated file is rejected).</summary>

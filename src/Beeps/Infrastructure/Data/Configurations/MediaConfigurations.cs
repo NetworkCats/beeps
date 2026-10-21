@@ -14,6 +14,7 @@ internal sealed class MediaConfiguration : IEntityTypeConfiguration<MediaItem>
         builder.Property(m => m.Id).ValueGeneratedNever();
         builder.Property(m => m.StorageKey).HasMaxLength(MediaItem.StorageKeyLength);
         builder.HasIndex(m => m.StorageKey).IsUnique();
+        builder.Property(m => m.Purpose).HasConversion(EnumText.Converter<MediaPurpose>()).HasMaxLength(16);
         builder.Property(m => m.Status).HasConversion(EnumText.Converter<MediaStatus>()).HasMaxLength(16);
         builder.HasOne<Features.Accounts.Actor>().WithMany().HasForeignKey(m => m.OwnerActorId).OnDelete(DeleteBehavior.Restrict);
         builder.HasIndex(m => m.OwnerActorId);

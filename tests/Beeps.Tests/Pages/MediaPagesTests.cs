@@ -136,7 +136,7 @@ public sealed class MediaPagesTests : IDisposable
         Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
         Assert.Equal(new AvatarCrop(0, 50, 50), upload!.Crop);
         // What the processing job will make of it.
-        var avatar = new SkiaImageProcessor().Encode(upload.Data, upload.Crop)!.Avatar;
+        var avatar = new SkiaImageProcessor().Encode(upload.Data, MediaPurpose.Avatar, upload.Crop)!.Avatar!;
         Assert.Equal((50, 50), TestImages.SizeOf(avatar));
         Assert.True(TestImages.Near(TestImages.ColorAt(avatar, 0.5f, 0.5f), TestImages.BottomLeft));
     }
@@ -164,7 +164,7 @@ public sealed class MediaPagesTests : IDisposable
         Assert.Equal(new BannerCrop(210, 120, 150), upload!.BannerCrop);
         Assert.Null(upload.Crop);
         // What the processing job will make of it.
-        var banner = new SkiaImageProcessor().Encode(upload.Data, upload.Crop, upload.BannerCrop)!.Banner!;
+        var banner = new SkiaImageProcessor().Encode(upload.Data, MediaPurpose.Banner, bannerCrop: upload.BannerCrop)!.Banner!;
         Assert.Equal((150, 50), TestImages.SizeOf(banner));
         Assert.True(TestImages.Near(TestImages.ColorAt(banner, 0.5f, 0.5f), TestImages.BottomRight));
         await factory.Avatars.Received(1).SetBannerAsync(user.Id, uploaded, Arg.Any<CancellationToken>());

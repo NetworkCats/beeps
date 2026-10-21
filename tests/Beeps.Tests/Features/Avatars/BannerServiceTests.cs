@@ -79,7 +79,7 @@ public sealed class BannerServiceTests
 
         Assert.True(result.IsSuccess);
         await store.Received(1).SetBannerAsync(OwnerId, null, Arg.Any<CancellationToken>());
-        await media.Store.DidNotReceiveWithAnyArgs().LockOwnedAsync(default, default!, TestSupport.Ct);
+        await media.Store.DidNotReceiveWithAnyArgs().LockOwnedAsync(default, default!, default, TestSupport.Ct);
     }
 
     [Fact]

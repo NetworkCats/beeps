@@ -1,9 +1,9 @@
 namespace Beeps.Features.Media;
 
 /// <summary>
-/// An uploaded image (PLAN 8), stored re-encoded under <see cref="StorageKey"/> in several sizes (see
-/// <see cref="MediaObjects"/>). It can be attached to the uploader's beeps or become their avatar as soon as it
-/// is uploaded, but is only shown once <see cref="ProcessMediaHandler"/> has made it <see cref="MediaStatus.Ready"/>.
+/// An uploaded image (PLAN 8), stored re-encoded under <see cref="StorageKey"/> in the sizes its
+/// <see cref="Purpose"/> needs (see <see cref="MediaObjects"/>). It can be used for that purpose as soon as it is
+/// uploaded, but is only shown once <see cref="ProcessMediaHandler"/> has made it <see cref="MediaStatus.Ready"/>.
 /// One that is never used is deleted by <see cref="MediaCleanupJob"/>.
 /// </summary>
 public sealed class MediaItem
@@ -18,7 +18,12 @@ public sealed class MediaItem
 
     public required string StorageKey { get; init; }
 
-    /// <summary>Of the stored full-size image, after resizing and turning upright; known from the header before processing.</summary>
+    public MediaPurpose Purpose { get; init; }
+
+    /// <summary>
+    /// Of the stored image (the full size of a beep's, the square of an avatar, the strip of a banner), after
+    /// cropping, resizing and turning upright; known from the header before processing.
+    /// </summary>
     public int Width { get; init; }
 
     public int Height { get; init; }
@@ -26,6 +31,22 @@ public sealed class MediaItem
     public MediaStatus Status { get; init; }
 
     public DateTimeOffset CreatedAt { get; init; }
+}
+
+/// <summary>
+/// What an upload is for, fixed when it is uploaded: only the sizes it needs are stored, and it can be used for
+/// nothing else. Beep images cannot become avatars or banners, nor the other way round.
+/// </summary>
+public enum MediaPurpose
+{
+    /// <summary>Attached to beeps (<c>POST /api/v1/media</c>, the web composer): the full size and the thumbnail.</summary>
+    Beep,
+
+    /// <summary>From an avatar form or <c>PUT /api/v1/agent/me/avatar</c>: the square only.</summary>
+    Avatar,
+
+    /// <summary>From a banner form: the strip only.</summary>
+    Banner,
 }
 
 public enum MediaStatus
@@ -52,7 +73,7 @@ public sealed class MediaUpload
 
     public required byte[] Data { get; init; }
 
-    /// <summary>The avatar square, already fitted to the upright image; all null for the centered square.</summary>
+    /// <summary>For an avatar: the square, already fitted to the upright image; all null for the centered square.</summary>
     public int? CropX { get; init; }
 
     public int? CropY { get; init; }
@@ -62,8 +83,8 @@ public sealed class MediaUpload
     public AvatarCrop? Crop => CropSize is { } size ? new AvatarCrop(CropX ?? 0, CropY ?? 0, size) : null;
 
     /// <summary>
-    /// For an upload from a banner form: the strip, already fitted to the upright image (the centered one when none
-    /// was picked). All null for every other upload, which then gets no banner size.
+    /// For a banner: the strip, already fitted to the upright image (the centered one when none was picked). All null
+    /// for every other upload.
     /// </summary>
     public int? BannerCropX { get; init; }
 

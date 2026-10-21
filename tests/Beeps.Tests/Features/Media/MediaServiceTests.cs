@@ -135,7 +135,7 @@ public sealed class MediaServiceTests
         var result = await service.UploadAsync(Agent, TestImages.Content(TestImages.Png()), TestSupport.Ct);
 
         Assert.Equal(MediaErrorCodes.Unreadable, result.Error?.Code);
-        images.DidNotReceiveWithAnyArgs().Encode(default);
+        images.DidNotReceiveWithAnyArgs().Encode(default, default);
     }
 
     [Fact]
@@ -150,7 +150,7 @@ public sealed class MediaServiceTests
 
         Assert.Equal(MediaErrorCodes.DimensionsTooLarge, huge.Error?.Code);
         Assert.Equal(MediaErrorCodes.DimensionsTooSmall, tiny.Error?.Code);
-        images.DidNotReceiveWithAnyArgs().Encode(default);
+        images.DidNotReceiveWithAnyArgs().Encode(default, default);
     }
 
     [Fact]
@@ -163,8 +163,8 @@ public sealed class MediaServiceTests
         parts.Store.When(s => s.AddUpload(Arg.Any<MediaUpload>())).Do(ci => uploads.Add(ci.Arg<MediaUpload>()));
         var service = parts.Create();
 
-        var fitted = await service.UploadAsync(Agent, TestImages.Content(TestImages.Png()), new AvatarCrop(150, 0, 52), TestSupport.Ct);
-        var outside = await service.UploadAsync(Agent, TestImages.Content(TestImages.Png()), new AvatarCrop(150, 0, 60), TestSupport.Ct);
+        var fitted = await service.UploadAvatarAsync(Agent, TestImages.Content(TestImages.Png()), new AvatarCrop(150, 0, 52), TestSupport.Ct);
+        var outside = await service.UploadAvatarAsync(Agent, TestImages.Content(TestImages.Png()), new AvatarCrop(150, 0, 60), TestSupport.Ct);
 
         Assert.True(fitted.IsSuccess);
         Assert.Equal(MediaErrorCodes.AvatarCropInvalid, outside.Error?.Code);
@@ -180,7 +180,7 @@ public sealed class MediaServiceTests
         var result = await new MediaServiceParts { Images = images }.Create().UploadAsync(Agent, TestImages.Content(TestImages.Png()), TestSupport.Ct);
 
         Assert.True(result.IsSuccess);
-        images.DidNotReceiveWithAnyArgs().Encode(default);
+        images.DidNotReceiveWithAnyArgs().Encode(default, default);
     }
 
     [Fact]

@@ -13,7 +13,7 @@ public sealed record ProcessMediaRequest(Guid MediaId)
 
 /// <summary>
 /// Image post-processing (PLAN 6.8, 6.11), off the upload request: decodes the original, turns it upright,
-/// re-encodes every size as WebP without metadata and stores them. A storage failure throws, so the message is
+/// re-encodes the sizes its <see cref="MediaPurpose"/> needs as WebP without metadata and stores them. A storage failure throws, so the message is
 /// retried with backoff; a file that does not decode can never succeed, so it is marked
 /// <see cref="MediaStatus.Failed"/> instead. Idempotent: once processed, the original is gone and a repeat does nothing.
 /// Workers handle one message at a time, which also caps how many images an instance decodes at once.
@@ -43,7 +43,7 @@ public sealed partial class ProcessMediaHandler(
             return;
         }
 
-        var variants = images.Encode(upload.Data, upload.Crop, upload.BannerCrop);
+        var variants = images.Encode(upload.Data, upload.Purpose, upload.Crop, upload.BannerCrop);
         if (variants is null)
         {
             await FinishAsync(mediaId, MediaStatus.Failed, upload.Width, upload.Height, cancellationToken);
@@ -56,18 +56,16 @@ public sealed partial class ProcessMediaHandler(
         }
 
         // Overwriting the same names is harmless, so a retry after a partial failure simply writes them all again.
-        List<Task> puts =
+        (string Name, byte[]? Content)[] objects =
         [
-            storage.PutAsync(MediaObjects.Full(upload.StorageKey), variants.Full, MediaObjects.ContentType, cancellationToken),
-            storage.PutAsync(MediaObjects.Thumbnail(upload.StorageKey), variants.Thumbnail, MediaObjects.ContentType, cancellationToken),
-            storage.PutAsync(MediaObjects.Avatar(upload.StorageKey), variants.Avatar, MediaObjects.ContentType, cancellationToken),
+            (MediaObjects.Full(upload.StorageKey), variants.Full),
+            (MediaObjects.Thumbnail(upload.StorageKey), variants.Thumbnail),
+            (MediaObjects.Avatar(upload.StorageKey), variants.Avatar),
+            (MediaObjects.Banner(upload.StorageKey), variants.Banner),
         ];
-        if (variants.Banner is { } banner)
-        {
-            puts.Add(storage.PutAsync(MediaObjects.Banner(upload.StorageKey), banner, MediaObjects.ContentType, cancellationToken));
-        }
-
-        await Task.WhenAll(puts);
+        await Task.WhenAll(objects
+            .Where(o => o.Content is not null)
+            .Select(o => storage.PutAsync(o.Name, o.Content!, MediaObjects.ContentType, cancellationToken)));
         switch (await FinishAsync(mediaId, MediaStatus.Ready, variants.Width, variants.Height, cancellationToken))
         {
             case MediaFinish.AlreadyReady:

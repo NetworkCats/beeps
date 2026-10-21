@@ -50,7 +50,7 @@ internal sealed class MediaServiceParts
         Store.When(s => s.AddUpload(Arg.Any<MediaUpload>())).Do(ci => uploads[ci.Arg<MediaUpload>().MediaId] = ci.Arg<MediaUpload>());
         Store.FindUploadAsync(default, CancellationToken.None).ReturnsForAnyArgs(ci =>
             uploads.TryGetValue(ci.Arg<Guid>(), out var upload) && media.TryGetValue(upload.MediaId, out var item)
-                ? new MediaUploadJob(item.StorageKey, item.Width, item.Height, upload.Data, upload.Crop, upload.BannerCrop)
+                ? new MediaUploadJob(item.StorageKey, item.Purpose, item.Width, item.Height, upload.Data, upload.Crop, upload.BannerCrop)
                 : null);
         Store.FinishProcessingAsync(default, default, default, default, CancellationToken.None).ReturnsForAnyArgs(ci => uploads.Remove(ci.Arg<Guid>()) ? MediaFinish.Finished : MediaFinish.Gone);
         Store.ListActorsUsingAsync(default, CancellationToken.None).ReturnsForAnyArgs([]);
@@ -61,7 +61,7 @@ internal sealed class MediaServiceParts
 
     /// <inheritdoc cref="OwnEverything()"/>
     public static void OwnEverything(IMediaStore store) =>
-        store.LockOwnedAsync(default, default!, CancellationToken.None)
+        store.LockOwnedAsync(default, default!, default, CancellationToken.None)
             .ReturnsForAnyArgs(ci => ci.Arg<IReadOnlyCollection<Guid>>() is { } ids ? (IReadOnlyList<Guid>)[.. ids] : []);
 
     public MediaService Create() => new(

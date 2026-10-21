@@ -137,6 +137,27 @@ public static class MediaRules
         return new BannerCrop((width - stripWidth) / 2, (height - (stripWidth / BannerAspect)) / 2, stripWidth);
     }
 
+    /// <summary>
+    /// The size of the image stored for an upload of <paramref name="width"/> × <paramref name="height"/> (upright), never
+    /// enlarged: the full size of a beep image, the avatar square (<paramref name="avatarCrop"/>, or else the centered
+    /// one) or the banner strip, which a banner requires.
+    /// </summary>
+    public static (int Width, int Height) StoredSize(MediaPurpose purpose, int width, int height, AvatarCrop? avatarCrop = null, BannerCrop? bannerCrop = null)
+    {
+        switch (purpose)
+        {
+            case MediaPurpose.Avatar:
+                var side = Math.Min(avatarCrop?.Size ?? Math.Min(width, height), AvatarSide);
+                return (side, side);
+            case MediaPurpose.Banner:
+                ArgumentNullException.ThrowIfNull(bannerCrop);
+                var stripWidth = Math.Min(bannerCrop.Width, BannerWidth);
+                return (stripWidth, Math.Max(1, stripWidth / BannerAspect));
+            default:
+                return FitWithin(width, height, FullMaxSide);
+        }
+    }
+
     /// <summary>The size that fits within <paramref name="maxSide"/> on its longer side, keeping the aspect ratio; never enlarged.</summary>
     public static (int Width, int Height) FitWithin(int width, int height, int maxSide)
     {

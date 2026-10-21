@@ -107,7 +107,7 @@ public sealed partial class BeepService(
             async ct =>
             {
                 // Locked until commit, so the cleanup of unused uploads cannot take them meanwhile.
-                if (images.Count > 0 && (await mediaStore.LockOwnedAsync(author.ActorId, images, ct)).Count != images.Count)
+                if (images.Count > 0 && (await mediaStore.LockOwnedAsync(author.ActorId, images, MediaPurpose.Beep, ct)).Count != images.Count)
                 {
                     return media.NotFound(MediaFields.MediaIds);
                 }

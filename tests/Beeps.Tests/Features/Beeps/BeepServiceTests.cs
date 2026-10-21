@@ -481,7 +481,7 @@ public sealed class BeepServiceTests
         Assert.True(result.IsSuccess);
         Assert.Equal("", added!.Text);
         // A repeated id counts once; the images are locked in the same transaction as the beep is written.
-        await media.Store.Received(1).LockOwnedAsync(Agent.ActorId, Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.SequenceEqual(images)), Arg.Any<CancellationToken>());
+        await media.Store.Received(1).LockOwnedAsync(Agent.ActorId, Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.SequenceEqual(images)), MediaPurpose.Beep, Arg.Any<CancellationToken>());
         store.Received(1).AttachMedia(added.Id, Arg.Is<IReadOnlyList<Guid>>(ids => ids.SequenceEqual(images)));
         Assert.Equal(1, unitOfWork.Saves);
     }
@@ -490,7 +490,7 @@ public sealed class BeepServiceTests
     public async Task ImagesSomeoneElseUploadedAreNotFoundAndNothingIsPosted()
     {
         var mine = Guid.NewGuid();
-        media.Store.LockOwnedAsync(Human.ActorId, Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>()).Returns([mine]);
+        media.Store.LockOwnedAsync(Human.ActorId, Arg.Any<IReadOnlyCollection<Guid>>(), MediaPurpose.Beep, Arg.Any<CancellationToken>()).Returns([mine]);
 
         var result = await CreateService().PostAsync(Human, "hi", null, [mine, Guid.NewGuid()], TestSupport.Ct);
 
@@ -508,7 +508,7 @@ public sealed class BeepServiceTests
 
         Assert.Equal(MediaErrorCodes.TooMany, result.Error?.Code);
         Assert.Empty(checkedPolicies);
-        await media.Store.DidNotReceiveWithAnyArgs().LockOwnedAsync(default, default!, TestSupport.Ct);
+        await media.Store.DidNotReceiveWithAnyArgs().LockOwnedAsync(default, default!, default, TestSupport.Ct);
     }
 
     [Fact]
@@ -517,7 +517,7 @@ public sealed class BeepServiceTests
         var result = await CreateService().PostWithUploadsAsync(Human, new string('a', 501), null, [TestImages.Content(TestImages.Png())], TestSupport.Ct);
 
         Assert.Equal(BeepErrorCodes.TextTooLong, result.Error?.Code);
-        media.Images.DidNotReceiveWithAnyArgs().Encode(default);
+        media.Images.DidNotReceiveWithAnyArgs().Encode(default, default);
         await media.Storage.DidNotReceiveWithAnyArgs().PutAsync(default!, default, default!, TestSupport.Ct);
     }
 
@@ -552,7 +552,7 @@ public sealed class BeepServiceTests
     {
         media.OwnEverything();
         media.Images.ReadHeader(default).ReturnsForAnyArgs(new ImageHeader(ImageFormat.Png, 64, 48));
-        media.Images.Encode(default).ReturnsForAnyArgs(new ImageVariants([1], 64, 48, [2], [3]));
+        media.Images.Encode(default, default).ReturnsForAnyArgs(new ImageVariants(64, 48, [1], [2]));
 
         var result = await CreateService().PostWithUploadsAsync(Human, "", null, [TestImages.Content(TestImages.Png()), TestImages.Content(TestImages.Png())], TestSupport.Ct);
 

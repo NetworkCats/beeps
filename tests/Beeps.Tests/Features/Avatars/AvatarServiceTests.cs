@@ -29,15 +29,19 @@ public sealed class AvatarServiceTests
     }
 
     [Fact]
-    public async Task AnAgentChangesItsOwnAvatarToAnImageItUploaded()
+    public async Task AnAgentUploadsItsOwnAvatar()
     {
-        var mediaId = Guid.NewGuid();
-        media.Store.LockOwnedAsync(AgentId, Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Single() == mediaId), Arg.Any<CancellationToken>()).Returns([mediaId]);
+        MediaItem? uploaded = null;
+        media.Store.When(s => s.AddMedia(Arg.Any<MediaItem>())).Do(ci => uploaded = ci.Arg<MediaItem>());
+        media.OwnEverything();
 
-        var result = await Create().SetAsync(Agent, AgentId, mediaId, TestSupport.Ct);
+        var result = await Create().UploadAsync(Agent, AgentId, TestImages.Content(TestImages.Png()), null, TestSupport.Ct);
 
         Assert.True(result.IsSuccess);
-        await store.Received(1).SetAvatarAsync(AgentId, mediaId, Arg.Any<CancellationToken>());
+        Assert.Equal(MediaPurpose.Avatar, uploaded?.Purpose);
+        await store.Received(1).SetAvatarAsync(AgentId, uploaded!.Id, Arg.Any<CancellationToken>());
+        // Only an image uploaded as an avatar can be one.
+        await media.Store.Received(1).LockOwnedAsync(AgentId, Arg.Any<IReadOnlyCollection<Guid>>(), MediaPurpose.Avatar, Arg.Any<CancellationToken>());
         // Nothing caches an agent's avatar; a human's sits in the cached account state.
         await accounts.DidNotReceiveWithAnyArgs().ForgetAccountAsync(default, TestSupport.Ct);
     }
@@ -47,7 +51,7 @@ public sealed class AvatarServiceTests
     {
         media.OwnEverything();
 
-        var result = await Create().SetAsync(Human, OwnerId, Guid.NewGuid(), TestSupport.Ct);
+        var result = await Create().UploadAsync(Human, OwnerId, TestImages.Content(TestImages.Png()), null, TestSupport.Ct);
 
         Assert.True(result.IsSuccess);
         await accounts.Received(1).ForgetAccountAsync(OwnerId, Arg.Any<CancellationToken>());
@@ -60,7 +64,7 @@ public sealed class AvatarServiceTests
     {
         media.OwnEverything();
 
-        var result = await Create().SetAsync(Human, AgentId, Guid.NewGuid(), TestSupport.Ct);
+        var result = await Create().UploadAsync(Human, AgentId, TestImages.Content(TestImages.Png()), null, TestSupport.Ct);
 
         Assert.True(result.IsSuccess);
         await store.Received(1).SetAvatarAsync(AgentId, Arg.Any<Guid?>(), Arg.Any<CancellationToken>());
@@ -74,8 +78,8 @@ public sealed class AvatarServiceTests
         store.FindActorAsync(strangerId, Arg.Any<CancellationToken>()).Returns(new AvatarTarget(strangerId, ActorKind.Agent, Guid.NewGuid()));
         var service = Create();
 
-        var owners = await service.SetAsync(Agent, OwnerId, Guid.NewGuid(), TestSupport.Ct);
-        var strangers = await service.SetAsync(Human, strangerId, Guid.NewGuid(), TestSupport.Ct);
+        var owners = await service.UploadAsync(Agent, OwnerId, TestImages.Content(TestImages.Png()), null, TestSupport.Ct);
+        var strangers = await service.UploadAsync(Human, strangerId, TestImages.Content(TestImages.Png()), null, TestSupport.Ct);
         var missing = await service.RemoveAsync(Human, Guid.NewGuid(), TestSupport.Ct);
 
         Assert.All([owners, strangers, missing], r => Assert.Equal(ErrorKind.NotFound, r.Error?.Kind));
@@ -83,15 +87,26 @@ public sealed class AvatarServiceTests
     }
 
     [Fact]
-    public async Task OnlyImagesTheViewerUploadedCanBecomeAnAvatar()
+    public async Task AnUploadThatAlreadyFailedToDecodeIsNotSet()
     {
-        media.Store.LockOwnedAsync(default, default!, TestSupport.Ct).ReturnsForAnyArgs([]);
+        media.Store.LockOwnedAsync(default, default!, default, TestSupport.Ct).ReturnsForAnyArgs([]);
 
-        var result = await Create().SetAsync(Human, AgentId, Guid.NewGuid(), TestSupport.Ct);
+        var result = await Create().UploadAsync(Human, AgentId, TestImages.Content(TestImages.Png()), null, TestSupport.Ct);
 
-        Assert.Equal(MediaErrorCodes.NotFound, result.Error?.Code);
-        Assert.Contains(MediaFields.MediaId, result.Error!.Fields!.Keys);
+        Assert.Equal(MediaErrorCodes.Unreadable, result.Error?.Code);
         await store.DidNotReceiveWithAnyArgs().SetAvatarAsync(default, default, TestSupport.Ct);
+    }
+
+    [Fact]
+    public async Task AnAvatarIsStoredInTheAvatarSizeAlone()
+    {
+        media.OwnEverything();
+
+        await Create().UploadAsync(Human, OwnerId, TestImages.Content(TestImages.Png()), null, TestSupport.Ct);
+        await media.ProcessQueuedAsync();
+
+        var stored = media.Storage.ReceivedCalls().Select(c => (string)c.GetArguments()[0]!).ToList();
+        Assert.Single(stored, n => n.EndsWith("/avatar.webp", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -101,7 +116,7 @@ public sealed class AvatarServiceTests
 
         Assert.True(result.IsSuccess);
         await store.Received(1).SetAvatarAsync(OwnerId, null, Arg.Any<CancellationToken>());
-        await media.Store.DidNotReceiveWithAnyArgs().LockOwnedAsync(default, default!, TestSupport.Ct);
+        await media.Store.DidNotReceiveWithAnyArgs().LockOwnedAsync(default, default!, default, TestSupport.Ct);
         await accounts.Received(1).ForgetAccountAsync(OwnerId, Arg.Any<CancellationToken>());
     }
 

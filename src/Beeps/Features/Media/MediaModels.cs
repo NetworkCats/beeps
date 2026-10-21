@@ -16,7 +16,7 @@ public sealed record UnusedMediaBatch(IReadOnlyList<string> StorageKeys, MediaPo
 public sealed record MediaView(Guid Id, Uri Url, Uri ThumbnailUrl, int Width, int Height, MediaStatus Status = MediaStatus.Ready);
 
 /// <summary>What <see cref="ProcessMediaHandler"/> needs of an upload that is still waiting.</summary>
-public sealed record MediaUploadJob(string StorageKey, int Width, int Height, byte[] Data, AvatarCrop? Crop, BannerCrop? BannerCrop = null);
+public sealed record MediaUploadJob(string StorageKey, MediaPurpose Purpose, int Width, int Height, byte[] Data, AvatarCrop? Crop, BannerCrop? BannerCrop = null);
 
 /// <summary>One uploaded file as it arrives; <see cref="Length"/> is what the client declared, if anything.</summary>
 public sealed record MediaContent(Stream Stream, long? Length);
@@ -42,9 +42,13 @@ public sealed record BannerCrop(int X, int Y, int Width)
     public int Height => Width / MediaRules.BannerAspect;
 }
 
-/// <summary>An image decoded and re-encoded as WebP, upright, with no metadata, in every stored size.</summary>
-/// <param name="Banner">Only for an image uploaded as a profile banner.</param>
-public sealed record ImageVariants(byte[] Full, int Width, int Height, byte[] Thumbnail, byte[] Avatar, byte[]? Banner = null);
+/// <summary>
+/// An image decoded and re-encoded as WebP, upright, with no metadata, in the sizes its <see cref="MediaPurpose"/>
+/// stores: <paramref name="Full"/> and <paramref name="Thumbnail"/> for a beep, <paramref name="Avatar"/> or
+/// <paramref name="Banner"/> alone otherwise.
+/// </summary>
+/// <param name="Width">Of the main stored image: the full size, the avatar square or the banner strip.</param>
+public sealed record ImageVariants(int Width, int Height, byte[]? Full = null, byte[]? Thumbnail = null, byte[]? Avatar = null, byte[]? Banner = null);
 
 /// <summary>Stable error codes for uploads and their use. Published codes must never change.</summary>
 public static class MediaErrorCodes
@@ -68,26 +72,23 @@ public static class MediaFields
     public const string Images = "Images";
 
     public const string MediaIds = "media_ids";
-
-    /// <summary>The API's avatar request.</summary>
-    public const string MediaId = "media_id";
 }
 
 /// <summary>
 /// The objects one upload is stored as, under its storage key: names never contain anything the uploader
-/// chose. Every object is WebP.
+/// chose. Every object is WebP. Which of them exist depends on its <see cref="MediaPurpose"/>.
 /// </summary>
 public static class MediaObjects
 {
     public const string ContentType = "image/webp";
 
+    /// <summary>Beep images only, like <see cref="Thumbnail"/>.</summary>
     public static string Full(string storageKey) => $"{storageKey}/full.webp";
 
     public static string Thumbnail(string storageKey) => $"{storageKey}/thumb.webp";
 
     public static string Avatar(string storageKey) => $"{storageKey}/avatar.webp";
 
-    /// <summary>Only uploads made as a banner have one.</summary>
     public static string Banner(string storageKey) => $"{storageKey}/banner.webp";
 
     /// <summary>Every object an upload may have; deleting one that was never stored is no error.</summary>
@@ -102,11 +103,11 @@ public interface IImageProcessor
 
     /// <summary>
     /// Decodes the whole image (the first frame of an animation), turns it upright by its EXIF orientation and
-    /// re-encodes every size as WebP, which drops all metadata (EXIF, GPS, ICC). The avatar is
-    /// <paramref name="avatarCrop"/> (already checked against the upright size), or else the centered square. Only
-    /// with <paramref name="bannerCrop"/> (an upload from a banner form) is there a banner size too. Null if decoding fails.
+    /// re-encodes the sizes <paramref name="purpose"/> stores as WebP, which drops all metadata (EXIF, GPS, ICC). An
+    /// avatar is <paramref name="avatarCrop"/> (already checked against the upright size), or else the centered square;
+    /// a banner is <paramref name="bannerCrop"/>, which it requires. Null if decoding fails.
     /// </summary>
-    ImageVariants? Encode(ReadOnlyMemory<byte> data, AvatarCrop? avatarCrop = null, BannerCrop? bannerCrop = null);
+    ImageVariants? Encode(ReadOnlyMemory<byte> data, MediaPurpose purpose, AvatarCrop? avatarCrop = null, BannerCrop? bannerCrop = null);
 }
 
 /// <summary>Object storage (PLAN 6.11): standard S3, which is Cloudflare R2 in production and SeaweedFS locally.</summary>
@@ -155,12 +156,12 @@ public interface IMediaStore
     Task<IReadOnlyList<Guid>> ListActorsUsingAsync(Guid mediaId, CancellationToken cancellationToken);
 
     /// <summary>
-    /// Which of these media the actor uploaded (and that neither failed to process nor were removed), locking them (<c>FOR SHARE</c>) until the transaction
+    /// Which of these media the actor uploaded for <paramref name="purpose"/> (and that neither failed to process nor were removed), locking them (<c>FOR SHARE</c>) until the transaction
     /// ends, so <see cref="DeleteUnusedAsync"/> cannot remove one that is about to be used and processing cannot finish
     /// one before the new use is visible to it. Runs immediately;
     /// call inside a transaction.
     /// </summary>
-    Task<IReadOnlyList<Guid>> LockOwnedAsync(Guid ownerActorId, IReadOnlyCollection<Guid> mediaIds, CancellationToken cancellationToken);
+    Task<IReadOnlyList<Guid>> LockOwnedAsync(Guid ownerActorId, IReadOnlyCollection<Guid> mediaIds, MediaPurpose purpose, CancellationToken cancellationToken);
 
     /// <summary>
     /// Deletes up to <paramref name="batchSize"/> media created before <paramref name="cutoff"/> and after

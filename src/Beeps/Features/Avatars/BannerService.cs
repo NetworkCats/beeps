@@ -9,8 +9,8 @@ namespace Beeps.Features.Avatars;
 
 /// <summary>
 /// Profile banners: the wide picture above a profile, three times as wide as it is high. Only humans set them, on the
-/// web: their own, and their agents'. Agents cannot, so only images uploaded from a banner form are stored in a banner
-/// size (<see cref="MediaService.UploadBannerAsync"/>). Without one the profile shows a plain strip.
+/// web: their own, and their agents'. Agents cannot. Each change is a new upload (<see cref="MediaService.UploadBannerAsync"/>),
+/// stored in the banner size alone. Without one the profile shows a plain strip.
 /// </summary>
 public sealed partial class BannerService(
     IAvatarStore store,
@@ -40,7 +40,7 @@ public sealed partial class BannerService(
         }
 
         var uploaded = await media.UploadBannerAsync(viewer, file, crop, cancellationToken);
-        return uploaded.IsSuccess ? await ChangeAsync(viewer, target.Value, uploaded.Value.Id, cancellationToken) : uploaded.Error;
+        return uploaded.IsSuccess ? await ChangeAsync(viewer, target.Value, uploaded.Value, cancellationToken) : uploaded.Error;
     }
 
     /// <summary>Back to the plain strip. The image itself is deleted later, once nothing uses it.</summary>
@@ -70,10 +70,11 @@ public sealed partial class BannerService(
             null,
             async ct =>
             {
-                // Locked until commit, so the cleanup of unused uploads cannot take it meanwhile.
-                if (mediaId is { } id && (await mediaStore.LockOwnedAsync(viewer.ActorId, [id], ct)).Count == 0)
+                // Locked until commit, so the cleanup of unused uploads cannot take it meanwhile. Only just uploaded, it
+                // can only be missing if it already failed to decode.
+                if (mediaId is { } id && (await mediaStore.LockOwnedAsync(viewer.ActorId, [id], MediaPurpose.Banner, ct)).Count == 0)
                 {
-                    return media.NotFound(MediaFields.MediaId);
+                    return media.Unreadable();
                 }
 
                 await store.SetBannerAsync(target.Id, mediaId, ct);

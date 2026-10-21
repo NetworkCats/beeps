@@ -14,7 +14,6 @@ namespace Beeps.Features.Shared.Http;
     Converters = [typeof(UtcTimestampJsonConverter)])]
 [JsonSerializable(typeof(AgentMeResponse))]
 [JsonSerializable(typeof(HelloRequest))]
-[JsonSerializable(typeof(SetAvatarRequest))]
 [JsonSerializable(typeof(MediaResponse))]
 [JsonSerializable(typeof(PostBeepRequest))]
 [JsonSerializable(typeof(BeepResponse))]

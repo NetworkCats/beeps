@@ -156,7 +156,7 @@ public sealed class MediaApiTests : IDisposable
     [Fact]
     public async Task ImagesSomeoneElseUploadedCannotBePosted()
     {
-        factory.Media.LockOwnedAsync(default, default!, TestSupport.Ct).ReturnsForAnyArgs([]);
+        factory.Media.LockOwnedAsync(default, default!, default, TestSupport.Ct).ReturnsForAnyArgs([]);
 
         using var response = await client.PostAsJsonAsync("/api/v1/beeps", new { text = "hi", media_ids = new[] { Guid.NewGuid() } }, TestSupport.Ct);
 
@@ -167,36 +167,52 @@ public sealed class MediaApiTests : IDisposable
     }
 
     [Fact]
-    public async Task AnAgentSetsAndRemovesItsAvatar()
+    public async Task AnAgentUploadsAndRemovesItsAvatar()
     {
-        var mediaId = Guid.NewGuid();
+        MediaItem? stored = null;
+        factory.Media.When(m => m.AddMedia(Arg.Any<MediaItem>())).Do(ci => stored = ci.Arg<MediaItem>());
         factory.Avatars.FindActorAsync(agent.AgentId, Arg.Any<CancellationToken>()).Returns(new AvatarTarget(agent.AgentId, ActorKind.Agent, agent.OwnerId));
         var row = new AgentWithOwnerRow(agent.AgentId, "tom.claude", "tom's Claude", "Claude", TestData.Now, agent.OwnerId, "tom", "Tom");
         factory.Agents.GetAgentWithOwnerAsync(agent.AgentId, Arg.Any<CancellationToken>()).Returns(row with { AvatarKey = "face" }, row);
 
-        using var set = await client.PutAsJsonAsync("/api/v1/agent/me/avatar", new { media_id = mediaId }, TestSupport.Ct);
+        using var set = await PutAvatarAsync(TestImages.Png(300, 200));
         using var removed = await client.DeleteAsync(new Uri("/api/v1/agent/me/avatar", UriKind.Relative), TestSupport.Ct);
 
         Assert.Equal(HttpStatusCode.OK, set.StatusCode);
         Assert.Equal("https://media.beeps.test/face/avatar.webp", (await TestSupport.JsonAsync(set)).GetProperty("avatar_url").GetString());
         Assert.Equal(HttpStatusCode.OK, removed.StatusCode);
         Assert.Equal($"https://beeps.test/avatars/{agent.AgentId:D}.svg", (await TestSupport.JsonAsync(removed)).GetProperty("avatar_url").GetString());
-        await factory.Avatars.Received(1).SetAvatarAsync(agent.AgentId, mediaId, Arg.Any<CancellationToken>());
+        // Stored as an avatar, in the size of the square it becomes.
+        Assert.Equal(MediaPurpose.Avatar, stored!.Purpose);
+        Assert.Equal((200, 200), (stored.Width, stored.Height));
+        await factory.Avatars.Received(1).SetAvatarAsync(agent.AgentId, stored.Id, Arg.Any<CancellationToken>());
         await factory.Avatars.Received(1).SetAvatarAsync(agent.AgentId, null, Arg.Any<CancellationToken>());
     }
 
     [Fact]
-    public async Task AnAvatarNeedsAnImageTheAgentUploaded()
+    public async Task AnAvatarIsTheImageItselfNotABeepImagesId()
     {
         factory.Avatars.FindActorAsync(agent.AgentId, Arg.Any<CancellationToken>()).Returns(new AvatarTarget(agent.AgentId, ActorKind.Agent, agent.OwnerId));
-        factory.Media.LockOwnedAsync(default, default!, TestSupport.Ct).ReturnsForAnyArgs([]);
+        using var form = new MultipartFormDataContent { { new ByteArrayContent(TestImages.Png()), "file", "a.png" } };
 
-        using var unknown = await client.PutAsJsonAsync("/api/v1/agent/me/avatar", new { media_id = Guid.NewGuid() }, TestSupport.Ct);
-        using var missing = await client.PutAsJsonAsync("/api/v1/agent/me/avatar", new { }, TestSupport.Ct);
+        using var byId = await client.PutAsJsonAsync("/api/v1/agent/me/avatar", new { media_id = Guid.NewGuid() }, TestSupport.Ct);
+        using var asForm = await client.PutAsync(new Uri("/api/v1/agent/me/avatar", UriKind.Relative), form, TestSupport.Ct);
 
-        Assert.Equal(MediaErrorCodes.NotFound, (await TestSupport.JsonAsync(unknown)).GetProperty("code").GetString());
-        Assert.Equal(MediaErrorCodes.NotFound, (await TestSupport.JsonAsync(missing)).GetProperty("code").GetString());
+        Assert.Equal(MediaErrorCodes.TypeUnsupported, (await TestSupport.JsonAsync(byId)).GetProperty("code").GetString());
+        Assert.Equal(MediaErrorCodes.RawBodyRequired, (await TestSupport.JsonAsync(asForm)).GetProperty("code").GetString());
         await factory.Avatars.DidNotReceiveWithAnyArgs().SetAvatarAsync(default, default, TestSupport.Ct);
+    }
+
+    [Fact]
+    public async Task ABeepImageIsUploadedForBeepsAlone()
+    {
+        MediaItem? stored = null;
+        factory.Media.When(m => m.AddMedia(Arg.Any<MediaItem>())).Do(ci => stored = ci.Arg<MediaItem>());
+
+        using var response = await UploadAsync(TestImages.Png(), "image/png");
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        Assert.Equal(MediaPurpose.Beep, stored!.Purpose);
     }
 
     public void Dispose()
@@ -210,5 +226,12 @@ public sealed class MediaApiTests : IDisposable
         using var content = new ByteArrayContent(body);
         content.Headers.ContentType = new MediaTypeHeaderValue(contentType);
         return await client.PostAsync(new Uri("/api/v1/media", UriKind.Relative), content, TestSupport.Ct);
+    }
+
+    private async Task<HttpResponseMessage> PutAvatarAsync(byte[] body)
+    {
+        using var content = new ByteArrayContent(body);
+        content.Headers.ContentType = new MediaTypeHeaderValue("image/png");
+        return await client.PutAsync(new Uri("/api/v1/agent/me/avatar", UriKind.Relative), content, TestSupport.Ct);
     }
 }

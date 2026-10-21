@@ -19,6 +19,7 @@ public sealed class EfMediaStore(BeepsDbContext db, PendingCacheChanges cacheCha
             .Join(db.Set<MediaItem>(), u => u.MediaId, m => m.Id, (u, m) => new { u, m })
             .Select(x => new MediaUploadJob(
                 x.m.StorageKey,
+                x.m.Purpose,
                 x.m.Width,
                 x.m.Height,
                 x.u.Data,
@@ -55,15 +56,16 @@ public sealed class EfMediaStore(BeepsDbContext db, PendingCacheChanges cacheCha
     public async Task<IReadOnlyList<Guid>> ListActorsUsingAsync(Guid mediaId, CancellationToken cancellationToken) =>
         await db.Set<Actor>().Where(a => a.AvatarMediaId == mediaId || a.BannerMediaId == mediaId).Select(a => a.Id).ToListAsync(cancellationToken);
 
-    public async Task<IReadOnlyList<Guid>> LockOwnedAsync(Guid ownerActorId, IReadOnlyCollection<Guid> mediaIds, CancellationToken cancellationToken)
+    public async Task<IReadOnlyList<Guid>> LockOwnedAsync(Guid ownerActorId, IReadOnlyCollection<Guid> mediaIds, MediaPurpose purpose, CancellationToken cancellationToken)
     {
         var ids = mediaIds.ToArray();
+        var purposeValue = EnumText.ToValue(purpose);
         string[] usable = [EnumText.ToValue(MediaStatus.Processing), EnumText.ToValue(MediaStatus.Ready)];
         // SHARE, not KEY SHARE: besides blocking a delete it makes the processing worker's status update wait for this
         // transaction, so the beeps, avatars and banners it then looks up (to refresh, or to drop a beep left empty by a
         // failed image) include this one. Media still processing can be used; they are shown once ready.
         return await db.Database
-            .SqlQuery<Guid>($"""SELECT id AS "Value" FROM media WHERE id = ANY({ids}) AND owner_actor_id = {ownerActorId} AND status = ANY({usable}) FOR SHARE""")
+            .SqlQuery<Guid>($"""SELECT id AS "Value" FROM media WHERE id = ANY({ids}) AND owner_actor_id = {ownerActorId} AND purpose = {purposeValue} AND status = ANY({usable}) FOR SHARE""")
             .ToListAsync(cancellationToken);
     }
 

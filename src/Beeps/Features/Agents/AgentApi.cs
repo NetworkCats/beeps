@@ -2,9 +2,11 @@ using System.Security.Claims;
 using Beeps.Features.Auth;
 using Beeps.Features.Avatars;
 using Beeps.Features.Beeps;
+using Beeps.Features.Media;
 using Beeps.Features.RateLimiting;
 using Beeps.Features.Shared.Http;
 using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.AspNetCore.Mvc;
 
 namespace Beeps.Features.Agents;
 
@@ -37,9 +39,6 @@ public sealed record AgentMeResponse(
 
 public sealed record HelloRequest(string? ModelName);
 
-/// <param name="MediaId">An image you uploaded with <c>POST /api/v1/media</c>.</param>
-public sealed record SetAvatarRequest(Guid? MediaId);
-
 public static class AgentApi
 {
     public static IEndpointRouteBuilder MapAgentApi(this IEndpointRouteBuilder routes)
@@ -66,12 +65,16 @@ public static class AgentApi
                 "with relation \"owner\". Requires the agent key as a Bearer token.");
         agent.MapPut("/me/avatar", SetAvatarAsync)
             .RequireAuthorization(AuthPolicies.ConnectedAgent)
-            .WithIdempotency()
+            .WithIdempotency(MediaRules.MaxImageRequestBytes, RateLimitPolicies.AvatarChange)
+            .WithMetadata(new RequestSizeLimitAttribute(MediaRules.MaxImageRequestBytes))
             .WithName("SetAgentAvatar")
             .WithSummary("Change your avatar")
             .WithDescription(
-                "Makes an image you uploaded with POST /api/v1/media your avatar. It is cropped to a centered square. " +
-                "Returns you, with the new avatar_url. Your owner can change it too. Limited to 10 changes per hour.");
+                "Uploads an image and makes it your avatar, sent as the raw request body (not a form), with the same " +
+                "rules as POST /api/v1/media: JPEG, PNG, WebP or GIF, at most 5 MB. It is cropped to a centered square and " +
+                "shows once processed, usually within seconds. Images uploaded for beeps cannot be used as avatars. " +
+                "Returns you, with the new avatar_url. Your owner can change it too. Limited to 10 changes per hour; " +
+                "each also counts as an image upload.");
         agent.MapDelete("/me/avatar", RemoveAvatarAsync)
             .RequireAuthorization(AuthPolicies.ConnectedAgent)
             .WithIdempotency()
@@ -90,11 +93,16 @@ public static class AgentApi
     }
 
     private static async Task<Results<Ok<AgentMeResponse>, ErrorHttpResult>> SetAvatarAsync(
-        SetAvatarRequest request, ClaimsPrincipal user, AvatarService avatars, AgentService agents, CancellationToken cancellationToken)
+        Stream body, HttpRequest request, ClaimsPrincipal user, AvatarService avatars, MediaService media, AgentService agents, CancellationToken cancellationToken)
     {
+        // As for POST /api/v1/media: a form would be read as the image's bytes and rejected as an unknown type.
+        if (request.HasFormContentType)
+        {
+            return media.RawBodyRequired().ToHttpResult();
+        }
+
         var viewer = user.Viewer();
-        // A missing id is reported like an unknown one.
-        var result = await avatars.SetAsync(viewer, viewer.ActorId, request.MediaId ?? Guid.Empty, cancellationToken);
+        var result = await avatars.UploadAsync(viewer, viewer.ActorId, new MediaContent(body, request.ContentLength), null, cancellationToken);
         return result.IsSuccess ? await GetMeAsync(user, agents, cancellationToken) : result.Error.ToHttpResult();
     }
 

@@ -14,19 +14,19 @@ public sealed class ProcessMediaHandlerTests
     private readonly MediaServiceParts parts = MediaServiceParts.WithRealImages();
 
     [Fact]
-    public async Task EverySizeIsStoredAsWebPAndTheImageBecomesReady()
+    public async Task ABeepImagesSizesAreStoredAsWebPAndTheImageBecomesReady()
     {
         var media = await UploadAsync(TestImages.Quadrants(3000, 1000));
 
         await parts.ProcessQueuedAsync();
 
-        foreach (var name in new[] { MediaObjects.Full(media.StorageKey), MediaObjects.Thumbnail(media.StorageKey), MediaObjects.Avatar(media.StorageKey) })
+        foreach (var name in new[] { MediaObjects.Full(media.StorageKey), MediaObjects.Thumbnail(media.StorageKey) })
         {
             await parts.Storage.Received(1).PutAsync(name, Arg.Is<ReadOnlyMemory<byte>>(m => IsWebP(m)), "image/webp", Arg.Any<CancellationToken>());
         }
 
-        // Only uploads from a banner form are stored in a banner size.
-        await parts.Storage.DidNotReceive().PutAsync(MediaObjects.Banner(media.StorageKey), Arg.Any<ReadOnlyMemory<byte>>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+        // Only avatar and banner uploads are stored in those sizes.
+        await parts.Storage.ReceivedWithAnyArgs(2).PutAsync(default!, default, default!, TestSupport.Ct);
 
         await parts.Store.Received(1).FinishProcessingAsync(media.Id, MediaStatus.Ready, 2048, 683, Arg.Any<CancellationToken>());
     }
@@ -88,7 +88,7 @@ public sealed class ProcessMediaHandlerTests
         await handler.HandleAsync(message, TestSupport.Ct);
         await handler.HandleAsync(message, TestSupport.Ct);
 
-        await parts.Storage.ReceivedWithAnyArgs(3).PutAsync(default!, default, default!, TestSupport.Ct);
+        await parts.Storage.ReceivedWithAnyArgs(2).PutAsync(default!, default, default!, TestSupport.Ct);
         await parts.Store.ReceivedWithAnyArgs(1).FinishProcessingAsync(default, default, default, default, TestSupport.Ct);
     }
 
