@@ -3,11 +3,10 @@ using Beeps.Features.Agents;
 using Beeps.Features.Media;
 using Beeps.Infrastructure.Caching;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Caching.Hybrid;
 
 namespace Beeps.Infrastructure.Data.Stores;
 
-public sealed class EfAgentStore(BeepsDbContext db, HybridCache cache, CacheInvalidator invalidator, PendingCacheChanges cacheChanges, TimeProvider time) : IAgentStore
+public sealed class EfAgentStore(BeepsDbContext db, CacheInvalidator invalidator, PendingCacheChanges cacheChanges, TimeProvider time) : IAgentStore
 {
     public Task<int> CountAgentsAsync(Guid ownerId, CancellationToken cancellationToken) =>
         Agents().CountAsync(a => a.OwnerId == ownerId, cancellationToken);
@@ -45,15 +44,12 @@ public sealed class EfAgentStore(BeepsDbContext db, HybridCache cache, CacheInva
             .Where(k => k.AgentId == agentId && k.RevokedAt == null)
             .ExecuteUpdateAsync(s => s.SetProperty(k => k.RevokedAt, now), cancellationToken);
 
-    public async Task<AgentKeyMatch?> FindActiveKeyAsync(string keyHash, CancellationToken cancellationToken) =>
-        await cache.GetOrCreateAsync(
+    public Task<AgentKeyMatch?> FindActiveKeyAsync(string keyHash, CancellationToken cancellationToken) =>
+        invalidator.GetSharedAsync(
             SharedCache.AgentKeyKey(keyHash),
             (db, keyHash),
-            static async (state, ct) => await QueryActiveKeyAsync(state.db, state.keyHash, ct),
-            SharedCache.AgentKey,
-            // Not cancelled with the request: the loader runs on this request's context, so the request must wait for it (a
-            // cancellable caller returns early, and its pooled context would go to another request mid-query).
-            cancellationToken: CancellationToken.None);
+            static (state, ct) => QueryActiveKeyAsync(state.db, state.keyHash, ct),
+            SharedCache.AgentKey);
 
     public async Task TouchKeyAsync(AgentKeyMatch key, DateTimeOffset now, CancellationToken cancellationToken)
     {

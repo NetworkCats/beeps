@@ -10,6 +10,7 @@ using Beeps.Infrastructure.Data.Stores;
 using Beeps.Tests.Support;
 using Microsoft.AspNetCore.OutputCaching;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -292,7 +293,7 @@ public sealed class CacheInvalidatorTests : IAsyncDisposable
     {
         var listener = new CacheInvalidationListener(shared, cache, pages, TimeProvider.System, NullLogger<CacheInvalidationListener>.Instance);
         await listener.StartAsync(stop.Token);
-        await TestSupport.WaitUntilAsync(() => shared.Subscribers == 1);
+        await TestSupport.WaitUntilAsync(() => EvictionsOf(PageTags.All) == 1);
         shared.Put(CacheKinds.Actor, Owner, Human(Owner));
         await ReadActorAsync(Owner);
         var reads = shared.Gets.Count;
@@ -304,11 +305,60 @@ public sealed class CacheInvalidatorTests : IAsyncDisposable
         await ReadActorAsync(Owner);
 
         Assert.Equal(reads + 1, shared.Gets.Count);
-        await TestSupport.WaitUntilAsync(() => pages.ReceivedCalls().Any());
-        await pages.Received(1).EvictByTagAsync(PageTags.Actor(Owner), Arg.Any<CancellationToken>());
+        await TestSupport.WaitUntilAsync(() => EvictionsOf(PageTags.Actor(Owner)) == 1);
         await listener.StopAsync(CancellationToken.None);
         listener.Dispose();
     }
+
+    [Fact]
+    public async Task TheListenerDropsWhatThisInstanceCachedBeforeItSubscribed()
+    {
+        shared.Put(CacheKinds.Actor, Owner, Human(Owner));
+        await ReadActorAsync(Owner);
+        var reads = shared.Gets.Count;
+        var listener = new CacheInvalidationListener(shared, cache, pages, TimeProvider.System, NullLogger<CacheInvalidationListener>.Instance);
+
+        // Whatever was published meanwhile never reached this instance.
+        await listener.StartAsync(stop.Token);
+        await TestSupport.WaitUntilAsync(() => EvictionsOf(PageTags.All) == 1);
+        await ReadActorAsync(Owner);
+
+        Assert.Equal(reads + 1, shared.Gets.Count);
+        await listener.StopAsync(CancellationToken.None);
+        listener.Dispose();
+    }
+
+    [Theory]
+    [InlineData(false, 0)]
+    [InlineData(true, 2)]
+    public async Task ASignInEntryLoadedSlowerThanTheSecondPassIsDroppedAgain(bool slow, int removals)
+    {
+        // HybridCache writes the entry to Valkey after returning it: a real one, over a Valkey that records removals.
+        var valkey = Substitute.For<IDistributedCache>();
+        await using var hybridServices = new ServiceCollection().AddSingleton(valkey).AddHybridCache().Services.BuildServiceProvider();
+        using var withValkey = new CacheInvalidator(
+            cache, shared, services.GetRequiredService<IServiceScopeFactory>(), pages, hybridServices.GetRequiredService<HybridCache>(), Options.Create(options), TimeProvider.System, NullLogger<CacheInvalidator>.Instance);
+        await withValkey.StartAsync(stop.Token);
+
+        // A session read just before its revocation committed, and still loading after both removals ran.
+        var found = await withValkey.GetSharedAsync(
+            "session:abc",
+            slow ? options.SecondPassDelay * 2 : TimeSpan.Zero,
+            static async (delay, ct) =>
+            {
+                await Task.Delay(delay, ct);
+                return "live";
+            },
+            SharedCache.Session);
+
+        Assert.Equal("live", found);
+        await Task.Delay(options.SecondPassDelay * 4, TestSupport.Ct);
+        await TestSupport.WaitUntilAsync(() => valkey.ReceivedCalls().Count(c => c.GetMethodInfo().Name == nameof(IDistributedCache.RemoveAsync)) == removals);
+        await withValkey.StopAsync(CancellationToken.None);
+    }
+
+    private int EvictionsOf(string tag) =>
+        pages.ReceivedCalls().Count(c => c.GetMethodInfo().Name == nameof(IOutputCacheStore.EvictByTagAsync) && Equals(c.GetArguments()[0], tag));
 
     private int RemovalsOf(string key) =>
         hybrid.ReceivedCalls().Count(c => c.GetMethodInfo().Name == nameof(HybridCache.RemoveAsync) && c.GetArguments()[0] is IEnumerable<string> keys && keys.Contains(key));

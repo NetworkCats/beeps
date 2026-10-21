@@ -28,12 +28,9 @@ public sealed partial class CacheInvalidationListener(
             try
             {
                 await shared.SubscribeAsync(message => _ = ApplyAsync(message, stoppingToken), () => _ = ForgetEverythingAsync(stoppingToken));
-                if (attempts > 0)
-                {
-                    // Subscribed late: anything published before now was missed.
-                    await ForgetEverythingAsync(stoppingToken);
-                }
-
+                // Anything published before now was missed, and requests may have been cached from the start: on time,
+                // only while connecting, which is not worth a log line; late, while Valkey was away.
+                await ForgetEverythingAsync(stoppingToken, logged: attempts > 0);
                 return;
             }
             catch (Exception exception) when (exception is not OperationCanceledException)
@@ -72,13 +69,16 @@ public sealed partial class CacheInvalidationListener(
         }
     }
 
-    private async Task ForgetEverythingAsync(CancellationToken cancellationToken)
+    private async Task ForgetEverythingAsync(CancellationToken cancellationToken, bool logged = true)
     {
         try
         {
             cache.ClearLocal();
             await pages.EvictByTagAsync(PageTags.All, cancellationToken);
-            LogCleared(logger);
+            if (logged)
+            {
+                LogCleared(logger);
+            }
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {

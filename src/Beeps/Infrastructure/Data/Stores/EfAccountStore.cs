@@ -3,11 +3,10 @@ using Beeps.Features.Media;
 using Beeps.Features.Site;
 using Beeps.Infrastructure.Caching;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Caching.Hybrid;
 
 namespace Beeps.Infrastructure.Data.Stores;
 
-public sealed class EfAccountStore(BeepsDbContext db, HybridCache cache, CacheInvalidator invalidator, PendingCacheChanges cacheChanges) : IAccountStore
+public sealed class EfAccountStore(BeepsDbContext db, CacheInvalidator invalidator, PendingCacheChanges cacheChanges) : IAccountStore
 {
     public Task<bool> AnyUsersAsync(CancellationToken cancellationToken) =>
         db.Set<User>().AnyAsync(cancellationToken);
@@ -57,11 +56,11 @@ public sealed class EfAccountStore(BeepsDbContext db, HybridCache cache, CacheIn
 
     public void RemovePasskey(Passkey passkey) => db.Set<Passkey>().Remove(passkey);
 
-    public async Task<AccountState?> GetAccountStateAsync(Guid userId, CancellationToken cancellationToken) =>
-        await cache.GetOrCreateAsync(
+    public Task<AccountState?> GetAccountStateAsync(Guid userId, CancellationToken cancellationToken) =>
+        invalidator.GetSharedAsync(
             SharedCache.AccountKey(userId),
             (db, userId),
-            static async (state, ct) => await state.db.Set<User>()
+            static (state, ct) => state.db.Set<User>()
                 .Where(u => u.Id == state.userId && u.BannedAt == null && u.Actor.DeletedAt == null)
                 .Select(u => new AccountState(
                     u.Id,
@@ -73,10 +72,7 @@ public sealed class EfAccountStore(BeepsDbContext db, HybridCache cache, CacheIn
                     u.Actor.AvatarMedia == null || u.Actor.AvatarMedia.Status != MediaStatus.Ready ? null : u.Actor.AvatarMedia.StorageKey,
                     u.Theme))
                 .FirstOrDefaultAsync(ct),
-            SharedCache.Account,
-            // Not cancelled with the request: the loader runs on this request's context, so the request must wait for it (a
-            // cancellable caller returns early, and its pooled context would go to another request mid-query).
-            cancellationToken: CancellationToken.None);
+            SharedCache.Account);
 
     public Task ForgetAccountAsync(Guid userId, CancellationToken cancellationToken) =>
         invalidator.ForgetSharedAsync([SharedCache.AccountKey(userId)]);

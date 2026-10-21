@@ -2,26 +2,22 @@ using Beeps.Features.Accounts;
 using Beeps.Features.Shared;
 using Beeps.Infrastructure.Caching;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Caching.Hybrid;
 
 namespace Beeps.Infrastructure.Data.Stores;
 
-public sealed class EfSessionStore(BeepsDbContext db, HybridCache cache, CacheInvalidator invalidator, IOutbox outbox, TimeProvider time) : ISessionStore
+public sealed class EfSessionStore(BeepsDbContext db, CacheInvalidator invalidator, IOutbox outbox, TimeProvider time) : ISessionStore
 {
     public void Add(UserSession session) => db.Set<UserSession>().Add(session);
 
-    public async Task<SessionRow?> FindAsync(string tokenHash, CancellationToken cancellationToken) =>
-        await cache.GetOrCreateAsync(
+    public Task<SessionRow?> FindAsync(string tokenHash, CancellationToken cancellationToken) =>
+        invalidator.GetSharedAsync(
             SharedCache.SessionKey(tokenHash),
             (db, tokenHash),
-            static async (state, ct) => await state.db.Set<UserSession>()
+            static (state, ct) => state.db.Set<UserSession>()
                 .Where(s => s.TokenHash == state.tokenHash && s.RevokedAt == null)
                 .Select(s => new SessionRow(s.Id, s.UserId, s.TokenHash, s.LastSeenAt, s.ExpiresAt))
                 .FirstOrDefaultAsync(ct),
-            SharedCache.Session,
-            // Not cancelled with the request: the loader runs on this request's context, so the request must wait for it (a
-            // cancellable caller returns early, and its pooled context would go to another request mid-query).
-            cancellationToken: CancellationToken.None);
+            SharedCache.Session);
 
     public async Task TouchAsync(SessionRow session, DateTimeOffset now, DateTimeOffset expiresAt, CancellationToken cancellationToken)
     {

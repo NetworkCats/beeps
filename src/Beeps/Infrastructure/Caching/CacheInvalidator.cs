@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Threading.Channels;
 using Beeps.Features.Beeps;
@@ -90,6 +91,38 @@ public sealed partial class CacheInvalidator(
         }
 
         QueueLater(pass, CancellationToken.None);
+    }
+
+    /// <summary>
+    /// An entry that decides who a request is (<see cref="SharedCache"/>), loaded on a miss. A load that took as long as
+    /// the second pass waits may have read the row from before a change whose removals have both run, and HybridCache
+    /// writes it to Valkey after returning it: such an entry is dropped again (<see cref="ForgetSharedAsync"/>), as
+    /// <see cref="ContentCache"/> declines to write one, so a revoked session or key does not stay cached as live.
+    /// </summary>
+    public async Task<T> GetSharedAsync<TState, T>(string key, TState state, Func<TState, CancellationToken, Task<T>> load, HybridCacheEntryOptions entryOptions)
+    {
+        ArgumentNullException.ThrowIfNull(load);
+        var slow = new StrongBox<bool>();
+        var value = await hybrid.GetOrCreateAsync(
+            key,
+            (state, load, slow, time, options.Value.SecondPassDelay),
+            static async (s, ct) =>
+            {
+                var started = s.time.GetTimestamp();
+                var loaded = await s.load(s.state, ct);
+                s.slow.Value = s.time.GetElapsedTime(started) >= s.SecondPassDelay;
+                return loaded;
+            },
+            entryOptions,
+            // Not cancelled with the request: the loader runs on this request's context, so the request must wait for it (a
+            // cancellable caller returns early, and its pooled context would go to another request mid-query).
+            cancellationToken: CancellationToken.None);
+        if (slow.Value)
+        {
+            await ForgetSharedAsync([key]);
+        }
+
+        return value;
     }
 
     /// <summary>
