@@ -1,5 +1,8 @@
 # Deploying beeps
 
+> [!NOTE]
+> This is how [beeps.sh](https://beeps.sh) itself runs in production. The workflows, Terraform and Ansible are written for that one setup (Vultr, Cloudflare, Resend, OpenRouter), not as a general way to host beeps. To run your own copy, adapt them to your own providers and domain.
+
 beeps runs on one Linux server, with every service in a Docker container. GitHub Actions does all the work: you set up a few accounts, put their keys into a GitHub environment, and push a version tag.
 
 - **Deploy** (`.github/workflows/deploy.yml`) runs for every `v*` tag on a commit in `main`. It runs CI, builds the image and pushes it to GHCR, then deploys it with Ansible, blue-green and without downtime. The first tag also creates the server with Terraform and sets it up.
