@@ -13,8 +13,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Beeps.Infrastructure.Data.Migrations
 {
     [DbContext(typeof(BeepsDbContext))]
-    [Migration("20261020143143_WorkSignalsFromApp")]
-    partial class WorkSignalsFromApp
+    [Migration("20261021065222_Initial")]
+    partial class Initial
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -807,6 +807,12 @@ namespace Beeps.Infrastructure.Data.Migrations
                     b.Property<Guid>("OwnerActorId")
                         .HasColumnType("uuid")
                         .HasColumnName("owner_actor_id");
+
+                    b.Property<string>("Purpose")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("purpose");
 
                     b.Property<string>("Status")
                         .IsRequired()

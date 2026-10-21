@@ -144,6 +144,7 @@ namespace Beeps.Infrastructure.Data.Migrations
                     normalized_handle = table.Column<string>(type: "character varying(64)", maxLength: 64, nullable: true),
                     display_name = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: true),
                     bio = table.Column<string>(type: "character varying(300)", maxLength: 300, nullable: true),
+                    website = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: true),
                     owner_id = table.Column<Guid>(type: "uuid", nullable: true),
                     model_name = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
                     avatar_media_id = table.Column<Guid>(type: "uuid", nullable: true),
@@ -287,6 +288,7 @@ namespace Beeps.Infrastructure.Data.Migrations
                     id = table.Column<Guid>(type: "uuid", nullable: false),
                     owner_actor_id = table.Column<Guid>(type: "uuid", nullable: false),
                     storage_key = table.Column<string>(type: "character varying(32)", maxLength: 32, nullable: false),
+                    purpose = table.Column<string>(type: "character varying(16)", maxLength: 16, nullable: false),
                     width = table.Column<int>(type: "integer", nullable: false),
                     height = table.Column<int>(type: "integer", nullable: false),
                     status = table.Column<string>(type: "character varying(16)", maxLength: 16, nullable: false),
@@ -311,7 +313,7 @@ namespace Beeps.Infrastructure.Data.Migrations
                     email = table.Column<string>(type: "character varying(254)", maxLength: 254, nullable: false),
                     normalized_email = table.Column<string>(type: "character varying(254)", maxLength: 254, nullable: false),
                     pending_email = table.Column<string>(type: "character varying(254)", maxLength: 254, nullable: true),
-                    password_hash = table.Column<string>(type: "text", nullable: false),
+                    password_hash = table.Column<string>(type: "text", nullable: true),
                     email_verified_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
                     is_admin = table.Column<bool>(type: "boolean", nullable: false),
                     banned_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
@@ -322,6 +324,7 @@ namespace Beeps.Infrastructure.Data.Migrations
                     hide_likes = table.Column<bool>(type: "boolean", nullable: false),
                     hide_follows = table.Column<bool>(type: "boolean", nullable: false),
                     hide_follow_counts = table.Column<bool>(type: "boolean", nullable: false),
+                    passkey_two_factor = table.Column<bool>(type: "boolean", nullable: false),
                     created_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false)
                 },
                 constraints: table =>
@@ -632,6 +635,54 @@ namespace Beeps.Infrastructure.Data.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "user_logins",
+                columns: table => new
+                {
+                    provider = table.Column<string>(type: "character varying(16)", maxLength: 16, nullable: false),
+                    provider_key = table.Column<string>(type: "character varying(64)", maxLength: 64, nullable: false),
+                    user_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    name = table.Column<string>(type: "character varying(254)", maxLength: 254, nullable: false),
+                    created_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_user_logins", x => new { x.provider, x.provider_key });
+                    table.ForeignKey(
+                        name: "fk_user_logins_user_user_id",
+                        column: x => x.user_id,
+                        principalTable: "users",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "user_passkeys",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    user_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    credential_id = table.Column<byte[]>(type: "bytea", maxLength: 1023, nullable: false),
+                    public_key = table.Column<byte[]>(type: "bytea", nullable: false),
+                    sign_count = table.Column<long>(type: "bigint", nullable: false),
+                    transports = table.Column<string[]>(type: "text[]", nullable: true),
+                    backup_eligible = table.Column<bool>(type: "boolean", nullable: false),
+                    backed_up = table.Column<bool>(type: "boolean", nullable: false),
+                    user_agent = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: true),
+                    created_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
+                    last_used_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_user_passkeys", x => x.id);
+                    table.ForeignKey(
+                        name: "fk_user_passkeys_user_user_id",
+                        column: x => x.user_id,
+                        principalTable: "users",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "user_sessions",
                 columns: table => new
                 {
@@ -932,6 +983,23 @@ namespace Beeps.Infrastructure.Data.Migrations
                 filter: "resolved_at IS NULL");
 
             migrationBuilder.CreateIndex(
+                name: "ux_user_logins_user_id_provider",
+                table: "user_logins",
+                columns: new[] { "user_id", "provider" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "ix_user_passkeys_user_id",
+                table: "user_passkeys",
+                column: "user_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ux_user_passkeys_credential_id",
+                table: "user_passkeys",
+                column: "credential_id",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
                 name: "ix_user_sessions_expires_at",
                 table: "user_sessions",
                 column: "expires_at");
@@ -999,31 +1067,6 @@ namespace Beeps.Infrastructure.Data.Migrations
                 principalColumn: "id",
                 onDelete: ReferentialAction.Restrict);
 
-            // Wakes the outbox workers (LISTEN beeps_outbox) and the review workers (LISTEN beeps_moderation).
-            // Fires inside the inserting transaction, so the notification is delivered only once the rows are
-            // committed and visible.
-            migrationBuilder.Sql("""
-                CREATE FUNCTION outbox_notify() RETURNS trigger LANGUAGE plpgsql AS $$
-                BEGIN
-                    PERFORM pg_notify('beeps_outbox', '');
-                    RETURN NULL;
-                END
-                $$;
-
-                CREATE TRIGGER outbox_notify AFTER INSERT ON outbox
-                FOR EACH STATEMENT EXECUTE FUNCTION outbox_notify();
-
-                CREATE FUNCTION moderation_jobs_notify() RETURNS trigger LANGUAGE plpgsql AS $$
-                BEGIN
-                    PERFORM pg_notify('beeps_moderation', '');
-                    RETURN NULL;
-                END
-                $$;
-
-                CREATE TRIGGER moderation_jobs_notify AFTER INSERT ON moderation_jobs
-                FOR EACH STATEMENT EXECUTE FUNCTION moderation_jobs_notify();
-                """);
-
             // @mention suggestions, shortest handle first, then in byte order (EfSearchStore.SuggestActorsAsync): "C" serves
             // both the prefix and the order, which the database's own collation cannot. An expression index, which the model
             // cannot describe, so it lives here only.
@@ -1036,13 +1079,6 @@ namespace Beeps.Infrastructure.Data.Migrations
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.Sql("""
-                DROP TRIGGER IF EXISTS moderation_jobs_notify ON moderation_jobs;
-                DROP FUNCTION IF EXISTS moderation_jobs_notify();
-                DROP TRIGGER IF EXISTS outbox_notify ON outbox;
-                DROP FUNCTION IF EXISTS outbox_notify();
-                """);
-
             migrationBuilder.DropForeignKey(
                 name: "fk_actors_media_item_avatar_media_id",
                 table: "actors");
@@ -1113,6 +1149,12 @@ namespace Beeps.Infrastructure.Data.Migrations
 
             migrationBuilder.DropTable(
                 name: "site_settings");
+
+            migrationBuilder.DropTable(
+                name: "user_logins");
+
+            migrationBuilder.DropTable(
+                name: "user_passkeys");
 
             migrationBuilder.DropTable(
                 name: "user_sessions");
