@@ -57,6 +57,9 @@ public static class RateLimitPolicies
     public const string AvatarChange = "AvatarChange";
     public const string BannerChange = "BannerChange";
     public const string AgentRead = "AgentRead";
+
+    /// <summary>Wrong agent keys from one IP: each is looked up before any other limit applies.</summary>
+    public const string AgentKey = "AgentKey";
     public const string Search = "Search";
     public const string StreamConnect = "StreamConnect";
 
@@ -72,9 +75,18 @@ public static class RateLimitPolicies
     /// <summary>Default avatar images: a page shows many, and the CDN absorbs most of them in production.</summary>
     public const string Avatar = "Avatar";
 
+    /// <summary>
+    /// The policies that hold back guessing passwords and codes, or sending them: ones that must not stop counting
+    /// (<see cref="LocalRateLimiter"/>), even if that refuses requests.
+    /// </summary>
+    public static readonly IReadOnlySet<string> Guarding = new HashSet<string>(StringComparer.Ordinal)
+    {
+        Register, Login, LoginAccount, AgentKey, EmailCode, EmailCodeIp, EmailCodeAccount, PasswordReset, PasswordResetCode, PasswordResetGuess,
+    };
+
     public static readonly IReadOnlyList<string> All =
     [
         AnonymousBrowse, Browse, Register, Login, LoginAccount, EmailCode, EmailCodeIp, EmailCodeAccount, PasswordReset, PasswordResetCode, PasswordResetGuess, HumanPost, Like, AgentPost,
-        AgentReply, AgentThreadReply, OwnerAgentsPost, MediaUpload, AvatarChange, BannerChange, AgentRead, Search, StreamConnect, Report, Follow, AccountChange, Avatar,
+        AgentReply, AgentKey, AgentThreadReply, OwnerAgentsPost, MediaUpload, AvatarChange, BannerChange, AgentRead, Search, StreamConnect, Report, Follow, AccountChange, Avatar,
     ];
 }

@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { compareIds, earlierId, liveStreamUrl, MAX_WATCHED_BEEPS, mergeIds, nextRetryDelay, NO_ID, previousId } from './live-url.ts';
+import { CLOCK_MARGIN, compareIds, earlierId, liveStreamUrl, MAX_WATCHED_BEEPS, mergeIds, nextRetryDelay, NO_ID, previousId, resumesFrom } from './live-url.ts';
 
 test('a first connection replays from when the page was rendered', () => {
   assert.equal(liveStreamUrl('/stream', 'home', ['a', 'b'], undefined, '1760603400000'), '/stream?watch=home&beeps=a%2Cb&from=1760603400000');
@@ -8,6 +8,19 @@ test('a first connection replays from when the page was rendered', () => {
 
 test('a reconnection replays from the last event instead', () => {
   assert.equal(liveStreamUrl('/stream', 'tag:天气', [], '1760603400000-3', '1760603400000'), '/stream?watch=tag%3A%E5%A4%A9%E6%B0%94&last_event_id=1760603400000-3');
+});
+
+test('another page is followed from the last event only when that came before the page was drawn', () => {
+  const drawn = 1_700_000_010_000;
+  assert.equal(resumesFrom(`${drawn - CLOCK_MARGIN - 1}-0`, drawn), true);
+  // Events about this page may have come just before it, which the connection for the last page passed over.
+  assert.equal(resumesFrom(`${drawn - CLOCK_MARGIN}-0`, drawn), false);
+  assert.equal(resumesFrom(`${drawn + 500}-3`, drawn), false);
+});
+
+test('with no last event, or no time the page was drawn, the connection starts as it would anyway', () => {
+  assert.equal(resumesFrom(undefined, 1_700_000_010_000), true);
+  assert.equal(resumesFrom('1700000010000-0', Number.NaN), true);
 });
 
 test('a page without a topic or beeps still connects, for its inbox count', () => {

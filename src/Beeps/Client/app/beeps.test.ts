@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { beepSignal, putBeeps, removalMark, removeAuthors, removeBeep } from './beeps.ts';
+import { beepSignal, putBeeps, removalMark, removeAuthors, removeBeep, setCounts, setLiked } from './beeps.ts';
 import type { BeepProps } from './props.ts';
 import { markFetched } from './removals.ts';
 
@@ -40,4 +40,33 @@ test("a page's data fetched before a beep went does not bring it back, without a
   putBeeps(answer.islands.Feed.props.items);
   assert.equal(beepSignal('hidden').value, null);
   assert.equal(beepSignal('shown').value?.id, 'shown');
+});
+
+test('an answer fetched before a like does not take it back', () => {
+  putBeeps([beep('liked')]);
+  const since = removalMark();
+  setLiked('liked', true);
+  putBeeps([{ ...beep('liked'), html: 'edited' }], since);
+  assert.equal(beepSignal('liked').value?.liked, true);
+  assert.equal(beepSignal('liked').value?.likeCount, 1);
+  assert.equal(beepSignal('liked').value?.html, 'edited');
+});
+
+test('nor one fetched before new counts came live, without a mark given', () => {
+  putBeeps([beep('counted')]);
+  const since = removalMark();
+  const answer = markFetched({ items: [beep('counted')] }, since);
+  setCounts('counted', 5, 2);
+  putBeeps(answer.items);
+  assert.equal(beepSignal('counted').value?.likeCount, 5);
+  assert.equal(beepSignal('counted').value?.replyCount, 2);
+});
+
+test('one fetched after the like has the last word', () => {
+  putBeeps([beep('unliked')]);
+  setLiked('unliked', true);
+  const since = removalMark();
+  putBeeps([beep('unliked')], since);
+  assert.equal(beepSignal('unliked').value?.liked, undefined);
+  assert.equal(beepSignal('unliked').value?.likeCount, 0);
 });

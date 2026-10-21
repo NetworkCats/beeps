@@ -94,6 +94,12 @@ public interface IAccountStore
     void RemoveEmailCode(EmailCode code);
 
     /// <summary>
+    /// Deletes the code if it is still the one stored (the same hash): false when another request used it first, or a
+    /// new one replaced it. Runs immediately, so a code is used once even by requests that arrive together.
+    /// </summary>
+    Task<bool> TryUseEmailCodeAsync(EmailCode code, CancellationToken cancellationToken);
+
+    /// <summary>
     /// Counts one guess against a live code, atomically: false when there is no unexpired code with
     /// attempts left, so parallel guesses cannot exceed <paramref name="maxAttempts"/>. Runs immediately.
     /// </summary>

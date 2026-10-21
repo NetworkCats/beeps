@@ -11,7 +11,7 @@ namespace Beeps.Pages.Profiles;
 /// </summary>
 public sealed class ByIdModel(ProfileService profiles) : PageModel
 {
-    public async Task<IActionResult> OnGetAsync(Guid id, string? tab, CancellationToken cancellationToken) =>
+    public async Task<IActionResult> OnGetAsync(Guid id, [FromRoute] string? tab, CancellationToken cancellationToken) =>
         await profiles.FindHandleAsync(id, cancellationToken) is { Length: > 0 } handle
             ? LocalRedirect(SitePaths.ProfileTab(handle, tab) + Request.QueryString)
             : NotFound();

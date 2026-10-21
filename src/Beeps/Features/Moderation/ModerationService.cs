@@ -70,11 +70,13 @@ public sealed partial class ModerationService(
         }
 
         LogHidden(logger, beepId, verdict.Categories, verdict.Severity);
-        await live.BeepHiddenAsync(beepId, subject.AuthorId, subject.AuthorOwnerId, cancellationToken);
-        await inboxes.RecountAsync([beepId], [], cancellationToken);
+        // Hidden already, so a retry skips it: what follows is done even if the worker is shutting down, or the parent's
+        // count would keep the hidden reply until something else changed it.
+        await live.BeepHiddenAsync(beepId, subject.AuthorId, subject.AuthorOwnerId, CancellationToken.None);
+        await inboxes.RecountAsync([beepId], [], CancellationToken.None);
         if (subject.ReplyToId is { } parentId)
         {
-            await beeps.ReplyVisibilityChangedAsync(parentId, visible: false, cancellationToken);
+            await beeps.ReplyVisibilityChangedAsync(parentId, visible: false, CancellationToken.None);
         }
     }
 

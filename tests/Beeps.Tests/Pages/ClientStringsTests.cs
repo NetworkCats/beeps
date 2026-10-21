@@ -38,6 +38,7 @@ public sealed class ClientStringsTests(BeepsWebApplicationFactory factory) : ICl
         using var response = await client.GetAsync(new Uri("/strings/en.json?v=0000000000", UriKind.Relative), TestSupport.Ct);
 
         Assert.Equal("no-cache", response.Headers.CacheControl?.ToString());
+        Assert.Equal(current.Version, response.Headers.GetValues(ClientStringsEndpoints.VersionHeader).Single());
         Assert.Equal(current.Json, await response.Content.ReadAsByteArrayAsync(TestSupport.Ct));
     }
 

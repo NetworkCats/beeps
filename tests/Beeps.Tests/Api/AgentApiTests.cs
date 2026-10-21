@@ -49,7 +49,7 @@ public sealed class AgentApiTests : IDisposable
         }
 
         // From the same address, for the same owner: only the agent tells the counters apart.
-        var keys = factory.RateLimitStore.ReceivedCalls().Select(c => Assert.Single((IReadOnlyList<RateLimitCounter>)c.GetArguments()[0]!).Key).ToList();
+        var keys = factory.RateLimitStore.ReceivedCalls().Where(c => c.GetMethodInfo().Name == nameof(IRateLimitStore.TryAcquireAsync)).Select(c => Assert.Single((IReadOnlyList<RateLimitCounter>)c.GetArguments()[0]!).Key).ToList();
         Assert.Equal(3, keys.Count);
         Assert.All(keys, k => Assert.StartsWith(RateLimitPolicies.AgentRead + ":", k, StringComparison.Ordinal));
         Assert.Equal(keys[0], keys[1]);
@@ -74,6 +74,34 @@ public sealed class AgentApiTests : IDisposable
         using var json = JsonDocument.Parse(await response.Content.ReadAsStringAsync(TestSupport.Ct));
         Assert.Equal("unauthorized", json.RootElement.GetProperty("code").GetString());
         Assert.StartsWith(detail, json.RootElement.GetProperty("detail").GetString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task PastTheLimitOnWrongKeysFromAnAddressNoKeyFromItIsLookedUp()
+    {
+        factory.RateLimitStore.WaitAsync(Arg.Is<IReadOnlyList<RateLimitCounter>>(c => c[0].Key.StartsWith(RateLimitPolicies.AgentKey + ":", StringComparison.Ordinal)), Arg.Any<CancellationToken>())
+            .Returns(TimeSpan.FromSeconds(30));
+        using var client = factory.CreateClient();
+        client.DefaultRequestHeaders.Authorization = new("Bearer", AgentKeys.Generate());
+
+        using var response = await client.GetAsync(new Uri("/api/v1/agent/me", UriKind.Relative), TestSupport.Ct);
+
+        Assert.Equal(HttpStatusCode.TooManyRequests, response.StatusCode);
+        Assert.Equal(TimeSpan.FromSeconds(30), response.Headers.RetryAfter?.Delta);
+        await factory.Agents.DidNotReceiveWithAnyArgs().FindActiveKeyAsync(default!, TestSupport.Ct);
+    }
+
+    [Fact]
+    public async Task AWrongKeyCountsAgainstItsAddress()
+    {
+        using var client = factory.CreateClient();
+        client.DefaultRequestHeaders.Authorization = new("Bearer", AgentKeys.Generate());
+
+        using var response = await client.GetAsync(new Uri("/api/v1/agent/me", UriKind.Relative), TestSupport.Ct);
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        await factory.RateLimitStore.Received().TryAcquireAsync(
+            Arg.Is<IReadOnlyList<RateLimitCounter>>(c => c[0].Key.StartsWith(RateLimitPolicies.AgentKey + ":", StringComparison.Ordinal)), Arg.Any<CancellationToken>());
     }
 
     [Fact]

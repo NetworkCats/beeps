@@ -1,11 +1,17 @@
 // Removals counted as they come (beeps.ts), and the count each page's data was fetched at: data fetched before a beep
-// went must not bring it back, whichever island draws it and whenever (fetched as it was hidden by review, say).
+// went must not bring it back, whichever island draws it and whenever (fetched as it was hidden by review, say). A like
+// or new counts told live are counted the same way, so data fetched before one does not take it back.
 
 let removals = 0;
 const fetchedAt = new WeakMap<object, number>();
 
 /** Counts one more removal; the count it went at. */
 export function countRemoval(): number {
+  return ++removals;
+}
+
+/** Counts a like or new counts told live; the count it came at. */
+export function countChange(): number {
   return ++removals;
 }
 

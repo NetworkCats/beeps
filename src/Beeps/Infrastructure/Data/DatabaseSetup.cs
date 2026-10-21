@@ -13,6 +13,9 @@ public static class DatabaseSetup
     /// <summary>Statements kept prepared per connection: more than the app's distinct hot queries.</summary>
     public const int MaxAutoPrepare = 200;
 
+    /// <summary>Seconds an idle connection waits before checking that the server is still there.</summary>
+    public const int KeepAlive = 30;
+
     private const string PlanCacheMode = "plan_cache_mode";
 
     public static IServiceCollection AddBeepsDatabase(this IServiceCollection services)
@@ -28,6 +31,7 @@ public static class DatabaseSetup
 
             var builder = new NpgsqlDataSourceBuilder(connectionString);
             Prepare(builder.ConnectionStringBuilder);
+            CheckIdleConnections(builder.ConnectionStringBuilder);
             return builder.Build();
         });
         services.AddDbContextPool<BeepsDbContext>((sp, options) =>
@@ -42,11 +46,7 @@ public static class DatabaseSetup
     /// </summary>
     internal static void Prepare(NpgsqlConnectionStringBuilder settings)
     {
-        // ContainsKey says whether Npgsql knows a keyword, not whether it was given; keys are matched without their spaces.
-        var given = new DbConnectionStringBuilder { ConnectionString = settings.ConnectionString }.Keys
-            .Cast<string>()
-            .Select(key => key.Replace(" ", "", StringComparison.Ordinal))
-            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var given = Given(settings);
         if (given.Contains(nameof(settings.MaxAutoPrepare)))
         {
             return;
@@ -67,6 +67,26 @@ public static class DatabaseSetup
             settings.Options = $"{settings.Options} -c {PlanCacheMode}=force_custom_plan".TrimStart();
         }
     }
+
+    /// <summary>
+    /// The workers' LISTEN connections only ever wait. A socket a NAT or failover dropped without a word would leave that
+    /// wait timing out quietly for good, every NOTIFY lost and the queues down to their poll interval; a keepalive query
+    /// makes it fail, and the worker reconnects. The connection string may still set its own (Keepalive=0 turns it off).
+    /// </summary>
+    internal static void CheckIdleConnections(NpgsqlConnectionStringBuilder settings)
+    {
+        if (!Given(settings).Contains(nameof(settings.KeepAlive)))
+        {
+            settings.KeepAlive = KeepAlive;
+        }
+    }
+
+    // ContainsKey says whether Npgsql knows a keyword, not whether it was given; keys are matched without their spaces.
+    private static HashSet<string> Given(NpgsqlConnectionStringBuilder settings) =>
+        new DbConnectionStringBuilder { ConnectionString = settings.ConnectionString }.Keys
+            .Cast<string>()
+            .Select(key => key.Replace(" ", "", StringComparison.Ordinal))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
     // Some limits are caps on a count or a list of anyone (the unread count stops at 100), where any rows will do: an
     // ORDER BY there would read every row to sort them, so the warning about a limit without one is off.

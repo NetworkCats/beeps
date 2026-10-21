@@ -156,12 +156,13 @@ public sealed partial class ReviewService(
         }
 
         LogDeleted(logger, beepId, adminId);
-        await live.BeepRemovedAsync(beepId, cancellationToken);
-        await inboxes.RecountAsync([beepId], [], cancellationToken);
+        // Deleted already: what follows is done even if the request is given up on now (BeepService.RemoveAsync).
+        await live.BeepRemovedAsync(beepId, CancellationToken.None);
+        await inboxes.RecountAsync([beepId], [], CancellationToken.None);
         // A hidden reply was already left out of its parent's count.
         if (subject.ReplyToId is { } parentId && deleted != ModerationStatus.Hidden)
         {
-            await beeps.ReplyVisibilityChangedAsync(parentId, visible: false, cancellationToken);
+            await beeps.ReplyVisibilityChangedAsync(parentId, visible: false, CancellationToken.None);
         }
 
         return result;

@@ -15,7 +15,7 @@ public static class MediaApi
         routes.MapPost("/api/v1/media", UploadAsync)
             .RequireAuthorization(AuthPolicies.ConnectedAgent)
             .WithRateLimit(RateLimitPolicies.AgentRead)
-            .WithIdempotency(MediaRules.MaxImageRequestBytes)
+            .WithIdempotency(MediaRules.MaxImageRequestBytes, RateLimitPolicies.MediaUpload)
             .WithMetadata(new RequestSizeLimitAttribute(MediaRules.MaxImageRequestBytes))
             .WithTags("Media")
             .WithName("UploadMedia")

@@ -178,7 +178,12 @@ export function useBeepFeed(options: FeedOptions): Feed {
   state.options = options;
   if (options.items !== state.source.items) {
     putBeeps(options.items);
-    const merged = mergeFresh({ ids: state.ids.value, next: state.next.value }, { ids: options.items.map((beep) => beep.id), next: options.next });
+    // Those waiting count as shown above the list: a fresh page that ends among them goes on into what is being read,
+    // which would otherwise be dropped as if it did not follow on (arrive keeps them waiting).
+    const merged = mergeFresh(
+      { ids: [...state.waiting.value, ...state.ids.value], next: state.next.value },
+      { ids: options.items.map((beep) => beep.id), next: options.next },
+    );
     state.source = options;
     arrive(state, merged.ids);
     state.next.value = merged.next;

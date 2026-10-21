@@ -27,6 +27,20 @@ export function liveStreamUrl(base: string, watch: string, beeps: readonly strin
   return query ? `${base}?${query}` : base;
 }
 
+/** How far apart the server lets the clocks be (LiveService.ClockMargin): a page is replayed from this long before it was drawn. */
+export const CLOCK_MARGIN = 2000;
+
+/**
+ * Whether a page just drawn may be followed from the last event this tab got. Only when that came before what the
+ * page's own start (`from`, when it was drawn) replays from: a later one may have been passed over by the connection
+ * for the page before (another topic, other beeps) after events about this page, which resuming from it would skip.
+ */
+export function resumesFrom(lastEventId: string | undefined, drawnAt: number): boolean {
+  if (!lastEventId || !Number.isFinite(drawnAt)) return true;
+  const time = Number(lastEventId.split('-')[0]);
+  return Number.isFinite(time) && time < drawnAt - CLOCK_MARGIN;
+}
+
 /** 1 s, then doubling to 30 s, with up to a fifth added at random so tabs do not reconnect in step. */
 export function nextRetryDelay(previous: number, random: () => number = Math.random): number {
   const base = previous <= 0 ? 1000 : Math.min(previous * 2, MAX_RETRY_DELAY);

@@ -18,6 +18,14 @@ test('a first page of new beeps only is the list as it is, with no gap above wha
   assert.deepEqual(mergeFresh({ ids: ['a', 'b', 'c'], next: '?before=c' }, { ids: ['x', 'y'], next: '?before=y' }), { ids: ['x', 'y'], next: '?before=y' });
 });
 
+test('a fresh page that ends among the beeps waiting above the list keeps what was shown below them', () => {
+  // w1 and w2 wait behind "Show new beeps" above a, b, c (BeepFeed counts them as shown); the viewer posted o.
+  assert.deepEqual(mergeFresh({ ids: ['w1', 'w2', 'a', 'b', 'c'], next: '?before=c' }, { ids: ['o', 'w1', 'w2'], next: '?before=w2' }), {
+    ids: ['o', 'w1', 'w2', 'a', 'b', 'c'],
+    next: '?before=c',
+  });
+});
+
 test('a beep the fresh page has elsewhere is not kept twice', () => {
   assert.deepEqual(mergeFresh({ ids: ['a', 'b', 'c'] }, { ids: ['x', 'c'] }).ids, ['x', 'c']);
   assert.deepEqual(mergeFresh({ ids: ['a', 'b', 'c', 'd'] }, { ids: ['d', 'a'] }).ids, ['d', 'a', 'b', 'c']);

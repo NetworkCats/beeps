@@ -34,6 +34,7 @@ public sealed partial class AccountServiceTests
         rateLimitStore.TryAcquireAsync(default!, TestSupport.Ct).ReturnsForAnyArgs(RateLimitDecision.Allowed);
         store.GetRegistrationModeAsync(default).ReturnsForAnyArgs(RegistrationMode.Open);
         store.TryCountCodeAttemptAsync(default, default!, default, default, TestSupport.Ct).ReturnsForAnyArgs(true);
+        store.TryUseEmailCodeAsync(default!, TestSupport.Ct).ReturnsForAnyArgs(true);
         hasher.HashPassword(default!, default!).ReturnsForAnyArgs(ci => $"hashed:{ci.ArgAt<string>(1)}");
         hasher.VerifyHashedPassword(default!, default!, default!).ReturnsForAnyArgs(ci =>
             ci.ArgAt<string>(1) == $"hashed:{ci.ArgAt<string>(2)}" ? PasswordVerificationResult.Success : PasswordVerificationResult.Failed);
@@ -239,9 +240,23 @@ public sealed partial class AccountServiceTests
 
         Assert.True(result.IsSuccess);
         Assert.Equal(TestData.Now, user.EmailVerifiedAt);
-        store.Received(1).RemoveEmailCode(stored);
+        await store.Received(1).TryUseEmailCodeAsync(stored, Arg.Any<CancellationToken>());
         // Only verified people can be found by search.
         outbox.Received(1).Enqueue(SearchAccountSyncRequest.MessageType, new SearchAccountSyncRequest(user.Id, false), Arg.Any<System.Text.Json.Serialization.Metadata.JsonTypeInfo<SearchAccountSyncRequest>>());
+    }
+
+    [Fact]
+    public async Task ACodeUsedByAnotherRequestAtTheSameTimeVerifiesNothing()
+    {
+        var user = TestData.User(verified: false);
+        var (code, _) = await IssueVerificationCodeAsync(user);
+        // A double submit: the other request used it first.
+        store.TryUseEmailCodeAsync(default!, TestSupport.Ct).ReturnsForAnyArgs(false);
+
+        var result = await CreateService().VerifyEmailAsync(user.Id, code, TestSupport.Ct);
+
+        Assert.Equal(AccountErrorCodes.CodeInvalid, result.Error?.Code);
+        Assert.Null(user.EmailVerifiedAt);
     }
 
     [Fact]
@@ -299,7 +314,7 @@ public sealed partial class AccountServiceTests
     public async Task ResendReplacesTheCodeAndIsRateLimited()
     {
         var user = TestData.User(verified: false);
-        var existing = new EmailCode { Purpose = EmailCodePurpose.VerifyEmail, NormalizedEmail = user.NormalizedEmail, CodeHash = "old", Attempts = 4 };
+        var existing = new EmailCode { Purpose = EmailCodePurpose.VerifyEmail, NormalizedEmail = user.NormalizedEmail, CodeHash = "old", Attempts = 4, ExpiresAt = TestData.Now - TimeSpan.FromMinutes(2) + AccountService.CodeLifetime };
         store.FindUserAsync(user.Id, Arg.Any<CancellationToken>()).Returns(user);
         store.FindEmailCodeAsync(EmailCodePurpose.VerifyEmail, user.NormalizedEmail, Arg.Any<CancellationToken>()).Returns(existing);
 
@@ -325,7 +340,8 @@ public sealed partial class AccountServiceTests
         var user = TestData.User(verified: false);
         var (_, stored) = await IssueVerificationCodeAsync(user);
         sentCodes.Clear();
-        stored.CreatedAt = TestData.Now - TimeSpan.FromSeconds(20);
+        // Sent then: a code is given the full lifetime when it is sent.
+        stored.ExpiresAt = TestData.Now - TimeSpan.FromSeconds(20) + AccountService.CodeLifetime;
 
         var result = await CreateService().ResendVerificationAsync(user.Id, TestData.Origin, TestSupport.Ct);
 
@@ -340,7 +356,8 @@ public sealed partial class AccountServiceTests
     {
         var user = TestData.User(verified: false);
         var (_, stored) = await IssueVerificationCodeAsync(user);
-        stored.CreatedAt = TestData.Now - AccountService.ResendInterval + TimeSpan.FromMilliseconds(500);
+        // Sent then: a code is given the full lifetime when it is sent.
+        stored.ExpiresAt = TestData.Now - AccountService.ResendInterval + TimeSpan.FromMilliseconds(500) + AccountService.CodeLifetime;
 
         var result = await CreateService().ResendVerificationAsync(user.Id, TestData.Origin, TestSupport.Ct);
 
@@ -611,7 +628,7 @@ public sealed partial class AccountServiceTests
         var user = TestData.User(passwordHash: "hashed:correct horse");
         store.FindUserByHandleAsync("tom", Arg.Any<CancellationToken>()).Returns(user);
         store.FindEmailCodeAsync(EmailCodePurpose.SignIn, user.NormalizedEmail, Arg.Any<CancellationToken>())
-            .Returns(new EmailCode { Purpose = EmailCodePurpose.SignIn, NormalizedEmail = user.NormalizedEmail, CodeHash = "x", CreatedAt = TestData.Now.AddSeconds(-30) });
+            .Returns(new EmailCode { Purpose = EmailCodePurpose.SignIn, NormalizedEmail = user.NormalizedEmail, CodeHash = "x", CreatedAt = TestData.Now.AddSeconds(-30), ExpiresAt = TestData.Now.AddSeconds(-30) + AccountService.CodeLifetime });
         Deny(RateLimitPolicies.LoginAccount);
 
         var result = await CreateService().LoginAsync(new LoginRequest("tom", "correct horse", "token"), TestData.Origin, TestSupport.Ct);
@@ -632,7 +649,7 @@ public sealed partial class AccountServiceTests
 
         Assert.Equal(AccountErrorCodes.CodeInvalid, wrong.Error?.Code);
         Assert.Equal(user.Id, result.Value.UserId);
-        store.Received(1).RemoveEmailCode(stored);
+        await store.Received(1).TryUseEmailCodeAsync(stored, Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -764,8 +781,50 @@ public sealed partial class AccountServiceTests
 
         // Anyone can ask on someone's behalf: running it up must not stop the codes their sign-in sends.
         Assert.Equal(
-            [RateLimitPolicies.PasswordReset, RateLimitPolicies.PasswordReset, RateLimitPolicies.EmailCodeIp, RateLimitPolicies.PasswordResetCode],
+            [RateLimitPolicies.PasswordReset, RateLimitPolicies.EmailCodeIp, RateLimitPolicies.PasswordReset, RateLimitPolicies.PasswordResetCode],
             TestData.Policies(Assert.Single(calls)));
+    }
+
+    [Fact]
+    public async Task ResetRequestsFromOthersDoNotUseUpTheOwnersLimits()
+    {
+        var calls = new List<IReadOnlyList<RateLimitCounter>>();
+        rateLimitStore.TryAcquireAsync(Arg.Do<IReadOnlyList<RateLimitCounter>>(calls.Add), Arg.Any<CancellationToken>()).Returns(RateLimitDecision.Allowed);
+
+        await CreateService().RequestPasswordResetAsync("tom@example.com", "token", new RequestOrigin("198.51.100.9", "en"), TestSupport.Ct);
+        await CreateService().RequestPasswordResetAsync("tom@example.com", "token", TestData.Origin, TestSupport.Ct);
+
+        var keys = calls.Select(c => c.Select(counter => counter.Key).ToHashSet()).ToList();
+        Assert.Empty(keys[0].Intersect(keys[1]));
+    }
+
+    [Fact]
+    public async Task ACodeAskedForAgainOnSomeonesBehalfLeavesTheOwnersPageTakingTheNewestCode()
+    {
+        var user = TestData.User();
+        var (first, ownersStamp) = await IssueResetCodeAsync(user);
+
+        // Someone else asks for the same address a while later: a new code replaces the first one, which still stood.
+        var othersStamp = await CreateService().RequestPasswordResetAsync(user.Email, "token", new RequestOrigin("198.51.100.9", "en"), TestSupport.Ct);
+        var newest = Unprotect(sentCodes[^1]);
+        var withFirst = await CreateService().ResetPasswordAsync(new PasswordResetRequest(user.Email, first, "new password!", ownersStamp), TestData.Origin, TestSupport.Ct);
+        var withNewest = await CreateService().ResetPasswordAsync(new PasswordResetRequest(user.Email, newest, "new password!", ownersStamp), TestData.Origin, TestSupport.Ct);
+
+        Assert.Equal(ownersStamp, othersStamp.Value);
+        Assert.Equal(AccountErrorCodes.CodeInvalid, withFirst.Error?.Code);
+        Assert.True(withNewest.IsSuccess);
+    }
+
+    [Fact]
+    public async Task ACodeAskedForAfterTheLastOneRanOutHasAStampOfItsOwn()
+    {
+        var user = TestData.User();
+        var (_, oldStamp) = await IssueResetCodeAsync(user);
+        var later = new FixedTimeProvider(TestData.Now + AccountService.CodeLifetime);
+
+        var newStamp = await CreateService(later).RequestPasswordResetAsync(user.Email, "token", TestData.Origin, TestSupport.Ct);
+
+        Assert.NotEqual(oldStamp, newStamp.Value);
     }
 
     [Fact]
@@ -1093,7 +1152,7 @@ public sealed partial class AccountServiceTests
         Assert.Equal((EmailCodePurpose.ResetPassword, user.Email), (sentCodes[^1].Purpose, sentCodes[^1].To));
         Assert.True(result.IsSuccess);
         Assert.Equal("hashed:new password!", user.PasswordHash);
-        store.Received(1).RemoveEmailCode(stored!);
+        await store.Received(1).TryUseEmailCodeAsync(stored!, Arg.Any<CancellationToken>());
         await sessions.Received(1).RevokeOthersAsync(user.Id, keep, Arg.Any<DateTimeOffset>(), Arg.Any<CancellationToken>());
         // Counted as a change to the account; there is no password to guess.
         await rateLimitStore.Received().TryAcquireAsync(Arg.Is<IReadOnlyList<RateLimitCounter>>(c => c.All(x => x.Key.StartsWith("AccountChange:", StringComparison.Ordinal))), Arg.Any<CancellationToken>());
@@ -1277,7 +1336,7 @@ public sealed partial class AccountServiceTests
 
         Assert.True(result.IsSuccess);
         Assert.Equal(("New@Example.org", "new@example.org", null), (user.Email, user.NormalizedEmail, user.PendingEmail));
-        store.Received(1).RemoveEmailCode(stored);
+        await store.Received(1).TryUseEmailCodeAsync(stored, Arg.Any<CancellationToken>());
         // The admin user list shows the address.
         Assert.Single(TestData.LiveEvents(liveEvents, LiveEventTypes.AdminChanged));
     }
@@ -1359,7 +1418,8 @@ public sealed partial class AccountServiceTests
         var user = TestData.User(passwordHash: "hashed:old password");
         var (_, stored) = await IssueEmailChangeCodeAsync(user, "New@Example.org");
         var tooSoon = await CreateService().ResendEmailChangeAsync(user.Id, TestData.Origin, TestSupport.Ct);
-        stored.CreatedAt = TestData.Now - AccountService.ResendInterval;
+        // Sent then: a code is given the full lifetime when it is sent.
+        stored.ExpiresAt = TestData.Now - AccountService.ResendInterval + AccountService.CodeLifetime;
         stored.Attempts = 3;
 
         var result = await CreateService().ResendEmailChangeAsync(user.Id, TestData.Origin, TestSupport.Ct);

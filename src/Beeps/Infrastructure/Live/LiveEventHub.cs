@@ -81,12 +81,21 @@ public sealed partial class LiveEventHub(
         await Task.Yield();
         LiveEventId? position = null;
         var subscribed = false;
+        var failed = false;
         while (!stoppingToken.IsCancellationRequested)
         {
             try
             {
                 // Before the first read, so nothing added after it goes unheard. Polling covers the time without it.
                 subscribed = subscribed || await TrySubscribeAsync(stoppingToken);
+                if (position is not null && failed && await store.TrimmedUpToAsync(stoppingToken) is { } trimmed && trimmed > position)
+                {
+                    // The stream moved on while reads failed, and what was trimmed meanwhile never reached anyone here.
+                    // Each client reconnects, and its replay finds the gap.
+                    End(stop: false);
+                }
+
+                failed = false;
                 if (position is null)
                 {
                     position = await store.LastIdAsync(stoppingToken) ?? LiveEventId.Zero;
@@ -121,6 +130,7 @@ public sealed partial class LiveEventHub(
             }
             catch (Exception exception)
             {
+                failed = true;
                 LogReadFailed(logger, exception);
                 try
                 {
@@ -182,11 +192,14 @@ public sealed partial class LiveEventHub(
         }
     }
 
-    private void EndAll()
+    private void EndAll() => End(stop: true);
+
+    /// <summary>Ends every open stream; <paramref name="stop"/> ends those opened later too.</summary>
+    private void End(bool stop)
     {
         lock (gate)
         {
-            stopped = true;
+            stopped |= stop;
             foreach (var subscription in subscriptions)
             {
                 subscription.End();

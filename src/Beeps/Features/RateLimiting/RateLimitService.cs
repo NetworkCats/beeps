@@ -108,7 +108,7 @@ public sealed partial class RateLimitService(
             foreach (var rule in policy.Rules)
             {
                 var windowSeconds = (long)rule.Window.TotalSeconds;
-                counters.Add(new RateLimitCounter($"{target.Policy}:{windowSeconds}:{partition}", rule.PermitLimit, rule.Window));
+                counters.Add(new RateLimitCounter($"{target.Policy}:{windowSeconds}:{partition}", rule.PermitLimit, rule.Window, RateLimitPolicies.Guarding.Contains(target.Policy)));
             }
         }
 

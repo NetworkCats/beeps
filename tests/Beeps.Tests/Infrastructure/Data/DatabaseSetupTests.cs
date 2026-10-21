@@ -41,4 +41,24 @@ public sealed class DatabaseSetupTests
         Assert.Equal(3, settings.AutoPrepareMinUsages);
         Assert.Equal("-c plan_cache_mode=auto", settings.Options);
     }
+
+    [Fact]
+    public void IdleConnectionsCheckTheServerIsStillThere()
+    {
+        var settings = new NpgsqlConnectionStringBuilder("Host=db");
+
+        DatabaseSetup.CheckIdleConnections(settings);
+
+        Assert.Equal(DatabaseSetup.KeepAlive, settings.KeepAlive);
+    }
+
+    [Fact]
+    public void TheConnectionStringKeepsItsOwnKeepAlive()
+    {
+        var settings = new NpgsqlConnectionStringBuilder("Host=db;Keepalive=0");
+
+        DatabaseSetup.CheckIdleConnections(settings);
+
+        Assert.Equal(0, settings.KeepAlive);
+    }
 }

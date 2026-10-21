@@ -24,7 +24,12 @@ public sealed class EmailCode
 
     public int Attempts { get; set; }
 
+    /// <summary>The code standing now was sent <c>AccountService.CodeLifetime</c> before this.</summary>
     public DateTimeOffset ExpiresAt { get; set; }
 
+    /// <summary>
+    /// When the first of the codes in a row was sent: a new code sent while the last still stands keeps it, so the stamp
+    /// that names it (AccountService.CodeStamp) goes on working with the newest code.
+    /// </summary>
     public DateTimeOffset CreatedAt { get; set; }
 }

@@ -7,7 +7,7 @@ import { getJson } from './http.ts';
 import type { BeepProps } from './props.ts';
 import { schedule } from './schedule.ts';
 import { mergeIds } from './live-url.ts';
-import { countRemoval, fetchedMark, removalMark } from './removals.ts';
+import { countChange, countRemoval, fetchedMark, removalMark } from './removals.ts';
 
 export { removalMark };
 
@@ -33,16 +33,23 @@ export function beepSignal(id: string): Signal<BeepProps | null | undefined> {
 // (fetched as a beep was posted, say, and hidden by review on the way).
 const beepRemovedAt = new Map<string, number>();
 const authorRemovedAt = new Map<string, number>();
+// The same count each beep's like or counts last changed live at: an answer fetched before then has them out of date
+// (a like pressed here while the page was being fetched again, say).
+const beepChangedAt = new Map<string, number>();
 
 /**
- * Puts these beeps in place; with `since` (a `removalMark`), not those removed after it, which went for good. Without
- * it, beeps from a page's data go by the mark their fetch started at (removals.ts).
+ * Puts these beeps in place; with `since` (a `removalMark`), not those removed after it, which went for good, and
+ * without undoing a like or counts that came live after it. Without it, beeps from a page's data go by the mark their
+ * fetch started at (removals.ts).
  */
 export function putBeeps(list: readonly BeepProps[], since?: number): void {
   for (const beep of list) {
     const mark = since ?? fetchedMark(beep);
     if (mark !== undefined && Math.max(beepRemovedAt.get(beep.id) ?? 0, authorRemovedAt.get(beep.author.id) ?? 0) > mark) continue;
-    beepSignal(beep.id).value = beep;
+    const entry = beepSignal(beep.id);
+    const now = entry.value;
+    const stale = now && mark !== undefined && (beepChangedAt.get(beep.id) ?? 0) > mark;
+    entry.value = stale ? { ...beep, liked: now.liked, likeCount: now.likeCount, replyCount: now.replyCount } : beep;
   }
 }
 
@@ -63,6 +70,7 @@ export function removeAuthors(ids: readonly string[]): void {
 }
 
 export function setCounts(id: string, likeCount: number, replyCount: number): void {
+  beepChangedAt.set(id, countChange());
   const entry = beeps.get(id);
   if (entry?.value) entry.value = { ...entry.value, likeCount, replyCount };
 }
@@ -72,6 +80,8 @@ export function setCounts(id: string, likeCount: number, replyCount: number): vo
  * live event telling of the same like count once; the next counts event has the exact number anyway.
  */
 export function setLiked(id: string, liked: boolean): void {
+  // Even when the button is already right: an answer on its way may have been read before the like went through.
+  beepChangedAt.set(id, countChange());
   const entry = beeps.get(id);
   const beep = entry?.value;
   if (!entry || !beep || !!beep.liked === liked) return;

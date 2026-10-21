@@ -86,6 +86,20 @@ public sealed class ProfilePagesTests : IDisposable
         Assert.False(Islands.Props(html, "profile").GetProperty("live").TryGetProperty("watch", out _));
     }
 
+    [Theory]
+    [InlineData("/@tom?tab=likes")]
+    [InlineData("/@tom?tab=anything")]
+    public async Task ATabInTheQueryIsNotTheTabSoTheCachedProfileStaysItsBeeps(string url)
+    {
+        ArrangeProfile("tom");
+        using var client = WebAuth.NewClient(factory);
+
+        var html = await client.GetStringAsync(new Uri(url, UriKind.Relative), TestSupport.Ct);
+
+        Assert.Contains("<a class=\"tab\" href=\"/@tom\" aria-current=\"page\">", html, StringComparison.Ordinal);
+        Assert.False(Islands.Props(html, "profile").TryGetProperty("tab", out _));
+    }
+
     [Fact]
     public async Task PrivateLikesHaveNoTabAndAreNotReadForOthers()
     {

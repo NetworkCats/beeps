@@ -56,6 +56,9 @@ public static class RateLimitPartitions
 
     public static string Email(string normalizedEmail) => $"email:{normalizedEmail}";
 
+    /// <summary>One address as named from one IP (<see cref="Ip"/>): what others ask for it counts apart from what its owner asks.</summary>
+    public static string EmailFromIp(string normalizedEmail, string? clientIp) => $"{Email(normalizedEmail)}:{Ip(clientIp)}";
+
     /// <summary>A sign-in to a name or address no account has, so guessing at unknown ones is counted as well.</summary>
     public static string Login(string normalizedLogin) => $"login:{normalizedLogin}";
 }

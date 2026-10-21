@@ -142,6 +142,45 @@ public sealed class LiveEventHubTests : IAsyncDisposable
     }
 
     [Fact]
+    public async Task StreamsEndWhenTheStreamWasTrimmedPastTheHubWhileItCouldNotRead()
+    {
+        var hub = await StartAsync();
+        using var open = hub.Subscribe(null);
+        var reading = CountUntilEndAsync(open);
+        var reads = store.Reads;
+        store.FailReads = true;
+        while (store.Reads == reads)
+        {
+            await Task.Delay(5, TestSupport.Ct);
+        }
+
+        store.Add("never read");
+        store.Add("kept");
+        store.TrimFirst();
+        store.FailReads = false;
+
+        Assert.Equal(0, await reading.WaitAsync(TimeSpan.FromSeconds(10), TestSupport.Ct));
+    }
+
+    [Fact]
+    public async Task StreamsStayOpenWhenNothingWasTrimmedWhileTheHubCouldNotRead()
+    {
+        var hub = await StartAsync();
+        using var subscription = hub.Subscribe(null);
+        var reads = store.Reads;
+        store.FailReads = true;
+        while (store.Reads == reads)
+        {
+            await Task.Delay(5, TestSupport.Ct);
+        }
+
+        store.Add("late");
+        store.FailReads = false;
+
+        Assert.Equal(["late"], await TakeAsync(subscription, 1));
+    }
+
+    [Fact]
     public async Task AReplayThatCannotBeReadIsAGapNotAFailedStream()
     {
         var seen = store.Add("seen");
@@ -353,11 +392,19 @@ public sealed class LiveEventHubTests : IAsyncDisposable
             lock (gate)
             {
                 Reads++;
+                if (FailReads)
+                {
+                    throw new InvalidOperationException("Valkey is away.");
+                }
+
                 IReadOnlyList<LiveEvent> read = [.. events.Where(e => LiveEventId.Parse(e.Id) > after).Take(max)];
                 EmptyReads += read.Count == 0 ? 1 : 0;
                 return Task.FromResult(read);
             }
         }
+
+        /// <summary>Valkey away for the hub: the stream cannot be read.</summary>
+        public bool FailReads { get; set; }
 
         /// <summary>Valkey away, for a replay: where the stream was trimmed cannot be read.</summary>
         public bool FailTrimmedReads { get; set; }

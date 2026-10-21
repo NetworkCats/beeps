@@ -5,7 +5,7 @@ import { effect } from '@preact/signals';
 import { isShown, redraw, removeAuthors, removeBeep, setCounts, setLiked, shownChanged, shownIds, shownWith } from './beeps.ts';
 import { viewer, type Viewer } from './config.ts';
 import { getJson } from './http.ts';
-import { liveStreamUrl, nextRetryDelay } from './live-url.ts';
+import { liveStreamUrl, nextRetryDelay, resumesFrom } from './live-url.ts';
 import { emit, pageLive, refreshPage, showAnew } from './page.ts';
 import { PAGE_SHOWN, type PageShown } from './router.ts';
 import { schedule } from './schedule.ts';
@@ -236,14 +236,15 @@ async function reconnect(): Promise<void> {
 }
 
 /**
- * Another page is shown: the connection follows it from where it was, so nothing in between is lost. A page fetched
- * ahead may have been drawn before that, and one gone back to was drawn when first shown, so these are followed from
- * when they were drawn instead: the last event this tab saw passed over what concerned them while another page was up
- * (and a page left too long ago is told to fetch everything again).
+ * Another page is shown: the connection follows it from where it was, so nothing in between is lost, as long as that
+ * is before the page was drawn. Otherwise it is followed from when it was drawn instead: the last event this tab saw
+ * came after events that concerned the page, which the connection for the page before passed over. So is a page
+ * fetched ahead, which may have been drawn before that, and one gone back to, drawn when first shown (and a page left
+ * too long ago is told to fetch everything again).
  */
 function followPage(event?: Event): void {
   const detail = (event as CustomEvent<PageShown> | undefined)?.detail;
-  if (detail?.ahead || detail?.restored) lastEventId = undefined;
+  if (detail?.ahead || detail?.restored || (detail && !resumesFrom(lastEventId, Number(document.body.dataset.liveFrom)))) lastEventId = undefined;
   disconnect();
   closed = false;
   retryDelay = 0;

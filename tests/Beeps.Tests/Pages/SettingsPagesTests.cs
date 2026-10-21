@@ -309,6 +309,7 @@ public sealed class SettingsPagesTests : IDisposable
         factory.Accounts.When(s => s.AddEmailCode(Arg.Any<EmailCode>())).Do(ci => stored = ci.Arg<EmailCode>());
         factory.Accounts.FindEmailCodeAsync(EmailCodePurpose.ChangeEmail, "tom@example.com", Arg.Any<CancellationToken>()).Returns(_ => stored);
         factory.Accounts.TryCountCodeAttemptAsync(default, default!, default, default, TestSupport.Ct).ReturnsForAnyArgs(true);
+        factory.Accounts.TryUseEmailCodeAsync(default!, TestSupport.Ct).ReturnsForAnyArgs(true);
         using var client = await WebAuth.SignInAsync(factory, user);
 
         using var asked = await WebAuth.PostFormAsync(client, "/settings/email", "/settings/email?handler=Email",
@@ -350,7 +351,7 @@ public sealed class SettingsPagesTests : IDisposable
         var user = WebAuth.ArrangeUser(factory);
         user.PendingEmail = "new@example.org";
         var sentAt = time.Now;
-        var code = new EmailCode { Purpose = EmailCodePurpose.ChangeEmail, NormalizedEmail = "tom@example.com", CodeHash = "x", CreatedAt = sentAt, ExpiresAt = DateTimeOffset.MaxValue };
+        var code = new EmailCode { Purpose = EmailCodePurpose.ChangeEmail, NormalizedEmail = "tom@example.com", CodeHash = "x", CreatedAt = sentAt, ExpiresAt = sentAt + AccountService.CodeLifetime };
         factory.Accounts.FindEmailCodeAsync(EmailCodePurpose.ChangeEmail, "tom@example.com", Arg.Any<CancellationToken>()).Returns(code);
         using var client = await WebAuth.SignInAsync(factory, user);
 

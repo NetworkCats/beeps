@@ -12,6 +12,9 @@ public interface IIdempotencyStore
     /// </summary>
     Task<IdempotencyRecord?> TryClaimAsync(string key, string fingerprint, TimeSpan claimDuration, CancellationToken cancellationToken);
 
+    /// <summary>Holds a claim still pending for another <paramref name="claimDuration"/>, for a request still running.</summary>
+    Task ExtendAsync(string key, TimeSpan claimDuration, CancellationToken cancellationToken);
+
     /// <summary>Replaces the claim with the response.</summary>
     Task CompleteAsync(string key, IdempotencyRecord record, TimeSpan retention, CancellationToken cancellationToken);
 

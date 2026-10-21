@@ -297,12 +297,14 @@ public sealed partial class BeepService(
             return false;
         }
 
-        await live.BeepRemovedAsync(beepId, cancellationToken);
-        await inboxes.RecountAsync([beepId], [], cancellationToken);
+        // Deleted already: what follows is done even if the request is given up on now, or the parent's count would
+        // stay one too high until something else changed it.
+        await live.BeepRemovedAsync(beepId, CancellationToken.None);
+        await inboxes.RecountAsync([beepId], [], CancellationToken.None);
         // Its author still sees a hidden reply, but its parent's count already left it out.
         if (beep.ReplyToId is { } parentId && deleted != ModerationStatus.Hidden)
         {
-            await ReplyCountChangedAsync(parentId, actorId, -1, cancellationToken);
+            await ReplyCountChangedAsync(parentId, actorId, -1, CancellationToken.None);
         }
 
         return true;

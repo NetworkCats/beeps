@@ -2,6 +2,7 @@ using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
 using Beeps.Features.Auth;
+using Beeps.Features.RateLimiting;
 using Microsoft.Extensions.Localization;
 using Microsoft.Net.Http.Headers;
 
@@ -9,10 +10,16 @@ namespace Beeps.Features.Shared.Http;
 
 /// <summary>Marks a write endpoint as accepting <c>Idempotency-Key</c>.</summary>
 /// <param name="maxBodyBytes">Bodies up to this size are fingerprinted (in memory); larger ones run without replay protection.</param>
+/// <param name="quota">
+/// The caller's own quota the write counts (partitioned by actor), when it has a large body: checked before the body is
+/// read into memory, so a caller past it cannot have the server hold body after body only to be refused.
+/// </param>
 [AttributeUsage(AttributeTargets.Class | AttributeTargets.Method)]
-public sealed class IdempotentAttribute(int maxBodyBytes = IdempotencyMiddleware.MaxBodyLength) : Attribute
+public sealed class IdempotentAttribute(int maxBodyBytes = IdempotencyMiddleware.MaxBodyLength, string? quota = null) : Attribute
 {
     public int MaxBodyBytes { get; } = maxBodyBytes;
+
+    public string? Quota { get; } = quota;
 }
 
 public static class IdempotencyEndpointExtensions
@@ -21,10 +28,10 @@ public static class IdempotencyEndpointExtensions
         where TBuilder : IEndpointConventionBuilder =>
         builder.WithMetadata(new IdempotentAttribute());
 
-    /// <summary>For endpoints with bodies larger than JSON (image uploads).</summary>
-    public static TBuilder WithIdempotency<TBuilder>(this TBuilder builder, int maxBodyBytes)
+    /// <summary>For endpoints with bodies larger than JSON (image uploads), and the caller's quota they count.</summary>
+    public static TBuilder WithIdempotency<TBuilder>(this TBuilder builder, int maxBodyBytes, string quota)
         where TBuilder : IEndpointConventionBuilder =>
-        builder.WithMetadata(new IdempotentAttribute(maxBodyBytes));
+        builder.WithMetadata(new IdempotentAttribute(maxBodyBytes, quota));
 }
 
 public static class IdempotencyErrorCodes
@@ -53,13 +60,14 @@ public sealed partial class IdempotencyMiddleware(RequestDelegate next, ILogger<
 
     public static readonly TimeSpan Retention = TimeSpan.FromHours(24);
 
-    /// <summary>How long a claim blocks a concurrent retry; longer than any write takes.</summary>
+    /// <summary>How long a claim blocks a concurrent retry; held again while the write runs (<see cref="HoldClaimAsync"/>).</summary>
     public static readonly TimeSpan ClaimDuration = TimeSpan.FromMinutes(1);
 
-    public async Task InvokeAsync(HttpContext context, IIdempotencyStore store, IStringLocalizer<SharedResource> localizer)
+    public async Task InvokeAsync(HttpContext context, IIdempotencyStore store, RateLimitService rateLimits, IStringLocalizer<SharedResource> localizer)
     {
         ArgumentNullException.ThrowIfNull(context);
         ArgumentNullException.ThrowIfNull(store);
+        ArgumentNullException.ThrowIfNull(rateLimits);
         ArgumentNullException.ThrowIfNull(localizer);
         var key = context.Request.Headers[HeaderName].ToString();
         var idempotent = context.GetEndpoint()?.Metadata.GetMetadata<IdempotentAttribute>();
@@ -74,6 +82,14 @@ public sealed partial class IdempotencyMiddleware(RequestDelegate next, ILogger<
         if (key.Length > MaxKeyLength || !key.All(c => c is >= '!' and <= '~'))
         {
             await Error.Validation(IdempotencyErrorCodes.KeyInvalid, localizer["Error.IdempotencyKeyInvalid", MaxKeyLength]).ToHttpResult().ExecuteAsync(context);
+            return;
+        }
+
+        if (idempotent.Quota is { } quota
+            && await rateLimits.WaitAsync(quota, RateLimitPartitions.Actor(context.User.ActorId()), context.RequestAborted) is var wait
+            && wait > TimeSpan.Zero)
+        {
+            await Error.RateLimited(wait, localizer["RateLimit.Detail"]).ToHttpResult().ExecuteAsync(context);
             return;
         }
 
@@ -181,6 +197,8 @@ public sealed partial class IdempotencyMiddleware(RequestDelegate next, ILogger<
         // commit would otherwise be released as failed, and the retry with the same key would write it again.
         context.RequestAborted = CancellationToken.None;
         var succeeded = false;
+        using var running = new CancellationTokenSource();
+        var holding = HoldClaimAsync(store, storeKey, running.Token);
         try
         {
             await next(context);
@@ -188,6 +206,8 @@ public sealed partial class IdempotencyMiddleware(RequestDelegate next, ILogger<
         }
         finally
         {
+            await running.CancelAsync();
+            await holding;
             context.RequestAborted = aborted;
             response.Body = original;
             await RememberAsync(store, storeKey, succeeded ? Record(response, fingerprint, buffer) : null);
@@ -195,6 +215,30 @@ public sealed partial class IdempotencyMiddleware(RequestDelegate next, ILogger<
 
         buffer.Position = 0;
         await buffer.CopyToAsync(original, aborted);
+    }
+
+    /// <summary>
+    /// Holds the claim while the write runs: one that took longer than the claim (stuck behind a lock, say) would
+    /// otherwise let a retry with the same key take it over and write a second time.
+    /// </summary>
+    private async Task HoldClaimAsync(IIdempotencyStore store, string storeKey, CancellationToken running)
+    {
+        while (!running.IsCancellationRequested)
+        {
+            try
+            {
+                await Task.Delay(ClaimDuration / 3, running);
+                await store.ExtendAsync(storeKey, ClaimDuration, running);
+            }
+            catch (OperationCanceledException) when (running.IsCancellationRequested)
+            {
+                return;
+            }
+            catch (Exception exception)
+            {
+                LogStoreFailed(logger, exception);
+            }
+        }
     }
 
     private static IdempotencyRecord Record(HttpResponse response, string fingerprint, MemoryStream buffer) => new(

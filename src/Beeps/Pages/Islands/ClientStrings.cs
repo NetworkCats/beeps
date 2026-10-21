@@ -68,6 +68,9 @@ public static class ClientStringsEndpoints
 {
     private const string KeptForGood = "public, max-age=31536000, immutable";
 
+    /// <summary>Which text the answer holds, for the browser to keep it only under its own address (i18n.ts).</summary>
+    public const string VersionHeader = "Beeps-Strings-Version";
+
     public static IEndpointRouteBuilder MapClientStrings(this IEndpointRouteBuilder routes)
     {
         // The same for everyone and cheap, and kept by the CDN, as the scripts are.
@@ -86,6 +89,7 @@ public static class ClientStringsEndpoints
         // An address from before the text changed (a page drawn before a deployment) gets the text as it is now, but
         // not for keeps.
         response.Headers.CacheControl = v == document.Version ? KeptForGood : "no-cache";
+        response.Headers[VersionHeader] = document.Version;
         return Results.Bytes(document.Json, "application/json; charset=utf-8");
     }
 }

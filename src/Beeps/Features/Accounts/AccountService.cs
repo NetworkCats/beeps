@@ -232,7 +232,7 @@ public sealed partial class AccountService(
         }
 
         var code = await store.FindEmailCodeAsync(EmailCodePurpose.VerifyEmail, user.NormalizedEmail, cancellationToken);
-        return new Verification(user.Email, code?.CreatedAt + ResendInterval);
+        return new Verification(user.Email, code is null ? null : SentAt(code) + ResendInterval);
     }
 
     /// <summary>
@@ -444,10 +444,13 @@ public sealed partial class AccountService(
         var limited = await rateLimits.CheckAsync(
             [
                 new RateLimitTarget(RateLimitPolicies.PasswordReset, RateLimitPartitions.Ip(origin.ClientIp)),
-                new RateLimitTarget(RateLimitPolicies.PasswordReset, RateLimitPartitions.Email(normalized)),
                 new RateLimitTarget(RateLimitPolicies.EmailCodeIp, RateLimitPartitions.Ip(origin.ClientIp)),
+                // Per address as asked from each IP: anyone can ask on someone's behalf, and running the address's limits up
+                // would otherwise stop its owner resetting for a day. Every request still takes Turnstile, and the IP's
+                // own limits above, so filling the inbox takes many addresses as well.
+                new RateLimitTarget(RateLimitPolicies.PasswordReset, RateLimitPartitions.EmailFromIp(normalized, origin.ClientIp)),
                 // Not EmailCode: anyone can ask for a reset, and running it up must not stop the codes that signing in sends.
-                new RateLimitTarget(RateLimitPolicies.PasswordResetCode, RateLimitPartitions.Email(normalized)),
+                new RateLimitTarget(RateLimitPolicies.PasswordResetCode, RateLimitPartitions.EmailFromIp(normalized, origin.ClientIp)),
             ],
             cancellationToken);
         if (!limited.IsSuccess)
@@ -621,14 +624,14 @@ public sealed partial class AccountService(
             ? null
             : await store.FindEmailCodeAsync(EmailCodePurpose.ChangeEmail, user.NormalizedEmail, cancellationToken);
         var waiting = pending is not null && pending.ExpiresAt > time.GetUtcNow() && pending.Attempts < MaxCodeAttempts
-            ? new CodeSent(user.PendingEmail!, pending.CreatedAt + ResendInterval)
+            ? new CodeSent(user.PendingEmail!, SentAt(pending) + ResendInterval)
             : null;
         // The code an account without a password sets its first with, while it can still be entered.
         var passwordCode = user.PasswordHash is not null
             ? null
             : await store.FindEmailCodeAsync(EmailCodePurpose.ResetPassword, user.NormalizedEmail, cancellationToken);
         var passwordCodeWaiting = passwordCode is not null && passwordCode.ExpiresAt > time.GetUtcNow() && passwordCode.Attempts < MaxCodeAttempts
-            ? passwordCode.CreatedAt + ResendInterval
+            ? SentAt(passwordCode) + ResendInterval
             : (DateTimeOffset?)null;
         return new AccountSettings(
             user.Actor.Handle!,
@@ -1103,8 +1106,10 @@ public sealed partial class AccountService(
     }
 
     /// <summary>
-    /// Names one code sent for signing in or a reset: the time it was sent, which no two of an address's codes share (they are a
-    /// minute apart at least). In milliseconds, which PostgreSQL keeps exactly (it keeps microseconds).
+    /// Names the codes sent for signing in or a reset since one was last given up (expired or out of guesses): the time the
+    /// first of them was sent (<see cref="IssueCodeAsync(EmailCodePurpose, User, string, CancellationToken)"/>), which no
+    /// two such runs share (they are a minute apart at least). In milliseconds, which PostgreSQL keeps exactly (it keeps
+    /// microseconds).
     /// </summary>
     private static string CodeStamp(DateTimeOffset createdAt) =>
         createdAt.ToUnixTimeMilliseconds().ToString(CultureInfo.InvariantCulture);
@@ -1121,13 +1126,19 @@ public sealed partial class AccountService(
 
     private string TimingDummyHash() => timingDummyHash ??= passwordHasher.HashPassword(TimingDummy, "timing-dummy-password");
 
-    /// <summary>Stages a fresh code (replacing any earlier one) and its email; the caller saves. Returns when it was sent.</summary>
+    /// <summary>When the code standing now was sent (a new one is given the full lifetime).</summary>
+    private static DateTimeOffset SentAt(EmailCode code) => code.ExpiresAt - CodeLifetime;
+
+    /// <summary>Stages a fresh code (replacing any earlier one) and its email; the caller saves. Returns the time its stamp names.</summary>
     private Task<DateTimeOffset> IssueCodeAsync(EmailCodePurpose purpose, User user, CancellationToken cancellationToken) =>
         IssueCodeAsync(purpose, user, user.Email, cancellationToken);
 
     /// <summary>
     /// Stages a fresh code kept under the account's current address, sent to <paramref name="to"/>; the caller saves.
-    /// Returns when it was sent.
+    /// Returns the time its stamp names (<see cref="CodeStamp"/>): that of the code it replaces while that one still
+    /// stands. Anyone can ask for a reset code to someone's address, and each new code replaces the last; with a new
+    /// stamp, the owner's page waiting for the code would then take neither, again and again for as long as someone
+    /// kept asking. Kept, the page takes the newest code sent, and only that one.
     /// </summary>
     private async Task<DateTimeOffset> IssueCodeAsync(EmailCodePurpose purpose, User user, string to, CancellationToken cancellationToken)
     {
@@ -1149,20 +1160,28 @@ public sealed partial class AccountService(
         }
         else
         {
+            if (existing.ExpiresAt <= now || existing.Attempts >= MaxCodeAttempts)
+            {
+                existing.CreatedAt = now;
+            }
+
             existing.CodeHash = hash;
             existing.Attempts = 0;
             existing.ExpiresAt = now + CodeLifetime;
-            existing.CreatedAt = now;
         }
 
         outbox.Enqueue(
             AccountCodeEmail.MessageType,
             new AccountCodeEmail(to, user.Locale, purpose, codeProtector.Protect(code)),
             AccountsJsonContext.Default.AccountCodeEmail);
-        return now;
+        return existing?.CreatedAt ?? now;
     }
 
-    /// <summary>Checks a code and stages its removal on success; every guess counts, right or wrong.</summary>
+    /// <summary>
+    /// Checks a code and uses it up on success; every guess counts, right or wrong. Used up at once rather than with the
+    /// caller's save: the same code sent twice together (a double submit, a retry) would otherwise pass for both, and
+    /// the second save fail to delete it again.
+    /// </summary>
     private async Task<Result> ConsumeCodeAsync(EmailCodePurpose purpose, string normalizedEmail, string code, string? sentTo, CancellationToken cancellationToken)
     {
         if (!await store.TryCountCodeAttemptAsync(purpose, normalizedEmail, time.GetUtcNow(), MaxCodeAttempts, cancellationToken))
@@ -1176,8 +1195,7 @@ public sealed partial class AccountService(
             return CodeInvalid();
         }
 
-        store.RemoveEmailCode(stored);
-        return Result.Success;
+        return await store.TryUseEmailCodeAsync(stored, cancellationToken) ? Result.Success : CodeInvalid();
     }
 
     /// <summary>
@@ -1268,7 +1286,7 @@ public sealed partial class AccountService(
     /// <summary>Refuses another code while the last one is younger than <see cref="ResendInterval"/>.</summary>
     private Result TooSoon(EmailCode? last)
     {
-        var wait = last is null ? TimeSpan.Zero : last.CreatedAt + ResendInterval - time.GetUtcNow();
+        var wait = last is null ? TimeSpan.Zero : SentAt(last) + ResendInterval - time.GetUtcNow();
         if (wait <= TimeSpan.Zero)
         {
             return Result.Success;

@@ -90,7 +90,7 @@ public sealed class SettingsModel(
 
     [BindProperty] public BannerCropForm BannerCrop { get; set; } = new();
 
-    public async Task<IActionResult> OnGetAsync(string? section, CancellationToken cancellationToken)
+    public async Task<IActionResult> OnGetAsync([FromRoute] string? section, CancellationToken cancellationToken)
     {
         // The route takes the section in any case: one address for each.
         if (section?.ToLowerInvariant() is { } lower && lower != section)

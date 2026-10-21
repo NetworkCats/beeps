@@ -54,6 +54,14 @@ public sealed class PostgresIdempotencyStore(NpgsqlDataSource dataSource, TimePr
             reader.IsDBNull(4) ? null : reader.GetString(4));
     }
 
+    public async Task ExtendAsync(string key, TimeSpan claimDuration, CancellationToken cancellationToken)
+    {
+        await using var command = dataSource.CreateCommand("UPDATE idempotency_keys SET expires_at = @expires WHERE key = @key AND status_code IS NULL");
+        command.Parameters.AddWithValue("key", key);
+        command.Parameters.AddWithValue("expires", time.GetUtcNow() + claimDuration);
+        await command.ExecuteNonQueryAsync(cancellationToken);
+    }
+
     public async Task CompleteAsync(string key, IdempotencyRecord record, TimeSpan retention, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(record);

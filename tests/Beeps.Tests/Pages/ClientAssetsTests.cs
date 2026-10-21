@@ -79,9 +79,10 @@ public sealed partial class ClientAssetsTests : IDisposable
         }
 
         // Routing finds static files whatever the case of their address: so does the check.
-        // So it does whether the file is asked for compressed or as its source map.
+        // So it does whether the file is asked for compressed or as its source map, or with empty segments.
         foreach (var file in new[]
         {
+            "/dist/admin.css/", $"/dist/{adminChunk}/", "/dist/chunks.json/", "/dist//admin.css", $"/dist/{adminChunk.Replace("/", "//", StringComparison.Ordinal)}",
             stylesheet.ToUpperInvariant(), "/dist/ADMIN.css", $"/dist/{adminChunk.ToUpperInvariant()}", "/dist/Chunks.json",
             stylesheet + ".gz", "/dist/admin.css.map", $"/dist/{adminChunk}.gz", $"/dist/{adminChunk}.map.gz", "/dist/chunks.json.gz",
         })

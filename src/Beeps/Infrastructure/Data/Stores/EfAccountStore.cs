@@ -111,6 +111,17 @@ public sealed class EfAccountStore(BeepsDbContext db, CacheInvalidator invalidat
 
     public void RemoveEmailCode(EmailCode code) => db.Set<EmailCode>().Remove(code);
 
+    public async Task<bool> TryUseEmailCodeAsync(EmailCode code, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(code);
+        var used = await db.Set<EmailCode>()
+            .Where(c => c.Purpose == code.Purpose && c.NormalizedEmail == code.NormalizedEmail && c.CodeHash == code.CodeHash)
+            .ExecuteDeleteAsync(cancellationToken) == 1;
+        // Gone from the database: nothing is left for a later save to delete or update.
+        db.Entry(code).State = EntityState.Detached;
+        return used;
+    }
+
     /// <remarks>
     /// The email becomes <c>released:{id}</c> and the handle is cleared from the unique index, so both can be taken
     /// again; the row stays (like any deleted account) because others may have mentioned the handle. SKIP LOCKED leaves

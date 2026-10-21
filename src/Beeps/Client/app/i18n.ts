@@ -6,6 +6,8 @@
 import { config } from './config.ts';
 
 const STORAGE_KEY = 'beeps:strings';
+// Which text an answer holds (ClientStringsEndpoints.VersionHeader).
+const VERSION_HEADER = 'Beeps-Strings-Version';
 
 interface Stored {
   url: string;
@@ -51,7 +53,14 @@ function store(saved: Stored): void {
 async function fetchStrings(url: string): Promise<void> {
   const response = await fetch(url, { credentials: 'same-origin', priority: 'high' });
   if (!response.ok) throw new Error(String(response.status));
-  const saved: Stored = { url, strings: (await response.json()) as Record<string, string> };
+  const strings = (await response.json()) as Record<string, string>;
+  // During a deployment an instance still on the old text answers for the new address with what it has: shown for
+  // now, but kept under no address, so the next page asks again rather than keep the old text for good.
+  if (response.headers.get(VERSION_HEADER) !== new URL(url, window.location.href).searchParams.get('v')) {
+    current = { url: '', strings };
+    return;
+  }
+  const saved: Stored = { url, strings };
   current = saved;
   store(saved);
 }

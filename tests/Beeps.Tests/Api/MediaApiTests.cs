@@ -5,6 +5,7 @@ using Beeps.Features.Accounts;
 using Beeps.Features.Agents;
 using Beeps.Features.Avatars;
 using Beeps.Features.Media;
+using Beeps.Features.RateLimiting;
 using Beeps.Features.Shared;
 using Beeps.Tests.Support;
 
@@ -108,6 +109,21 @@ public sealed class MediaApiTests : IDisposable
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
         await factory.Idempotency.ReceivedWithAnyArgs(1).TryClaimAsync(default!, default!, default, TestSupport.Ct);
         await factory.Idempotency.Received(1).CompleteAsync(Arg.Any<string>(), Arg.Is<IdempotencyRecord>(r => r.StatusCode == 201), Arg.Any<TimeSpan>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task PastItsUploadQuotaAnUploadWithAnIdempotencyKeyIsRefusedBeforeItsBodyIsRead()
+    {
+        factory.RateLimitStore.WaitAsync(Arg.Is<IReadOnlyList<RateLimitCounter>>(c => c[0].Key.StartsWith(RateLimitPolicies.MediaUpload + ":", StringComparison.Ordinal)), Arg.Any<CancellationToken>())
+            .Returns(TimeSpan.FromMinutes(20));
+        using var request = new HttpRequestMessage(HttpMethod.Post, new Uri("/api/v1/media", UriKind.Relative)) { Content = new ByteArrayContent(TestImages.Png()) };
+        request.Headers.Add("Idempotency-Key", "upload-1");
+
+        using var response = await client.SendAsync(request, TestSupport.Ct);
+
+        Assert.Equal(HttpStatusCode.TooManyRequests, response.StatusCode);
+        Assert.Equal(TimeSpan.FromMinutes(20), response.Headers.RetryAfter?.Delta);
+        await factory.Idempotency.DidNotReceiveWithAnyArgs().TryClaimAsync(default!, default!, default, TestSupport.Ct);
     }
 
     [Fact]

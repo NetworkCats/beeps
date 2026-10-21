@@ -34,7 +34,7 @@ public sealed class IndexModel(ProfileService profiles, TimelineService timeline
     /// <summary>The likes come in the order they were given, so new beeps never join them.</summary>
     public LiveTopic Live => Before is null && Tab != ProfileTabs.Likes ? LiveTopic.Profile(Profile.Actor.Id, Tab == ProfileTabs.Replies) : LiveTopic.None;
 
-    public async Task<IActionResult> OnGetAsync(string handle, string? tab, CancellationToken cancellationToken)
+    public async Task<IActionResult> OnGetAsync(string handle, [FromRoute] string? tab, CancellationToken cancellationToken)
     {
         // The route takes the tab in any case: one address for each, for the cache and for search engines.
         if (tab?.ToLowerInvariant() is { } lower && lower != tab)

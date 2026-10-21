@@ -17,7 +17,8 @@ public interface IRateLimitStore
 }
 
 /// <summary>One fixed-window counter. <see cref="Key"/> is unique per policy, rule and partition.</summary>
-public sealed record RateLimitCounter(string Key, int PermitLimit, TimeSpan Window);
+/// <param name="Guards">Whether its policy holds back guessing (<see cref="RateLimitPolicies.Guarding"/>).</param>
+public sealed record RateLimitCounter(string Key, int PermitLimit, TimeSpan Window, bool Guards = false);
 
 public readonly record struct RateLimitDecision(bool IsAllowed, TimeSpan RetryAfter)
 {
