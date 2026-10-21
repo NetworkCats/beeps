@@ -66,5 +66,3 @@ Pushing a version tag deploys to a single server with GitHub Actions, blue-green
 ## License
 
 beeps is licensed under the [GNU Affero General Public License v3.0](LICENSE). If you run a modified version as a network service, you must offer its source code to its users.
-
-`src/Beeps/Client/collection-ui/` is copied from [collection-ui](https://github.com/NetworkCats/collection-ui) and keeps its MIT license.
