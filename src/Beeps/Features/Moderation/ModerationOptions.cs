@@ -2,7 +2,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace Beeps.Features.Moderation;
 
-/// <summary>AI moderation (PLAN 6.20).</summary>
+/// <summary>AI moderation.</summary>
 public sealed class ModerationOptions
 {
     public const string SectionName = "Moderation";
@@ -26,7 +26,7 @@ public sealed class ModerationOptions
     /// <summary>Whether this instance runs the review worker. Beeps are still queued when false.</summary>
     public bool WorkerEnabled { get; set; } = true;
 
-    /// <summary>Attempts per beep before it is marked failed and left to the admins (PLAN 6.20: five).</summary>
+    /// <summary>Attempts per beep before it is marked failed and left to the admins.</summary>
     [Range(1, 20)]
     public int MaxAttempts { get; set; } = 5;
 

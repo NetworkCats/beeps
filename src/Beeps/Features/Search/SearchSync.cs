@@ -23,7 +23,7 @@ public sealed record SearchAccountSyncRequest(Guid ActorId, bool Beeps)
 internal sealed partial class SearchJsonContext : JsonSerializerContext;
 
 /// <summary>
-/// PLAN 12: a change that shows in search results queues its index update in the same transaction. The jobs
+/// A change that shows in search results queues its index update in the same transaction. The jobs
 /// read the current state when they run, so they are idempotent and the order they run in does not matter.
 /// </summary>
 public static class SearchSync

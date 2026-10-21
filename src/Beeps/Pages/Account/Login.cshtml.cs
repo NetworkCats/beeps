@@ -75,7 +75,7 @@ public sealed class LoginModel(AccountService accounts, IStringLocalizer<SharedR
 
     /// <summary>
     /// The first step of signing in is done (the password, a code, Google or GitHub): on to the account's passkey, if
-    /// it keeps them for the second step (PLAN 6.14), or signed in.
+    /// it keeps them for the second step, or signed in.
     /// </summary>
     internal static async Task<IActionResult> SignInAfterFirstStepAsync(
         PageModel page, AccountService accounts, AccountState account, string? returnUrl, CancellationToken cancellationToken)

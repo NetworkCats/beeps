@@ -3,7 +3,7 @@ namespace Beeps.Features.Search;
 public sealed record SearchRebuildResult(int Actors, int Beeps);
 
 /// <summary>
-/// Rebuilds the search indexes from PostgreSQL (PLAN 6.18): the index is derived data and can always be
+/// Rebuilds the search indexes from PostgreSQL: the index is derived data and can always be
 /// thrown away. Searches keep working on the old indexes until the new ones are complete.
 /// </summary>
 public sealed partial class SearchIndexer(ISearchIndex index, ISearchStore store, TimeProvider time, ILogger<SearchIndexer> logger)

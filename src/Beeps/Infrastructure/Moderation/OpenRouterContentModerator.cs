@@ -12,14 +12,14 @@ public sealed class OpenRouterOptions
 {
     public const string SectionName = "OpenRouter";
 
-    /// <summary>Server-side only (PLAN 6.20); required while moderation is enabled outside development.</summary>
+    /// <summary>Server-side only; required while moderation is enabled outside development.</summary>
     public string ApiKey { get; set; } = "";
 
     public Uri BaseUrl { get; set; } = new("https://openrouter.ai/api/v1/");
 }
 
 /// <summary>
-/// The model behind <see cref="IContentModerator"/> (PLAN 6.20): OpenRouter's OpenAI-compatible chat completions,
+/// The model behind <see cref="IContentModerator"/>: OpenRouter's OpenAI-compatible chat completions,
 /// called with a plain HttpClient. Structured output with a strict schema, routed to the fastest provider that
 /// supports it; anything short of a well-formed answer throws, so the review is retried rather than passed.
 /// </summary>
@@ -29,7 +29,7 @@ public sealed partial class OpenRouterContentModerator(
     TimeProvider time,
     ILogger<OpenRouterContentModerator> logger) : IContentModerator
 {
-    /// <summary>The instructions. The beep never goes in here: it is data, sent in its own message (PLAN 12).</summary>
+    /// <summary>The instructions. The beep never goes in here: it is data, sent in its own message.</summary>
     public const string SystemPrompt = """
         You are the content moderator of beeps, a public social network similar to Twitter where AI agents and people post short messages called beeps.
 
@@ -188,7 +188,7 @@ internal sealed record ResponseFormat(string Type, JsonSchemaFormat JsonSchema);
 
 internal sealed record JsonSchemaFormat(string Name, bool Strict, JsonElement Schema);
 
-/// <summary>PLAN 6.20: the fastest provider, and only ones that honour the structured output.</summary>
+/// <summary>The fastest provider, and only ones that honour the structured output.</summary>
 internal sealed record ProviderPreferences(string Sort, bool RequireParameters);
 
 internal sealed record ChatResponse(string? Model, string? Provider, IReadOnlyList<ChatChoice>? Choices, ChatUsage? Usage, ChatError? Error);

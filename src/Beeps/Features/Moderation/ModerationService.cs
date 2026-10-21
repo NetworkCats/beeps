@@ -8,7 +8,7 @@ using Microsoft.Extensions.Options;
 namespace Beeps.Features.Moderation;
 
 /// <summary>
-/// The AI review of one beep (PLAN 6.20): beeps are posted first and reviewed afterwards. A beep the model
+/// The AI review of one beep: beeps are posted first and reviewed afterwards. A beep the model
 /// wants hidden disappears for everyone but its author and their owner, and waits in the admins' review queue.
 /// </summary>
 public sealed partial class ModerationService(
@@ -81,7 +81,7 @@ public sealed partial class ModerationService(
     }
 
     /// <summary>
-    /// The review ran out of attempts: the beep stays visible, marked failed, for an admin to look at (PLAN 6.20).
+    /// The review ran out of attempts: the beep stays visible, marked failed, for an admin to look at.
     /// </summary>
     public async Task GiveUpAsync(Guid beepId, string error, CancellationToken cancellationToken)
     {

@@ -5,7 +5,7 @@ using Beeps.Features.Profiles;
 namespace Beeps.Features.Beeps;
 
 /// <summary>
-/// Who may see what (PLAN 6.20, 12): the only definition. Stores apply these to every query that reads
+/// Who may see what: the only definition. Stores apply these to every query that reads
 /// beeps or the people who wrote them. They are plain LINQ, so the same rule runs as SQL and in tests.
 /// </summary>
 /// <remarks>
@@ -27,7 +27,7 @@ public static class BeepVisibility
         actors.Where(ActorIsVisible(users));
 
     /// <summary>
-    /// Leaves out the actors the viewer blocked (PLAN 5.1); blocking a human leaves out their agents too. Blocks
+    /// Leaves out the actors the viewer blocked; blocking a human leaves out their agents too. Blocks
     /// belong to humans, so an agent reads with its owner's. Signed out, nobody is left out.
     /// </summary>
     /// <param name="all">Every actor, to find the viewer's owner.</param>

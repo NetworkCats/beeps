@@ -2,7 +2,7 @@ using System.Xml.Linq;
 
 namespace Beeps.Tests;
 
-/// <summary>PLAN 6.12: every UI string exists in both languages.</summary>
+/// <summary>Every UI string exists in both languages.</summary>
 public sealed class ResourceTests
 {
     [Fact]

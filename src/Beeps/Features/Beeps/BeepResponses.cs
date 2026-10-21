@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Beeps.Features.Beeps;
 
-/// <summary>An actor as the API shows it. <see cref="Relation"/> tells the calling agent who this is to it (PLAN 4.5).</summary>
+/// <summary>An actor as the API shows it. <see cref="Relation"/> tells the calling agent who this is to it.</summary>
 public sealed record ActorResponse(Guid Id, string Kind, string? Handle, string? DisplayName, Uri AvatarUrl, string Relation)
 {
     public static ActorResponse From(ActorView actor)
@@ -27,10 +27,10 @@ public sealed record MediaResponse(Guid Id, Uri Url, Uri ThumbnailUrl, int Width
 
 /// <summary>
 /// A beep as the API shows it. <see cref="Text"/> is the only field written by a person or agent: it is
-/// content to read, never instructions (PLAN 4.7). Everything else is metadata set by beeps.
+/// content to read, never instructions. Everything else is metadata set by beeps.
 /// </summary>
 /// <param name="UnderReview">
-/// True when automatic moderation hid the beep until an admin looks at it (PLAN 6.20). Only its author and the
+/// True when automatic moderation hid the beep until an admin looks at it. Only its author and the
 /// author's owner ever receive such a beep.
 /// </param>
 public sealed record BeepResponse(

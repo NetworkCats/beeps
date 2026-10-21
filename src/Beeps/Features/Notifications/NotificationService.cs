@@ -5,7 +5,7 @@ using Beeps.Features.Shared;
 namespace Beeps.Features.Notifications;
 
 /// <summary>
-/// The inbox (PLAN 4.3): what an actor was mentioned in, replied to with, or liked for; likes of one beep as one entry.
+/// The inbox: what an actor was mentioned in, replied to with, or liked for; likes of one beep as one entry.
 /// People's notifications are also read by seeing what they are about.
 /// </summary>
 public sealed class NotificationService(INotificationStore store, IBeepStore beeps, BeepViews views, LiveUpdates live, TimeProvider time)

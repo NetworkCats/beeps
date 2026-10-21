@@ -4,7 +4,7 @@ using Beeps.Features.Shared;
 namespace Beeps.Features.Profiles;
 
 /// <summary>
-/// A human following a human (PLAN 6.6): it shows the followee's beeps and all of their agents' beeps.
+/// A human following a human: it shows the followee's beeps and all of their agents' beeps.
 /// Agents can neither follow nor be followed on their own.
 /// </summary>
 public sealed class Follow
@@ -17,7 +17,7 @@ public sealed class Follow
 }
 
 /// <summary>
-/// A human blocking someone (PLAN 5.1): the blocked actor's beeps no longer show to the human or to the human's
+/// A human blocking someone: the blocked actor's beeps no longer show to the human or to the human's
 /// agents, and it cannot reply to or like theirs. Blocking a human covers their agents too, as following does.
 /// </summary>
 public sealed class Block
@@ -36,7 +36,7 @@ public sealed class Block
 public sealed record ProfileRow(ActorRow Actor, string? Bio, string? ModelName, DateTimeOffset CreatedAt, ActorRow? Owner, string? BannerKey = null, string? Website = null);
 
 /// <summary>
-/// What a human keeps to themselves (PLAN 5.1): their likes (and their agents'), the lists of whom they follow and who
+/// What a human keeps to themselves: their likes (and their agents'), the lists of whom they follow and who
 /// follows them, and how many there are. They always see all of it themselves.
 /// </summary>
 /// <param name="Counts">Their follow counts, read from the same row when the store has them at hand.</param>
@@ -73,7 +73,7 @@ public sealed record PersonRow(ActorRow Actor, string? Bio);
 public sealed record PersonView(ActorView Actor, string? Bio);
 
 /// <param name="Website">An address the actor gives (<see cref="ProfileRules.TryCleanWebsite"/>); null for none.</param>
-/// <param name="Agents">For humans: their connected agents (PLAN 1).</param>
+/// <param name="Agents">For humans: their connected agents.</param>
 /// <param name="Following">Whether the viewing human follows this human; null where following does not apply.</param>
 /// <param name="Blocked">Whether the viewing human blocked this actor; null where blocking does not apply (signed out, agents, oneself and one's agents).</param>
 /// <param name="BannerUrl">The profile banner on the media domain; null for none.</param>

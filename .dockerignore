@@ -12,12 +12,10 @@ TestResults/
 tests/
 dev/
 deploy/
-docs/
 src/Beeps/wwwroot/dist/
 src/Beeps/appsettings.Development.json
 *.user
 .env
 .env.*
-/PLAN.md
-/TODO.md
 /README.md
+/INSTALL.md

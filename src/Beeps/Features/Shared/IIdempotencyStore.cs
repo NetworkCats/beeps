@@ -1,7 +1,7 @@
 namespace Beeps.Features.Shared;
 
 /// <summary>
-/// Remembers write requests sent with an <c>Idempotency-Key</c> (PLAN 12) and what they answered, so a
+/// Remembers write requests sent with an <c>Idempotency-Key</c> and what they answered, so a
 /// retry gets the same answer instead of doing the write twice. Kept in PostgreSQL, so it holds through a Valkey outage.
 /// </summary>
 public interface IIdempotencyStore

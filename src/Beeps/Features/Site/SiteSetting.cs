@@ -1,6 +1,6 @@
 namespace Beeps.Features.Site;
 
-/// <summary>A site-wide setting shared by every instance (PLAN 3.6), e.g. the registration mode.</summary>
+/// <summary>A site-wide setting shared by every instance, e.g. the registration mode.</summary>
 public sealed class SiteSetting
 {
     public const string RegistrationModeKey = "registration_mode";

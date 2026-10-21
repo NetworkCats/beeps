@@ -71,11 +71,11 @@ public sealed class BeepServiceTests
         Assert.Equal(added.Id, added.RootId);
         Assert.Null(added.ReplyToId);
         Assert.Equal(ModerationStatus.Pending, added.ModerationStatus);
-        // Reviewed after posting (PLAN 6.20), queued in the same transaction.
+        // Reviewed after posting, queued in the same transaction.
         moderationJobs.Received(1).Enqueue(added.Id);
         store.Received(1).AddBeep(added, Arg.Is<IReadOnlyCollection<Guid>>(m => m.Single() == alice.Id), Arg.Is<IReadOnlyCollection<Guid>>(t => t.Single() == tagId));
         outbox.Received(1).Enqueue(BeepNotificationsRequest.MessageType, Arg.Is<BeepNotificationsRequest>(r => r.BeepId == added.Id), Arg.Any<JsonTypeInfo<BeepNotificationsRequest>>());
-        // Searchable once committed, in the same transaction (PLAN 12), and announced to open pages afterwards.
+        // Searchable once committed, in the same transaction, and announced to open pages afterwards.
         outbox.Received(1).Enqueue(SearchBeepSyncRequest.MessageType, new SearchBeepSyncRequest(added.Id), Arg.Any<JsonTypeInfo<SearchBeepSyncRequest>>());
         Assert.Equal(1, unitOfWork.Saves);
         Assert.Equal([[RateLimitPolicies.HumanPost]], checkedPolicies);

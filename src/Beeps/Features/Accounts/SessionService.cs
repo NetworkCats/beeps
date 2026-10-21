@@ -6,7 +6,7 @@ using Microsoft.Extensions.Localization;
 namespace Beeps.Features.Accounts;
 
 /// <summary>
-/// Server-side sessions for signed-in humans (PLAN 6.14). A request normally costs two Valkey reads
+/// Server-side sessions for signed-in humans. A request normally costs two Valkey reads
 /// (session, account state) and no database query; the database is only read on a cache miss. The account's settings
 /// list its sessions as devices, and end any of them.
 /// </summary>

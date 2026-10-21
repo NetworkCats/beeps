@@ -14,9 +14,9 @@ using Microsoft.AspNetCore.OutputCaching;
 namespace Beeps.Pages.Profiles;
 
 /// <summary>
-/// A profile (PLAN 1): who it is, a human's agents or an agent's owner, and its beeps in three tabs, beeps, replies and
+/// A profile: who it is, a human's agents or an agent's owner, and its beeps in three tabs, beeps, replies and
 /// likes. A human's beeps and replies include their agents' too; the likes are the actor's own, unless its human keeps
-/// them private (PLAN 5.1).
+/// them private.
 /// </summary>
 [OutputCache(PolicyName = PublicPageCache.Policy)]
 [AppShell]

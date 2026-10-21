@@ -13,7 +13,7 @@ public sealed class User
 
     public required string NormalizedEmail { get; set; }
 
-    /// <summary>The address the account asked to move to, until the code sent there is entered (PLAN 6.13).</summary>
+    /// <summary>The address the account asked to move to, until the code sent there is entered.</summary>
     public string? PendingEmail { get; set; }
 
     /// <summary>ASP.NET Core Identity password hash; null for an account that signs in only with Google or GitHub.</summary>
@@ -32,7 +32,7 @@ public sealed class User
     public string? Theme { get; set; }
 
     /// <summary>
-    /// How many shown humans the account follows (PLAN 5.1): changed with every follow and unfollow, and counted again
+    /// How many shown humans the account follows: changed with every follow and unfollow, and counted again
     /// for the people on the other side when someone is banned, unbanned or deleted (<see cref="Profiles.FollowCountsHandler"/>).
     /// </summary>
     public int FollowingCount { get; init; }
@@ -40,7 +40,7 @@ public sealed class User
     /// <summary>How many humans follow the account, kept as <see cref="FollowingCount"/> is.</summary>
     public int FollowersCount { get; init; }
 
-    /// <summary>Only the account sees whom it and its agents liked (PLAN 5.1).</summary>
+    /// <summary>Only the account sees whom it and its agents liked.</summary>
     public bool HideLikes { get; set; }
 
     /// <summary>Only the account sees whom it follows and who follows it.</summary>
@@ -51,7 +51,7 @@ public sealed class User
 
     /// <summary>
     /// The account's passkeys are the second step after the password, or after Google or GitHub, and do not sign in by
-    /// themselves (PLAN 6.14). Off by default: a passkey signs in without a password.
+    /// themselves. Off by default: a passkey signs in without a password.
     /// </summary>
     public bool PasskeyTwoFactor { get; set; }
 

@@ -15,7 +15,7 @@ namespace Beeps.Infrastructure.Data.Stores;
 [JsonSerializable(typeof(SiteTotals))]
 internal sealed partial class CacheJsonContext : JsonSerializerContext;
 
-/// <summary>HybridCache serializer backed by System.Text.Json source generation (PLAN 12: no reflection-based JSON).</summary>
+/// <summary>HybridCache serializer backed by System.Text.Json source generation (no reflection-based JSON).</summary>
 internal sealed class SourceGeneratedCacheSerializer<T>(JsonTypeInfo<T> typeInfo) : IHybridCacheSerializer<T>
 {
     public T Deserialize(ReadOnlySequence<byte> source)

@@ -1,7 +1,7 @@
 namespace Beeps.Features.Accounts;
 
 /// <summary>
-/// A Google or GitHub account the human signs in with (PLAN 6.14): at most one of each per account, and each belongs to
+/// A Google or GitHub account the human signs in with: at most one of each per account, and each belongs to
 /// one account only.
 /// </summary>
 public sealed class ExternalLogin

@@ -14,7 +14,7 @@ public sealed record FollowCountsRequest(Guid HumanId)
 internal sealed partial class ProfilesJsonContext : JsonSerializerContext;
 
 /// <summary>
-/// Follow counts leave out people who are not shown (PLAN 5.1). A follow or an unfollow changes them as it goes; when
+/// Follow counts leave out people who are not shown. A follow or an unfollow changes them as it goes; when
 /// someone stops or starts being shown, the people on the other side of their follows are counted again, in the
 /// background. Each recount reads the rows as they are then, so it is idempotent and the order does not matter.
 /// </summary>

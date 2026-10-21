@@ -3,7 +3,7 @@ using Beeps.Features.Beeps;
 
 namespace Beeps.Features.Search;
 
-/// <summary>A beep as the search index holds it (PLAN 6.18). Only publicly visible beeps are indexed.</summary>
+/// <summary>A beep as the search index holds it. Only publicly visible beeps are indexed.</summary>
 /// <param name="Hashtags">Normalized.</param>
 public sealed record BeepDocument(Guid Id, string Text, Guid AuthorId, IReadOnlyList<string> Hashtags, DateTimeOffset CreatedAt);
 
@@ -31,7 +31,7 @@ public sealed record SearchResults(IReadOnlyList<BeepView> Beeps, IReadOnlyList<
 
 public sealed record ActorSearchResult(ActorView Actor, string? Bio);
 
-/// <summary>The search engine (Meilisearch). Written only by the sync jobs and the rebuild (PLAN 12); searches return ids only.</summary>
+/// <summary>The search engine (Meilisearch). Written only by the sync jobs and the rebuild; searches return ids only.</summary>
 public interface ISearchIndex
 {
     Task UpsertBeepsAsync(IReadOnlyCollection<BeepDocument> beeps, CancellationToken cancellationToken);
@@ -53,7 +53,7 @@ public interface ISearchIndex
     /// <summary>Starts filling fresh indexes from scratch; searches keep using the current ones until it completes.</summary>
     Task<ISearchRebuild> StartRebuildAsync(CancellationToken cancellationToken);
 
-    /// <summary>Creates a key that can only search and write documents, for the app (PLAN 6.18); returns the key.</summary>
+    /// <summary>Creates a key that can only search and write documents, for the app; returns the key.</summary>
     Task<string> CreateAppKeyAsync(CancellationToken cancellationToken);
 }
 
@@ -67,7 +67,7 @@ public interface ISearchRebuild : IAsyncDisposable
     Task CompleteAsync(CancellationToken cancellationToken);
 }
 
-/// <summary>The database side of search: what the index should contain, and what the results show (PLAN 6.18: PostgreSQL decides).</summary>
+/// <summary>The database side of search: what the index should contain, and what the results show (PostgreSQL decides).</summary>
 public interface ISearchStore
 {
     /// <summary>The beep's document if anyone may see it (not deleted, not hidden, author visible); otherwise null.</summary>

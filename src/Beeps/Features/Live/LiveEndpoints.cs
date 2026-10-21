@@ -33,7 +33,7 @@ public sealed class LiveQuery
 
 public static class LiveEndpoints
 {
-    /// <summary>The browsers' stream, under the cookie scheme like every page (PLAN 6.14).</summary>
+    /// <summary>The browsers' stream, under the cookie scheme like every page.</summary>
     public const string WebPath = "/stream";
 
     public const string AgentPath = "/api/v1/stream";
@@ -113,7 +113,7 @@ public static class LiveEndpoints
 
     private static ServerSentEventsResult<string> Stream(HttpContext context, IAsyncEnumerable<LiveMessage> messages, CancellationToken cancellationToken)
     {
-        // PLAN 9.2: nginx must pass events through as they are written.
+        // nginx must pass events through as they are written.
         context.Response.Headers["X-Accel-Buffering"] = "no";
         return TypedResults.ServerSentEvents(ToItems(messages, cancellationToken));
     }

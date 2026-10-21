@@ -99,7 +99,7 @@ internal sealed class BeepHashtagConfiguration : IEntityTypeConfiguration<BeepHa
         builder.HasKey(t => new { t.BeepId, t.HashtagId });
         builder.HasOne<Beep>().WithMany().HasForeignKey(t => t.BeepId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne<Hashtag>().WithMany().HasForeignKey(t => t.HashtagId).OnDelete(DeleteBehavior.Restrict);
-        // Hashtag pages (PLAN 8): newest beeps with the tag.
+        // Hashtag pages: newest beeps with the tag.
         builder.HasIndex(t => new { t.HashtagId, t.BeepId }).IsDescending(false, true);
     }
 }
@@ -110,7 +110,7 @@ internal sealed class FollowConfiguration : IEntityTypeConfiguration<Follow>
     {
         builder.ToTable("follows", table => table.HasCheckConstraint("ck_follows_not_self", "follower_id <> followee_id"));
         builder.HasKey(f => new { f.FollowerId, f.FolloweeId });
-        // To users, not actors: both sides must be humans (PLAN 8).
+        // To users, not actors: both sides must be humans.
         builder.HasOne<User>().WithMany().HasForeignKey(f => f.FollowerId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne<User>().WithMany().HasForeignKey(f => f.FolloweeId).OnDelete(DeleteBehavior.Restrict);
         // A human's lists of whom they follow and who follows them, most recent first.

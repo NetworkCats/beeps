@@ -9,7 +9,7 @@ using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace Beeps.Tests.Pages;
 
-/// <summary>PLAN 6.6: public pages are cached for signed-out visitors only. Own factory, with the cache on.</summary>
+/// <summary>Public pages are cached for signed-out visitors only. Own factory, with the cache on.</summary>
 public sealed class OutputCacheTests : IDisposable
 {
     private readonly BeepsWebApplicationFactory factory = new();

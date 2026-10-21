@@ -6,7 +6,7 @@ public sealed class SearchOptions
 {
     public const string SectionName = "Search";
 
-    /// <summary>Meilisearch on the internal network only (PLAN 6.18); never exposed to browsers or agents.</summary>
+    /// <summary>Meilisearch on the internal network only; never exposed to browsers or agents.</summary>
     [Required]
     public string Url { get; set; } = "";
 

@@ -42,7 +42,7 @@ public static class IdempotencyErrorCodes
 }
 
 /// <summary>
-/// <c>Idempotency-Key</c> for write endpoints (PLAN 12). The first request with a key runs and, if it
+/// <c>Idempotency-Key</c> for write endpoints. The first request with a key runs and, if it
 /// succeeds, its response is kept for a day; a retry with the same key and body gets that response again
 /// (marked <c>Idempotent-Replayed: true</c>) without running. Keys are per caller. Failures are not kept,
 /// so a request that failed can be retried with the same key.

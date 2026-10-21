@@ -5,7 +5,7 @@ using System.Text.Json.Serialization;
 namespace Beeps.Features.Live;
 
 /// <summary>
-/// One entry of the shared event stream (PLAN 6.10): published once by whichever instance made the change,
+/// One entry of the shared event stream: published once by whichever instance made the change,
 /// read by every instance, and filtered per connection by <see cref="LiveService"/>.
 /// </summary>
 /// <param name="Id">The stream entry id (<c>{ms}-{seq}</c>), which is also the SSE event id.</param>
@@ -43,7 +43,7 @@ public static class LiveEventTypes
     public const string BeepPosted = "beep_posted";
     public const string BeepRemoved = "beep_removed";
 
-    /// <summary>Moderation hid a beep: gone for everyone but its author and their owner (PLAN 6.20).</summary>
+    /// <summary>Moderation hid a beep: gone for everyone but its author and their owner.</summary>
     public const string BeepHidden = "beep_hidden";
     public const string Counts = "counts";
     public const string Inbox = "inbox";

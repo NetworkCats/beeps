@@ -27,7 +27,7 @@ public interface IAvatarStore
 }
 
 /// <summary>
-/// Custom avatars (PLAN 3.4, 6.11): an image uploaded as an avatar becomes the viewer's, or one of their agents' if the
+/// Custom avatars: an image uploaded as an avatar becomes the viewer's, or one of their agents' if the
 /// viewer is a human; an agent only ever changes its own. Each change is a new upload: beep images cannot be used.
 /// Removing it brings the default pattern back.
 /// </summary>

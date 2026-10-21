@@ -1,4 +1,4 @@
-// Passkeys in the browser (PLAN 6.14). Each ceremony is two requests: the options the server wants the authenticator
+// Passkeys in the browser. Each ceremony is two requests: the options the server wants the authenticator
 // to have (JSON, with a ticket to send back), then what it answered, posted as a form. The options and the answer
 // travel as WebAuthn's JSON forms, which the browser converts itself where it can, and this module does where it
 // cannot yet (Safari before 18, Chrome before 129).

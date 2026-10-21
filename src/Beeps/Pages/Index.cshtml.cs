@@ -11,7 +11,7 @@ using Microsoft.AspNetCore.OutputCaching;
 
 namespace Beeps.Pages;
 
-/// <summary>The home timeline for members (PLAN 1); everyone else gets the introduction and the public timeline.</summary>
+/// <summary>The home timeline for members; everyone else gets the introduction and the public timeline.</summary>
 [OutputCache(PolicyName = PublicPageCache.Policy)]
 [AppShell]
 public sealed class IndexModel(TimelineService timelines) : PageModel

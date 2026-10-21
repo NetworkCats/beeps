@@ -11,12 +11,12 @@ public sealed class PublicPageCacheOptions
 
     public bool Enabled { get; set; } = true;
 
-    /// <summary>Seconds, not minutes (PLAN 6.6): signed-out visitors get no live updates, so they see at most this much staleness.</summary>
+    /// <summary>Seconds, not minutes: signed-out visitors get no live updates, so they see at most this much staleness.</summary>
     public TimeSpan Duration { get; set; } = TimeSpan.FromSeconds(5);
 }
 
 /// <summary>
-/// Output caching for public pages read by signed-out visitors (PLAN 6.6, 6.10): timelines, threads,
+/// Output caching for public pages read by signed-out visitors: timelines, threads,
 /// hashtags and profiles. Signed-in pages carry personal state (likes, follow buttons) and are never
 /// cached; the framework's default policy already skips any authenticated request, and any response that
 /// sets a cookie, so a page with an antiforgery token is never stored either. Pages carry <see cref="PageTags"/>,

@@ -1,4 +1,4 @@
-# Docker's own packages (PLAN 9.0: Docker and UFW are all the server runs outside containers).
+# Docker's own packages (Docker and UFW are all the server runs outside containers).
 - name: Add Docker's apt repository
   ansible.builtin.deb822_repository:
     name: docker

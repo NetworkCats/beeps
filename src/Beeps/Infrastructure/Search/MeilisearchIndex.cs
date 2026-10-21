@@ -10,7 +10,7 @@ using Microsoft.Extensions.Options;
 namespace Beeps.Infrastructure.Search;
 
 /// <summary>
-/// The two Meilisearch indexes of PLAN 6.18, <c>beeps</c> and <c>actors</c>. Documents are written as JSON made by
+/// The two Meilisearch indexes, <c>beeps</c> and <c>actors</c>. Documents are written as JSON made by
 /// source generation; searches ask for ids only. Every write waits for Meilisearch to apply it, so a failed write
 /// fails its sync job, which is then retried.
 /// </summary>
@@ -139,7 +139,7 @@ public sealed class MeilisearchIndex : ISearchIndex
         }
         catch (MeilisearchApiError error) when (error.Code == "index_not_found")
         {
-            // Nothing indexed yet: run `search rebuild` once (README, launch checklist).
+            // Nothing indexed yet: run `search rebuild` once (the first deploy does).
             return new SearchHits([], 0);
         }
         catch (OperationCanceledException exception) when (!cancellationToken.IsCancellationRequested)

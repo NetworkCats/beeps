@@ -18,7 +18,7 @@ public sealed record DeviceInfo(DeviceKind Kind, string? Name, string? Browser)
 }
 
 /// <summary>
-/// Names the device behind a User-Agent, as sign-in lists elsewhere do (PLAN 6.14). Only what the owner needs to tell
+/// Names the device behind a User-Agent, as sign-in lists elsewhere do. Only what the owner needs to tell
 /// their devices apart: the brand names are the same in every language, and no versions, which change on every update.
 /// </summary>
 public static class UserAgents

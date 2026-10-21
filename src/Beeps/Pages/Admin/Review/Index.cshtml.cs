@@ -7,7 +7,7 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 
 namespace Beeps.Pages.Admin.Review;
 
-/// <summary>The review queue (PLAN 3.6), oldest first: hidden by the AI, failed review, or reported.</summary>
+/// <summary>The review queue, oldest first: hidden by the AI, failed review, or reported.</summary>
 public sealed class IndexModel(ReviewService review) : PageModel
 {
     [BindProperty(SupportsGet = true)] public Guid? After { get; set; }

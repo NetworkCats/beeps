@@ -10,7 +10,7 @@ name: Deploy
 #
 # Configuration comes from the "production" environment (Settings → Environments): secrets for anything secret,
 # variables for the rest. Every key and every id is a secret, whether or not it is public anyway; the repository and
-# these logs are public, and variables show in them as they are. docs/deployment.md lists every one.
+# these logs are public, and variables show in them as they are. INSTALL.md lists every one.
 on:
   push:
     tags: ["v*"]

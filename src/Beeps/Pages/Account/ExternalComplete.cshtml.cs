@@ -91,7 +91,7 @@ public sealed class ExternalCompleteModel(AccountService accounts, IStringLocali
 
         await HttpContext.SignOutAsync(AuthSchemes.External);
         await HttpContext.SignInHumanAsync(result.Value);
-        // Verified already: straight on to the first agent (PLAN 3.1).
+        // Verified already: straight on to the first agent.
         return RedirectToPage("/Onboarding/Agent");
     }
 

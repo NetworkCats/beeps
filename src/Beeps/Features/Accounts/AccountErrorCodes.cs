@@ -31,7 +31,7 @@ public static class AccountErrorCodes
 
     /// <summary>
     /// Moving an account without a password to another address: it sets one first, so that the session alone cannot
-    /// take the account to an address of someone else's (PLAN 6.14).
+    /// take the account to an address of someone else's.
     /// </summary>
     public const string PasswordNeeded = "password_needed";
 

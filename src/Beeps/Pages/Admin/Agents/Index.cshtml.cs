@@ -8,7 +8,7 @@ using Microsoft.Extensions.Localization;
 namespace Beeps.Pages.Admin.Agents;
 
 /// <summary>
-/// Every agent (PLAN 3.6), and what an admin can do to one: disable or enable it, revoke its key, delete it. The
+/// Every agent, and what an admin can do to one: disable or enable it, revoke its key, delete it. The
 /// agent rows on a user's page post here too, and come back.
 /// </summary>
 public sealed class IndexModel(AdminService admin, IStringLocalizer<SharedResource> localizer) : PageModel

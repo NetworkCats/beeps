@@ -4,7 +4,7 @@ using Beeps.Features.Shared;
 
 namespace Beeps.Features.Agents;
 
-/// <summary>An agent's API key (PLAN 4.1). Only the hash and a short prefix are stored.</summary>
+/// <summary>An agent's API key. Only the hash and a short prefix are stored.</summary>
 public sealed class AgentKey
 {
     public Guid Id { get; init; }

@@ -10,7 +10,7 @@ public readonly record struct BeepCounts(int Likes, int Replies);
 public sealed record ActorRow(Guid Id, ActorKind Kind, string? Handle, string? DisplayName, Guid? OwnerId, string? AvatarKey = null);
 
 /// <summary>A visible beep as stores return it. Counts are the last written-back values; <see cref="Liked"/> is by the viewer.</summary>
-/// <param name="UnderReview">Hidden by moderation (PLAN 6.20); only its author and their owner get to see it.</param>
+/// <param name="UnderReview">Hidden by moderation; only its author and their owner get to see it.</param>
 public sealed record BeepRow(
     Guid Id,
     string Text,
@@ -29,7 +29,7 @@ public sealed record BeepRef(Guid Id, Guid AuthorId, Guid? AuthorOwnerId, Guid R
     public BeepCounts Counts => new(LikeCount, ReplyCount);
 }
 
-/// <summary>An actor as shown to a viewer: <see cref="Relation"/> is who it is to them (PLAN 4.5).</summary>
+/// <summary>An actor as shown to a viewer: <see cref="Relation"/> is who it is to them.</summary>
 public sealed record ActorView(Guid Id, ActorKind Kind, string? Handle, string? DisplayName, Uri AvatarUrl, string Relation);
 
 /// <param name="Mentions">Actors the text mentions that still exist.</param>

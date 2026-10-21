@@ -3,7 +3,7 @@ using System.ComponentModel.DataAnnotations;
 namespace Beeps.Infrastructure.Storage;
 
 /// <summary>
-/// The S3-compatible bucket media is stored in (PLAN 6.11, 9.1): Cloudflare R2 in production, SeaweedFS
+/// The S3-compatible bucket media is stored in: Cloudflare R2 in production, SeaweedFS
 /// locally. Only standard S3 calls are made, so the two differ in configuration alone.
 /// </summary>
 public sealed class StorageOptions

@@ -19,7 +19,7 @@ public sealed record ModerationVerdict(
     int? Tokens);
 
 /// <summary>
-/// Asks the model about one beep (PLAN 6.20). Every failure (network, timeout, 429, 5xx, an answer that does not
+/// Asks the model about one beep. Every failure (network, timeout, 429, 5xx, an answer that does not
 /// fit the schema) throws <see cref="ContentModerationException"/>: the review is retried, never taken as allowed.
 /// </summary>
 public interface IContentModerator
@@ -44,7 +44,7 @@ public sealed class ContentModerationException : Exception
     }
 }
 
-/// <summary>Stages a review on the current unit of work, so it commits with the beep it is for (PLAN 12).</summary>
+/// <summary>Stages a review on the current unit of work, so it commits with the beep it is for.</summary>
 public interface IModerationJobs
 {
     void Enqueue(Guid beepId);
@@ -61,7 +61,7 @@ public sealed record ModerationSubject(
     Guid? ReplyToId,
     string? ReplyToText);
 
-/// <summary>A beep in the admins' review queue (PLAN 3.6): hidden by the AI, failed review, or reported.</summary>
+/// <summary>A beep in the admins' review queue: hidden by the AI, failed review, or reported.</summary>
 public sealed record ReviewQueueRow(
     Guid BeepId,
     string Text,

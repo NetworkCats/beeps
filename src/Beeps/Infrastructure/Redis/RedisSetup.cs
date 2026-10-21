@@ -8,7 +8,7 @@ public static class RedisSetup
 {
     public const string ConnectionStringName = "Redis";
 
-    /// <summary>Every key this app writes starts with this, per PLAN 6.7: <c>beeps:v1:{type}:{id}</c>.</summary>
+    /// <summary>Every key this app writes starts with this: <c>beeps:v1:{type}:{id}</c>.</summary>
     public const string KeyPrefix = "beeps:v1:";
 
     /// <summary>How long a command may take unless the connection string says otherwise.</summary>
@@ -61,7 +61,7 @@ public static class RedisSetup
         services.AddSingleton<RedisConnection>();
 
         // HybridCache over Valkey. Every entry passes its own options (see SharedCache and EfSystemStore); the
-        // ones that decide who a request is skip the in-process copy, because instances must not drift apart (PLAN 12).
+        // ones that decide who a request is skip the in-process copy, because instances must not drift apart.
         services.AddStackExchangeRedisCache(_ => { });
         services.AddOptions<RedisCacheOptions>().Configure<IServiceProvider>((options, sp) =>
         {

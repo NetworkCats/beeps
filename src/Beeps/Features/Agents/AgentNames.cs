@@ -6,7 +6,7 @@ using Beeps.Features.Shared;
 namespace Beeps.Features.Agents;
 
 /// <summary>
-/// Default names for a newly connected agent (PLAN 3.3, 4.2): the display name <c>tom's Claude</c> and the
+/// Default names for a newly connected agent: the display name <c>tom's Claude</c> and the
 /// handle <c>tom.claude</c> (<c>tom.claude2</c> and so on when taken).
 /// </summary>
 public static class AgentNames
@@ -81,7 +81,7 @@ public static class AgentNames
     }
 
     /// <summary>
-    /// A name part the owner picked (PLAN 4.2): only characters a mention can hold, so the new handle can
+    /// A name part the owner picked: only characters a mention can hold, so the new handle can
     /// still be @mentioned.
     /// </summary>
     public static bool IsValidHandleName(string? name) =>

@@ -1,7 +1,7 @@
 namespace Beeps.Features.Accounts;
 
 /// <summary>
-/// The two WebAuthn ceremonies (PLAN 6.14): making a passkey and signing in with one. Each starts with the options the
+/// The two WebAuthn ceremonies: making a passkey and signing in with one. Each starts with the options the
 /// browser hands the authenticator, and ends with a check of what it answered against the state kept from the start.
 /// Knows nothing of the database: what an answer is checked against is given by the caller.
 /// </summary>

@@ -34,7 +34,7 @@ public static class LiveErrorCodes
 }
 
 /// <summary>
-/// Live connections (PLAN 6.10): one per browser tab for signed-in people, one per agent that wants its inbox.
+/// Live connections: one per browser tab for signed-in people, one per agent that wants its inbox.
 /// Every connection reads the same stream of events and keeps what concerns its viewer and page; pages then
 /// fetch new content rendered for them, so visibility is decided by the same queries as everywhere else.
 /// </summary>
@@ -117,7 +117,7 @@ public sealed partial class LiveService(
         return Result.Of(StreamAsync(connection, after, resuming: request.LastEventId is not null, cancellationToken));
     }
 
-    /// <summary>An agent's inbox (PLAN 4.3): the unread count on connecting and whenever it changes.</summary>
+    /// <summary>An agent's inbox: the unread count on connecting and whenever it changes.</summary>
     /// <param name="keyId">The key the agent connected with: when it stops working, the stream ends.</param>
     public Result<IAsyncEnumerable<LiveMessage>> OpenInbox(Viewer agent, Guid? keyId, string? lastEventId, CancellationToken cancellationToken)
     {
@@ -463,7 +463,7 @@ public sealed partial class LiveService(
     }
 
     /// <summary>
-    /// Merges the events with a ping every heartbeat interval (PLAN 6.10); null is a ping. On a busy feed every event may
+    /// Merges the events with a ping every heartbeat interval; null is a ping. On a busy feed every event may
     /// be someone else's, so a connection is pinged whether events came or not, or proxies drop it as idle.
     /// </summary>
     /// <remarks>

@@ -7,7 +7,7 @@ using Microsoft.Extensions.Localization;
 
 namespace Beeps.Pages.Admin;
 
-/// <summary>Background work (PLAN 3.6): dead jobs to retry or discard, and how the scheduled jobs last ran.</summary>
+/// <summary>Background work: dead jobs to retry or discard, and how the scheduled jobs last ran.</summary>
 public sealed class SystemModel(SystemService system, IStringLocalizer<SharedResource> localizer) : PageModel
 {
     [BindProperty(SupportsGet = true)] public Guid? Before { get; set; }

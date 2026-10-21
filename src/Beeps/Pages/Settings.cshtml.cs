@@ -14,7 +14,7 @@ namespace Beeps.Pages;
 
 /// <summary>
 /// The account's own settings: avatar, banner, profile, privacy, language, colour scheme, email, password, passkeys, the
-/// Google and GitHub accounts it signs in with and the devices signed in (PLAN 2.2, 3.4, 5.2, 6.12, 6.14). As on
+/// Google and GitHub accounts it signs in with and the devices signed in. As on
 /// Twitter, <c>/settings</c> lists the sections and each has a page of its own (<see cref="SettingsSections"/>); a form
 /// comes back to the section it belongs to, whichever address it was sent to.
 /// </summary>

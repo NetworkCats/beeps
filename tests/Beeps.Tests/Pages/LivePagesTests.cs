@@ -10,7 +10,7 @@ using Beeps.Tests.Support;
 
 namespace Beeps.Tests.Pages;
 
-/// <summary>Live updates on the web (PLAN 6.9, 6.10): the browsers' stream, what the islands follow, and the props they fetch.</summary>
+/// <summary>Live updates on the web: the browsers' stream, what the islands follow, and the props they fetch.</summary>
 public sealed partial class LivePagesTests : IDisposable
 {
     private readonly BeepsWebApplicationFactory factory = new();

@@ -95,7 +95,7 @@ public static class MediaObjects
     public static IReadOnlyList<string> All(string storageKey) => [Full(storageKey), Thumbnail(storageKey), Avatar(storageKey), Banner(storageKey)];
 }
 
-/// <summary>Image decoding and encoding (PLAN 6.11). Pure computation; the implementation uses SkiaSharp.</summary>
+/// <summary>Image decoding and encoding. Pure computation; the implementation uses SkiaSharp.</summary>
 public interface IImageProcessor
 {
     /// <summary>Reads the header only; null if it is not an image the processor understands.</summary>
@@ -110,7 +110,7 @@ public interface IImageProcessor
     ImageVariants? Encode(ReadOnlyMemory<byte> data, MediaPurpose purpose, AvatarCrop? avatarCrop = null, BannerCrop? bannerCrop = null);
 }
 
-/// <summary>Object storage (PLAN 6.11): standard S3, which is Cloudflare R2 in production and SeaweedFS locally.</summary>
+/// <summary>Object storage: standard S3, which is Cloudflare R2 in production and SeaweedFS locally.</summary>
 public interface IMediaStorage
 {
     /// <summary>Stores a public, immutable object.</summary>

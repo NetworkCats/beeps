@@ -13,7 +13,7 @@ public interface ISharedContentCache
 
     Task DeleteAsync(IReadOnlyCollection<string> keys);
 
-    /// <summary>Tells every instance (this one included) to drop its own copies (PLAN 6.7: Pub/Sub carries cache invalidation).</summary>
+    /// <summary>Tells every instance (this one included) to drop its own copies (Pub/Sub carries cache invalidation).</summary>
     Task PublishAsync(byte[] message);
 
     /// <summary>Calls <paramref name="handler"/> for every published message, and <paramref name="restored"/> when the connection came back after a drop, during which messages may have been missed.</summary>

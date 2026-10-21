@@ -5,7 +5,7 @@ using Beeps.Features.Shared;
 namespace Beeps.Features.Beeps;
 
 /// <summary>
-/// Writes the live like and reply counts back to the database (PLAN 6.6). It recounts from the like and
+/// Writes the live like and reply counts back to the database. It recounts from the like and
 /// reply rows instead of copying Valkey, so the columns end up exact even if a live count drifted, and
 /// then puts the exact numbers back into Valkey. A count that was corrected goes to open pages too. Views waiting in
 /// Valkey are added to their columns in the same run.

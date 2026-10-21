@@ -6,7 +6,7 @@ using Microsoft.Extensions.Localization;
 namespace Beeps.Features.Live;
 
 /// <summary>
-/// What a live page adds when the stream announces something new (PLAN 6.10): the same queries that rendered
+/// What a live page adds when the stream announces something new: the same queries that rendered
 /// the page, asked only for what came after the beep it shows last. So a new beep appears exactly when a reload
 /// would have shown it, for this viewer.
 /// </summary>

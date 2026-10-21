@@ -8,7 +8,7 @@ using Microsoft.Extensions.Localization;
 
 namespace Beeps.Features.Profiles;
 
-/// <summary>Profiles (PLAN 1, 2.2), following, which only humans do and only of humans, and blocking (PLAN 5.1).</summary>
+/// <summary>Profiles, following, which only humans do and only of humans, and blocking.</summary>
 public sealed partial class ProfileService(
     IProfileStore store,
     BeepViews views,
@@ -40,7 +40,7 @@ public sealed partial class ProfileService(
         var relation = showFollowing || showBlocked ? await store.GetRelationAsync(viewer!.ActorId, actor.Id, cancellationToken) : ProfileRelation.None;
         bool? following = showFollowing ? relation.Following : null;
         bool? blocked = showBlocked ? relation.Blocking : null;
-        // An agent's likes are kept as its owner keeps theirs (PLAN 5.1).
+        // An agent's likes are kept as its owner keeps theirs.
         var privacy = mine ? ProfilePrivacy.None : await store.GetPrivacyAsync(actor.OwnerId ?? actor.Id, cancellationToken);
         // A human's privacy is read from their own row, which has the counts too.
         var counts = human && !privacy.HideFollowCounts ? privacy.Counts ?? await store.CountFollowsAsync(actor.Id, cancellationToken) : null;
@@ -97,7 +97,7 @@ public sealed partial class ProfileService(
             return limited;
         }
 
-        // In a transaction, so the cached list of whom the viewer follows is invalidated with it (PLAN 6.7).
+        // In a transaction, so the cached list of whom the viewer follows is invalidated with it.
         var followed = await unitOfWork.InTransactionAsync<bool>(
             null,
             async ct => Result.Of(await store.AddFollowAsync(viewer.ActorId, target.Value, time.GetUtcNow(), ct)),
@@ -218,7 +218,7 @@ public sealed partial class ProfileService(
             : profile.Actor;
     }
 
-    /// <summary>Follows and blocks are writes, counted more strictly than reading (PLAN 12, 6.16).</summary>
+    /// <summary>Follows and blocks are writes, counted more strictly than reading.</summary>
     private async Task<Error?> LimitAsync(Viewer viewer, CancellationToken cancellationToken)
     {
         var limited = await rateLimits.CheckAsync(RateLimitPolicies.Follow, RateLimitPartitions.Actor(viewer.ActorId), cancellationToken);

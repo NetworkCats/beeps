@@ -1,7 +1,7 @@
 namespace Beeps.Features.Accounts;
 
 /// <summary>
-/// Throwaway mailboxes, which a new account cannot use (PLAN 6.13): the disposable-email-domains list, which each
+/// Throwaway mailboxes, which a new account cannot use: the disposable-email-domains list, which each
 /// instance keeps a copy of and refreshes weekly (<c>Infrastructure/DisposableEmails</c>). Answers from memory; while no
 /// copy is loaded, no address is disposable.
 /// </summary>

@@ -1,7 +1,7 @@
 namespace Beeps.Pages.Islands;
 
 /// <summary>
-/// The app's JSON API for the site's pages (PLAN 6.9): <c>/page-data/{page}</c> answers with the data of the page at
+/// The app's JSON API for the site's pages: <c>/page-data/{page}</c> answers with the data of the page at
 /// <c>/{page}</c> (same query), as JSON. The request is handed on as one for the page itself, marked as an islands
 /// request (<see cref="IslandRequests"/>): the page runs as usual (same handlers, same queries) and answers with what
 /// its islands are drawn from instead of markup. A redirect stays under <c>/page-data</c>, so the app, following it,

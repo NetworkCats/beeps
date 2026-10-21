@@ -20,7 +20,7 @@ public static class LocalizationSetup
             // zh-CN / zh-SG resolve to zh-Hans through their parent culture.
             options.FallBackToParentCultures = true;
             options.FallBackToParentUICultures = true;
-            // PLAN 6.12: user setting → cookie → Accept-Language → default. Any Chinese first reads Simplified Chinese.
+            // User setting → cookie → Accept-Language → default. Any Chinese first reads Simplified Chinese.
             options.RequestCultureProviders =
             [
                 new UserLocaleCultureProvider(),

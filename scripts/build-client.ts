@@ -22,7 +22,7 @@ const out = join(root, 'src/Beeps/wwwroot/dist');
 const watchMode = process.argv.includes('--watch');
 
 // One app for every page: signed out, server-drawn HTML whose islands Preact takes over; signed in, an app shell drawn
-// from page data and kept live (PLAN 6.9, 6.10).
+// from page data and kept live.
 const appEntry = join(client, 'app/main.tsx');
 const scriptEntries: Record<string, string> = {
   app: appEntry,

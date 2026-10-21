@@ -4,7 +4,7 @@ using Microsoft.Extensions.Options;
 
 namespace Beeps.Infrastructure.Http;
 
-/// <summary>The proxies whose <c>X-Forwarded-*</c> headers are believed (nginx only, see PLAN 9.2).</summary>
+/// <summary>The proxies whose <c>X-Forwarded-*</c> headers are believed (nginx only).</summary>
 public sealed class TrustedProxyOptions
 {
     public const string SectionName = "ForwardedHeaders";

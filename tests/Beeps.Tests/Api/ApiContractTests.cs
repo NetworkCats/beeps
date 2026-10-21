@@ -10,7 +10,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Beeps.Tests.Api;
 
-/// <summary>Rules every agent endpoint must follow (PLAN 12), checked over all of them so a new one cannot slip by.</summary>
+/// <summary>Rules every agent endpoint must follow, checked over all of them so a new one cannot slip by.</summary>
 public sealed partial class ApiContractTests : IClassFixture<BeepsWebApplicationFactory>
 {
     private readonly BeepsWebApplicationFactory factory;

@@ -74,7 +74,7 @@ ensure_services() {
     compose up -d --wait postgres valkey meilisearch
 }
 
-# The app searches with a key that can only search and write documents (PLAN 6.18), created once with the master key.
+# The app searches with a key that can only search and write documents, created once with the master key.
 ensure_search_key() {
     local image=$1 output key
     if grep -q '^Search__ApiKey=' "$ROOT/search.env" 2>/dev/null; then

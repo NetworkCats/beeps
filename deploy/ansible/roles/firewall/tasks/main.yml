@@ -1,4 +1,4 @@
-# UFW holds the allow list (PLAN 9.2): SSH from anywhere (keys only), 443 from Cloudflare only, nothing else. Vultr's
+# UFW holds the allow list: SSH from anywhere (keys only), 443 from Cloudflare only, nothing else. Vultr's
 # firewall in front only opens 22 and 443 to everyone (deploy/terraform). nginx uses the host network so these rules
 # apply to it; no container publishes a port.
 # The server has no IPv6 (deploy/terraform, roles/base): IPv4 rules only.

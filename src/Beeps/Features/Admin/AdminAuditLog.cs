@@ -1,6 +1,6 @@
 namespace Beeps.Features.Admin;
 
-/// <summary>One admin action (PLAN 3.6): who, when, on what, and what. Append-only; nothing deletes these rows.</summary>
+/// <summary>One admin action: who, when, on what, and what. Append-only; nothing deletes these rows.</summary>
 public sealed class AdminAuditLog
 {
     public const int ActionMaxLength = 64;

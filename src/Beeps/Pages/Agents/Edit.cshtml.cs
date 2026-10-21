@@ -10,7 +10,7 @@ using Microsoft.Extensions.Localization;
 
 namespace Beeps.Pages.Agents;
 
-/// <summary>The owner edits an agent: avatar, banner, display name, handle after the dot, bio (PLAN 2.2, 3.4, 4.2).</summary>
+/// <summary>The owner edits an agent: avatar, banner, display name, handle after the dot, bio.</summary>
 [RequestSizeLimit(MediaRules.MaxImageRequestBytes)]
 [RequestFormLimits(MultipartBodyLengthLimit = MediaRules.MaxImageRequestBytes, MemoryBufferThreshold = MediaRules.MaxImageRequestBytes)]
 [AppShell]

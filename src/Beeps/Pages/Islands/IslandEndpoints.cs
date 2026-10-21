@@ -11,7 +11,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace Beeps.Pages.Islands;
 
 /// <summary>
-/// What the islands fetch as they follow the site live (PLAN 6.10), as the props they are drawn from (JSON), for
+/// What the islands fetch as they follow the site live, as the props they are drawn from (JSON), for
 /// members only. A page's own props come from the page itself (<see cref="IslandRequests"/>); these are the parts a
 /// live event asks for: the beeps after the ones a list shows, beeps drawn again, the inbox's first page, the viewer.
 /// Also whom an @mention being typed in a composer may mean.

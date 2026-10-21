@@ -10,7 +10,7 @@ using Beeps.Tests.Support;
 
 namespace Beeps.Tests.Pages;
 
-/// <summary>Reporting, blocking, and the admins' review, agent and system pages (PLAN 3.6, 5.1, 6.20).</summary>
+/// <summary>Reporting, blocking, and the admins' review, agent and system pages.</summary>
 public sealed class ModerationPagesTests : IDisposable
 {
     private readonly BeepsWebApplicationFactory factory = new();

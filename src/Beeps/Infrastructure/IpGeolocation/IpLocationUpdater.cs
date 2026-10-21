@@ -5,7 +5,7 @@ using Microsoft.Extensions.Options;
 namespace Beeps.Infrastructure.IpGeolocation;
 
 /// <summary>
-/// Keeps this instance's copy of the IP database (PLAN 6.14) no older than a day. Each instance fetches its own: the
+/// Keeps this instance's copy of the IP database no older than a day. Each instance fetches its own: the
 /// file is reference data anyone can download again, not state, so it needs no coordination, and nothing waits for it.
 /// The copy is kept on local disk, so a restart starts from it rather than downloading again. A download is used only
 /// once it opens as a database, so a failed or damaged one leaves the copy in use as it was.

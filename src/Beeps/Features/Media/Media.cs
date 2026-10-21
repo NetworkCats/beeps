@@ -1,7 +1,7 @@
 namespace Beeps.Features.Media;
 
 /// <summary>
-/// An uploaded image (PLAN 8), stored re-encoded under <see cref="StorageKey"/> in the sizes its
+/// An uploaded image, stored re-encoded under <see cref="StorageKey"/> in the sizes its
 /// <see cref="Purpose"/> needs (see <see cref="MediaObjects"/>). It can be used for that purpose as soon as it is
 /// uploaded, but is only shown once <see cref="ProcessMediaHandler"/> has made it <see cref="MediaStatus.Ready"/>.
 /// One that is never used is deleted by <see cref="MediaCleanupJob"/>.
@@ -59,7 +59,7 @@ public enum MediaStatus
     /// <summary>Decoding failed (a truncated or corrupt file): there is nothing to show, ever. It cannot be attached.</summary>
     Failed,
 
-    /// <summary>Taken down by an admin (PLAN 3.6): its objects are deleted; never shown or attached again. The row stays for audit.</summary>
+    /// <summary>Taken down by an admin: its objects are deleted; never shown or attached again. The row stays for audit.</summary>
     Removed,
 }
 

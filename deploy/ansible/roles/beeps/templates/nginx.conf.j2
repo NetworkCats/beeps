@@ -1,5 +1,5 @@
 # {{ ansible_managed }}
-# nginx in front of the app (PLAN 9.2). Only Cloudflare reaches port 443 (UFW, see roles/firewall), so this file does
+# nginx in front of the app. Only Cloudflare reaches port 443 (UFW, see roles/firewall), so this file does
 # no access control of its own. Mounted at /etc/nginx/beeps; two files beside it are written by scripts, not Ansible:
 #   cloudflare-realip.conf  Cloudflare's addresses, kept current by beeps-cloudflare-ips
 #   upstream.conf           the app colour taking traffic, switched by beeps-deploy
@@ -35,7 +35,7 @@ http {
     keepalive_timeout 905s;
     keepalive_requests 10000;
 
-    # The web composer sends four 5 MB images in one form (PLAN 9.2).
+    # The web composer sends four 5 MB images in one form.
     client_max_body_size 21m;
     client_body_buffer_size 256k;
 
@@ -72,7 +72,7 @@ http {
         http2 on;
         server_name {{ beeps_server_name }};
 
-        # Cloudflare Origin CA (PLAN 9.2): trusted by Cloudflare alone, for Full (strict).
+        # Cloudflare Origin CA: trusted by Cloudflare alone, for Full (strict).
         ssl_certificate /etc/nginx/tls/origin.pem;
         ssl_certificate_key /etc/nginx/tls/origin.key;
 
@@ -95,7 +95,7 @@ http {
             return 404;
         }
 
-        # Server-sent events (PLAN 6.10): passed on as they come. The app also sends X-Accel-Buffering: no, and a
+        # Server-sent events: passed on as they come. The app also sends X-Accel-Buffering: no, and a
         # ping every 20 seconds, well inside the timeout.
         location = /stream {
             proxy_pass http://beeps_app;

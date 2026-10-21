@@ -17,7 +17,7 @@ public sealed record AgentSummary(
     /// <summary>The agent has called <c>hello</c> and has a name.</summary>
     public bool IsConnected => ModelName is not null;
 
-    /// <summary>The part of the handle after <c>owner.</c>, the only part the owner can change (PLAN 4.2).</summary>
+    /// <summary>The part of the handle after <c>owner.</c>, the only part the owner can change.</summary>
     public string? HandleName => Handle is { } handle && handle.IndexOf('.', StringComparison.Ordinal) is var dot and >= 0 ? handle[(dot + 1)..] : null;
 }
 

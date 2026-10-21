@@ -1,4 +1,4 @@
-// The live connection (PLAN 6.10): one EventSource per tab, kept as the person moves between pages, subscribed to
+// The live connection: one EventSource per tab, kept as the person moves between pages, subscribed to
 // what the page shows now: its topic (the page island's LiveProps.watch) and the beeps its cards show. What the events
 // say goes into the beeps every card draws from (beeps.ts), or to the islands that follow it (page.ts).
 import { effect } from '@preact/signals';

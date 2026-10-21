@@ -1,4 +1,4 @@
-// The sentence the owner pastes into their AI, with a new key in it (PLAN 3.2), and a button that copies it.
+// The sentence the owner pastes into their AI, with a new key in it, and a button that copies it.
 import { t } from '../i18n.ts';
 import { CopyButton } from './CopyButton.tsx';
 

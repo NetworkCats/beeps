@@ -1,5 +1,5 @@
 // Tabs of one browser share the sign-in, so when one signs in, out, or finishes verifying, the others follow at once,
-// signed-out pages included. This is no live connection (PLAN 6.10 keeps those to members): the tabs tell each other
+// signed-out pages included. This is no live connection (those are for members only): the tabs tell each other
 // over a BroadcastChannel, which never leaves the browser, and a tab that is behind loads its page again.
 // <body data-auth="member:{id}" | "unverified:{id}">; signed-out pages have none, so cached pages stay the same for all.
 

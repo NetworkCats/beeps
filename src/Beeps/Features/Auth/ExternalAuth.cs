@@ -9,7 +9,7 @@ using Microsoft.AspNetCore.Authentication.OAuth;
 namespace Beeps.Features.Auth;
 
 /// <summary>
-/// Signing in with Google and GitHub (PLAN 6.14), with the framework's own OAuth handler: <c>/oauth/{provider}</c>
+/// Signing in with Google and GitHub, with the framework's own OAuth handler: <c>/oauth/{provider}</c>
 /// (Pages/Account/External) sends the browser there, it comes back to <c>/oauth/{provider}/callback</c>, and what the
 /// provider said is kept in a short-lived cookie (<see cref="AuthSchemes.External"/>) for <c>/oauth/complete</c>
 /// (Pages/Account/ExternalComplete) to sign in, sign up or link with. A provider without a client id and secret is not
@@ -118,7 +118,7 @@ public static class ExternalAuth
 
     /// <summary>
     /// Cancelled at the provider, or its answer did not hold up (expired, replayed, the provider down): back to where it
-    /// was started, which says so in the page's language (only known after this, PLAN 6.12).
+    /// was started, which says so in the page's language (only known after this).
     /// </summary>
     private static Task Back<TOptions>(HandleRequestContext<TOptions> context, AuthenticationProperties? properties, string provider)
         where TOptions : AuthenticationSchemeOptions

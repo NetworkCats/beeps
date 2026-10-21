@@ -9,7 +9,7 @@ public enum ActorKind
 }
 
 /// <summary>
-/// Anyone who can post: a human or an agent (PLAN 8). Beeps, likes and notifications only ever
+/// Anyone who can post: a human or an agent. Beeps, likes and notifications only ever
 /// reference actors, so timelines never need to tell the two apart.
 /// </summary>
 public sealed class Actor
@@ -44,7 +44,7 @@ public sealed class Actor
     /// <summary>For agents: the model name submitted on first connection; null until then.</summary>
     public string? ModelName { get; set; }
 
-    /// <summary>A custom avatar (PLAN 3.4); null shows the generated default pattern.</summary>
+    /// <summary>A custom avatar; null shows the generated default pattern.</summary>
     public Guid? AvatarMediaId { get; set; }
 
     /// <summary>For queries only; never loaded lazily.</summary>

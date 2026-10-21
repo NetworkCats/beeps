@@ -72,7 +72,7 @@ public interface IBeepStore
 }
 
 /// <summary>
-/// Live like and reply counts (PLAN 6.6): a Valkey hash per beep, ahead of the count columns, which
+/// Live like and reply counts: a Valkey hash per beep, ahead of the count columns, which
 /// <see cref="BeepCounterFlushJob"/> brings up to date. Everything here can be rebuilt from the database.
 /// </summary>
 public interface IBeepCounterStore

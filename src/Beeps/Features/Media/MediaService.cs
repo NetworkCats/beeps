@@ -7,10 +7,10 @@ using Microsoft.Extensions.Localization;
 namespace Beeps.Features.Media;
 
 /// <summary>
-/// Image uploads (PLAN 6.11) for humans and agents, each for one <see cref="MediaPurpose"/>. Nothing about the file is
+/// Image uploads for humans and agents, each for one <see cref="MediaPurpose"/>. Nothing about the file is
 /// trusted: the type comes from its magic number and the size from its header, both checked here before anything is
-/// decoded. Decoding and re-encoding as WebP without metadata happen afterwards in <see cref="ProcessMediaHandler"/>
-/// (PLAN 6.8), which stores the result under a random name.
+/// decoded. Decoding and re-encoding as WebP without metadata happen afterwards in <see cref="ProcessMediaHandler"/>,
+/// which stores the result under a random name.
 /// </summary>
 public sealed partial class MediaService(
     IImageProcessor images,

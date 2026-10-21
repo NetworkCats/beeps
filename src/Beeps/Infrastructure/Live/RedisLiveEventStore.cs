@@ -6,7 +6,7 @@ using StackExchange.Redis;
 namespace Beeps.Infrastructure.Live;
 
 /// <summary>
-/// One Valkey stream for all live events (PLAN 6.7: Stream, so a reconnecting browser can replay), capped in
+/// One Valkey stream for all live events (a Stream, so a reconnecting browser can replay), capped in
 /// length, with a Pub/Sub message per event so readers need not poll it; a set of beeps whose counts changed; and a
 /// sorted set per account of its open connections.
 /// </summary>

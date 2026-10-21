@@ -17,7 +17,7 @@ public sealed record ActorEntry(CachedActor Actor, bool Visible)
 }
 
 /// <summary>
-/// Reads that are the same for every reader, through <see cref="ContentCache"/> (PLAN 6.6: timelines find ids,
+/// Reads that are the same for every reader, through <see cref="ContentCache"/> (timelines find ids,
 /// beeps are cached on their own and fetched in batches). What depends on the reader (visibility, blocks, likes,
 /// "under review") is never cached: the stores' queries answer it and hand over ids.
 /// </summary>

@@ -1,7 +1,7 @@
 namespace Beeps.Pages.Islands;
 
 /// <summary>
-/// Pages are islands (PLAN 6.9), drawn by the browser's Preact components from their props. An islands request is a
+/// Pages are islands, drawn by the browser's Preact components from their props. An islands request is a
 /// page's data, asked for at <c>/page-data/{page}</c> (<see cref="PageDataMiddleware"/>, which marks it with
 /// <see cref="Header"/>): the page runs as usual (same handlers, same queries), its islands write their props here
 /// instead of their markup, and <c>_Islands.cshtml</c> answers with them as JSON, with what else the app needs to show

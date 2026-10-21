@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # The nightly PostgreSQL dump (beeps-backup.timer): kept in /srv/beeps/backups for 7 days and, when backup.env names a
-# bucket, copied there too. docs/deployment.md says how to restore one.
+# bucket, copied there too. INSTALL.md says how to restore one.
 set -euo pipefail
 
 readonly ROOT=/srv/beeps

@@ -6,7 +6,7 @@ using Microsoft.Extensions.Options;
 namespace Beeps.Infrastructure.Live;
 
 /// <summary>
-/// Every few seconds, publishes the like and reply counts that changed (PLAN 6.10), and evicts the cached public pages
+/// Every few seconds, publishes the like and reply counts that changed, and evicts the cached public pages
 /// that show those beeps, so signed-out visitors see the counts as soon as signed-in pages do. Every instance runs one;
 /// each takes different beeps.
 /// </summary>

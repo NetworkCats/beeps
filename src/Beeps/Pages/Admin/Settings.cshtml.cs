@@ -8,7 +8,7 @@ using Microsoft.Extensions.Localization;
 
 namespace Beeps.Pages.Admin;
 
-/// <summary>Registration mode and invite codes (PLAN 3.6).</summary>
+/// <summary>Registration mode and invite codes.</summary>
 public sealed class SettingsModel(AdminService admin, IStringLocalizer<SharedResource> localizer) : PageModel
 {
     [BindProperty] public RegistrationMode Mode { get; set; }

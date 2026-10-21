@@ -9,7 +9,7 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 
 namespace Beeps.Pages;
 
-/// <summary>Searching beeps and people (PLAN 6.18). <c>#tag</c> goes straight to the hashtag's page (PLAN 6.19).</summary>
+/// <summary>Searching beeps and people. <c>#tag</c> goes straight to the hashtag's page.</summary>
 [RateLimitPolicy(RateLimitPolicies.Search)]
 [AppShell]
 public sealed class SearchModel(SearchService search) : PageModel

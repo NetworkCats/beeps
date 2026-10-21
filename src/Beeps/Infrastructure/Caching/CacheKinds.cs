@@ -3,7 +3,7 @@ using Beeps.Infrastructure.Redis;
 
 namespace Beeps.Infrastructure.Caching;
 
-/// <summary>One kind of cached entry: its key (PLAN 6.7, <c>beeps:v1:{type}:{id}</c>), how it is stored and for how long.</summary>
+/// <summary>One kind of cached entry: its key (<c>beeps:v1:{type}:{id}</c>), how it is stored and for how long.</summary>
 /// <remarks>When a record's shape changes, give the kind a new name, so instances on the old and the new code never read each other's entries.</remarks>
 public sealed class CacheKind<TKey, TValue>(string name, Func<TKey, string> format, JsonTypeInfo<TValue> type, Func<CacheOptions, TimeSpan> expiration)
     where TKey : notnull

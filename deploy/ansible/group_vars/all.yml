@@ -1,6 +1,6 @@
 # Every value comes from the environment. In GitHub Actions that is the production environment: its secrets for
 # anything secret, its variables for the rest (.github/workflows/deploy.yml maps each one). Run by hand, export the same
-# names (docs/deployment.md lists them all). Empty optional values are left out of app.env, so the app's own default in
+# names (INSTALL.md lists them all). Empty optional values are left out of app.env, so the app's own default in
 # appsettings.json applies.
 
 # --- The server -----------------------------------------------------------------------------------------------------
@@ -20,7 +20,7 @@ beeps_registry_token: "{{ lookup('ansible.builtin.env', 'GHCR_TOKEN') }}"
 # PEM; the Cloudflare Origin CA certificate for beeps_server_name and its private key.
 beeps_origin_certificate: "{{ lookup('ansible.builtin.env', 'ORIGIN_CERTIFICATE') }}"
 beeps_origin_private_key: "{{ lookup('ansible.builtin.env', 'ORIGIN_PRIVATE_KEY') }}"
-# Base64 of the PKCS#12 file that encrypts the Data Protection keys (PLAN 6.4), and its password.
+# Base64 of the PKCS#12 file that encrypts the Data Protection keys, and its password.
 beeps_data_protection_certificate: "{{ lookup('ansible.builtin.env', 'DATA_PROTECTION_CERTIFICATE') }}"
 beeps_data_protection_password: "{{ lookup('ansible.builtin.env', 'DATA_PROTECTION_CERTIFICATE_PASSWORD') }}"
 

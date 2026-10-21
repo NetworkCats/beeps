@@ -111,7 +111,7 @@ public sealed class PendingCacheChanges(BeepsDbContext db, CacheInvalidator inva
         nameof(Features.Accounts.Actor.BannerMediaId),
     ];
 
-    /// <summary>What a human's profile shows of them to others (PLAN 5.1).</summary>
+    /// <summary>What a human's profile shows of them to others.</summary>
     private static readonly string[] PrivacyProperties =
     [
         nameof(User.HideLikes),

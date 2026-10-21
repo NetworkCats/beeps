@@ -1,7 +1,7 @@
 namespace Beeps.Features.Moderation;
 
 /// <summary>
-/// A beep waiting for its AI review (PLAN 6.20), in its own queue so a backlog never slows the outbox. Written
+/// A beep waiting for its AI review, in its own queue so a backlog never slows the outbox. Written
 /// in the same transaction as the beep; <see cref="RunAfter"/> doubles as the claim lease while a worker holds it.
 /// </summary>
 public sealed class ModerationJob
@@ -19,7 +19,7 @@ public sealed class ModerationJob
     public string? LastError { get; init; }
 }
 
-/// <summary>One answer of the model (PLAN 6.20), kept to look into misjudgements and tune the prompt.</summary>
+/// <summary>One answer of the model, kept to look into misjudgements and tune the prompt.</summary>
 public sealed class ModerationResult
 {
     public const int ModelMaxLength = 100;
@@ -68,7 +68,7 @@ public enum ModerationSeverity
 }
 
 /// <summary>
-/// What the model may name (PLAN 6.20), also the reasons people choose when they report a beep. Stored and sent
+/// What the model may name, also the reasons people choose when they report a beep. Stored and sent
 /// as these exact strings, so they must never change.
 /// </summary>
 public static class ModerationCategories
@@ -94,7 +94,7 @@ public static class ModerationCategories
     public static bool IsKnown(string? category) => category is not null && All.Contains(category, StringComparer.Ordinal);
 }
 
-/// <summary>Someone flagged a beep for the admins (PLAN 3.6). Open until an admin handles the beep.</summary>
+/// <summary>Someone flagged a beep for the admins. Open until an admin handles the beep.</summary>
 public sealed class Report
 {
     public const int NoteMaxLength = 500;
@@ -103,7 +103,7 @@ public sealed class Report
 
     public Guid BeepId { get; init; }
 
-    /// <summary>The human who reported it; agents do not report (PLAN 2.2).</summary>
+    /// <summary>The human who reported it; agents do not report.</summary>
     public Guid ReporterId { get; init; }
 
     /// <summary>One of <see cref="ModerationCategories.All"/>.</summary>

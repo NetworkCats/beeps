@@ -9,7 +9,7 @@ using Microsoft.Extensions.Localization;
 
 namespace Beeps.Pages.Beep;
 
-/// <summary>Reporting a beep to the admins (PLAN 3.6): a reason and an optional note.</summary>
+/// <summary>Reporting a beep to the admins: a reason and an optional note.</summary>
 [AppShell]
 public sealed class ReportModel(BeepService beeps, ReportService reports, IStringLocalizer<SharedResource> localizer) : PageModel
 {

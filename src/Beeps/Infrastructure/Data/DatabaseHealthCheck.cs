@@ -4,7 +4,7 @@ using Npgsql;
 namespace Beeps.Infrastructure.Data;
 
 /// <summary>
-/// <c>/healthz</c>: the instance answers and reaches PostgreSQL, so a deploy can send it traffic (PLAN 9.3). Valkey and
+/// <c>/healthz</c>: the instance answers and reaches PostgreSQL, so a deploy can send it traffic. Valkey and
 /// Meilisearch are left out: the app keeps working without them, and an instance should not be held back for them.
 /// </summary>
 internal sealed class DatabaseHealthCheck(NpgsqlDataSource dataSource) : IHealthCheck

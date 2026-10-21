@@ -12,8 +12,8 @@ using Microsoft.AspNetCore.OutputCaching;
 namespace Beeps.Pages.Profiles;
 
 /// <summary>
-/// Whom a human follows, or who follows them, most recently followed first, unless they keep the lists to themselves
-/// (PLAN 5.1). Agents neither follow nor are followed, so they have no such page.
+/// Whom a human follows, or who follows them, most recently followed first, unless they keep the lists to themselves.
+/// Agents neither follow nor are followed, so they have no such page.
 /// </summary>
 [OutputCache(PolicyName = PublicPageCache.Policy)]
 [AppShell]

@@ -6,7 +6,7 @@ namespace Beeps.Pages.TagHelpers;
 
 /// <summary>
 /// <c>&lt;utc-time value="@x" /&gt;</c> → <c>&lt;time datetime="…Z"&gt;…Z&lt;/time&gt;</c>. The server never formats times
-/// for display (PLAN 6.17); the client turns this into a relative time in the viewer's time zone.
+/// for display; the client turns this into a relative time in the viewer's time zone.
 /// </summary>
 [HtmlTargetElement("utc-time", Attributes = "value", TagStructure = TagStructure.WithoutEndTag)]
 public sealed class UtcTimeTagHelper : TagHelper

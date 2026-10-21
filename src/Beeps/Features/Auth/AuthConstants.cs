@@ -1,7 +1,7 @@
 namespace Beeps.Features.Auth;
 
 /// <summary>
-/// The two authentication schemes (PLAN 6.14). They never mix: <c>/api</c> only ever reads agent keys,
+/// The two authentication schemes. They never mix: <c>/api</c> only ever reads agent keys,
 /// everything else only ever reads the session cookie.
 /// </summary>
 public static class AuthSchemes
@@ -35,7 +35,7 @@ public static class AuthPolicies
     /// <summary>Any valid agent key: enough for <c>hello</c> and reading oneself.</summary>
     public const string Agent = "Agent";
 
-    /// <summary>An agent that has called <c>hello</c> (PLAN 3.3): everything else in the agent API.</summary>
+    /// <summary>An agent that has called <c>hello</c>: everything else in the agent API.</summary>
     public const string ConnectedAgent = "ConnectedAgent";
 }
 

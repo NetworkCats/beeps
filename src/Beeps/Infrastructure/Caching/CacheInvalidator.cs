@@ -13,7 +13,7 @@ using Microsoft.Extensions.Options;
 namespace Beeps.Infrastructure.Caching;
 
 /// <summary>
-/// Drops cached copies of committed changes, off the request (PLAN 6.7). The request only removes this
+/// Drops cached copies of committed changes, off the request. The request only removes this
 /// instance's copies of the entries and queues the change; this worker then works out the affected output-cached
 /// pages, deletes the entries from Valkey and publishes both on Pub/Sub, which every instance (this one too)
 /// applies to its own copies (<see cref="CacheInvalidationListener"/>).

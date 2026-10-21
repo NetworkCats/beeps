@@ -8,7 +8,7 @@ using Microsoft.AspNetCore.Razor.TagHelpers;
 namespace Beeps.Pages.TagHelpers;
 
 /// <summary>
-/// <c>&lt;body live-stream&gt;</c>: for signed-in people only (PLAN 6.10), where the live stream is, when the page was
+/// <c>&lt;body live-stream&gt;</c>: for signed-in people only, where the live stream is, when the page was
 /// rendered (the stream replays what happened since) and how the request is signed in (<c>data-auth</c>, so the
 /// browser's other tabs follow a sign-in or sign-out). Razor writes <c>data-*</c> attributes even when their value is
 /// null, so they are not written by hand: signed-out pages stay free of them, and of the cache-busting render time.

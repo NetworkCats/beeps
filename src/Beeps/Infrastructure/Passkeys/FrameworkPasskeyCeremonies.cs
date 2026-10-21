@@ -11,7 +11,7 @@ namespace Beeps.Infrastructure.Passkeys;
 
 /// <summary>
 /// The WebAuthn ceremonies with the framework's own passkey handler (ASP.NET Core Identity's
-/// <see cref="PasskeyHandler{TUser}"/>, without the rest of Identity; PLAN 6.14). The handler looks the account and its
+/// <see cref="PasskeyHandler{TUser}"/>, without the rest of Identity). The handler looks the account and its
 /// passkeys up through a <see cref="UserManager{TUser}"/>; the one each ceremony gets knows only what the caller handed
 /// in (<see cref="KnownPasskeys"/>). The site is the relying party: its host is the RP ID, and its origin the only one
 /// an answer may come from. Attestation is neither asked for nor checked: any authenticator will do.

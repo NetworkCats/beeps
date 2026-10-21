@@ -4,7 +4,7 @@ using Microsoft.Extensions.Localization;
 
 namespace Beeps.Features.Admin;
 
-/// <param name="Since">Start of "today": midnight UTC, as the backend knows no other time zone (PLAN 6.17).</param>
+/// <param name="Since">Start of "today": midnight UTC, as the backend knows no other time zone.</param>
 /// <param name="ReviewQueue">Beeps waiting for an admin (hidden, failed review, reported).</param>
 /// <param name="ModerationBacklog">Beeps waiting for their AI review.</param>
 /// <param name="OutboxBacklog">Background jobs waiting or being retried.</param>
@@ -56,7 +56,7 @@ public interface ISystemStore
     Task<IReadOnlyList<ScheduledJobRow>> ListScheduledJobsAsync(CancellationToken cancellationToken);
 }
 
-/// <summary>The overview and the "system" page of the admin area (PLAN 3.6): backlogs, dead jobs, scheduled jobs.</summary>
+/// <summary>The overview and the "system" page of the admin area: backlogs, dead jobs, scheduled jobs.</summary>
 public sealed partial class SystemService(
     ISystemStore store,
     IModerationStore moderation,
@@ -102,11 +102,11 @@ public sealed partial class SystemService(
             ? denied
             : Result.Of(await store.ListScheduledJobsAsync(cancellationToken));
 
-    /// <summary>Gives a dead job a fresh set of attempts (PLAN 3.6), once whatever made it fail is fixed.</summary>
+    /// <summary>Gives a dead job a fresh set of attempts, once whatever made it fail is fixed.</summary>
     public Task<Result> RetryDeadJobAsync(Guid adminId, Guid jobId, CancellationToken cancellationToken) =>
         ChangeDeadJobAsync(adminId, jobId, AuditActions.RetryJob, ct => store.RetryDeadJobAsync(jobId, time.GetUtcNow(), ct), cancellationToken);
 
-    /// <summary>Drops a dead job for good (PLAN 3.6).</summary>
+    /// <summary>Drops a dead job for good.</summary>
     public Task<Result> DiscardDeadJobAsync(Guid adminId, Guid jobId, CancellationToken cancellationToken) =>
         ChangeDeadJobAsync(adminId, jobId, AuditActions.DiscardJob, ct => store.DeleteDeadJobAsync(jobId, ct), cancellationToken);
 

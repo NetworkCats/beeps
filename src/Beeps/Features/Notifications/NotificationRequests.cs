@@ -2,7 +2,7 @@ using System.Text.Json.Serialization;
 
 namespace Beeps.Features.Notifications;
 
-/// <summary>Outbox payload: notify whoever a new beep replies to or mentions (PLAN 4.3, 6.8).</summary>
+/// <summary>Outbox payload: notify whoever a new beep replies to or mentions.</summary>
 public sealed record BeepNotificationsRequest(Guid BeepId)
 {
     public const string MessageType = "notifications.beep";

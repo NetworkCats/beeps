@@ -3,7 +3,7 @@ using Beeps.Features.Search;
 namespace Beeps.Infrastructure.Search;
 
 /// <summary>
-/// Maintenance commands, run as a one-off process with the admin key (PLAN 6.18, 9.3):
+/// Maintenance commands, run as a one-off process with the admin key:
 /// <c>search rebuild</c> fills the indexes from PostgreSQL (also the first-time setup), and
 /// <c>search create-key</c> prints a key for the app that can only search and write documents.
 /// </summary>

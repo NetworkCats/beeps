@@ -15,14 +15,14 @@
     fail_msg: >-
       POSTGRES_PASSWORD and MEILI_MASTER_KEY must be at least 16 characters without ; or ' (openssl rand -hex 32),
       ORIGIN_CERTIFICATE and ORIGIN_PRIVATE_KEY in PEM, DATA_PROTECTION_CERTIFICATE set, CLOUDFLARE_ACCOUNT_ID the
-      32-character account id (docs/deployment.md)
+      32-character account id (INSTALL.md)
     quiet: true
 
 - name: Check the required settings are given
   ansible.builtin.assert:
     that:
       - beeps_app_settings[item] | length > 0
-    fail_msg: "{{ item }} is empty (docs/deployment.md says which GitHub secret or variable sets it)"
+    fail_msg: "{{ item }} is empty (INSTALL.md says which GitHub secret or variable sets it)"
     quiet: true
   loop: "{{ beeps_required_settings }}"
   # Without moderation there is no model to call.

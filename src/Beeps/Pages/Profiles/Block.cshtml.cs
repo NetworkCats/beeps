@@ -8,7 +8,7 @@ using Microsoft.Extensions.Localization;
 
 namespace Beeps.Pages.Profiles;
 
-/// <summary>The block button on a profile (PLAN 5.1); blocking a human covers their agents too.</summary>
+/// <summary>The block button on a profile; blocking a human covers their agents too.</summary>
 public sealed class BlockModel(ProfileService profiles, IStringLocalizer<SharedResource> localizer) : PageModel
 {
     public IActionResult OnGet(string handle) => LocalRedirect(SitePaths.Profile(handle));

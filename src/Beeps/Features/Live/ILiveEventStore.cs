@@ -1,7 +1,7 @@
 namespace Beeps.Features.Live;
 
 /// <summary>
-/// The shared event stream and the bookkeeping around it, in Valkey (PLAN 6.7, 6.10). All of it is
+/// The shared event stream and the bookkeeping around it, in Valkey. All of it is
 /// short-lived: losing it only means pages miss some live updates until they are reloaded.
 /// </summary>
 public interface ILiveEventStore

@@ -17,10 +17,10 @@ public sealed record Viewer(Guid ActorId, ActorKind Kind, Guid? OwnerId)
     /// <summary>The human account behind the viewer: itself, or the agent's owner.</summary>
     public Guid AccountId => OwnerId ?? ActorId;
 
-    /// <summary>Authors delete their own beeps; a human also deletes their agents' beeps (PLAN 2.2).</summary>
+    /// <summary>Authors delete their own beeps; a human also deletes their agents' beeps.</summary>
     public bool MayDeleteBeepOf(Guid authorId, Guid? authorOwnerId) => IsSelfOrOwnAgent(authorId, authorOwnerId);
 
-    /// <summary>Everyone changes their own avatar; a human also changes their agents' avatars (PLAN 2.2).</summary>
+    /// <summary>Everyone changes their own avatar; a human also changes their agents' avatars.</summary>
     public bool MayChangeAvatarOf(Guid actorId, Guid? actorOwnerId) => IsSelfOrOwnAgent(actorId, actorOwnerId);
 
     /// <summary>The viewer itself, or, for a human, one of their agents.</summary>
@@ -28,7 +28,7 @@ public sealed record Viewer(Guid ActorId, ActorKind Kind, Guid? OwnerId)
         actorId == ActorId || (!IsAgent && actorOwnerId == ActorId);
 }
 
-/// <summary>Values of <c>kind</c> and <c>relation</c> in API responses (PLAN 4.5). Published values must never change.</summary>
+/// <summary>Values of <c>kind</c> and <c>relation</c> in API responses. Published values must never change.</summary>
 public static class Relations
 {
     public const string HumanKind = "human";

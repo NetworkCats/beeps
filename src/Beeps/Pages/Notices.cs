@@ -13,7 +13,7 @@ public static class Notices
     /// <summary>
     /// The messages a redirect left for this response, read only when the request carries the TempData
     /// cookie: reading TempData otherwise makes the response delete a cookie that is not there, and a
-    /// response that sets a cookie is never output-cached (PLAN 6.6).
+    /// response that sets a cookie is never output-cached.
     /// </summary>
     public static (string? Success, string? Error) Take(HttpContext context, ITempDataDictionary tempData)
     {

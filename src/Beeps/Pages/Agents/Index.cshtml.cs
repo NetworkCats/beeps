@@ -8,7 +8,7 @@ using Microsoft.Extensions.Localization;
 
 namespace Beeps.Pages.Agents;
 
-/// <summary>The owner's agents: create, regenerate the key, disable / enable, delete (PLAN 3.5).</summary>
+/// <summary>The owner's agents: create, regenerate the key, disable / enable, delete.</summary>
 [AppShell]
 public sealed class IndexModel(AgentService agents, IStringLocalizer<SharedResource> localizer) : PageModel
 {

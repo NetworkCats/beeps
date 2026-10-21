@@ -4,7 +4,7 @@ using Jdenticon;
 namespace Beeps.Features.Avatars;
 
 /// <summary>
-/// The random-looking default avatar (PLAN 3.4). The pattern is a pure function of a hash of the actor
+/// The random-looking default avatar. The pattern is a pure function of a hash of the actor
 /// id, never of the email or name, so it is rendered on demand and cached by the CDN instead of stored.
 /// </summary>
 public static class DefaultAvatar

@@ -27,7 +27,7 @@ public static class SitePaths
     /// <summary>Where a beep sits on a page that lists it (<c>id</c> of its card), for links and redirects back to it.</summary>
     public static string BeepAnchor(Guid id) => $"beep-{id:D}";
 
-    /// <summary>A hashtag page (PLAN 6.19), for the normalized tag.</summary>
+    /// <summary>A hashtag page, for the normalized tag.</summary>
     public static string Tag(string normalizedTag) => "/tags/" + Uri.EscapeDataString(normalizedTag);
 }
 
@@ -37,7 +37,7 @@ public static class SettingsSections
     /// <summary>Avatar, banner, display name and bio.</summary>
     public const string Profile = "profile";
 
-    /// <summary>What the account keeps to itself: its likes, its follows and how many (PLAN 5.1).</summary>
+    /// <summary>What the account keeps to itself: its likes, its follows and how many.</summary>
     public const string Privacy = "privacy";
 
     /// <summary>The username, and the ways to <see cref="Email"/>, <see cref="Password"/> and <see cref="Passkeys"/>.</summary>
@@ -49,7 +49,7 @@ public static class SettingsSections
     /// <summary>Changing the password, a step below <see cref="Account"/>.</summary>
     public const string Password = "password";
 
-    /// <summary>The passkeys the account signs in with, a step below <see cref="Account"/> (PLAN 6.14).</summary>
+    /// <summary>The passkeys the account signs in with, a step below <see cref="Account"/>.</summary>
     public const string Passkeys = "passkeys";
 
     /// <summary>Colour scheme and language.</summary>
@@ -64,7 +64,7 @@ public static class ProfileTabs
 {
     public const string Replies = "replies";
 
-    /// <summary>The beeps it liked, unless its human keeps them private (PLAN 5.1).</summary>
+    /// <summary>The beeps it liked, unless its human keeps them private.</summary>
     public const string Likes = "likes";
 
     /// <summary>Whom a human follows.</summary>

@@ -7,7 +7,7 @@ using Microsoft.Extensions.Localization;
 namespace Beeps.Pages.Account;
 
 /// <summary>
-/// The second step of signing in to an account that keeps its passkeys for it (PLAN 6.14): after the password, a code or
+/// The second step of signing in to an account that keeps its passkeys for it: after the password, a code or
 /// Google and GitHub, one of the account's passkeys. That the first step was passed is carried in TempData
 /// (<see cref="FirstStepKey"/>), kept until signed in, so a passkey that did not work can be tried again.
 /// </summary>

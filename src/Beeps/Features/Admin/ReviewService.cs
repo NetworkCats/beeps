@@ -10,7 +10,7 @@ using Microsoft.Extensions.Localization;
 namespace Beeps.Features.Admin;
 
 /// <summary>
-/// The admins' review queue (PLAN 3.6, 6.20): beeps the AI hid, beeps whose review failed, and reported beeps.
+/// The admins' review queue: beeps the AI hid, beeps whose review failed, and reported beeps.
 /// An admin keeps a beep (restoring it if hidden) or deletes it, and can take its images down. A person's decision
 /// is final: the AI never reviews that beep again.
 /// </summary>
@@ -48,7 +48,7 @@ public sealed partial class ReviewService(
     }
 
     /// <summary>
-    /// "Restore" for a hidden beep, "mark handled" for the others (PLAN 3.6): the beep is visible, reviewed by a
+    /// "Restore" for a hidden beep, "mark handled" for the others: the beep is visible, reviewed by a
     /// person, and the open reports the admin saw are closed.
     /// </summary>
     /// <param name="seenReports">
@@ -116,7 +116,7 @@ public sealed partial class ReviewService(
         return result;
     }
 
-    /// <summary>Deletes the beep for everyone (PLAN 3.6); the record stays for audit.</summary>
+    /// <summary>Deletes the beep for everyone; the record stays for audit.</summary>
     public async Task<Result> DeleteAsync(Guid adminId, Guid beepId, CancellationToken cancellationToken)
     {
         if (await access.RequireAdminAsync(adminId, cancellationToken) is { } denied)
@@ -169,7 +169,7 @@ public sealed partial class ReviewService(
     }
 
     /// <summary>
-    /// Takes the beep's images down for good (PLAN 3.6): never shown again, their stored objects deleted. The
+    /// Takes the beep's images down for good: never shown again, their stored objects deleted. The
     /// beep itself stays as it is.
     /// </summary>
     public async Task<Result> RemoveMediaAsync(Guid adminId, Guid beepId, CancellationToken cancellationToken)

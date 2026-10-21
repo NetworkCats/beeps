@@ -25,7 +25,7 @@ public static class ModerationSetup
             sp.GetRequiredService<IOptions<OpenRouterOptions>>().Value,
             sp.GetRequiredService<IOptions<ModerationOptions>>().Value,
             sp.GetRequiredService<IOptions<SiteOptions>>().Value.BaseUrl));
-        // Development without a key gets the stand-in, which allows everything but marked test beeps (PLAN 9.0).
+        // Development without a key gets the stand-in, which allows everything but marked test beeps.
         services.AddScoped<IContentModerator>(sp =>
             string.IsNullOrWhiteSpace(sp.GetRequiredService<IOptions<OpenRouterOptions>>().Value.ApiKey) && sp.GetRequiredService<IHostEnvironment>().IsDevelopment()
                 ? new DevelopmentContentModerator()

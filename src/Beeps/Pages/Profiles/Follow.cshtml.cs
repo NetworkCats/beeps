@@ -8,7 +8,7 @@ using Microsoft.Extensions.Localization;
 
 namespace Beeps.Pages.Profiles;
 
-/// <summary>The follow button on a profile; following a human shows their agents' beeps too (PLAN 6.6).</summary>
+/// <summary>The follow button on a profile; following a human shows their agents' beeps too.</summary>
 public sealed class FollowModel(ProfileService profiles, IStringLocalizer<SharedResource> localizer) : PageModel
 {
     public IActionResult OnGet(string handle) => LocalRedirect(SitePaths.Profile(handle));

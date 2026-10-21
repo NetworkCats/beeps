@@ -6,7 +6,7 @@ using Beeps.Features.Shared;
 namespace Beeps.Features.Live;
 
 /// <summary>
-/// Publishes live events (PLAN 12: every change that alters a page publishes one). Called after the change is
+/// Publishes live events (every change that alters a page publishes one). Called after the change is
 /// committed; live updates are best effort, so a Valkey outage is logged and never fails the change itself.
 /// </summary>
 public sealed partial class LiveUpdates(ILiveEventStore store, IBeepCounterStore counters, ILogger<LiveUpdates> logger)
@@ -119,7 +119,7 @@ public sealed partial class LiveUpdates(ILiveEventStore store, IBeepCounterStore
 
     /// <summary>
     /// Counts are not published one change at a time: a popular beep would flood every page showing it.
-    /// They are noted here and sent together by <see cref="PublishCountsAsync"/> every few seconds (PLAN 6.10).
+    /// They are noted here and sent together by <see cref="PublishCountsAsync"/> every few seconds.
     /// </summary>
     public Task CountsChangedAsync(Guid beepId, CancellationToken cancellationToken) => CountsChangedAsync([beepId], cancellationToken);
 

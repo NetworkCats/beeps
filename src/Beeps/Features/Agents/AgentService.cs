@@ -11,7 +11,7 @@ using Microsoft.Extensions.Options;
 
 namespace Beeps.Features.Agents;
 
-/// <summary>Agents and their keys, as managed by their owner (PLAN 3.5, 4.1), and key authentication.</summary>
+/// <summary>Agents and their keys, as managed by their owner, and key authentication.</summary>
 public sealed partial class AgentService(
     IAgentStore store,
     IUnitOfWork unitOfWork,
@@ -41,7 +41,7 @@ public sealed partial class AgentService(
     }
 
     /// <summary>
-    /// Creates an agent with its first key. The agent has no name until it connects (PLAN 3.3). The count
+    /// Creates an agent with its first key. The agent has no name until it connects. The count
     /// and the insert run under a per-owner lock, so parallel requests cannot exceed the limit.
     /// </summary>
     public async Task<Result<AgentWithKey>> CreateAsync(Guid ownerId, CancellationToken cancellationToken)
@@ -165,7 +165,7 @@ public sealed partial class AgentService(
     }
 
     /// <summary>
-    /// The owner renames the agent (PLAN 4.2): display name, bio and the part of the handle after the dot.
+    /// The owner renames the agent: display name, bio and the part of the handle after the dot.
     /// Only the owner's own agents share the <c>owner.</c> prefix, so the owner's lock is enough to keep two
     /// renames from taking the same handle; the unique index backs it up.
     /// </summary>
@@ -211,7 +211,7 @@ public sealed partial class AgentService(
             return Error.Conflict(AgentErrorCodes.AgentNotConnected, localizer["Error.AgentNotConnectedYet"]);
         }
 
-        // Every agent handle is "owner.name" (PLAN 4.2), and an owner's username never changes.
+        // Every agent handle is "owner.name", and an owner's username never changes.
         var handle = $"{current[..current.IndexOf('.', StringComparison.Ordinal)]}.{handleName}";
         var normalized = AccountRules.NormalizeHandle(handle);
         try
@@ -277,7 +277,7 @@ public sealed partial class AgentService(
     }
 
     /// <summary>
-    /// The agent's first call (PLAN 3.3): records its model name and gives it its default display name and
+    /// The agent's first call: records its model name and gives it its default display name and
     /// handle. Later calls change nothing and just return the agent. The handle is picked under the owner's
     /// lock, since only the owner's agents share its <c>owner.</c> prefix.
     /// </summary>
@@ -325,7 +325,7 @@ public sealed partial class AgentService(
             // The cached key lookup says "not connected"; drop it so the agent can use the API at once.
             await store.ForgetKeysAsync([agentId]);
             LogConnected(logger, agentId, model);
-            // The owner may be watching onboarding wait for exactly this (PLAN 3.1, step 5).
+            // The owner may be watching onboarding wait for exactly this (its last step).
             await live.AgentConnectedAsync(agentId, agent.OwnerId, cancellationToken);
             await live.AgentsChangedAsync(agent.OwnerId, cancellationToken);
         }
@@ -354,7 +354,7 @@ public sealed partial class AgentService(
             avatars.For(row.OwnerId, row.OwnerAvatarKey));
     }
 
-    /// <summary>Every change to the owner's agents writes, and most also reindex and invalidate caches (PLAN 12, 6.16).</summary>
+    /// <summary>Every change to the owner's agents writes, and most also reindex and invalidate caches.</summary>
     private async Task<Error?> LimitAsync(Guid ownerId, CancellationToken cancellationToken)
     {
         var limited = await rateLimits.CheckAsync(RateLimitPolicies.AccountChange, RateLimitPartitions.Account(ownerId), cancellationToken);

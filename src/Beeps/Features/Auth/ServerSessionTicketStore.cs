@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.Authentication.Cookies;
 namespace Beeps.Features.Auth;
 
 /// <summary>
-/// Makes the session cookie hold only a session token (PLAN 6.14). The session lives on the server
+/// Makes the session cookie hold only a session token. The session lives on the server
 /// (<see cref="SessionService"/>); on every request the principal is rebuilt from the current account
 /// state, so a ban, a password reset or a change of admin rights applies to the very next request.
 /// </summary>

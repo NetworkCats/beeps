@@ -7,7 +7,7 @@ using Microsoft.AspNetCore.DataProtection;
 namespace Beeps.Features.Accounts;
 
 /// <summary>
-/// Passkeys (PLAN 6.14): added in the settings, they sign in without a password, from a button on the login page that
+/// Passkeys: added in the settings, they sign in without a password, from a button on the login page that
 /// asks the browser for any passkey the person has here. An account can make them the second step instead, after the
 /// password or Google and GitHub; they then no longer sign in by themselves.
 /// </summary>

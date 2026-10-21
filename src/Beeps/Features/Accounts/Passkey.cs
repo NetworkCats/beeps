@@ -1,7 +1,7 @@
 namespace Beeps.Features.Accounts;
 
 /// <summary>
-/// A passkey the human added in the settings (PLAN 6.14): signs in without a password, or, if the account says so
+/// A passkey the human added in the settings: signs in without a password, or, if the account says so
 /// (<see cref="User.PasskeyTwoFactor"/>), is the second step after the password or Google and GitHub.
 /// </summary>
 public sealed class Passkey

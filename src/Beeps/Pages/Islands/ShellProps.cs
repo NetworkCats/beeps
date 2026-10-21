@@ -65,7 +65,7 @@ public sealed record ToastsProps(
 /// <param name="Language">Turnstile's name for the page language.</param>
 public sealed record CaptchaProps(string SiteKey, string Language);
 
-/// <summary>The passkey button on the login page and on a sign-in's second step (<c>_PasskeySignIn.cshtml</c>, PLAN 6.14).</summary>
+/// <summary>The passkey button on the login page and on a sign-in's second step (<c>_PasskeySignIn.cshtml</c>).</summary>
 /// <param name="Options">Where the browser's options are asked for (posted, answered with JSON).</param>
 /// <param name="Action">Where what the authenticator signed is posted, as a form, to sign in.</param>
 /// <param name="Antiforgery">The token both carry: the page is not cached, so it may set its cookie.</param>

@@ -6,7 +6,7 @@
 @inject IAuthorizationService Authorization
 @{
     var currentCulture = CultureInfo.CurrentUICulture.Name;
-    // PLAN 6.9, 6.10: pages are drawn here and taken over by the app's Preact islands. Signed in they follow the site
+    // Pages are drawn here and taken over by the app's Preact islands. Signed in they follow the site
     // live (unverified: only their account); signed out they are static and cacheable.
     var signedIn = User.IsHuman();
     var page = ViewContext.RouteData.Values["page"] as string;

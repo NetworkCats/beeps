@@ -1,6 +1,6 @@
 // collection-ui configured for beeps. Every stylesheet (main, member, admin) loads this first, so the
 // components it pulls in are drawn with the same settings. What upstream's defaults can set is set here; the copy
-// itself is cut down to what beeps uses (see Client/collection-ui/README.md).
+// (from https://github.com/NetworkCats/collection-ui, MIT) is cut down to what beeps uses.
 @use "../collection-ui/abstracts" with (
   $brand: "indigo",
   // Self-hosted and cut down to the icons beeps uses (scripts/build-icons.ts, Client/icons.json).

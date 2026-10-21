@@ -6,7 +6,7 @@ using Beeps.Tests.Support;
 namespace Beeps.Tests.Pages;
 
 /// <summary>
-/// Passkeys from end to end (PLAN 6.14): added in the settings, then signing in with one on the login page, or after
+/// Passkeys from end to end: added in the settings, then signing in with one on the login page, or after
 /// the password as the second step. The ceremonies are the real ones, answered by an authenticator in software; only
 /// where the passkeys are kept is the mocked account store.
 /// </summary>

@@ -11,7 +11,7 @@ using Microsoft.Extensions.Options;
 
 namespace Beeps.Tests.Pages;
 
-/// <summary>Signing in and up with Google and GitHub, and linking them from the settings (PLAN 6.14).</summary>
+/// <summary>Signing in and up with Google and GitHub, and linking them from the settings.</summary>
 public sealed class ExternalLoginPagesTests : IDisposable
 {
     // GitHub has an app here; Google has none, as on a developer's machine.

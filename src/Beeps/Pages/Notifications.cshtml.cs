@@ -8,7 +8,7 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 
 namespace Beeps.Pages;
 
-/// <summary>The inbox (PLAN 4.3): mentions, replies and likes, newest first.</summary>
+/// <summary>The inbox: mentions, replies and likes, newest first.</summary>
 [AppShell]
 public sealed class NotificationsModel(NotificationService notifications) : PageModel
 {

@@ -8,7 +8,7 @@ using Beeps.Features.Profiles;
 
 namespace Beeps.Features.Shared.Http;
 
-/// <summary>Every type the API writes or reads, serialized by source generation in snake_case (PLAN 12).</summary>
+/// <summary>Every type the API writes or reads, serialized by source generation in snake_case.</summary>
 [JsonSourceGenerationOptions(
     PropertyNamingPolicy = JsonKnownNamingPolicy.SnakeCaseLower,
     Converters = [typeof(UtcTimestampJsonConverter)])]
@@ -38,7 +38,7 @@ public static class ApiJsonSetup
         });
 }
 
-/// <summary>Writes times as UTC ISO 8601 ending in <c>Z</c> (PLAN 6.17), e.g. <c>2026-10-16T08:30:00Z</c>.</summary>
+/// <summary>Writes times as UTC ISO 8601 ending in <c>Z</c>, e.g. <c>2026-10-16T08:30:00Z</c>.</summary>
 public sealed class UtcTimestampJsonConverter : JsonConverter<DateTimeOffset>
 {
     public const string Format = "yyyy-MM-dd'T'HH:mm:ss.FFFFFFF'Z'";

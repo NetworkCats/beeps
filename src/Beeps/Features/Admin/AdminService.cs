@@ -11,7 +11,7 @@ using Microsoft.Extensions.Localization;
 namespace Beeps.Features.Admin;
 
 /// <summary>
-/// The admin area's business rules (PLAN 3.6). Every method re-checks that the caller is an active
+/// The admin area's business rules. Every method re-checks that the caller is an active
 /// admin, and every write is logged in the same transaction as the change it records.
 /// </summary>
 public sealed partial class AdminService(
@@ -72,12 +72,12 @@ public sealed partial class AdminService(
             return UserNotFound();
         }
 
-        // Deleted agents too: the records stay for audit (PLAN 3.6).
+        // Deleted agents too: the records stay for audit.
         var userAgents = await store.ListOwnedAgentsAsync(userId, cancellationToken);
         return new AdminUserDetails(user, avatars.For(user.Id, user.AvatarKey), [.. userAgents.Select(a => new AdminOwnedAgent(a, avatars.For(a.Id, a.AvatarKey)))]);
     }
 
-    /// <summary>Bans the user, ends all their sessions and disables all their agents (PLAN 3.6).</summary>
+    /// <summary>Bans the user, ends all their sessions and disables all their agents.</summary>
     public async Task<Result> BanUserAsync(Guid adminId, Guid userId, CancellationToken cancellationToken)
     {
         IReadOnlyList<Guid> agentIds = [];
@@ -244,7 +244,7 @@ public sealed partial class AdminService(
         return await store.ListAgentsAsync(string.IsNullOrEmpty(query) ? null : AccountRules.NormalizeHandle(query), before, PageSize, cancellationToken);
     }
 
-    /// <summary>Switches an agent off (PLAN 3.6): its key stops working at once. Its owner can switch it back on.</summary>
+    /// <summary>Switches an agent off: its key stops working at once. Its owner can switch it back on.</summary>
     public Task<Result> DisableAgentAsync(Guid adminId, Guid agentId, CancellationToken cancellationToken) =>
         ChangeAgentAsync(adminId, agentId, AuditActions.DisableAgent, (agent, now, _) =>
         {
@@ -275,7 +275,7 @@ public sealed partial class AdminService(
             return true;
         }, cancellationToken);
 
-    /// <summary>Revokes the agent's key (PLAN 3.6) without issuing a new one; its owner generates the next.</summary>
+    /// <summary>Revokes the agent's key without issuing a new one; its owner generates the next.</summary>
     public Task<Result> RevokeAgentKeyAsync(Guid adminId, Guid agentId, CancellationToken cancellationToken) =>
         ChangeAgentAsync(adminId, agentId, AuditActions.RevokeAgentKey, async (agent, now, ct) =>
         {

@@ -9,7 +9,7 @@ using Microsoft.Extensions.Localization;
 namespace Beeps.Pages.Admin.Review;
 
 /// <summary>
-/// One beep as an admin reviews it (PLAN 3.6): its context, the AI's answers and the reports, whatever state it
+/// One beep as an admin reviews it: its context, the AI's answers and the reports, whatever state it
 /// is in; and the decision: keep (restore), delete, or take its images down.
 /// </summary>
 public sealed class BeepModel(ReviewService review, IStringLocalizer<SharedResource> localizer) : PageModel

@@ -9,14 +9,14 @@ public sealed class LiveOptions
     /// <summary>Whether this instance reads the event stream and publishes merged counts and the admin figures (AdminFiguresWorker). Events are still published when false.</summary>
     public bool Enabled { get; set; } = true;
 
-    /// <summary>PLAN 6.10: past this, the oldest connection of a human, or of an agent (which has its own), is closed.</summary>
+    /// <summary>Past this, the oldest connection of a human, or of an agent (which has its own), is closed.</summary>
     [Range(1, 100)]
     public int MaxConnectionsPerActor { get; set; } = 10;
 
-    /// <summary>PLAN 9.2: Cloudflare drops connections idle for longer than about 100 seconds.</summary>
+    /// <summary>Cloudflare drops connections idle for longer than about 100 seconds.</summary>
     public TimeSpan HeartbeatInterval { get; set; } = TimeSpan.FromSeconds(20);
 
-    /// <summary>Like and reply counts are merged and pushed at most this often (PLAN 6.10).</summary>
+    /// <summary>Like and reply counts are merged and pushed at most this often.</summary>
     public TimeSpan CountsInterval { get; set; } = TimeSpan.FromSeconds(3);
 
     /// <summary>While an admin page is open, how often the figures that change with no event are looked at.</summary>

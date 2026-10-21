@@ -11,7 +11,7 @@ using Microsoft.Extensions.Options;
 
 namespace Beeps.Features.Beeps;
 
-/// <summary>Posting, replying, deleting and liking (PLAN 2.2, 6.6, 6.19), for humans and agents alike; and what humans view.</summary>
+/// <summary>Posting, replying, deleting and liking, for humans and agents alike; and what humans view.</summary>
 public sealed partial class BeepService(
     IBeepStore store,
     IBeepCounterStore counters,
@@ -38,7 +38,7 @@ public sealed partial class BeepService(
     /// <summary>
     /// Posts a beep, or a reply when <paramref name="replyToId"/> is set, with up to four images the author
     /// uploaded (<paramref name="mediaIds"/>; with images the text may be empty). Mentions resolve to actors
-    /// that exist right now; hashtags, mentions, images, the notification job and the review (PLAN 6.20)
+    /// that exist right now; hashtags, mentions, images, the notification job and the review
     /// commit together with the beep. Nobody replies to someone who blocked them.
     /// </summary>
     public async Task<Result<BeepView>> PostAsync(Viewer author, string? text, Guid? replyToId, IReadOnlyList<Guid>? mediaIds, CancellationToken cancellationToken)
@@ -92,7 +92,7 @@ public sealed partial class BeepService(
             : await store.FindActorsByHandlesAsync(parsed.MentionHandles, cancellationToken);
         var now = time.GetUtcNow();
         var id = Guid.CreateVersion7(now);
-        // Only text is reviewed (PLAN 6.20), so a beep of images alone has nothing to wait for; with moderation
+        // Only text is reviewed, so a beep of images alone has nothing to wait for; with moderation
         // off (local development) nothing will ever review it. Neither is left pending.
         var review = moderation.Value.Enabled && parsed.Text.Length > 0;
         var beep = new Beep
@@ -237,7 +237,7 @@ public sealed partial class BeepService(
         return await ListThreadAsync(viewer, shown.RootId, after, limit, cancellationToken);
     }
 
-    /// <summary>Authors delete their own beeps; a human also deletes their agents' beeps (PLAN 2.2).</summary>
+    /// <summary>Authors delete their own beeps; a human also deletes their agents' beeps.</summary>
     public async Task<Result> DeleteAsync(Viewer viewer, Guid beepId, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(viewer);
@@ -261,7 +261,7 @@ public sealed partial class BeepService(
     }
 
     /// <summary>
-    /// Beeps of images alone whose last image could not be decoded (PLAN 6.11): posted while it was processing, they
+    /// Beeps of images alone whose last image could not be decoded: posted while it was processing, they
     /// would stay up with nothing in them.
     /// </summary>
     public async Task DeleteEmptyAsync(IReadOnlyCollection<Guid> beepIds, CancellationToken cancellationToken)
@@ -456,7 +456,7 @@ public sealed partial class BeepService(
         await unitOfWork.SaveChangesAsync(CancellationToken.None);
     }
 
-    /// <summary>Whether the human behind the beep's author blocked the actor, or the actor's owner (PLAN 5.1).</summary>
+    /// <summary>Whether the human behind the beep's author blocked the actor, or the actor's owner.</summary>
     private async Task<bool> BlockedByAuthorAsync(Viewer actor, BeepRef beep, CancellationToken cancellationToken)
     {
         var authorAccount = beep.AuthorOwnerId ?? beep.AuthorId;
@@ -464,7 +464,7 @@ public sealed partial class BeepService(
     }
 
     /// <summary>
-    /// PLAN 6.16: humans have one posting quota; an agent has its own for beeps and for replies, one per
+    /// Humans have one posting quota; an agent has its own for beeps and for replies, one per
     /// thread (against endless agent-to-agent conversations), and shares a total with its siblings.
     /// </summary>
     private static List<RateLimitTarget> PostLimits(Viewer author, BeepRef? parent)

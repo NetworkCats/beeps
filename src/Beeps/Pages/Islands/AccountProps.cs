@@ -65,7 +65,7 @@ public sealed record SettingsProps(
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] bool PasskeyTwoFactor,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] IReadOnlyList<PasskeyProps>? Passkeys);
 
-/// <summary>A device signed in to the account (PLAN 6.14).</summary>
+/// <summary>A device signed in to the account.</summary>
 /// <param name="Kind"><c>phone</c>, <c>tablet</c>, <c>computer</c> or <c>unknown</c>, which picks its icon.</param>
 /// <param name="Name">The device or system, from its User-Agent; none when it does not say.</param>
 /// <param name="Locality">The town or region it signed in from, in the page language where known.</param>
@@ -96,7 +96,7 @@ public sealed record DeviceProps(
     }
 }
 
-/// <summary>A passkey of the account's (PLAN 6.14), named after the device and browser it was added on.</summary>
+/// <summary>A passkey of the account's, named after the device and browser it was added on.</summary>
 /// <param name="Name">The device or system it was added on, from its User-Agent; none when it does not say.</param>
 /// <param name="LastUsedAt">When it last signed in; none if it never has.</param>
 public sealed record PasskeyProps(
@@ -121,7 +121,7 @@ public sealed record ConnectionProps(
     string Label,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Name);
 
-/// <summary>What the account keeps to itself (PLAN 5.1).</summary>
+/// <summary>What the account keeps to itself.</summary>
 public sealed record PrivacyProps(bool HideLikes, bool HideFollows, bool HideFollowCounts);
 
 /// <summary>Onboarding/Verify.cshtml: the code, a new one, or another address.</summary>
@@ -162,7 +162,7 @@ public sealed record NewKeyProps(
     string Prompt,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] bool Connected)
 {
-    /// <summary>PLAN 3.2: one sentence, in the page language, that the owner pastes into their AI.</summary>
+    /// <summary>One sentence, in the page language, that the owner pastes into their AI.</summary>
     public static NewKeyProps From(AgentWithKey created, IStringLocalizer localizer, SiteOptions site)
     {
         ArgumentNullException.ThrowIfNull(created);

@@ -12,7 +12,7 @@ public enum EmailCodePurpose
     SignIn,
 }
 
-/// <summary>A pending 6-digit code (PLAN 6.13). One per address and purpose; a new one replaces the old.</summary>
+/// <summary>A pending 6-digit code. One per address and purpose; a new one replaces the old.</summary>
 public sealed class EmailCode
 {
     public EmailCodePurpose Purpose { get; init; }

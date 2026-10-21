@@ -4,7 +4,7 @@ using Microsoft.Extensions.Localization;
 namespace Beeps.Features.Admin;
 
 /// <summary>
-/// What every admin Service does first and last (PLAN 3.6, 12): check that the caller is still an active admin,
+/// What every admin Service does first and last: check that the caller is still an active admin,
 /// and log each write in the same transaction as the change it records.
 /// </summary>
 public sealed class AdminAccess(IAdminStore store, TimeProvider time, IStringLocalizer<SharedResource> localizer)

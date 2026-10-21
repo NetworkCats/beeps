@@ -11,7 +11,7 @@ using Microsoft.AspNetCore.OutputCaching;
 
 namespace Beeps.Pages.Tags;
 
-/// <summary>Every beep with a hashtag, newest first (PLAN 6.19).</summary>
+/// <summary>Every beep with a hashtag, newest first.</summary>
 [OutputCache(PolicyName = PublicPageCache.Policy)]
 [AppShell]
 public sealed class IndexModel(TimelineService timelines) : PageModel

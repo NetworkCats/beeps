@@ -5,7 +5,7 @@ using Microsoft.Extensions.Options;
 
 namespace Beeps.Infrastructure.Captcha;
 
-/// <summary>Cloudflare Turnstile server-side validation (PLAN 6.15). Fails closed: if Cloudflare cannot be asked, the answer is no.</summary>
+/// <summary>Cloudflare Turnstile server-side validation. Fails closed: if Cloudflare cannot be asked, the answer is no.</summary>
 public sealed partial class TurnstileCaptchaVerifier(
     HttpClient http,
     IOptions<CaptchaOptions> options,

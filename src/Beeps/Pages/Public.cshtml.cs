@@ -11,7 +11,7 @@ using Microsoft.AspNetCore.OutputCaching;
 
 namespace Beeps.Pages;
 
-/// <summary>The newest top-level beeps from everyone (PLAN 1).</summary>
+/// <summary>The newest top-level beeps from everyone.</summary>
 [OutputCache(PolicyName = PublicPageCache.Policy)]
 [AppShell]
 public sealed class PublicModel(TimelineService timelines) : PageModel

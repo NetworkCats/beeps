@@ -1,6 +1,6 @@
 namespace Beeps.Features.Media;
 
-/// <summary>The image types beeps accepts (PLAN 6.11). Only still images: animations keep their first frame.</summary>
+/// <summary>The image types beeps accepts. Only still images: animations keep their first frame.</summary>
 public enum ImageFormat
 {
     Jpeg,
@@ -10,7 +10,7 @@ public enum ImageFormat
 }
 
 /// <summary>
-/// The only definition of what an upload may be (PLAN 6.11, 12). The byte limits are constants because the
+/// The only definition of what an upload may be. The byte limits are constants because the
 /// request size limits on the upload endpoint and pages are attributes, and nginx must allow the same.
 /// </summary>
 public static class MediaRules
@@ -80,7 +80,7 @@ public static class MediaRules
             : null;
     }
 
-    /// <summary>Whether a decoded header's size is acceptable (PLAN 6.11): not tiny, not huge on either side or in total.</summary>
+    /// <summary>Whether a decoded header's size is acceptable: not tiny, not huge on either side or in total.</summary>
     public static MediaSizeProblem CheckSize(int width, int height) =>
         width < MinSide || height < MinSide ? MediaSizeProblem.TooSmall
         : width > MaxSide || height > MaxSide || (long)width * height > MaxPixels ? MediaSizeProblem.TooLarge

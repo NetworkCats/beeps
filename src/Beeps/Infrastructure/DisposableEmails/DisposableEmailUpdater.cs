@@ -5,7 +5,7 @@ using Microsoft.Extensions.Options;
 namespace Beeps.Infrastructure.DisposableEmails;
 
 /// <summary>
-/// Keeps this instance's copy of the disposable email domains (PLAN 6.13) no older than a week. Each instance fetches
+/// Keeps this instance's copy of the disposable email domains no older than a week. Each instance fetches
 /// its own, as with the IP database: the list is reference data anyone can download again, so it needs no
 /// coordination, and nothing waits for it. The copy is kept on local disk, so a restart starts from it rather than
 /// downloading again. A download is used only once it reads as the list, so a failed or damaged one leaves the copy in

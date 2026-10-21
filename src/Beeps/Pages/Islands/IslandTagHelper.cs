@@ -8,7 +8,7 @@ namespace Beeps.Pages.Islands;
 
 /// <summary>
 /// <c>&lt;island name="feed" props="…"&gt;markup&lt;/island&gt;</c>: a part of the page drawn by the Preact component of
-/// the same name (<c>Client/app/islands.tsx</c>), from its props (PLAN 6.9); for signed-in people it follows the site live.
+/// the same name (<c>Client/app/islands.tsx</c>), from its props; for signed-in people it follows the site live.
 /// </summary>
 /// <remarks>
 /// <c>&lt;div class="island" data-island="feed"&gt;</c> (laid out as if it were not there) holds the props. Signed out it

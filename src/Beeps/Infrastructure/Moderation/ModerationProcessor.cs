@@ -4,7 +4,7 @@ using Microsoft.Extensions.Options;
 namespace Beeps.Infrastructure.Moderation;
 
 /// <summary>
-/// Runs one claimed review with retry (PLAN 6.20): failures back off exponentially, and after the last attempt
+/// Runs one claimed review with retry: failures back off exponentially, and after the last attempt
 /// the beep is left visible, marked failed, for the admins. One per review, in its own scope.
 /// </summary>
 public sealed partial class ModerationProcessor(

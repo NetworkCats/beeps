@@ -23,7 +23,7 @@ public static class ReportFields
 }
 
 /// <summary>
-/// People flag beeps for the admins (PLAN 3.6, 5.1). A report changes nothing on its own: the beep joins the
+/// People flag beeps for the admins. A report changes nothing on its own: the beep joins the
 /// review queue until an admin keeps or deletes it.
 /// </summary>
 public sealed partial class ReportService(

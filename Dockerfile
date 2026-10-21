@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-# The production image (PLAN 9.3): client assets with Node, then the app and its migration bundle with the .NET SDK,
+# The production image: client assets with Node, then the app and its migration bundle with the .NET SDK,
 # run on the ASP.NET runtime. Built and pushed by .github/workflows/deploy.yml; `docker build .` builds the same.
 
 FROM node:24.22.0-trixie-slim AS client
@@ -28,7 +28,7 @@ COPY --from=client /src/src/Beeps/wwwroot/dist/ src/Beeps/wwwroot/dist/
 ARG VERSION=v1.0.0
 RUN dotnet publish src/Beeps/Beeps.csproj -c Release -a "$TARGETARCH" --no-restore -o /app -p:UseAppHost=false \
     -p:PublishReadyToRun=true -p:Version="${VERSION#v}"
-# Migrations run once per deploy, before the new version takes traffic, never at each instance's start (PLAN 9.3).
+# Migrations run once per deploy, before the new version takes traffic, never at each instance's start.
 # Making the bundle builds the DbContext, which wants a connection string; it is never opened here, and the bundle
 # reads the real one from the environment when it runs.
 RUN export ConnectionStrings__Postgres="Host=localhost;Database=beeps" \

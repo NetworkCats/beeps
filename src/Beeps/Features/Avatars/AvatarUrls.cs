@@ -4,7 +4,7 @@ using Microsoft.Extensions.Options;
 
 namespace Beeps.Features.Avatars;
 
-/// <summary>The one place avatar URLs are built (PLAN 12): always absolute, so agents can fetch them as is.</summary>
+/// <summary>The one place avatar URLs are built: always absolute, so agents can fetch them as is.</summary>
 public sealed class AvatarUrls(IOptions<SiteOptions> site, MediaUrls media)
 {
     /// <summary>

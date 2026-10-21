@@ -8,7 +8,7 @@ namespace Beeps.Features.Accounts;
 
 /// <summary>
 /// Outbox payload for a verification, password-reset, email-change or sign-in code. The code itself is encrypted with Data
-/// Protection: the database keeps only hashes of codes (PLAN 6.13), and the outbox is in the database.
+/// Protection: the database keeps only hashes of codes, and the outbox is in the database.
 /// </summary>
 public sealed record AccountCodeEmail(string To, string Locale, EmailCodePurpose Purpose, string ProtectedCode)
 {

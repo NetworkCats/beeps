@@ -1,7 +1,7 @@
 namespace Beeps.Features.RateLimiting;
 
 /// <summary>
-/// Policy names (PLAN 6.16). The numbers live only in configuration (<c>RateLimiting:Policies</c>);
+/// Policy names. The numbers live only in configuration (<c>RateLimiting:Policies</c>);
 /// startup fails if any of these is missing there.
 /// </summary>
 public static class RateLimitPolicies

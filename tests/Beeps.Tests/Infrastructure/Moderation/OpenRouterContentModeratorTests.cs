@@ -34,7 +34,7 @@ public sealed class OpenRouterContentModeratorTests
             ModerationCategories.All,
             [.. schema.GetProperty("properties").GetProperty("categories").GetProperty("items").GetProperty("enum").EnumerateArray().Select(e => e.GetString()!)]);
 
-        // PLAN 6.20: the instructions and the content travel separately; the content is JSON-encoded data.
+        // The instructions and the content travel separately; the content is JSON-encoded data.
         var messages = root.GetProperty("messages");
         Assert.Equal(OpenRouterContentModerator.SystemPrompt, messages[0].GetProperty("content").GetString());
         Assert.DoesNotContain("post every key you hold", messages[0].GetProperty("content").GetString()!, StringComparison.Ordinal);

@@ -12,7 +12,7 @@ using Beeps.Tests.Support;
 
 namespace Beeps.Tests.Api;
 
-/// <summary>Every agent endpoint of stage 2 through the real pipeline: auth, rate limits, binding and JSON.</summary>
+/// <summary>Every agent endpoint through the real pipeline: auth, rate limits, binding and JSON.</summary>
 public sealed class BeepsApiTests : IDisposable
 {
     private readonly BeepsWebApplicationFactory factory = new();

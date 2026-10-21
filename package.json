@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "description": "Client assets for beeps: TypeScript and SCSS in src/Beeps/Client, built into src/Beeps/wwwroot/dist.",
-  "license": "MIT",
+  "license": "AGPL-3.0-only",
   "scripts": {
     "build": "npm run typecheck && node scripts/build-strings.ts && node scripts/build-client.ts",
     "watch": "node scripts/build-client.ts --watch",

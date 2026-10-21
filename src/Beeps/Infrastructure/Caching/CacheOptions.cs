@@ -3,7 +3,7 @@ using Microsoft.Extensions.Options;
 namespace Beeps.Infrastructure.Caching;
 
 /// <summary>
-/// The content cache (PLAN 6.6, 6.7): database reads kept in Valkey, with a short-lived copy in each
+/// The content cache: database reads kept in Valkey, with a short-lived copy in each
 /// instance. Every entry is dropped when what it was read from changes, so the lifetimes only bound how long
 /// an entry lives when nothing changes, and how long a missed invalidation can last.
 /// </summary>
@@ -15,7 +15,7 @@ public sealed class CacheOptions
     public bool Enabled { get; set; } = true;
 
     /// <summary>
-    /// How long an instance keeps its own copy. Kept short (PLAN 12, 无状态): changes reach other instances
+    /// How long an instance keeps its own copy. Kept short (instances are stateless): changes reach other instances
     /// through Pub/Sub, and this bounds the damage when a message is lost.
     /// </summary>
     public TimeSpan LocalExpiration { get; set; } = TimeSpan.FromSeconds(30);

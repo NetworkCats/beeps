@@ -1,4 +1,4 @@
-// Signed out, every island must draw the very markup the server drew (PLAN 6.9), or the page changes as the app takes
+// Signed out, every island must draw the very markup the server drew, or the page changes as the app takes
 // over. The server's tests keep, for pages drawn with fixed data, each island's markup and the props it was drawn from
 // (tests/Beeps.Tests/Pages/IslandSamples, IslandSamplesTests.cs). Here the components draw the same props, and the
 // two are compared as the browser would see them: attribute order, whitespace between elements, how characters are

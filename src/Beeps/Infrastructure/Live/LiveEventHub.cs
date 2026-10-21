@@ -8,7 +8,7 @@ namespace Beeps.Infrastructure.Live;
 
 /// <summary>
 /// Reads the shared stream once for the whole instance and hands each event to every connection on it
-/// (PLAN 6.10: events cross instances through Valkey). StackExchange.Redis cannot block on XREAD, so the hub
+/// (events cross instances through Valkey). StackExchange.Redis cannot block on XREAD, so the hub
 /// reads whenever Pub/Sub says an event was added, and polls in case such a word was lost; reading an empty stream
 /// end is cheap. It reads even with no connection open, so a new connection can rely on it being caught up.
 /// </summary>

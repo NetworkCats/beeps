@@ -9,7 +9,7 @@ namespace Beeps.Infrastructure.Data.Stores;
 /// <summary>
 /// Read-time timelines: the author set comes from the content cache and is passed as an array, the beeps come off
 /// the <c>(author_id, id DESC)</c> index, and only their ids and the reader's own state are queried
-/// (PLAN 6.6: the beeps themselves are cached on their own).
+/// (the beeps themselves are cached on their own).
 /// </summary>
 public sealed class EfTimelineStore(BeepsDbContext db, ContentReads reads) : ITimelineStore
 {
@@ -31,10 +31,10 @@ public sealed class EfTimelineStore(BeepsDbContext db, ContentReads reads) : ITi
     /// </remarks>
     public async Task<CursorPage<BeepRow>> HomeAsync(Guid humanId, PageRequest page, Guid? viewerId, CancellationToken cancellationToken)
     {
-        // Following a human means following all of their agents too (PLAN 6.6).
+        // Following a human means following all of their agents too.
         List<Guid> humans = [humanId, .. await reads.GetFollowedAsync(humanId, cancellationToken)];
         var authors = await AuthorsAsync(humans, cancellationToken);
-        // A reply belongs here only when it answers a visible beep by one of the same authors (PLAN 6.6).
+        // A reply belongs here only when it answers a visible beep by one of the same authors.
         var parents = BeepQueries.Visible(db, viewerId).Where(p => authors.Contains(p.AuthorId));
         var beeps = Shown(viewerId, page)
             .LeftJoin(parents, b => b.ReplyToId, p => (Guid?)p.Id, (b, p) => new { Beep = b, Parent = p })

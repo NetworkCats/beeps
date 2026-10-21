@@ -5,9 +5,9 @@ using Microsoft.Extensions.Options;
 namespace Beeps.Infrastructure.Caching;
 
 /// <summary>
-/// Database reads cached in two levels (PLAN 6.6, 6.7): a short-lived copy in this instance, then Valkey,
+/// Database reads cached in two levels: a short-lived copy in this instance, then Valkey,
 /// then the loader, which reads PostgreSQL. A whole page of entries takes one Valkey round trip and one load,
-/// however many there are (PLAN 12: batch commands, no N+1).
+/// however many there are (batch commands, no N+1).
 /// </summary>
 /// <remarks>
 /// <para>

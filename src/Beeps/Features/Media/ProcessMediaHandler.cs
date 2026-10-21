@@ -12,7 +12,7 @@ public sealed record ProcessMediaRequest(Guid MediaId)
 }
 
 /// <summary>
-/// Image post-processing (PLAN 6.8, 6.11), off the upload request: decodes the original, turns it upright,
+/// Image post-processing, off the upload request: decodes the original, turns it upright,
 /// re-encodes the sizes its <see cref="MediaPurpose"/> needs as WebP without metadata and stores them. A storage failure throws, so the message is
 /// retried with backoff; a file that does not decode can never succeed, so it is marked
 /// <see cref="MediaStatus.Failed"/> instead. Idempotent: once processed, the original is gone and a repeat does nothing.
@@ -79,7 +79,7 @@ public sealed partial class ProcessMediaHandler(
 
         LogProcessed(logger, mediaId, variants.Width, variants.Height);
 
-        // A beep posted while it was processing showed without it until now (PLAN 6.10: pages show it as it arrives).
+        // A beep posted while it was processing showed without it until now (pages show it as it arrives).
         await live.BeepsChangedAsync(await store.ListBeepsUsingAsync(mediaId, cancellationToken), cancellationToken);
 
         // An avatar or banner set while it was processing showed the default pattern or no banner until now.

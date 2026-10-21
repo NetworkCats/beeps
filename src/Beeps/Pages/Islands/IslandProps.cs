@@ -13,7 +13,7 @@ namespace Beeps.Pages.Islands;
 // from what the Services return: the components only lay them out. Flags that are false and values that are null are
 // left out of the JSON, which the components read as false and missing.
 
-/// <summary>How an island follows the site live (PLAN 6.10).</summary>
+/// <summary>How an island follows the site live.</summary>
 /// <param name="Watch">The page's <see cref="LiveTopic"/>: what new content it shows as it arrives.</param>
 /// <param name="Subject">What the page is about (<c>beep:{id}</c>, <c>actor:{id}</c>): when that goes, the page is shown anew.</param>
 /// <param name="Actors">People the island shows: when one of them changes, its props are fetched again.</param>

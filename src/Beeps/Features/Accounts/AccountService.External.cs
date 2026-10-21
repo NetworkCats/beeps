@@ -6,7 +6,7 @@ using Beeps.Features.Shared;
 namespace Beeps.Features.Accounts;
 
 /// <summary>
-/// Signing in and up with Google or GitHub, and linking them in the settings (PLAN 3.1, 6.14). The provider vouches for
+/// Signing in and up with Google or GitHub, and linking them in the settings. The provider vouches for
 /// the address, so an account made this way is verified at once, has no password, and was never asked for Turnstile.
 /// </summary>
 public sealed partial class AccountService

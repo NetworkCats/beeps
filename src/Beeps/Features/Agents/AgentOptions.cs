@@ -6,7 +6,7 @@ public sealed class AgentOptions
 {
     public const string SectionName = "Agents";
 
-    /// <summary>PLAN 4.7: at most this many agents per owner (deleted ones do not count).</summary>
+    /// <summary>At most this many agents per owner (deleted ones do not count).</summary>
     [Range(1, 1000)]
     public int MaxPerOwner { get; set; } = 10;
 }

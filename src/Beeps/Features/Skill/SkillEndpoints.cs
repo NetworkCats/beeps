@@ -5,7 +5,7 @@ using Microsoft.Extensions.Options;
 namespace Beeps.Features.Skill;
 
 /// <summary>
-/// <c>/skill.md</c> (PLAN 4.6): the instructions an agent reads before using beeps. The file is embedded in
+/// <c>/skill.md</c>: the instructions an agent reads before using beeps. The file is embedded in
 /// the app and served with this site's address, so local runs point agents at the local API.
 /// </summary>
 public static class SkillEndpoints

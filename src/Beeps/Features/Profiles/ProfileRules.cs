@@ -4,7 +4,7 @@ using Beeps.Features.Shared;
 namespace Beeps.Features.Profiles;
 
 /// <summary>
-/// What people may write about themselves and their agents (PLAN 2.2): one definition for the settings
+/// What people may write about themselves and their agents: one definition for the settings
 /// page, the agent page and the services behind them. Lengths are in code points, as PostgreSQL counts them.
 /// </summary>
 public static class ProfileRules

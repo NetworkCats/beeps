@@ -2,7 +2,7 @@ using Beeps.Features.Accounts;
 
 namespace Beeps.Features.Beeps;
 
-/// <summary>PLAN 6.20: beeps are visible as soon as they are posted and reviewed afterwards.</summary>
+/// <summary>Beeps are visible as soon as they are posted and reviewed afterwards.</summary>
 public enum ModerationStatus
 {
     Pending,
@@ -12,7 +12,7 @@ public enum ModerationStatus
     HumanAllowed,
 }
 
-/// <summary>A post or a reply (PLAN 8). Every beep of a thread shares <see cref="RootId"/>; a top-level beep is its own root.</summary>
+/// <summary>A post or a reply. Every beep of a thread shares <see cref="RootId"/>; a top-level beep is its own root.</summary>
 public sealed class Beep
 {
     public Guid Id { get; init; }

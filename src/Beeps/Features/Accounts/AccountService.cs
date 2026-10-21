@@ -13,7 +13,7 @@ using Microsoft.Extensions.Localization;
 
 namespace Beeps.Features.Accounts;
 
-/// <summary>Human accounts: registration, email codes, sign-in, password reset, email changes and passkeys (PLAN 3.1, 6.13–6.15).</summary>
+/// <summary>Human accounts: registration, email codes, sign-in, password reset, email changes and passkeys.</summary>
 public sealed partial class AccountService(
     IAccountStore store,
     ISessionStore sessions,
@@ -34,7 +34,7 @@ public sealed partial class AccountService(
 
     public const int MaxCodeAttempts = 5;
 
-    /// <summary>The least time between two codes for the same thing (PLAN 6.13); the pages count it down.</summary>
+    /// <summary>The least time between two codes for the same thing; the pages count it down.</summary>
     public static readonly TimeSpan ResendInterval = TimeSpan.FromMinutes(1);
 
     private static readonly User TimingDummy = new()
@@ -238,7 +238,7 @@ public sealed partial class AccountService(
     /// <summary>
     /// For an address mistyped at sign-up: the account, not yet verified, moves to another one at once and the
     /// verification code goes there instead. Needs the password, as <see cref="RequestEmailChangeAsync"/> does once
-    /// verified. The account keeps its sign-up date, so it is still released if it never verifies (PLAN 6.13).
+    /// verified. The account keeps its sign-up date, so it is still released if it never verifies.
     /// </summary>
     public async Task<Result> ChangeUnverifiedEmailAsync(Guid userId, string? newEmail, string? currentPassword, RequestOrigin origin, CancellationToken cancellationToken)
     {
@@ -566,7 +566,7 @@ public sealed partial class AccountService(
         return Result.Success;
     }
 
-    /// <summary>Remembers the UI language; it then wins over the cookie and the browser (PLAN 6.12).</summary>
+    /// <summary>Remembers the UI language; it then wins over the cookie and the browser.</summary>
     public async Task<Result> SetLocaleAsync(Guid userId, string? culture, CancellationToken cancellationToken)
     {
         if (SupportedCultures.Find(culture) is not { } supported)
@@ -648,7 +648,7 @@ public sealed partial class AccountService(
             user.PasskeyTwoFactor);
     }
 
-    /// <summary>What the human's profile shows others of their likes and follows (PLAN 5.1).</summary>
+    /// <summary>What the human's profile shows others of their likes and follows.</summary>
     public async Task<Result> SetPrivacyAsync(Guid userId, ProfilePrivacy privacy, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(privacy);
@@ -671,7 +671,7 @@ public sealed partial class AccountService(
         return Result.Success;
     }
 
-    /// <summary>The human's own display name, bio and website (PLAN 2.2); the username never changes.</summary>
+    /// <summary>The human's own display name, bio and website; the username never changes.</summary>
     public async Task<Result> UpdateProfileAsync(Guid userId, string? displayName, string? bio, string? website, CancellationToken cancellationToken)
     {
         var fields = new Dictionary<string, string[]>();
@@ -702,7 +702,7 @@ public sealed partial class AccountService(
             return AccountNotFound();
         }
 
-        // A write that also reindexes and invalidates caches (PLAN 12, 6.16).
+        // A write that also reindexes and invalidates caches.
         var limited = await rateLimits.CheckAsync(RateLimitPolicies.AccountChange, RateLimitPartitions.Account(userId), cancellationToken);
         if (!limited.IsSuccess)
         {

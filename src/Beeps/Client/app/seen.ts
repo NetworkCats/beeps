@@ -1,4 +1,4 @@
-// Notifications read by being seen (PLAN 4.3): a mention or a reply is read once its beep has been on screen, on any
+// Notifications read by being seen: a mention or a reply is read once its beep has been on screen, on any
 // page but the inbox itself, which has its own button for that. The site hears of seen beeps only while something is
 // unread, and of each only once, unless the unread count went up since: a notification can come after its beep showed.
 import { useCallback, useRef } from 'preact/hooks';

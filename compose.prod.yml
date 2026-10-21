@@ -1,4 +1,4 @@
-# Production, on one server (PLAN 9.2, 9.3). deploy/ansible copies this file to /srv/beeps with the files it reads:
+# Production, on one server. deploy/ansible copies this file to /srv/beeps with the files it reads:
 #   release.env      which image each app colour runs, written by beeps-deploy (only used to fill in this file)
 #   app.env          the app's configuration (.env.example lists every key), from the GitHub environment
 #   search.env       the app's own Meilisearch key, created by beeps-deploy on the first deploy

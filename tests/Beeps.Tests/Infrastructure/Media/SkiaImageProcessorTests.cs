@@ -6,7 +6,7 @@ using SkiaSharp;
 
 namespace Beeps.Tests.Infrastructure.Media;
 
-/// <summary>The real image pipeline over real (in-memory) images: PLAN 6.11 is about what comes out.</summary>
+/// <summary>The real image pipeline over real (in-memory) images: what matters is what comes out.</summary>
 public sealed class SkiaImageProcessorTests
 {
     private readonly SkiaImageProcessor processor = new();

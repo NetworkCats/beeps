@@ -11,7 +11,7 @@ public enum ProfileTimeline
     Replies,
 }
 
-/// <summary>Read-time timelines (PLAN 6.6, first stage): each is one indexed query over the beeps table.</summary>
+/// <summary>Read-time timelines: each is one indexed query over the beeps table.</summary>
 public interface ITimelineStore
 {
     /// <summary>Top-level beeps by anyone.</summary>

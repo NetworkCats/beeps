@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Localization;
 
 namespace Beeps.Features.Auth;
 
-/// <summary>The signed-in user's saved language; first in line, before the cookie and the browser (PLAN 6.12).</summary>
+/// <summary>The signed-in user's saved language; first in line, before the cookie and the browser.</summary>
 public sealed class UserLocaleCultureProvider : RequestCultureProvider
 {
     public override Task<ProviderCultureResult?> DetermineProviderCultureResult(HttpContext httpContext)

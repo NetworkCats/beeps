@@ -3,7 +3,7 @@ using Beeps.Features.Moderation;
 namespace Beeps.Infrastructure.Moderation;
 
 /// <summary>
-/// Local development without an OpenRouter key (PLAN 9.0): allows everything, except beeps containing one of the
+/// Local development without an OpenRouter key: allows everything, except beeps containing one of the
 /// markers below, so the hidden and failed paths can be tried by hand. Never registered outside development.
 /// </summary>
 public sealed class DevelopmentContentModerator : IContentModerator

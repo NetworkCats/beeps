@@ -3,7 +3,7 @@ using Beeps.Features.Shared;
 
 namespace Beeps.Features.Notifications;
 
-/// <summary>PLAN 4.3. Stored as snake_case text; published API values must never change.</summary>
+/// <summary>Stored as snake_case text; published API values must never change.</summary>
 public enum NotificationType
 {
     Mention,

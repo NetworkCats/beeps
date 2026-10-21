@@ -7,7 +7,7 @@ using Microsoft.Extensions.Localization;
 namespace Beeps.Features.Search;
 
 /// <summary>
-/// Searching beeps and people (PLAN 6.18). The index only supplies ids in ranking order; what is shown, and to
+/// Searching beeps and people. The index only supplies ids in ranking order; what is shown, and to
 /// whom, comes from PostgreSQL, so a document the index has not caught up on yet never leaks anything.
 /// </summary>
 public sealed partial class SearchService(
@@ -21,7 +21,7 @@ public sealed partial class SearchService(
     /// <summary>In user-perceived characters, like beeps.</summary>
     public const int MaxQueryLength = 100;
 
-    /// <summary>Results beyond this are not reachable by paging (PLAN 6.18).</summary>
+    /// <summary>Results beyond this are not reachable by paging.</summary>
     public const int MaxResults = 1000;
 
     public const int DefaultLimit = 20;
@@ -34,7 +34,7 @@ public sealed partial class SearchService(
     private static readonly LogThrottle SearchFailures = new();
 
     /// <summary>
-    /// What the search box does with <c>#tag</c> (PLAN 6.19): the hashtag's page, not a text search. Returns the
+    /// What the search box does with <c>#tag</c>: the hashtag's page, not a text search. Returns the
     /// normalized tag, or null for any other query.
     /// </summary>
     public static string? HashtagShortcut(string? query)

@@ -3,7 +3,7 @@ using Beeps.Features.Shared.Http;
 
 namespace Beeps.Pages.Islands;
 
-/// <summary>Every type the islands and the app's config are drawn from, serialized by source generation (PLAN 12), in camelCase for the browser.</summary>
+/// <summary>Every type the islands and the app's config are drawn from, serialized by source generation, in camelCase for the browser.</summary>
 [JsonSourceGenerationOptions(
     PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase,
     DictionaryKeyPolicy = JsonKnownNamingPolicy.Unspecified,

@@ -21,14 +21,14 @@ public static class AuthSetup
                 options.Cookie.HttpOnly = true;
                 options.Cookie.SameSite = SameSiteMode.Lax;
                 options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
-                // The cookie carries only a session token; the session itself is server-side (PLAN 6.14).
+                // The cookie carries only a session token; the session itself is server-side.
                 options.SessionStore = new ServerSessionTicketStore();
                 options.ExpireTimeSpan = SessionService.Lifetime;
                 options.SlidingExpiration = true;
                 options.LoginPath = LoginPath;
                 options.Events.OnRedirectToLogin = context =>
                 {
-                    // PLAN 6.10: the stream, what the islands fetch and the beep buttons' requests refuse signed-out
+                    // The stream, what the islands fetch and the beep buttons' requests refuse signed-out
                     // requests outright; a redirect to the login page would only feed HTML to a script (whose fetch
                     // follows it to a 200, as if what it asked for was done).
                     if (IsScripted(context.Request))
@@ -92,7 +92,7 @@ public static class AuthSetup
     public static PageConventionCollection AddBeepsAuthorization(this PageConventionCollection conventions)
     {
         ArgumentNullException.ThrowIfNull(conventions);
-        // PLAN 12: the whole admin folder, so a new admin page cannot be forgotten.
+        // The whole admin folder, so a new admin page cannot be forgotten.
         conventions.AuthorizeFolder("/Admin", AuthPolicies.Admin);
         conventions.AuthorizeFolder("/Agents", AuthPolicies.Member);
         conventions.AuthorizePage("/Onboarding/Verify", AuthPolicies.SignedIn);

@@ -422,7 +422,7 @@ function EmailSection({ props, errors }: SectionProps) {
 
 /**
  * Changing the password asks for the current one. An account without one sets its first with a code sent to its
- * address: the session alone must not, or whoever holds it could lock the owner out (PLAN 6.14).
+ * address: the session alone must not, or whoever holds it could lock the owner out.
  */
 function PasswordSection({ props, errors }: SectionProps) {
   const codeSent = !props.hasPassword && props.passwordCodeResendAt !== undefined;

@@ -6,7 +6,7 @@ using Microsoft.Extensions.Localization;
 namespace Beeps.Features.Timelines;
 
 /// <summary>
-/// Timelines (PLAN 6.6): public, home (for an agent, its owner's), profile and hashtag. The public
+/// Timelines: public, home (for an agent, its owner's), profile and hashtag. The public
 /// timeline shows top-level beeps only, the home timeline adds replies among the people in it, and
 /// profiles and hashtag pages show every reply.
 /// </summary>
@@ -16,7 +16,7 @@ public sealed class TimelineService(ITimelineStore store, ProfileService profile
         await views.BuildPageAsync(await store.PublicAsync(page, viewer?.ActorId, cancellationToken), viewer, cancellationToken);
 
     /// <summary>
-    /// The viewer's home timeline; for an agent, its owner's (PLAN 4.4), which is the only one it can
+    /// The viewer's home timeline; for an agent, its owner's, which is the only one it can
     /// read besides the public timeline.
     /// </summary>
     public async Task<CursorPage<BeepView>> GetHomeAsync(Viewer viewer, PageRequest page, CancellationToken cancellationToken)
