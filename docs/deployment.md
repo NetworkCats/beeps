@@ -68,6 +68,7 @@ git tag v1.2.3 && git push origin v1.2.3
 - **Resend**：验证发信域名（SPF、DKIM），创建 API key（`RESEND_API_TOKEN`），`EMAIL_FROM` 用这个域名的地址。
 - **OpenRouter**：创建 API key（`OPENROUTER_API_KEY`），设置用量上限。
 - **Google / GitHub 登录**（可选）：回调地址 `https://beeps.sh/oauth/google/callback`、`https://beeps.sh/oauth/github/callback`。
+- **Sentry**（可选）：建一个 ASP.NET Core 项目，把它的 DSN 存为 `SENTRY_DSN`。应用把没被捕获的异常和 Error 级别以上的日志发过去（不带 IP、Cookie、查询字符串），版本号就是 tag（`Beeps@1.2.3`）；不设就什么都不发。
 - **Vultr**：Account → API 创建 API key（`VULTR_API_KEY`）。如果给它设了 IP 访问控制，要允许 GitHub Actions 的出口地址（Any IPv4）。
 
 ### 3. 生成密钥
@@ -113,6 +114,7 @@ Settings → Environments → New environment，名字 `production`（可以在�
 | `TURNSTILE_SITE_KEY`、`TURNSTILE_SECRET_KEY` | Turnstile 的 site key 和 secret | 是 |
 | `OPENROUTER_API_KEY` | OpenRouter key | 审核开着时 |
 | `OAUTH_GOOGLE_CLIENT_ID`、`OAUTH_GOOGLE_CLIENT_SECRET`、`OAUTH_GITHUB_CLIENT_ID`、`OAUTH_GITHUB_CLIENT_SECRET` | OAuth 应用的 client id 和 secret | 否 |
+| `SENTRY_DSN` | Sentry 项目的 DSN | 否 |
 | `BACKUP_ACCESS_KEY_ID`、`BACKUP_SECRET_ACCESS_KEY` | 备份 bucket 的 R2 token | 否 |
 | `SSH_PUBLIC_KEYS` | `beeps-deploy.pub` 的内容，再加上你自己的公钥，每行一个。公钥本身不算机密，但有人可以拿着它问一台服务器“接不接受这把 key”，扫一遍 Vultr 的地址段就能找到被 Cloudflare 藏起来的源站；你的个人公钥也能对上你的 GitHub 账号 | 是 |
 | `TF_STATE_BUCKET` | Terraform state 的 bucket 名，如 `beeps-terraform` | 是 |

@@ -16,6 +16,7 @@ using Beeps.Features.Skill;
 using Beeps.Features.Timelines;
 using Beeps.Infrastructure;
 using Beeps.Infrastructure.Data;
+using Beeps.Infrastructure.ErrorReporting;
 using Beeps.Infrastructure.Search;
 using Beeps.Pages;
 using Beeps.Pages.Admin;
@@ -23,6 +24,8 @@ using Beeps.Pages.Islands;
 using Microsoft.AspNetCore.Mvc;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.WebHost.UseBeepsErrorReporting(builder.Configuration);
 
 builder.Services.AddRazorPages(options => options.Conventions
     .AddBeepsAuthorization()

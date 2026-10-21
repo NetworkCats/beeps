@@ -53,6 +53,7 @@ beeps_app_settings:
   OAuth__Google__ClientSecret: "{{ lookup('ansible.builtin.env', 'OAUTH_GOOGLE_CLIENT_SECRET') }}"
   OAuth__GitHub__ClientId: "{{ lookup('ansible.builtin.env', 'OAUTH_GITHUB_CLIENT_ID') }}"
   OAuth__GitHub__ClientSecret: "{{ lookup('ansible.builtin.env', 'OAUTH_GITHUB_CLIENT_SECRET') }}"
+  Sentry__Dsn: "{{ lookup('ansible.builtin.env', 'SENTRY_DSN') }}"
   DataProtection__CertificatePassword: "{{ beeps_data_protection_password }}"
 
 # Required, whatever appsettings.json says: without them the app does not start, or starts without a working part.

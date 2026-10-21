@@ -19,6 +19,7 @@
     <PackageVersion Include="Microsoft.Extensions.Caching.StackExchangeRedis" Version="10.0.13" />
     <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3" />
     <PackageVersion Include="Resend" Version="0.23.0" />
+    <PackageVersion Include="Sentry.AspNetCore" Version="6.12.0" />
     <PackageVersion Include="SkiaSharp" Version="4.153.1" />
     <!-- Native Skia for the Linux containers and CI; macOS and Windows ship with SkiaSharp itself. -->
     <PackageVersion Include="SkiaSharp.NativeAssets.Linux.NoDependencies" Version="4.153.1" />

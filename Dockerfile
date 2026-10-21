@@ -24,8 +24,10 @@ RUN dotnet restore src/Beeps/Beeps.csproj -a "$TARGETARCH" -p:PublishReadyToRun=
 COPY src/Beeps/ src/Beeps/
 # MapStaticAssets fingerprints whatever is in wwwroot/dist when the app is built, so the assets go in first.
 COPY --from=client /src/src/Beeps/wwwroot/dist/ src/Beeps/wwwroot/dist/
+# The version tag (v1.2.3, from .github/workflows/deploy.yml) without its v; Sentry names the release after it.
+ARG VERSION=v1.0.0
 RUN dotnet publish src/Beeps/Beeps.csproj -c Release -a "$TARGETARCH" --no-restore -o /app -p:UseAppHost=false \
-    -p:PublishReadyToRun=true
+    -p:PublishReadyToRun=true -p:Version="${VERSION#v}"
 # Migrations run once per deploy, before the new version takes traffic, never at each instance's start (PLAN 9.3).
 # Making the bundle builds the DbContext, which wants a connection string; it is never opened here, and the bundle
 # reads the real one from the environment when it runs.

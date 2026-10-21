@@ -92,6 +92,7 @@ jobs:
         with:
           context: .
           platforms: linux/amd64
+          build-args: VERSION=${{ github.ref_name }}
           push: true
           tags: |
             ${{ steps.name.outputs.repository }}:${{ github.ref_name }}
@@ -202,6 +203,7 @@ jobs:
           OAUTH_GOOGLE_CLIENT_SECRET: ${{ secrets.OAUTH_GOOGLE_CLIENT_SECRET }}
           OAUTH_GITHUB_CLIENT_ID: ${{ secrets.OAUTH_GITHUB_CLIENT_ID }}
           OAUTH_GITHUB_CLIENT_SECRET: ${{ secrets.OAUTH_GITHUB_CLIENT_SECRET }}
+          SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
           APP_SETTINGS: ${{ secrets.APP_SETTINGS }}
           # Backups (optional)
           BACKUP_BUCKET: ${{ secrets.BACKUP_BUCKET }}
