@@ -1,6 +1,7 @@
 using System.Runtime.CompilerServices;
 using System.Threading.Channels;
 using Beeps.Features.Live;
+using Beeps.Features.Shared;
 using Microsoft.Extensions.Options;
 
 namespace Beeps.Infrastructure.Live;
@@ -25,6 +26,9 @@ public sealed partial class LiveEventHub(
     private const int BatchSize = 500;
 
     private static readonly TimeSpan ErrorDelay = TimeSpan.FromSeconds(2);
+
+    private readonly LogThrottle readFailures = new();
+    private readonly LogThrottle replayFailures = new();
 
     /// <summary>Holds one word that events were added since the last read; more words before that read change nothing.</summary>
     private readonly Channel<bool> appended = Channel.CreateBounded<bool>(new BoundedChannelOptions(1) { FullMode = BoundedChannelFullMode.DropWrite });
@@ -131,7 +135,10 @@ public sealed partial class LiveEventHub(
             catch (Exception exception)
             {
                 failed = true;
-                LogReadFailed(logger, exception);
+                if (readFailures.Allow())
+                {
+                    LogReadFailed(logger, exception);
+                }
                 try
                 {
                     await Task.Delay(ErrorDelay, time, stoppingToken);
@@ -246,7 +253,10 @@ public sealed partial class LiveEventHub(
         }
         catch (Exception exception) when (exception is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
         {
-            LogReplayFailed(logger, exception);
+            if (replayFailures.Allow())
+            {
+                LogReplayFailed(logger, exception);
+            }
             return null;
         }
     }
@@ -314,10 +324,10 @@ public sealed partial class LiveEventHub(
     [LoggerMessage(Level = LogLevel.Warning, Message = "Subscribing to new live events failed; reading them every {Interval} until it works")]
     private static partial void LogSubscribeFailed(ILogger logger, Exception exception, TimeSpan interval);
 
-    [LoggerMessage(Level = LogLevel.Warning, Message = "Reading live events failed; retrying")]
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Reading live events failed; retrying (logged at most once a minute)")]
     private static partial void LogReadFailed(ILogger logger, Exception exception);
 
-    [LoggerMessage(Level = LogLevel.Warning, Message = "Replaying live events for a connection failed; it catches up from a gap")]
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Replaying live events for a connection failed; it catches up from a gap (logged at most once a minute)")]
     private static partial void LogReplayFailed(ILogger logger, Exception exception);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "A live connection fell too far behind and was ended")]

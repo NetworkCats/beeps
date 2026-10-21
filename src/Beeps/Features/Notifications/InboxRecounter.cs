@@ -1,4 +1,5 @@
 using Beeps.Features.Live;
+using Beeps.Features.Shared;
 
 namespace Beeps.Features.Notifications;
 
@@ -14,6 +15,8 @@ public sealed partial class InboxRecounter(INotificationStore store, LiveUpdates
 
     /// <summary>Recipients per inbox event.</summary>
     public const int BatchSize = 500;
+
+    private static readonly LogThrottle RecountFailures = new();
 
     public async Task RecountAsync(IReadOnlyCollection<Guid> beepIds, IReadOnlyCollection<Guid> fromActorIds, CancellationToken cancellationToken)
     {
@@ -31,7 +34,10 @@ public sealed partial class InboxRecounter(INotificationStore store, LiveUpdates
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
-            LogRecountFailed(logger, exception);
+            if (RecountFailures.Allow())
+            {
+                LogRecountFailed(logger, exception);
+            }
             return;
         }
 
@@ -41,6 +47,6 @@ public sealed partial class InboxRecounter(INotificationStore store, LiveUpdates
         }
     }
 
-    [LoggerMessage(Level = LogLevel.Warning, Message = "Finding the inboxes to recount failed; their unread counts catch up on their next change")]
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Finding the inboxes to recount failed; their unread counts catch up on their next change (logged at most once a minute)")]
     private static partial void LogRecountFailed(ILogger logger, Exception exception);
 }

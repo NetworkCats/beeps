@@ -3,6 +3,7 @@ using System.Text;
 using Beeps.Features.Admin;
 using Beeps.Features.Live;
 using Beeps.Features.Moderation;
+using Beeps.Features.Shared;
 using Microsoft.Extensions.Options;
 
 namespace Beeps.Infrastructure.Live;
@@ -20,6 +21,8 @@ public sealed partial class AdminFiguresWorker(
     TimeProvider time,
     ILogger<AdminFiguresWorker> logger) : BackgroundService
 {
+    private readonly LogThrottle failures = new();
+
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         if (!options.Value.Enabled)
@@ -56,7 +59,10 @@ public sealed partial class AdminFiguresWorker(
             }
             catch (Exception exception)
             {
-                LogFailed(logger, exception);
+                if (failures.Allow())
+                {
+                    LogFailed(logger, exception);
+                }
             }
         }
     }
@@ -82,6 +88,6 @@ public sealed partial class AdminFiguresWorker(
         return text.ToString();
     }
 
-    [LoggerMessage(Level = LogLevel.Warning, Message = "Looking at the admin figures failed; retrying")]
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Looking at the admin figures failed; retrying (logged at most once a minute)")]
     private static partial void LogFailed(ILogger logger, Exception exception);
 }

@@ -31,6 +31,8 @@ public sealed partial class SearchService(
     /// <summary>People offered for an @mention being typed: a few, so the list stays small.</summary>
     public const int MaxSuggestions = 3;
 
+    private static readonly LogThrottle SearchFailures = new();
+
     /// <summary>
     /// What the search box does with <c>#tag</c> (PLAN 6.19): the hashtag's page, not a text search. Returns the
     /// normalized tag, or null for any other query.
@@ -154,7 +156,10 @@ public sealed partial class SearchService(
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
-            LogSearchFailed(logger, exception);
+            if (SearchFailures.Allow())
+            {
+                LogSearchFailed(logger, exception);
+            }
             return Error.Unavailable(SearchErrorCodes.Unavailable, localizer["Error.SearchUnavailable"]);
         }
     }
@@ -163,6 +168,6 @@ public sealed partial class SearchService(
     [GeneratedRegex(@"^[A-Za-z0-9_]+(\.[A-Za-z0-9_]*)?\z")]
     private static partial Regex HandlePrefixPattern();
 
-    [LoggerMessage(Level = LogLevel.Error, Message = "Search failed")]
+    [LoggerMessage(Level = LogLevel.Error, Message = "Search failed (logged at most once a minute)")]
     private static partial void LogSearchFailed(ILogger logger, Exception exception);
 }

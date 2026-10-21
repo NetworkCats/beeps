@@ -32,6 +32,9 @@ public sealed partial class BeepService(
     /// <summary>A beep opened again this soon after the view last counted is the same view (gone back to, reloaded).</summary>
     public static readonly TimeSpan RepeatViewWindow = TimeSpan.FromMinutes(30);
 
+    private static readonly LogThrottle ViewFailures = new();
+    private static readonly LogThrottle CounterFailures = new();
+
     /// <summary>
     /// Posts a beep, or a reply when <paramref name="replyToId"/> is set, with up to four images the author
     /// uploaded (<paramref name="mediaIds"/>; with images the text may be empty). Mentions resolve to actors
@@ -396,7 +399,10 @@ public sealed partial class BeepService(
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
-            LogViewFailed(logger, exception, beepId);
+            if (ViewFailures.Allow())
+            {
+                LogViewFailed(logger, exception, beepId);
+            }
         }
 
         await store.AddViewsAsync(new Dictionary<Guid, long> { [beepId] = 1 }, cancellationToken);
@@ -490,7 +496,10 @@ public sealed partial class BeepService(
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
-            LogCounterFailed(logger, exception, beep.Id);
+            if (CounterFailures.Allow())
+            {
+                LogCounterFailed(logger, exception, beep.Id);
+            }
             outbox.Enqueue(BeepRecountRequest.MessageType, new BeepRecountRequest(beep.Id), BeepCountsJsonContext.Default.BeepRecountRequest);
             await unitOfWork.SaveChangesAsync(CancellationToken.None);
             return;
@@ -527,9 +536,9 @@ public sealed partial class BeepService(
     [LoggerMessage(Level = LogLevel.Information, Message = "Beep {BeepId} deleted: its images could not be decoded and it has no text")]
     private static partial void LogDeletedEmpty(ILogger logger, Guid beepId);
 
-    [LoggerMessage(Level = LogLevel.Error, Message = "Updating the live counts of beep {BeepId} failed")]
+    [LoggerMessage(Level = LogLevel.Error, Message = "Updating the live counts of beep {BeepId} failed (logged at most once a minute)")]
     private static partial void LogCounterFailed(ILogger logger, Exception exception, Guid beepId);
 
-    [LoggerMessage(Level = LogLevel.Warning, Message = "Noting a view of beep {BeepId} in Valkey failed; it is counted in its column at once")]
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Noting a view of beep {BeepId} in Valkey failed; it is counted in its column at once (logged at most once a minute)")]
     private static partial void LogViewFailed(ILogger logger, Exception exception, Guid beepId);
 }

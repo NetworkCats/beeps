@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization.Metadata;
 using Beeps.Features.Beeps;
+using Beeps.Features.Shared;
 
 namespace Beeps.Features.Live;
 
@@ -12,6 +13,8 @@ public sealed partial class LiveUpdates(ILiveEventStore store, IBeepCounterStore
 {
     /// <summary>Beeps per merged counts event.</summary>
     public const int CountsBatchSize = 500;
+
+    private readonly LogThrottle publishFailures = new();
 
     public Task BeepPostedAsync(BeepPostedEvent beep, CancellationToken cancellationToken) =>
         AppendAsync(LiveEventTypes.BeepPosted, beep, LiveJsonContext.Default.BeepPostedEvent, cancellationToken);
@@ -129,7 +132,10 @@ public sealed partial class LiveUpdates(ILiveEventStore store, IBeepCounterStore
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
-            LogPublishFailed(logger, exception, LiveEventTypes.Counts);
+            if (publishFailures.Allow())
+            {
+                LogPublishFailed(logger, exception, LiveEventTypes.Counts);
+            }
         }
     }
 
@@ -170,10 +176,13 @@ public sealed partial class LiveUpdates(ILiveEventStore store, IBeepCounterStore
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
-            LogPublishFailed(logger, exception, type);
+            if (publishFailures.Allow())
+            {
+                LogPublishFailed(logger, exception, type);
+            }
         }
     }
 
-    [LoggerMessage(Level = LogLevel.Warning, Message = "Publishing a live {EventType} event failed; open pages miss this update")]
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Publishing a live {EventType} event failed; open pages miss this update (logged at most once a minute)")]
     private static partial void LogPublishFailed(ILogger logger, Exception exception, string eventType);
 }

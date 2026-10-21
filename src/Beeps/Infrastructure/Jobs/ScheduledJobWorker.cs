@@ -1,3 +1,4 @@
+using Beeps.Features.Shared;
 using Microsoft.Extensions.Options;
 
 namespace Beeps.Infrastructure.Jobs;
@@ -20,6 +21,8 @@ public sealed partial class ScheduledJobWorker(
     TimeProvider time,
     ILogger<ScheduledJobWorker> logger) : BackgroundService
 {
+    private readonly LogThrottle pollFailures = new();
+
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         var settings = options.Value;
@@ -44,7 +47,10 @@ public sealed partial class ScheduledJobWorker(
             catch (Exception exception)
             {
                 // Database away and the like: try again at the next poll.
-                LogPollFailed(logger, exception);
+                if (pollFailures.Allow())
+                {
+                    LogPollFailed(logger, exception);
+                }
             }
         }
         while (await WaitAsync(timer, stoppingToken));
@@ -65,6 +71,6 @@ public sealed partial class ScheduledJobWorker(
     [LoggerMessage(Level = LogLevel.Information, Message = "Scheduled jobs are disabled on this instance")]
     private static partial void LogDisabled(ILogger logger);
 
-    [LoggerMessage(Level = LogLevel.Error, Message = "Checking for due scheduled jobs failed")]
+    [LoggerMessage(Level = LogLevel.Error, Message = "Checking for due scheduled jobs failed (logged at most once a minute)")]
     private static partial void LogPollFailed(ILogger logger, Exception exception);
 }

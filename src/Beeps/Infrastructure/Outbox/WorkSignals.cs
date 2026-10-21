@@ -1,3 +1,4 @@
+using Beeps.Features.Shared;
 using Beeps.Infrastructure.Data;
 using Npgsql;
 
@@ -33,6 +34,8 @@ public sealed partial class WorkSignals(NpgsqlDataSource dataSource, ILogger<Wor
     public const string OutboxChannel = "beeps_outbox";
 
     public const string ModerationChannel = "beeps_moderation";
+
+    private readonly LogThrottle notifyFailures = new();
 
     private readonly Lock gate = new();
     private WorkQueues sending;
@@ -93,7 +96,10 @@ public sealed partial class WorkSignals(NpgsqlDataSource dataSource, ILogger<Wor
             }
             catch (Exception exception)
             {
-                LogNotifyFailed(logger, exception, channel);
+                if (notifyFailures.Allow())
+                {
+                    LogNotifyFailed(logger, exception, channel);
+                }
             }
 
             lock (gate)
@@ -109,6 +115,6 @@ public sealed partial class WorkSignals(NpgsqlDataSource dataSource, ILogger<Wor
         }
     }
 
-    [LoggerMessage(Level = LogLevel.Warning, Message = "Waking the {Channel} workers failed; they find the work when they next poll")]
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Waking the {Channel} workers failed; they find the work when they next poll (logged at most once a minute)")]
     private static partial void LogNotifyFailed(ILogger logger, Exception exception, string channel);
 }

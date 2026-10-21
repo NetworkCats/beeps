@@ -1,4 +1,5 @@
 using Beeps.Features.Moderation;
+using Beeps.Features.Shared;
 using Beeps.Infrastructure.Outbox;
 using Microsoft.Extensions.Options;
 using Npgsql;
@@ -20,6 +21,8 @@ public sealed partial class ModerationWorker(
     ILogger<ModerationWorker> logger) : BackgroundService
 {
     private const string ListenSql = $"LISTEN {WorkSignals.ModerationChannel}";
+
+    private readonly LogThrottle loopFailures = new();
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -46,7 +49,10 @@ public sealed partial class ModerationWorker(
                 }
                 catch (Exception exception)
                 {
-                    LogLoopFailed(logger, exception);
+                    if (loopFailures.Allow())
+                    {
+                        LogLoopFailed(logger, exception);
+                    }
                     try
                     {
                         await Task.Delay(settings.ErrorDelay, time, stoppingToken);
@@ -125,7 +131,7 @@ public sealed partial class ModerationWorker(
     [LoggerMessage(Level = LogLevel.Information, Message = "Moderation worker is disabled on this instance")]
     private static partial void LogDisabled(ILogger logger);
 
-    [LoggerMessage(Level = LogLevel.Error, Message = "Moderation worker loop failed; reconnecting")]
+    [LoggerMessage(Level = LogLevel.Error, Message = "Moderation worker loop failed; reconnecting (logged at most once a minute)")]
     private static partial void LogLoopFailed(ILogger logger, Exception exception);
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Recording the review of beep {BeepId} failed; it is retried when its lease ends")]

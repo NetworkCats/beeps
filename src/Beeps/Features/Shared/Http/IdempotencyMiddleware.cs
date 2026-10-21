@@ -63,6 +63,8 @@ public sealed partial class IdempotencyMiddleware(RequestDelegate next, ILogger<
     /// <summary>How long a claim blocks a concurrent retry; held again while the write runs (<see cref="HoldClaimAsync"/>).</summary>
     public static readonly TimeSpan ClaimDuration = TimeSpan.FromMinutes(1);
 
+    private readonly LogThrottle storeFailures = new();
+
     public async Task InvokeAsync(HttpContext context, IIdempotencyStore store, RateLimitService rateLimits, IStringLocalizer<SharedResource> localizer)
     {
         ArgumentNullException.ThrowIfNull(context);
@@ -110,7 +112,10 @@ public sealed partial class IdempotencyMiddleware(RequestDelegate next, ILogger<
         {
             // The store is PostgreSQL, which the write itself needs too; this only lets a write through that would
             // most likely fail on its own anyway.
-            LogStoreFailed(logger, exception);
+            if (storeFailures.Allow())
+            {
+                LogStoreFailed(logger, exception);
+            }
             await next(context);
             return;
         }
@@ -236,7 +241,10 @@ public sealed partial class IdempotencyMiddleware(RequestDelegate next, ILogger<
             }
             catch (Exception exception)
             {
-                LogStoreFailed(logger, exception);
+                if (storeFailures.Allow())
+                {
+                    LogStoreFailed(logger, exception);
+                }
             }
         }
     }
@@ -264,10 +272,13 @@ public sealed partial class IdempotencyMiddleware(RequestDelegate next, ILogger<
         }
         catch (Exception exception)
         {
-            LogStoreFailed(logger, exception);
+            if (storeFailures.Allow())
+            {
+                LogStoreFailed(logger, exception);
+            }
         }
     }
 
-    [LoggerMessage(Level = LogLevel.Error, Message = "Idempotency store failed; the request runs without replay protection")]
+    [LoggerMessage(Level = LogLevel.Error, Message = "Idempotency store failed; the request runs without replay protection (logged at most once a minute)")]
     private static partial void LogStoreFailed(ILogger logger, Exception exception);
 }

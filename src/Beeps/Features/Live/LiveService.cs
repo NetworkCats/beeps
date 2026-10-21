@@ -75,6 +75,8 @@ public sealed partial class LiveService(
     /// <summary>Clocks of the app and Valkey differ slightly; replaying a little more is harmless, since pages ignore what they already show.</summary>
     private static readonly TimeSpan ClockMargin = TimeSpan.FromSeconds(2);
 
+    private static readonly LogThrottle BookkeepingFailures = new();
+
     /// <summary>A signed-in person's tab: everything the page shows, live.</summary>
     public async Task<Result<IAsyncEnumerable<LiveMessage>>> OpenAsync(Viewer viewer, LiveSession session, LiveRequest request, CancellationToken cancellationToken)
     {
@@ -523,7 +525,10 @@ public sealed partial class LiveService(
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
             // Without Valkey the limit cannot be counted; the connection still works for what reaches this instance.
-            LogConnectionBookkeepingFailed(logger, exception, connection.Viewer.ActorId);
+            if (BookkeepingFailures.Allow())
+            {
+                LogConnectionBookkeepingFailed(logger, exception, connection.Viewer.ActorId);
+            }
         }
     }
 
@@ -536,7 +541,10 @@ public sealed partial class LiveService(
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
-            LogConnectionBookkeepingFailed(logger, exception, connection.Viewer.ActorId);
+            if (BookkeepingFailures.Allow())
+            {
+                LogConnectionBookkeepingFailed(logger, exception, connection.Viewer.ActorId);
+            }
         }
     }
 
@@ -640,6 +648,6 @@ public sealed partial class LiveService(
     [LoggerMessage(Level = LogLevel.Warning, Message = "Handling live event {EventId} ({EventType}) failed; skipped")]
     private static partial void LogEventFailed(ILogger logger, Exception exception, string eventId, string eventType);
 
-    [LoggerMessage(Level = LogLevel.Warning, Message = "Counting the live connections of {ActorId} failed")]
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Counting the live connections of {ActorId} failed (logged at most once a minute)")]
     private static partial void LogConnectionBookkeepingFailed(ILogger logger, Exception exception, Guid actorId);
 }

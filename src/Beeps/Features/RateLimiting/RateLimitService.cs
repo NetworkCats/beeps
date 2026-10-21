@@ -13,6 +13,8 @@ public sealed partial class RateLimitService(
     IStringLocalizer<SharedResource> localizer,
     ILogger<RateLimitService> logger)
 {
+    private readonly LogThrottle storeFailures = new();
+
     public Task<Result> CheckAsync(string policy, string partition, CancellationToken cancellationToken) =>
         CheckAsync([new RateLimitTarget(policy, partition)], cancellationToken);
 
@@ -39,7 +41,10 @@ public sealed partial class RateLimitService(
         {
             // A Valkey outage must neither take the site down (refusing everything) nor lift every limit: this
             // instance counts on its own until Valkey is back. Logged as an error so the outage is noticed.
-            LogStoreFailed(logger, exception);
+            if (storeFailures.Allow())
+            {
+                LogStoreFailed(logger, exception);
+            }
             decision = fallback.TryAcquire(counters);
         }
 
@@ -64,7 +69,10 @@ public sealed partial class RateLimitService(
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
-            LogStoreFailed(logger, exception);
+            if (storeFailures.Allow())
+            {
+                LogStoreFailed(logger, exception);
+            }
             return fallback.Wait(counters);
         }
     }
@@ -89,7 +97,10 @@ public sealed partial class RateLimitService(
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
             // Counted here, then, while Valkey was out (CheckAsync); at worst one request too many stays counted.
-            LogStoreFailed(logger, exception);
+            if (storeFailures.Allow())
+            {
+                LogStoreFailed(logger, exception);
+            }
             fallback.Release(counters);
         }
     }
@@ -119,6 +130,6 @@ public sealed partial class RateLimitService(
     private static string HashPartition(string partition) =>
         Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(partition)).AsSpan(0, 16));
 
-    [LoggerMessage(Level = LogLevel.Error, Message = "Rate limit store failed; counting on this instance only")]
+    [LoggerMessage(Level = LogLevel.Error, Message = "Rate limit store failed; counting on this instance only (logged at most once a minute)")]
     private static partial void LogStoreFailed(ILogger logger, Exception exception);
 }

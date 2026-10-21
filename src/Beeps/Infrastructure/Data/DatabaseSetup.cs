@@ -91,9 +91,16 @@ public static class DatabaseSetup
 
     // Some limits are caps on a count or a list of anyone (the unread count stops at 100), where any rows will do: an
     // ORDER BY there would read every row to sort them, so the warning about a limit without one is off.
+    // A failed command, save or query is thrown to the caller, which handles it (a taken email address at sign-up) or
+    // logs it once (the request's error page, a worker's retry): logged here as well, each would be two more errors.
     private static DbContextOptionsBuilder Configure(DbContextOptionsBuilder options, NpgsqlDataSource dataSource) =>
         options
             .UseNpgsql(dataSource, npgsql => npgsql.MigrationsHistoryTable("ef_migrations_history"))
             .UseSnakeCaseNamingConvention()
-            .ConfigureWarnings(w => w.Ignore(CoreEventId.RowLimitingOperationWithoutOrderByWarning));
+            .ConfigureWarnings(w => w
+                .Ignore(CoreEventId.RowLimitingOperationWithoutOrderByWarning)
+                .Log(
+                    (RelationalEventId.CommandError, LogLevel.Debug),
+                    (CoreEventId.SaveChangesFailed, LogLevel.Debug),
+                    (CoreEventId.QueryIterationFailed, LogLevel.Debug)));
 }

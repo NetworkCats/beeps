@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Net;
 using Beeps.Features.Accounts;
+using Beeps.Features.Shared;
 using MaxMind.Db;
 
 namespace Beeps.Infrastructure.IpGeolocation;
@@ -14,6 +15,8 @@ public sealed partial class MaxMindIpLocations(TimeProvider time, ILogger<MaxMin
 {
     /// <summary>How long a replaced copy stays open: far longer than any lookup takes.</summary>
     internal static readonly TimeSpan RetireDelay = TimeSpan.FromMinutes(1);
+
+    private readonly LogThrottle lookupFailures = new();
 
     private Reader? reader;
 
@@ -58,7 +61,10 @@ public sealed partial class MaxMindIpLocations(TimeProvider time, ILogger<MaxMin
         catch (Exception exception) when (exception is InvalidDatabaseException or ArgumentException)
         {
             // An IPv6 address in an IPv4-only database, or a damaged record.
-            LogLookupFailed(logger, exception);
+            if (lookupFailures.Allow())
+            {
+                LogLookupFailed(logger, exception);
+            }
             return null;
         }
 
@@ -134,7 +140,7 @@ public sealed partial class MaxMindIpLocations(TimeProvider time, ILogger<MaxMin
         }
     }
 
-    [LoggerMessage(Level = LogLevel.Warning, Message = "Looking up an IP address failed")]
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Looking up an IP address failed (logged at most once a minute)")]
     private static partial void LogLookupFailed(ILogger logger, Exception exception);
 }
 

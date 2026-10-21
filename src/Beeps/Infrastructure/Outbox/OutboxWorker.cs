@@ -1,3 +1,4 @@
+using Beeps.Features.Shared;
 using Microsoft.Extensions.Options;
 using Npgsql;
 
@@ -17,6 +18,8 @@ public sealed partial class OutboxWorker(
     ILogger<OutboxWorker> logger) : BackgroundService
 {
     private const string ListenSql = $"LISTEN {WorkSignals.OutboxChannel}";
+
+    private readonly LogThrottle loopFailures = new();
 
     /// <summary>The queue it drains, one of <see cref="Features.Shared.OutboxQueues"/>.</summary>
     public string Queue => queue;
@@ -53,7 +56,10 @@ public sealed partial class OutboxWorker(
             }
             catch (Exception exception)
             {
-                LogLoopFailed(logger, exception, queue);
+                if (loopFailures.Allow())
+                {
+                    LogLoopFailed(logger, exception, queue);
+                }
                 try
                 {
                     await Task.Delay(settings.ErrorDelay, time, stoppingToken);
@@ -80,6 +86,6 @@ public sealed partial class OutboxWorker(
     [LoggerMessage(Level = LogLevel.Information, Message = "Outbox worker for the {Queue} queue is disabled on this instance")]
     private static partial void LogDisabled(ILogger logger, string queue);
 
-    [LoggerMessage(Level = LogLevel.Error, Message = "Outbox worker loop for the {Queue} queue failed; reconnecting")]
+    [LoggerMessage(Level = LogLevel.Error, Message = "Outbox worker loop for the {Queue} queue failed; reconnecting (logged at most once a minute)")]
     private static partial void LogLoopFailed(ILogger logger, Exception exception, string queue);
 }

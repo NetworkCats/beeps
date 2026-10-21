@@ -46,6 +46,9 @@ public sealed partial class CacheInvalidator(
 
     private readonly Channel<Pass> queue = Channel.CreateUnbounded<Pass>(new UnboundedChannelOptions { SingleReader = true });
 
+    private readonly LogThrottle forgetFailures = new();
+    private readonly LogThrottle forgetNotStoredFailures = new();
+
     /// <summary>Called after the commit; returns at once.</summary>
     public void Invalidate(IReadOnlyCollection<CacheChange> changes)
     {
@@ -85,7 +88,10 @@ public sealed partial class CacheInvalidator(
         }
         catch (Exception exception)
         {
-            LogForgetFailed(logger, exception, keys.Count);
+            if (forgetFailures.Allow())
+            {
+                LogForgetFailed(logger, exception, keys.Count);
+            }
             queue.Writer.TryWrite(pass);
             await StoreForgetAsync(keys);
         }
@@ -209,7 +215,10 @@ public sealed partial class CacheInvalidator(
         catch (Exception exception)
         {
             // The in-process retry is still queued.
-            LogForgetNotStored(logger, exception, keys.Count);
+            if (forgetNotStoredFailures.Allow())
+            {
+                LogForgetNotStored(logger, exception, keys.Count);
+            }
         }
     }
 
@@ -419,10 +428,10 @@ public sealed partial class CacheInvalidator(
     [LoggerMessage(Level = LogLevel.Warning, Message = "Invalidating {Count} cache changes failed; retrying in {Delay}")]
     private static partial void LogFailed(ILogger logger, Exception exception, int count, TimeSpan delay);
 
-    [LoggerMessage(Level = LogLevel.Warning, Message = "Dropping {Count} cached sign-in entries failed; retrying in the background")]
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Dropping {Count} cached sign-in entries failed; retrying in the background (logged at most once a minute)")]
     private static partial void LogForgetFailed(ILogger logger, Exception exception, int count);
 
-    [LoggerMessage(Level = LogLevel.Error, Message = "Storing the retry of {Count} cached sign-in entries failed; it is retried in this process only")]
+    [LoggerMessage(Level = LogLevel.Error, Message = "Storing the retry of {Count} cached sign-in entries failed; it is retried in this process only (logged at most once a minute)")]
     private static partial void LogForgetNotStored(ILogger logger, Exception exception, int count);
 
     [LoggerMessage(Level = LogLevel.Error, Message = "{Count} cache invalidations were dropped while Valkey was away; those entries stay until they expire")]

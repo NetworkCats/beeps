@@ -10,6 +10,8 @@ namespace Beeps.Features.Beeps;
 /// </summary>
 public sealed partial class BeepViews(IBeepStore store, IBeepCounterStore counters, AvatarUrls avatars, MediaUrls media, ILogger<BeepViews> logger)
 {
+    private static readonly LogThrottle CounterFailures = new();
+
     public ActorView Actor(ActorRow actor, Viewer? viewer)
     {
         ArgumentNullException.ThrowIfNull(actor);
@@ -67,11 +69,14 @@ public sealed partial class BeepViews(IBeepStore store, IBeepCounterStore counte
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
-            LogCountersUnavailable(logger, exception);
+            if (CounterFailures.Allow())
+            {
+                LogCountersUnavailable(logger, exception);
+            }
             return new Dictionary<Guid, BeepCounts>();
         }
     }
 
-    [LoggerMessage(Level = LogLevel.Warning, Message = "Live beep counts are unavailable; showing the written-back counts")]
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Live beep counts are unavailable; showing the written-back counts (logged at most once a minute)")]
     private static partial void LogCountersUnavailable(ILogger logger, Exception exception);
 }
