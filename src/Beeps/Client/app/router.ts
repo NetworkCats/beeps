@@ -7,8 +7,9 @@
 // page comes as HTML (exactly what a reload shows, the server draws the islands too, for search engines) and its body
 // is put in place of this one's. The script, the live connection and what the app knows of each beep stay. Going back
 // shows the page as it was left (more pages loaded, where it was scrolled), then lets it catch up. The answer to a form
-// takes the form's place in the tab's history, as the page already shown does when it is visited again: going back
-// never lands on a form already sent, or on the same page.
+// takes the form's place in the tab's history, as the page already shown does when it is visited again, unless it is
+// the page before, which is gone back to and shown there: going back never lands on a form already sent, or on the
+// same page.
 //
 // A page signed in as someone else, signed out, or in another language is loaded in full instead: it needs another
 // shell, config and live connection, or its layout reads differently.
@@ -47,6 +48,8 @@ interface Entry {
   key: string;
   /** How many pages of this site came before this one in the tab, as far as this script knows. */
   index: number;
+  /** The address of the page before this one, when it was left by a link here. */
+  from?: string;
 }
 
 interface Snapshot {
@@ -63,6 +66,10 @@ interface Snapshot {
 const MAX_SNAPSHOTS = 20;
 const snapshots = new Map<string, Snapshot>();
 let current: Entry = { key: '', index: 0 };
+// The entry this document was loaded at: going back past it loads the page in full, not in place.
+let firstIndex = 0;
+// Going back to the page before, to show a form's answer there: what the popstate that comes of it settles.
+let returning: (() => void) | undefined;
 // The address of the page shown, which its snapshot is kept under: going back or forward, the address bar already
 // shows the page gone to by the time this one is saved.
 let shownUrl = '';
@@ -360,11 +367,20 @@ async function show(response: Response, options: ShowOptions, signal: AbortSigna
   else document.documentElement.dataset.liveStatus = String(response.status);
   let drawn: Promise<void>;
   if (options.replace) {
+    // A form's answer that is the page before (an email changed, back to the account) is shown there, gone back to:
+    // in the form's place, the same page would be in the history twice in a row, and its back arrow lead to itself.
+    if (current.from && current.index > firstIndex && !samePage(address, shownUrl) && samePage(address, current.from)) {
+      await new Promise<void>((resolve) => {
+        returning = resolve;
+        window.history.back();
+      });
+      if (signal.aborted) return;
+    }
     drawn = swap(options.ahead ?? false);
     window.history.replaceState({ beeps: current }, '', url);
   } else {
     save();
-    current = { key: newKey(), index: current.index + 1 };
+    current = { key: newKey(), index: current.index + 1, from: shownUrl };
     drawn = swap(options.ahead ?? false);
     window.history.pushState({ beeps: current }, '', url);
   }
@@ -580,6 +596,15 @@ async function onSubmit(event: SubmitEvent): Promise<void> {
 
 function onPop(event: PopStateEvent): void {
   let entry = entryOf(event.state);
+  // Gone back to show a form's answer (show()): that draws the page.
+  if (returning && entry) {
+    const settle = returning;
+    returning = undefined;
+    current = entry;
+    shownUrl = window.location.href;
+    settle();
+    return;
+  }
   // A link within the page (to the reply box, say), or going back or forward across one: the page stays as it is, with
   // what was typed in it, and the browser scrolls.
   if ((!entry || entry.key === current.key) && samePage(window.location.href, shownUrl)) {
@@ -611,6 +636,7 @@ export function startRouter(): void {
     window.history.scrollRestoration = 'auto';
   });
   current = entryOf(window.history.state) ?? { key: newKey(), index: 0 };
+  firstIndex = current.index;
   shownUrl = window.location.href;
   window.history.replaceState({ ...(window.history.state as object | null), beeps: current }, '');
   document.addEventListener('click', onClick);
