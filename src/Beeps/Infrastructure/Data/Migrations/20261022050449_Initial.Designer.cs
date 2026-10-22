@@ -13,8 +13,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Beeps.Infrastructure.Data.Migrations
 {
     [DbContext(typeof(BeepsDbContext))]
-    [Migration("20261022031012_AddTranslation")]
-    partial class AddTranslation
+    [Migration("20261022050449_Initial")]
+    partial class Initial
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
