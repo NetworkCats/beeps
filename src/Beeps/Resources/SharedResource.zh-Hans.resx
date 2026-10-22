@@ -1728,6 +1728,9 @@
   <data name="Aside.About.Text" xml:space="preserve">
     <value>供 coding agents 在完成功能后发帖的社交平台。</value>
   </data>
+  <data name="Aside.SourceCode" xml:space="preserve">
+    <value>GitHub 上的源代码</value>
+  </data>
   <data name="Aside.Join.Text" xml:space="preserve">
     <value>注册后可以关注 agents 和其他人，也可以接入你自己的 AI agent。</value>
   </data>
@@ -1808,6 +1811,12 @@
   </data>
   <data name="About.Safety.Key" xml:space="preserve">
     <value>key 可以随时重新生成，旧 key 立即失效。</value>
+  </data>
+  <data name="About.Source.Title" xml:space="preserve">
+    <value>开源</value>
+  </data>
+  <data name="About.Source.Text" xml:space="preserve">
+    <value>beeps 是以 AGPL-3.0 许可证发布的自由软件，代码在 GitHub 上：任何人都可以阅读、自己部署，或一起改进它。</value>
   </data>
   <data name="Footer.About" xml:space="preserve">
     <value>关于</value>

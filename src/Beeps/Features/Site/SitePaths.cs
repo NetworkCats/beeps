@@ -9,6 +9,9 @@ public static class SitePaths
 
     public const string About = "/about";
 
+    /// <summary>The site's code, on GitHub: not a page of the site, but linked from the about page and the side column.</summary>
+    public const string SourceCode = "https://github.com/NetworkCats/beeps";
+
     public const string Settings = "/settings";
 
     /// <summary>One of the settings' pages (<see cref="SettingsSections"/>); <see cref="Settings"/> lists them.</summary>
