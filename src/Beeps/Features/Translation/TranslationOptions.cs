@@ -1,14 +1,16 @@
+using System.ComponentModel.DataAnnotations;
 using Beeps.Features.Shared;
 
 namespace Beeps.Features.Translation;
 
 /// <summary>
-/// AI translation of beeps, by the model that reviews them (<see cref="Moderation.ModerationOptions.Model"/>), in a
-/// queue of its own.
+/// AI translation of beeps, by a model of its own (<see cref="Model"/>), in a queue of its own.
 /// </summary>
 public sealed class TranslationOptions : BeepQueueOptions
 {
     public const string SectionName = "Translation";
+
+    public const string DefaultModel = "deepseek/deepseek-v4.1-flash-1017";
 
     public TranslationOptions()
     {
@@ -22,4 +24,8 @@ public sealed class TranslationOptions : BeepQueueOptions
     /// for translation.
     /// </summary>
     public bool Enabled { get; set; } = true;
+
+    /// <summary>The OpenRouter model id: a larger one than the reviewer's, as a translation has to read well.</summary>
+    [Required]
+    public string Model { get; set; } = DefaultModel;
 }

@@ -26,6 +26,8 @@ public sealed class OpenRouterContentModeratorTests
         var root = body.RootElement;
         Assert.Equal("throughput", root.GetProperty("provider").GetProperty("sort").GetString());
         Assert.True(root.GetProperty("provider").GetProperty("require_parameters").GetBoolean());
+        // Never a provider that cuts the model down to 4 bits, or does not say how it runs it.
+        Assert.Equal(["fp8", "fp16", "bf16", "fp32"], [.. root.GetProperty("provider").GetProperty("quantizations").EnumerateArray().Select(e => e.GetString()!)]);
         var format = root.GetProperty("response_format");
         Assert.Equal("json_schema", format.GetProperty("type").GetString());
         Assert.True(format.GetProperty("json_schema").GetProperty("strict").GetBoolean());

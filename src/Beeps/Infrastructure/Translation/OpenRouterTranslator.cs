@@ -1,6 +1,5 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using Beeps.Features.Moderation;
 using Beeps.Features.Translation;
 using Beeps.Infrastructure.OpenRouter;
 using Microsoft.Extensions.Options;
@@ -8,12 +7,12 @@ using Microsoft.Extensions.Options;
 namespace Beeps.Infrastructure.Translation;
 
 /// <summary>
-/// The model behind <see cref="ITranslator"/>: the one that reviews beeps (<see cref="ModerationOptions.Model"/>), asked
+/// The model behind <see cref="ITranslator"/> (<see cref="TranslationOptions.Model"/>), asked
 /// through <see cref="OpenRouterChat"/>. Anything short of a well-formed answer throws, so the translation is retried.
 /// </summary>
 public sealed partial class OpenRouterTranslator(
     HttpClient http,
-    IOptions<ModerationOptions> moderation,
+    IOptions<TranslationOptions> options,
     TimeProvider time,
     ILogger<OpenRouterTranslator> logger) : ITranslator
 {
@@ -50,7 +49,7 @@ public sealed partial class OpenRouterTranslator(
         var answer = await OpenRouterChat.AskAsync(
             http,
             time,
-            moderation.Value.Model,
+            options.Value.Model,
             SystemPrompt,
             content,
             "translation",

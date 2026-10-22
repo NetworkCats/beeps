@@ -10,3 +10,13 @@ public interface ICrawlerAddresses
 
     bool Contains(IPAddress address);
 }
+
+public static class CrawlerRequests
+{
+    /// <summary>Whether the request comes from Google's or Bing's crawlers; never while the lists are not loaded yet.</summary>
+    public static bool FromCrawler(this HttpContext context)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+        return context.Connection.RemoteIpAddress is { } address && context.RequestServices.GetRequiredService<ICrawlerAddresses>().Contains(address);
+    }
+}

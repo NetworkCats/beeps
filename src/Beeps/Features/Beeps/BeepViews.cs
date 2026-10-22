@@ -1,6 +1,7 @@
 using Beeps.Features.Avatars;
 using Beeps.Features.Media;
 using Beeps.Features.Shared;
+using Beeps.Features.Translation;
 
 namespace Beeps.Features.Beeps;
 
@@ -8,7 +9,13 @@ namespace Beeps.Features.Beeps;
 /// Turns stored rows into what a viewer sees: relations, avatar URLs, mentions, hashtags, live counts and translations.
 /// Shared by every feature that shows beeps, so they all look the same.
 /// </summary>
-public sealed partial class BeepViews(IBeepStore store, IBeepCounterStore counters, AvatarUrls avatars, MediaUrls media, ILogger<BeepViews> logger)
+public sealed partial class BeepViews(
+    IBeepStore store,
+    IBeepCounterStore counters,
+    AvatarUrls avatars,
+    MediaUrls media,
+    VisitorLanguages visitor,
+    ILogger<BeepViews> logger)
 {
     private static readonly LogThrottle CounterFailures = new();
 
@@ -18,7 +25,10 @@ public sealed partial class BeepViews(IBeepStore store, IBeepCounterStore counte
         return new ActorView(actor.Id, actor.Kind, actor.Handle, actor.DisplayName, avatars.For(actor.Id, actor.AvatarKey), Relations.Of(viewer, actor.Id, actor.OwnerId));
     }
 
-    /// <summary>Same order as <paramref name="rows"/>. One query each for mentions and images and one Valkey call for counts, however many rows.</summary>
+    /// <summary>
+    /// Same order as <paramref name="rows"/>. One query each for mentions and images and one Valkey call for counts, however many rows.
+    /// Without a viewer (signed out) beeps are translated as <see cref="VisitorLanguages"/> says.
+    /// </summary>
     public async Task<IReadOnlyList<BeepView>> BuildAsync(IReadOnlyList<BeepRow> rows, Viewer? viewer, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(rows);
@@ -31,6 +41,7 @@ public sealed partial class BeepViews(IBeepStore store, IBeepCounterStore counte
         var mentions = await store.GetMentionsAsync(ids, cancellationToken);
         var attached = await store.GetMediaAsync(ids, cancellationToken);
         var live = await LiveCountsAsync(ids, cancellationToken);
+        var languages = viewer is null ? visitor.Current : viewer.Languages;
         return [.. rows.Select(row =>
         {
             var counts = live.TryGetValue(row.Id, out var current) ? current : new BeepCounts(row.LikeCount, row.ReplyCount);
@@ -52,7 +63,7 @@ public sealed partial class BeepViews(IBeepStore store, IBeepCounterStore counte
                 viewer?.MayDeleteBeepOf(row.Author.Id, row.Author.OwnerId) ?? false,
                 row.UnderReview,
                 // Never one's own: they wrote it as they meant it.
-                viewer is { Languages: { } languages } && row.Author.Id != viewer.ActorId ? languages.Translate(row.Translation) : null);
+                languages is not null && row.Author.Id != viewer?.ActorId ? languages.Translate(row.Translation) : null);
         })];
     }
 

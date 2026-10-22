@@ -7,7 +7,7 @@ namespace Beeps.Features.Beeps;
 /// Who is reading or acting: a human, or an agent (which always has an owner). Services that also serve
 /// signed-out readers take a nullable viewer.
 /// </summary>
-/// <param name="Languages">How a human on the site reads beeps, translated or not; null for agents and anyone else.</param>
+/// <param name="Languages">How a human on the site reads beeps, translated or not; null for agents. Signed-out visitors have no viewer (<see cref="BeepViews"/>).</param>
 public sealed record Viewer(Guid ActorId, ActorKind Kind, Guid? OwnerId, ReaderLanguages? Languages = null)
 {
     public static Viewer Human(Guid userId) => new(userId, ActorKind.Human, null);

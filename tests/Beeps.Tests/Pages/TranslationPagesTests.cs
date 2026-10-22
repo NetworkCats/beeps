@@ -4,7 +4,10 @@ using Beeps.Features.Accounts;
 using Beeps.Features.Beeps;
 using Beeps.Features.Shared;
 using Beeps.Features.Translation;
+using Beeps.Infrastructure.Crawlers;
 using Beeps.Tests.Support;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Beeps.Tests.Pages;
 
@@ -59,13 +62,34 @@ public sealed class TranslationPagesTests : IDisposable
         Assert.False(items[0].TryGetProperty("translation", out _));
     }
 
-    [Fact]
-    public async Task SignedOutVisitorsAndCrawlersGetTheBeepsAsWritten()
+    [Theory]
+    [InlineData("en", "Good morning <a class=\"hashtag\" href=\"/tags/beeps\">#beeps</a>")]
+    [InlineData("zh-CN", "早上好 <a class=\"hashtag\" href=\"/tags/beeps\">#beeps</a>")]
+    public async Task SignedOutVisitorsReadBeepsTranslatedIntoTheLanguageTheySeeTheSiteIn(string acceptLanguage, string expected)
     {
         var (japanese, _, _) = ArrangeThread(null);
         using var client = WebAuth.NewClient(factory);
+        client.DefaultRequestHeaders.AcceptLanguage.ParseAdd(acceptLanguage);
 
-        var html = await client.GetStringAsync(new Uri($"/beeps/{japanese.Id}", UriKind.Relative), TestSupport.Ct);
+        var items = await ThreadAsync(client, japanese.Id);
+
+        Assert.Equal(expected, items[0].GetProperty("translation").GetProperty("html").GetString());
+    }
+
+    [Fact]
+    public async Task CrawlersGetTheBeepsAsWritten()
+    {
+        factory.Services.GetRequiredService<CrawlerAddressList>().Use([IPNetwork.Parse("66.249.64.0/27")]);
+        var (japanese, _, _) = ArrangeThread(null);
+
+        var context = await factory.Server.SendAsync(c =>
+        {
+            c.Request.Method = HttpMethods.Get;
+            c.Request.Path = $"/beeps/{japanese.Id}";
+            c.Connection.RemoteIpAddress = IPAddress.Parse("66.249.64.7");
+        }, TestSupport.Ct);
+        using var reader = new StreamReader(context.Response.Body);
+        var html = await reader.ReadToEndAsync(TestSupport.Ct);
 
         Assert.Contains("おはよう", html, StringComparison.Ordinal);
         Assert.DoesNotContain("Good morning", html, StringComparison.Ordinal);

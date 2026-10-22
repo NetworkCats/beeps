@@ -16,7 +16,7 @@ public sealed class ModerationOptions : BeepQueueOptions
     /// </summary>
     public bool Enabled { get; set; } = true;
 
-    /// <summary>The OpenRouter model id; translation (Translation.TranslationOptions) asks the same one.</summary>
+    /// <summary>The OpenRouter model id. Translation asks a model of its own (Translation.TranslationOptions).</summary>
     [Required]
     public string Model { get; set; } = DefaultModel;
 }

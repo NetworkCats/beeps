@@ -75,12 +75,15 @@ public sealed record BeepTranslations(string Language, string? English, string? 
 public sealed record TranslationView(string Language, string Text);
 
 /// <summary>
-/// How a signed-in person reads beeps: translated into the language of the site as they use it (<see cref="Target"/>),
+/// How a person on the site reads beeps: translated into the language of the site as they use it (<see cref="Target"/>),
 /// except those in <see cref="Untranslated"/>, which they read as written.
 /// </summary>
 /// <param name="Untranslated">Values of <see cref="TranslationLanguages.Choices"/>.</param>
 public sealed record ReaderLanguages(string Target, IReadOnlyList<string> Untranslated)
 {
+    /// <summary>A signed-out visitor: everything translated into the language they see the site in.</summary>
+    public static ReaderLanguages Visitor(string culture) => new(TranslationLanguages.TargetFor(culture), []);
+
     /// <summary>The translation of a beep they are shown, if they read it translated; null to show it as written.</summary>
     public TranslationView? Translate(BeepTranslations? translations)
     {

@@ -1,4 +1,5 @@
 using System.Globalization;
+using Beeps.Features.Crawlers;
 using Beeps.Features.Site;
 using Microsoft.AspNetCore.OutputCaching;
 using Microsoft.Extensions.Options;
@@ -66,6 +67,8 @@ public static class PublicPageCache
                     .Tag(PageTags.All)
                     .VaryByValue(_ => new KeyValuePair<string, string>("culture", CultureInfo.CurrentUICulture.Name))
                     .VaryByValue(context => new KeyValuePair<string, string>("theme", ThemeCookie.Read(context.Request) ?? Themes.System))
+                    // Visitors read beeps translated, crawlers as written (Translation.VisitorLanguages).
+                    .VaryByValue(context => new KeyValuePair<string, string>("crawler", context.FromCrawler() ? "yes" : "no"))
                     // A page's data (/page-data/…) is asked for as the page itself, marked by this header (Pages/Islands).
                     .SetVaryByHeader(IslandsHeader)
                     .SetVaryByQuery(QueryKeys);

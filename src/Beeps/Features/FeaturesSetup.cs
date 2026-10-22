@@ -38,6 +38,7 @@ public static class FeaturesSetup
         services.AddScoped<SessionService>();
         services.AddScoped<AgentService>();
         services.AddScoped<AdminService>();
+        services.AddScoped<VisitorLanguages>();
         services.AddScoped<BeepViews>();
         services.AddScoped<BeepService>();
         services.AddScoped<TimelineService>();

@@ -16,6 +16,7 @@ using Beeps.Features.Shared.Http;
 using Beeps.Features.Site;
 using Beeps.Features.Skill;
 using Beeps.Features.Timelines;
+using Beeps.Features.Translation;
 using Beeps.Infrastructure;
 using Beeps.Infrastructure.Data;
 using Beeps.Infrastructure.ErrorReporting;
@@ -84,6 +85,7 @@ app.UseWhen(context => !context.Request.Path.StartsWithSegments("/api"), web =>
 // Authentication first: the saved language and the per-account rate limit both need the user.
 app.UseAuthentication();
 app.UseRequestLocalization();
+VisitorLanguages.UseVisitorLanguages(app);
 app.UseRouting();
 app.UseMiddleware<RateLimitingMiddleware>();
 app.UseAuthorization();

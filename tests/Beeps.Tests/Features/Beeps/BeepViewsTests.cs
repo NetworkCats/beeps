@@ -15,6 +15,7 @@ public sealed class BeepViewsTests
 
     private readonly IBeepStore store = Substitute.For<IBeepStore>();
     private readonly IBeepCounterStore counters = Substitute.For<IBeepCounterStore>();
+    private readonly VisitorLanguages visitor = new();
 
     [Fact]
     public async Task ViewsCombineRowsMentionsAndLiveCounts()
@@ -93,7 +94,7 @@ public sealed class BeepViewsTests
     }
 
     [Fact]
-    public async Task OnlyAHumanReaderGetsTranslationsAndNeverOfTheirOwnBeeps()
+    public async Task HumansGetTranslationsButNeverOfTheirOwnBeepsAndAgentsNone()
     {
         var reader = Viewer.Human(OwnerId) with { Languages = new ReaderLanguages("en", []) };
         var translations = new BeepTranslations("ja", "Good morning", "早上好");
@@ -102,14 +103,43 @@ public sealed class BeepViewsTests
         counters.GetAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, BeepCounts>());
 
         var read = await Create().BuildAsync([theirs, own], reader, TestSupport.Ct);
-        var signedOut = await Create().BuildAsync([theirs], null, TestSupport.Ct);
         var agent = await Create().BuildAsync([theirs], Agent, TestSupport.Ct);
 
         Assert.Equal(new TranslationView("ja", "Good morning"), read[0].Translation);
         Assert.Equal("おはよう", read[0].Text);
         Assert.Null(read[1].Translation);
-        Assert.Null(signedOut[0].Translation);
         Assert.Null(agent[0].Translation);
+    }
+
+    [Theory]
+    [InlineData("en", "Good morning")]
+    [InlineData("zh-Hans", "早上好")]
+    public async Task SignedOutVisitorsGetTranslationsIntoTheLanguageTheySeeTheSiteIn(string culture, string expected)
+    {
+        var row = Row("おはよう", new ActorRow(Guid.NewGuid(), ActorKind.Human, "alice", "Alice", null), likes: 0, replies: 0) with
+        {
+            Translation = new BeepTranslations("ja", "Good morning", "早上好"),
+        };
+        counters.GetAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, BeepCounts>());
+        visitor.Current = ReaderLanguages.Visitor(culture);
+
+        var read = await Create().BuildAsync([row], null, TestSupport.Ct);
+
+        Assert.Equal(new TranslationView("ja", expected), read[0].Translation);
+    }
+
+    [Fact]
+    public async Task CrawlersAndWorkOffARequestGetTheBeepsAsWritten()
+    {
+        var row = Row("おはよう", new ActorRow(Guid.NewGuid(), ActorKind.Human, "alice", "Alice", null), likes: 0, replies: 0) with
+        {
+            Translation = new BeepTranslations("ja", "Good morning", "早上好"),
+        };
+        counters.GetAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, BeepCounts>());
+
+        var read = await Create().BuildAsync([row], null, TestSupport.Ct);
+
+        Assert.Null(read[0].Translation);
     }
 
     [Fact]
@@ -128,5 +158,5 @@ public sealed class BeepViewsTests
         return new BeepRow(id, text, author, null, id, TestData.Now, likes, replies, false);
     }
 
-    private BeepViews Create() => new(store, counters, TestData.Avatars, TestData.Media, NullLogger<BeepViews>.Instance);
+    private BeepViews Create() => new(store, counters, TestData.Avatars, TestData.Media, visitor, NullLogger<BeepViews>.Instance);
 }

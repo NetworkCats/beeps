@@ -14,7 +14,7 @@ namespace Beeps.Tests.Support;
 internal static class TestServices
 {
     public static BeepViews Views(IBeepStore store, IBeepCounterStore counters) =>
-        new(store, counters, TestData.Avatars, TestData.Media, NullLogger<BeepViews>.Instance);
+        new(store, counters, TestData.Avatars, TestData.Media, new VisitorLanguages(), NullLogger<BeepViews>.Instance);
 
     /// <summary>A beep service whose rate limits always allow; its live events go to <paramref name="liveEvents"/>.</summary>
     public static BeepService Beeps(IBeepStore store, IBeepCounterStore counters, ILiveEventStore liveEvents)

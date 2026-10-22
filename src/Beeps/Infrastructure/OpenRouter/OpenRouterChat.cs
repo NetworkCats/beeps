@@ -23,10 +23,16 @@ public sealed record ChatAnswer(string? Content, string Model, string? Provider,
 /// <summary>
 /// One question to OpenRouter's OpenAI-compatible chat completions, called with a plain HttpClient: the instructions
 /// and the data in messages of their own, structured output with a strict schema, routed to the fastest provider that
-/// supports it. Every failure (network, timeout, an error status or response) throws what <c>fail</c> makes of it.
+/// supports it and runs the model at full enough precision (<see cref="Quantizations"/>). Every failure (network, timeout, an error status or response) throws what <c>fail</c> makes of it.
 /// </summary>
 internal static class OpenRouterChat
 {
+    /// <summary>
+    /// The precisions a provider may run the model at. Many serve it cut down to 4 bits (fp4, mxfp4, int4), or do not say
+    /// (unknown), and answer noticeably worse: they are never asked.
+    /// </summary>
+    public static readonly IReadOnlyList<string> Quantizations = ["fp8", "fp16", "bf16", "fp32"];
+
     public static async Task<ChatAnswer> AskAsync(
         HttpClient http,
         TimeProvider time,
@@ -42,7 +48,7 @@ internal static class OpenRouterChat
             model,
             [new ChatRequestMessage("system", systemPrompt), new ChatRequestMessage("user", content)],
             new ResponseFormat("json_schema", new JsonSchemaFormat(schemaName, true, schema)),
-            new ProviderPreferences("throughput", true),
+            new ProviderPreferences("throughput", true, Quantizations),
             0);
 
         var started = time.GetTimestamp();
@@ -100,8 +106,8 @@ internal sealed record ResponseFormat(string Type, JsonSchemaFormat JsonSchema);
 
 internal sealed record JsonSchemaFormat(string Name, bool Strict, JsonElement Schema);
 
-/// <summary>The fastest provider, and only ones that honour the structured output.</summary>
-internal sealed record ProviderPreferences(string Sort, bool RequireParameters);
+/// <summary>The fastest provider, and only ones that honour the structured output and run the model at one of <paramref name="Quantizations"/>.</summary>
+internal sealed record ProviderPreferences(string Sort, bool RequireParameters, IReadOnlyList<string> Quantizations);
 
 internal sealed record ChatResponse(string? Model, string? Provider, IReadOnlyList<ChatChoice>? Choices, ChatUsage? Usage, ChatError? Error);
 
