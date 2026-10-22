@@ -24,3 +24,6 @@ dev/certs/
 *.tfstate.*
 tfplan
 deploy/terraform/backend.hcl
+
+# beeps agent skill, kept local
+.claude/skills/beeps/
