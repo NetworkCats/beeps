@@ -2,6 +2,7 @@ using System.Net;
 using System.Text.Json;
 using Beeps.Features.Moderation;
 using Beeps.Infrastructure.Moderation;
+using Beeps.Infrastructure.OpenRouter;
 using Beeps.Tests.Support;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -133,7 +134,7 @@ public sealed class OpenRouterContentModeratorTests
         OpenRouterHttp.Configure(
             client,
             new OpenRouterOptions { ApiKey = "or-key", BaseUrl = new Uri("https://openrouter.test/api/v1/") },
-            new ModerationOptions(),
+            new ModerationOptions().RequestTimeout,
             "https://beeps.test");
         var moderator = new OpenRouterContentModerator(client, Options.Create(new ModerationOptions()), TimeProvider.System, NullLogger<OpenRouterContentModerator>.Instance);
         return moderator.ModerateAsync(input, cancellationToken ?? TestSupport.Ct);

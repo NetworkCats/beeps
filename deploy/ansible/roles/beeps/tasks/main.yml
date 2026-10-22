@@ -25,8 +25,11 @@
     fail_msg: "{{ item }} is empty (docs/INSTALL.md says which GitHub secret or variable sets it)"
     quiet: true
   loop: "{{ beeps_required_settings }}"
-  # Without moderation there is no model to call.
-  when: not (item == 'OpenRouter__ApiKey' and beeps_app_settings.Moderation__Enabled | lower == 'false')
+  # Without moderation and translation there is no model to call.
+  when: >-
+    not (item == 'OpenRouter__ApiKey'
+    and beeps_app_settings.Moderation__Enabled | lower == 'false'
+    and beeps_app_settings.Translation__Enabled | lower == 'false')
 
 - name: Check no setting holds a quote or a line break
   ansible.builtin.assert:

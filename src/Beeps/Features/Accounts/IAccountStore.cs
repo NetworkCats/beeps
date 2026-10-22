@@ -115,7 +115,8 @@ public sealed record AccountState(
     bool EmailVerified,
     string Locale,
     string? AvatarKey = null,
-    string? Theme = null);
+    string? Theme = null,
+    IReadOnlyList<string>? UntranslatedLanguages = null);
 
 /// <summary>The account as its owner edits it on the settings page.</summary>
 /// <param name="PendingEmail">The address it is moving to while the code sent there is still good.</param>
@@ -125,6 +126,7 @@ public sealed record AccountState(
 /// entered: when another may be sent.
 /// </param>
 /// <param name="PasskeyTwoFactor">Its passkeys are the second step after the password, not a way to sign in by themselves.</param>
+/// <param name="UntranslatedLanguages">Languages whose beeps it reads as written (<see cref="User.UntranslatedLanguages"/>).</param>
 public sealed record AccountSettings(
     string Handle,
     string DisplayName,
@@ -137,7 +139,8 @@ public sealed record AccountSettings(
     bool HasPassword,
     DateTimeOffset? PasswordCodeResendAt,
     IReadOnlyList<LinkedLogin> Logins,
-    bool PasskeyTwoFactor);
+    bool PasskeyTwoFactor,
+    IReadOnlyList<string> UntranslatedLanguages);
 
 /// <summary>An address a code was sent to, and when another may be sent (<see cref="AccountService.ResendInterval"/>).</summary>
 public sealed record CodeSent(string To, DateTimeOffset ResendAt);

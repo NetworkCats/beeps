@@ -13,7 +13,7 @@ using Microsoft.Extensions.Localization;
 namespace Beeps.Pages;
 
 /// <summary>
-/// The account's own settings: avatar, banner, profile, privacy, language, colour scheme, email, password, passkeys, the
+/// The account's own settings: avatar, banner, profile, privacy, language, colour scheme, translation, email, password, passkeys, the
 /// Google and GitHub accounts it signs in with and the devices signed in. As on
 /// Twitter, <c>/settings</c> lists the sections and each has a page of its own (<see cref="SettingsSections"/>); a form
 /// comes back to the section it belongs to, whichever address it was sent to.
@@ -82,6 +82,9 @@ public sealed class SettingsModel(
 
     [BindProperty] public bool HideFollowCounts { get; set; }
 
+    /// <summary>The languages switched on to be shown translated.</summary>
+    [BindProperty] public List<string> Translate { get; set; } = [];
+
     [BindProperty] public IFormFile? Avatar { get; set; }
 
     [BindProperty] public AvatarCropForm Crop { get; set; } = new();
@@ -130,6 +133,10 @@ public sealed class SettingsModel(
             SettingsSections.Privacy,
             notice: null,
             cancellationToken);
+
+    // Each switch is sent as it is flipped, like the privacy ones.
+    public async Task<IActionResult> OnPostTranslationAsync(CancellationToken cancellationToken) =>
+        await DoneAsync(await accounts.SetTranslationAsync(User.ActorId(), Translate, cancellationToken), SettingsSections.Translation, notice: null, cancellationToken);
 
     // The page then simply shows up in the new language; no notice needed.
     public async Task<IActionResult> OnPostLanguageAsync(CancellationToken cancellationToken) =>

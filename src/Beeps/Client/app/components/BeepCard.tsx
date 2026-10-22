@@ -1,5 +1,6 @@
 // One beep, drawn exactly as Pages/Shared/_Beep.cshtml draws it, from the beep's signal (beeps.ts): a new count, a
-// like from another tab or a redrawn beep shows at once, and a beep that went disappears.
+// like from another tab or a redrawn beep shows at once, and a beep that went disappears. A beep in another language
+// shows its translation in place of its text, as on Twitter, with a line under it to show the original instead.
 import type { TargetedMouseEvent, TargetedSubmitEvent } from 'preact';
 import { useCallback, useState } from 'preact/hooks';
 import { beepSignal, removeBeep, setLiked, useShown } from '../beeps.ts';
@@ -9,6 +10,7 @@ import { formData } from '../http.ts';
 import { t } from '../i18n.ts';
 import { pageLive, showAnew } from '../page.ts';
 import { useEnter } from '../motion.ts';
+import { languageName } from '../languages.ts';
 import { here, paths } from '../paths.ts';
 import { visit } from '../router.ts';
 import { useSeen } from '../seen.ts';
@@ -83,6 +85,7 @@ export function BeepCard({ id, focused, inThread, replyingTo, inInbox, entering,
     [seen, enter],
   );
   const [menuOpen, setMenuOpen] = useState(false);
+  const [original, setOriginal] = useState(false);
   const beep = beepSignal(id).value;
   if (!beep) return null;
   const author = beep.author;
@@ -209,7 +212,24 @@ export function BeepCard({ id, focused, inThread, replyingTo, inInbox, entering,
             <a href={paths.beep(beep.replyToId)}>{t('Beep.InReply')}</a>
           </p>
         )}
-        {beep.html.length > 0 && <div class="beep-text" dangerouslySetInnerHTML={{ __html: beep.html }} />}
+        {beep.html.length > 0 && (
+          <div
+            class="beep-text"
+            lang={beep.translation && original ? beep.translation.lang : undefined}
+            dangerouslySetInnerHTML={{ __html: beep.translation && !original ? beep.translation.html : beep.html }}
+          />
+        )}
+        {beep.translation && (
+          <p class="beep-translation">
+            {t('Beep.Translated', languageName(beep.translation.lang, document.documentElement.lang))}
+            <span class="beep-dot" aria-hidden="true">
+              ·
+            </span>
+            <button class="beep-translation-toggle" type="button" onClick={() => setOriginal(!original)}>
+              {original ? t('Beep.ShowTranslation') : t('Beep.ShowOriginal')}
+            </button>
+          </p>
+        )}
         {beep.media.length > 0 && (
           <div class={`beep-media beep-media-${beep.media.length}`}>
             {beep.media.map((image, i) => (

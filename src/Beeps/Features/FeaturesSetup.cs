@@ -14,6 +14,7 @@ using Beeps.Features.Search;
 using Beeps.Features.Shared;
 using Beeps.Features.Site;
 using Beeps.Features.Timelines;
+using Beeps.Features.Translation;
 using Microsoft.AspNetCore.Identity;
 
 namespace Beeps.Features;
@@ -53,6 +54,7 @@ public static class FeaturesSetup
         services.AddScoped<SearchService>();
         services.AddScoped<SearchIndexer>();
         services.AddScoped<ModerationService>();
+        services.AddScoped<TranslationService>();
         services.AddScoped<ReportService>();
         services.AddScoped<AdminAccess>();
         services.AddScoped<ReviewService>();

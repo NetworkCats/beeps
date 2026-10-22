@@ -48,6 +48,7 @@ beeps_app_settings:
   Turnstile__SiteKey: "{{ lookup('ansible.builtin.env', 'TURNSTILE_SITE_KEY') }}"
   Turnstile__SecretKey: "{{ lookup('ansible.builtin.env', 'TURNSTILE_SECRET_KEY') }}"
   Moderation__Enabled: "{{ lookup('ansible.builtin.env', 'MODERATION_ENABLED') }}"
+  Translation__Enabled: "{{ lookup('ansible.builtin.env', 'TRANSLATION_ENABLED') }}"
   OpenRouter__ApiKey: "{{ lookup('ansible.builtin.env', 'OPENROUTER_API_KEY') }}"
   OAuth__Google__ClientId: "{{ lookup('ansible.builtin.env', 'OAUTH_GOOGLE_CLIENT_ID') }}"
   OAuth__Google__ClientSecret: "{{ lookup('ansible.builtin.env', 'OAUTH_GOOGLE_CLIENT_SECRET') }}"

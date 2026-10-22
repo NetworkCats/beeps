@@ -9,6 +9,7 @@ using Beeps.Features.Email;
 using Beeps.Features.Live;
 using Beeps.Features.Media;
 using Beeps.Features.Moderation;
+using Beeps.Features.Translation;
 using Beeps.Features.Notifications;
 using Beeps.Features.Profiles;
 using Beeps.Features.RateLimiting;
@@ -38,6 +39,8 @@ public sealed class BeepsWebApplicationFactory : WebApplicationFactory<Program>
     private readonly IEmailSender email = Substitute.For<IEmailSender>();
     private readonly IModerationJobs moderationJobs = Substitute.For<IModerationJobs>();
     private readonly IContentModerator moderator = Substitute.For<IContentModerator>();
+    private readonly ITranslationJobs translationJobs = Substitute.For<ITranslationJobs>();
+    private readonly ITranslator translator = Substitute.For<ITranslator>();
     private readonly ImmediateUnitOfWork unitOfWork = new();
 
     public BeepsWebApplicationFactory()
@@ -146,6 +149,7 @@ public sealed class BeepsWebApplicationFactory : WebApplicationFactory<Program>
         builder.UseSetting("Outbox:Enabled", "false");
         builder.UseSetting("ScheduledJobs:Enabled", "false");
         builder.UseSetting("Moderation:WorkerEnabled", "false");
+        builder.UseSetting("Translation:WorkerEnabled", "false");
         builder.UseSetting("OpenRouter:ApiKey", "test");
         builder.UseSetting("Live:Enabled", "false");
         builder.UseSetting("IpLocation:Enabled", "false");
@@ -196,6 +200,8 @@ public sealed class BeepsWebApplicationFactory : WebApplicationFactory<Program>
             Replace(services, Moderation);
             Replace(services, moderationJobs);
             Replace(services, moderator);
+            Replace(services, translationJobs);
+            Replace(services, translator);
             Replace(services, System);
             Replace(services, Sitemap);
             Replace(services, IpLocations);

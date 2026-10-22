@@ -34,7 +34,7 @@ DNS 记录等第一次部署完成、服务器建好之后再加。
 
 - **Vultr**：在 Account → API 创建 API key。如果按 IP 限制了访问，要允许所有 IPv4 地址，因为 GitHub 的 runner 没有固定地址。
 - **Resend**：验证发信域名（SPF 和 DKIM），创建 API key。
-- **OpenRouter**：为 AI 审核创建 API key，并设置用量上限。
+- **OpenRouter**：为 AI 审核和翻译创建 API key，并设置用量上限。
 - **Google 和 GitHub 登录**（可选）：创建 OAuth 应用，回调地址为 `https://beeps.sh/oauth/google/callback` 和 `https://beeps.sh/oauth/github/callback`。
 - **Sentry**（可选）：创建一个 ASP.NET Core 项目，复制它的 DSN。
 
@@ -80,7 +80,7 @@ base64 < dataprotection.pfx | tr -d '\n'
 | `STORAGE_ACCESS_KEY_ID`、`STORAGE_SECRET_ACCESS_KEY` | 图片 bucket 的 R2 token | 是 |
 | `RESEND_API_TOKEN` | Resend API key | 是 |
 | `TURNSTILE_SITE_KEY`、`TURNSTILE_SECRET_KEY` | Turnstile 的 site key 和 secret key | 是 |
-| `OPENROUTER_API_KEY` | OpenRouter API key | 开启审核时 |
+| `OPENROUTER_API_KEY` | OpenRouter API key | 开启审核或翻译时 |
 | `OAUTH_GOOGLE_CLIENT_ID`、`OAUTH_GOOGLE_CLIENT_SECRET` | Google OAuth 应用 | 否 |
 | `OAUTH_GITHUB_CLIENT_ID`、`OAUTH_GITHUB_CLIENT_SECRET` | GitHub OAuth 应用 | 否 |
 | `SENTRY_DSN` | Sentry DSN | 否 |
@@ -100,6 +100,7 @@ base64 < dataprotection.pfx | tr -d '\n'
 | `SERVER_NAME` | `beeps.sh`（默认） | 否 |
 | `EMAIL_FROM` | `beeps <noreply@beeps.sh>` | 否 |
 | `MODERATION_ENABLED` | `true`（默认）或 `false` | 否 |
+| `TRANSLATION_ENABLED` | `true`（默认）或 `false` | 否 |
 | `VULTR_REGION` | `lax`（默认）。只在创建服务器时生效 | 否 |
 
 每个值对应哪项应用配置见 `.env.example`，映射关系在 `deploy/ansible/group_vars/all.yml`。除 PEM 证书外，任何值都不能含单引号或换行。Ansible 在做任何改动之前会先检查这些。

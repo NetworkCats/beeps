@@ -32,6 +32,12 @@ public sealed class User
     public string? Theme { get; set; }
 
     /// <summary>
+    /// Languages whose beeps the account reads as written, not translated (<see cref="Translation.TranslationLanguages.Choices"/>
+    /// values); empty, as a new account starts, translates every language other than its own.
+    /// </summary>
+    public List<string> UntranslatedLanguages { get; set; } = [];
+
+    /// <summary>
     /// How many shown humans the account follows: changed with every follow and unfollow, and counted again
     /// for the people on the other side when someone is banned, unbanned or deleted (<see cref="Profiles.FollowCountsHandler"/>).
     /// </summary>

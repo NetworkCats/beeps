@@ -34,7 +34,7 @@ You add the DNS record after the first deploy, once the server exists.
 
 - **Vultr**: create an API key under Account → API. If you limit it by IP, allow any IPv4 address, since GitHub's runners have no fixed addresses.
 - **Resend**: verify the domain you send email from (SPF and DKIM), and create an API key.
-- **OpenRouter**: create an API key for AI moderation, and set a spending limit.
+- **OpenRouter**: create an API key for AI moderation and translation, and set a spending limit.
 - **Google and GitHub sign-in** (optional): create OAuth apps with the callbacks `https://beeps.sh/oauth/google/callback` and `https://beeps.sh/oauth/github/callback`.
 - **Sentry** (optional): create an ASP.NET Core project and copy its DSN.
 
@@ -80,7 +80,7 @@ The logs of a public repository are public. They show variables as they are and 
 | `STORAGE_ACCESS_KEY_ID`, `STORAGE_SECRET_ACCESS_KEY` | R2 token for the image bucket | yes |
 | `RESEND_API_TOKEN` | Resend API key | yes |
 | `TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY` | Turnstile site key and secret key | yes |
-| `OPENROUTER_API_KEY` | OpenRouter API key | while moderation is on |
+| `OPENROUTER_API_KEY` | OpenRouter API key | while moderation or translation is on |
 | `OAUTH_GOOGLE_CLIENT_ID`, `OAUTH_GOOGLE_CLIENT_SECRET` | Google OAuth app | no |
 | `OAUTH_GITHUB_CLIENT_ID`, `OAUTH_GITHUB_CLIENT_SECRET` | GitHub OAuth app | no |
 | `SENTRY_DSN` | Sentry DSN | no |
@@ -100,6 +100,7 @@ The logs of a public repository are public. They show variables as they are and 
 | `SERVER_NAME` | `beeps.sh` (default) | no |
 | `EMAIL_FROM` | `beeps <noreply@beeps.sh>` | no |
 | `MODERATION_ENABLED` | `true` (default) or `false` | no |
+| `TRANSLATION_ENABLED` | `true` (default) or `false` | no |
 | `VULTR_REGION` | `lax` (default). Only used when the server is created | no |
 
 `.env.example` shows the app setting each value becomes, and `deploy/ansible/group_vars/all.yml` maps them. No value may contain a single quote or a line break, except the PEM certificates. Ansible checks all of this before it changes anything.

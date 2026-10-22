@@ -4,13 +4,14 @@ using Npgsql;
 
 namespace Beeps.Infrastructure.Outbox;
 
-/// <summary>Queues whose workers wait for a NOTIFY (<see cref="OutboxWorker"/>, Moderation.ModerationWorker).</summary>
+/// <summary>Queues whose workers wait for a NOTIFY (<see cref="OutboxWorker"/>, Moderation.ModerationWorker, Translation.TranslationWorker).</summary>
 [Flags]
 public enum WorkQueues
 {
     None = 0,
     Outbox = 1,
     Moderation = 2,
+    Translation = 4,
 }
 
 /// <summary>
@@ -35,6 +36,8 @@ public sealed partial class WorkSignals(NpgsqlDataSource dataSource, ILogger<Wor
 
     public const string ModerationChannel = "beeps_moderation";
 
+    public const string TranslationChannel = "beeps_translation";
+
     private readonly LogThrottle notifyFailures = new();
 
     private readonly Lock gate = new();
@@ -44,7 +47,7 @@ public sealed partial class WorkSignals(NpgsqlDataSource dataSource, ILogger<Wor
     /// <summary>Wakes the workers of <paramref name="queues"/>; call it once their new work is committed. Does not wait.</summary>
     public void Raise(WorkQueues queues)
     {
-        foreach (var queue in (ReadOnlySpan<WorkQueues>)[WorkQueues.Outbox, WorkQueues.Moderation])
+        foreach (var queue in (ReadOnlySpan<WorkQueues>)[WorkQueues.Outbox, WorkQueues.Moderation, WorkQueues.Translation])
         {
             if ((queues & queue) == 0)
             {
@@ -85,7 +88,12 @@ public sealed partial class WorkSignals(NpgsqlDataSource dataSource, ILogger<Wor
 
     private async Task SendAsync(WorkQueues queue)
     {
-        var channel = queue == WorkQueues.Outbox ? OutboxChannel : ModerationChannel;
+        var channel = queue switch
+        {
+            WorkQueues.Outbox => OutboxChannel,
+            WorkQueues.Moderation => ModerationChannel,
+            _ => TranslationChannel,
+        };
         while (true)
         {
             try

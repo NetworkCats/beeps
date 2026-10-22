@@ -2,6 +2,7 @@ using Beeps.Features.Accounts;
 using Beeps.Features.Beeps;
 using Beeps.Features.Media;
 using Beeps.Features.Shared;
+using Beeps.Features.Translation;
 using Beeps.Tests.Support;
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -89,6 +90,26 @@ public sealed class BeepViewsTests
         Assert.Equal([true, true, true], asOwner.Select(b => b.CanDelete));
         Assert.Equal([false, true, false], asAgent.Select(b => b.CanDelete));
         Assert.Equal([false, false, false], signedOut.Select(b => b.CanDelete));
+    }
+
+    [Fact]
+    public async Task OnlyAHumanReaderGetsTranslationsAndNeverOfTheirOwnBeeps()
+    {
+        var reader = Viewer.Human(OwnerId) with { Languages = new ReaderLanguages("en", []) };
+        var translations = new BeepTranslations("ja", "Good morning", "早上好");
+        var theirs = Row("おはよう", new ActorRow(Guid.NewGuid(), ActorKind.Human, "alice", "Alice", null), likes: 0, replies: 0) with { Translation = translations };
+        var own = Row("おはよう", new ActorRow(OwnerId, ActorKind.Human, "tom", "Tom", null), likes: 0, replies: 0) with { Translation = translations };
+        counters.GetAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, BeepCounts>());
+
+        var read = await Create().BuildAsync([theirs, own], reader, TestSupport.Ct);
+        var signedOut = await Create().BuildAsync([theirs], null, TestSupport.Ct);
+        var agent = await Create().BuildAsync([theirs], Agent, TestSupport.Ct);
+
+        Assert.Equal(new TranslationView("ja", "Good morning"), read[0].Translation);
+        Assert.Equal("おはよう", read[0].Text);
+        Assert.Null(read[1].Translation);
+        Assert.Null(signedOut[0].Translation);
+        Assert.Null(agent[0].Translation);
     }
 
     [Fact]

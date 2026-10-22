@@ -257,6 +257,13 @@ public static class BeepText
         return RenderHtml(beep.Text, LinkedHandles(beep));
     }
 
+    /// <summary>The beep's translation for its viewer, linked as <see cref="RenderHtml(BeepView)"/> links its text; null without one.</summary>
+    public static string? RenderTranslationHtml(BeepView beep)
+    {
+        ArgumentNullException.ThrowIfNull(beep);
+        return beep.Translation is { } translation ? RenderHtml(translation.Text, LinkedHandles(beep)) : null;
+    }
+
     /// <summary>
     /// A beep's text as <see cref="RenderHtml(BeepView)"/> shows it, in runs that are links or not, for drawing it other
     /// than as HTML (link previews): a link without its scheme, and cut short with an ellipsis.

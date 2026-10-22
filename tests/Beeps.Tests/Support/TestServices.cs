@@ -4,6 +4,7 @@ using Beeps.Features.Moderation;
 using Beeps.Features.Profiles;
 using Beeps.Features.RateLimiting;
 using Beeps.Features.Shared;
+using Beeps.Features.Translation;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 
@@ -28,6 +29,7 @@ internal static class TestServices
             new ImmediateUnitOfWork(),
             Substitute.For<IOutbox>(),
             Substitute.For<IModerationJobs>(),
+            Substitute.For<ITranslationJobs>(),
             TestData.RateLimits(media.RateLimits),
             TestData.Live(liveEvents, counters),
             TestData.Inboxes(liveEvents),

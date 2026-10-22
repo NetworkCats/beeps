@@ -5,6 +5,7 @@ using Beeps.Features.Moderation;
 using Beeps.Features.Notifications;
 using Beeps.Features.Search;
 using Beeps.Features.Shared;
+using Beeps.Features.Translation;
 using Microsoft.Extensions.Localization;
 
 namespace Beeps.Features.Admin;
@@ -21,6 +22,7 @@ public sealed partial class ReviewService(
     AdminAccess access,
     IUnitOfWork unitOfWork,
     IOutbox outbox,
+    ITranslationJobs translationJobs,
     LiveUpdates live,
     InboxRecounter inboxes,
     TimeProvider time,
@@ -86,6 +88,12 @@ public sealed partial class ReviewService(
                 {
                     // Back in search if it was hidden; harmless if it was not.
                     outbox.SyncBeepToSearch(beepId);
+                }
+
+                // Let through only now (the model's review never did, or had not yet): translated from now on.
+                if (changed && before != ModerationStatus.Allowed && subject.Text.Length > 0)
+                {
+                    translationJobs.Enqueue(beepId);
                 }
 
                 kept = true;

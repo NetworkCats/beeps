@@ -40,6 +40,15 @@ export interface BeepProps {
   canDelete?: boolean;
   underReview?: boolean;
   mentions: string[];
+  /** The text in the viewer's language, shown in its place; signed out, and for beeps the viewer reads as written, none. */
+  translation?: TranslationProps;
+}
+
+export interface TranslationProps {
+  /** The language the beep was written in (an ISO 639 code). */
+  lang: string;
+  /** Rendered as `html` is. */
+  html: string;
 }
 
 export interface BeepListProps {

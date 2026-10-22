@@ -1,5 +1,6 @@
 using System.Data.Common;
 using Beeps.Features.Moderation;
+using Beeps.Features.Translation;
 using Beeps.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
@@ -7,7 +8,7 @@ using Microsoft.EntityFrameworkCore.Diagnostics;
 namespace Beeps.Infrastructure.Outbox;
 
 /// <summary>
-/// Wakes the workers (<see cref="WorkSignals"/>) when a save adds outbox messages or reviews: once the save is done when
+/// Wakes the workers (<see cref="WorkSignals"/>) when a save adds outbox messages, reviews or translations: once the save is done when
 /// it commits itself, or once the transaction it is part of commits. A rolled-back transaction wakes no one.
 /// </summary>
 public sealed class WorkSignalInterceptor(WorkSignals signals) : DbTransactionInterceptor, ISaveChangesInterceptor
@@ -88,6 +89,7 @@ public sealed class WorkSignalInterceptor(WorkSignals signals) : DbTransactionIn
                 {
                     OutboxMessage => WorkQueues.Outbox,
                     ModerationJob => WorkQueues.Moderation,
+                    TranslationJob => WorkQueues.Translation,
                     _ => WorkQueues.None,
                 };
             }

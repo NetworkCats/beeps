@@ -2,6 +2,7 @@ using Beeps.Features.Accounts;
 using Beeps.Features.Beeps;
 using Beeps.Features.Media;
 using Beeps.Features.Profiles;
+using Beeps.Features.Translation;
 using Beeps.Infrastructure.Caching;
 using Microsoft.EntityFrameworkCore;
 
@@ -42,7 +43,7 @@ public sealed class ContentReads(BeepsDbContext db, ContentCache cache)
             // The query already decided the author is visible to this reader; the entry is only for showing them.
             if (beeps.TryGetValue(hit.Id, out var beep) && authors.TryGetValue(beep.AuthorId, out var author))
             {
-                rows.Add(new BeepRow(beep.Id, beep.Text, author.Row, beep.ReplyToId, beep.RootId, beep.CreatedAt, beep.LikeCount, beep.ReplyCount, hit.Liked, hit.UnderReview));
+                rows.Add(new BeepRow(beep.Id, beep.Text, author.Row, beep.ReplyToId, beep.RootId, beep.CreatedAt, beep.LikeCount, beep.ReplyCount, hit.Liked, hit.UnderReview, beep.Translation));
             }
         }
 
@@ -120,7 +121,21 @@ public sealed class ContentReads(BeepsDbContext db, ContentCache cache)
         var beeps = await db.Set<Beep>()
             .AsNoTracking()
             .Where(b => ids.Contains(b.Id))
-            .Select(b => new { b.Id, b.Text, b.AuthorId, b.ReplyToId, b.RootId, b.CreatedAt, b.LikeCount, b.ReplyCount })
+            .Select(b => new
+            {
+                b.Id,
+                b.Text,
+                b.AuthorId,
+                b.ReplyToId,
+                b.RootId,
+                b.CreatedAt,
+                b.LikeCount,
+                b.ReplyCount,
+                Translation = db.Set<BeepTranslation>()
+                    .Where(t => t.BeepId == b.Id)
+                    .Select(t => new BeepTranslations(t.Language, t.English, t.Chinese))
+                    .FirstOrDefault(),
+            })
             .ToListAsync(cancellationToken);
         if (beeps.Count == 0)
         {
@@ -152,7 +167,8 @@ public sealed class ContentReads(BeepsDbContext db, ContentCache cache)
                 b.LikeCount,
                 b.ReplyCount,
                 [.. mentions[b.Id]],
-                [.. media[b.Id].OrderBy(m => m.Position).Select(m => m.Media)]));
+                [.. media[b.Id].OrderBy(m => m.Position).Select(m => m.Media)],
+                b.Translation));
     }
 
     private async Task<IReadOnlyDictionary<Guid, CachedActor>> LoadActorsAsync(IReadOnlyList<Guid> ids, CancellationToken cancellationToken) =>

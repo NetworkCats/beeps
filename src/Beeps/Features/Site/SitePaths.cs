@@ -57,6 +57,9 @@ public static class SettingsSections
     /// <summary>Colour scheme and language.</summary>
     public const string Display = "display";
 
+    /// <summary>The languages whose beeps are shown translated.</summary>
+    public const string Translation = "translation";
+
     /// <summary>The devices signed in to the account, any of which can be signed out from here.</summary>
     public const string Sessions = "sessions";
 }

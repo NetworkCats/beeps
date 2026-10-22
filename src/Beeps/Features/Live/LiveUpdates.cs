@@ -87,7 +87,7 @@ public sealed partial class LiveUpdates(ILiveEventStore store, IBeepCounterStore
     public Task SessionsEndedAsync(Guid accountId, CancellationToken cancellationToken) =>
         AppendAsync(LiveEventTypes.SessionsEnded, new AccountEvent(accountId), LiveJsonContext.Default.AccountEvent, cancellationToken);
 
-    /// <summary>The account's language or admin rights changed: its open tabs show the site anew.</summary>
+    /// <summary>The account's language, translations or admin rights changed: its open tabs show the site anew.</summary>
     public Task AccountChangedAsync(Guid accountId, CancellationToken cancellationToken) =>
         AppendAsync(LiveEventTypes.AccountChanged, new AccountEvent(accountId), LiveJsonContext.Default.AccountEvent, cancellationToken);
 

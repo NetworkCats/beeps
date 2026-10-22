@@ -8,6 +8,7 @@ using Beeps.Features.Moderation;
 using Beeps.Features.Notifications;
 using Beeps.Features.RateLimiting;
 using Beeps.Features.Shared;
+using Beeps.Features.Translation;
 using Beeps.Infrastructure.Media;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -97,6 +98,7 @@ internal sealed class MediaServiceParts
             UnitOfWork,
             Outbox,
             Substitute.For<IModerationJobs>(),
+            Substitute.For<ITranslationJobs>(),
             TestData.RateLimits(RateLimits),
             TestData.Live(LiveEvents, counters),
             TestData.Inboxes(LiveEvents, Substitute.For<INotificationStore>()),

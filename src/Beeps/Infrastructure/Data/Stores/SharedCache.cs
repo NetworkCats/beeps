@@ -53,8 +53,8 @@ internal static class SharedCache
 
     public static string SessionKey(string tokenHash) => $"session:{tokenHash}";
 
-    // "2": the record gained Theme.
-    public static string AccountKey(Guid userId) => $"account2:{userId:D}";
+    // "3": the record gained UntranslatedLanguages.
+    public static string AccountKey(Guid userId) => $"account3:{userId:D}";
 
     /// <summary>The admin overview's totals; not about who a request is, but HybridCache needs a serializer here all the same.</summary>
     public const string SiteTotalsKey = "admin:totals";

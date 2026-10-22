@@ -3,13 +3,15 @@ using Beeps.Features.Live;
 using Beeps.Features.Notifications;
 using Beeps.Features.Search;
 using Beeps.Features.Shared;
+using Beeps.Features.Translation;
 using Microsoft.Extensions.Options;
 
 namespace Beeps.Features.Moderation;
 
 /// <summary>
 /// The AI review of one beep: beeps are posted first and reviewed afterwards. A beep the model
-/// wants hidden disappears for everyone but its author and their owner, and waits in the admins' review queue.
+/// wants hidden disappears for everyone but its author and their owner, and waits in the admins' review queue; one it
+/// allows is queued for translation.
 /// </summary>
 public sealed partial class ModerationService(
     IModerationStore store,
@@ -17,6 +19,7 @@ public sealed partial class ModerationService(
     BeepService beeps,
     IUnitOfWork unitOfWork,
     IOutbox outbox,
+    ITranslationJobs translationJobs,
     LiveUpdates live,
     InboxRecounter inboxes,
     IOptions<ModerationOptions> options,
@@ -50,6 +53,10 @@ public sealed partial class ModerationService(
                 if (changed && hide)
                 {
                     outbox.SyncBeepToSearch(beepId);
+                }
+                else if (changed)
+                {
+                    translationJobs.Enqueue(beepId);
                 }
 
                 await unitOfWork.SaveChangesAsync(ct);

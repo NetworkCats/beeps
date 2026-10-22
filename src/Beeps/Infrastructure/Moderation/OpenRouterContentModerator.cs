@@ -1,27 +1,15 @@
-using System.Net.Http.Headers;
-using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Beeps.Features.Moderation;
 using Beeps.Infrastructure.Data;
+using Beeps.Infrastructure.OpenRouter;
 using Microsoft.Extensions.Options;
 
 namespace Beeps.Infrastructure.Moderation;
 
-public sealed class OpenRouterOptions
-{
-    public const string SectionName = "OpenRouter";
-
-    /// <summary>Server-side only; required while moderation is enabled outside development.</summary>
-    public string ApiKey { get; set; } = "";
-
-    public Uri BaseUrl { get; set; } = new("https://openrouter.ai/api/v1/");
-}
-
 /// <summary>
-/// The model behind <see cref="IContentModerator"/>: OpenRouter's OpenAI-compatible chat completions,
-/// called with a plain HttpClient. Structured output with a strict schema, routed to the fastest provider that
-/// supports it; anything short of a well-formed answer throws, so the review is retried rather than passed.
+/// The model behind <see cref="IContentModerator"/>, asked through <see cref="OpenRouterChat"/>; anything short of a
+/// well-formed answer throws, so the review is retried rather than passed.
 /// </summary>
 public sealed partial class OpenRouterContentModerator(
     HttpClient http,
@@ -67,55 +55,20 @@ public sealed partial class OpenRouterContentModerator(
     {
         ArgumentNullException.ThrowIfNull(input);
         var model = moderation.Value.Model;
-        var content = JsonSerializer.Serialize(new ReviewMessage(input.Text, input.ReplyToText), OpenRouterJsonContext.Default.ReviewMessage);
-        var request = new ChatRequest(
+        var content = JsonSerializer.Serialize(new ReviewMessage(input.Text, input.ReplyToText), ModerationJsonContext.Default.ReviewMessage);
+        var answer = await OpenRouterChat.AskAsync(
+            http,
+            time,
             model,
-            [new ChatRequestMessage("system", SystemPrompt), new ChatRequestMessage("user", content)],
-            new ResponseFormat("json_schema", new JsonSchemaFormat("moderation", true, Schema)),
-            new ProviderPreferences("throughput", true),
-            0);
-
-        var started = time.GetTimestamp();
-        ChatResponse response;
-        try
-        {
-            using var message = new HttpRequestMessage(HttpMethod.Post, "chat/completions")
-            {
-                Content = new StringContent(JsonSerializer.Serialize(request, OpenRouterJsonContext.Default.ChatRequest), Encoding.UTF8, "application/json"),
-            };
-            using var reply = await http.SendAsync(message, cancellationToken);
-            var body = await reply.Content.ReadAsStringAsync(cancellationToken);
-            if (!reply.IsSuccessStatusCode)
-            {
-                throw new ContentModerationException($"OpenRouter answered {(int)reply.StatusCode}: {Excerpt(body)}");
-            }
-
-            response = JsonSerializer.Deserialize(body, OpenRouterJsonContext.Default.ChatResponse)
-                ?? throw new ContentModerationException("OpenRouter sent an empty response.");
-        }
-        catch (Exception exception) when (exception is HttpRequestException or JsonException
-            || (exception is OperationCanceledException && !cancellationToken.IsCancellationRequested))
-        {
-            // A cancellation that is not ours is the client's timeout.
-            throw new ContentModerationException($"OpenRouter request failed: {exception.GetType().Name}: {exception.Message}", exception);
-        }
-
-        var latency = (int)Math.Min(int.MaxValue, time.GetElapsedTime(started).TotalMilliseconds);
-        if (response.Error is { } error)
-        {
-            throw new ContentModerationException($"OpenRouter reported an error: {error.Code} {Excerpt(error.Message)}");
-        }
-
-        var answer = response.Choices is [{ Message.Content: { } text }, ..] ? text : null;
-        var verdict = Parse(answer) ?? throw new ContentModerationException($"The model's answer does not fit the schema: {Excerpt(answer)}");
-        LogReviewed(logger, response.Model ?? model, response.Provider, latency);
-        return verdict with
-        {
-            Model = response.Model ?? model,
-            Provider = response.Provider,
-            LatencyMs = latency,
-            Tokens = response.Usage?.TotalTokens ?? (response.Usage is { PromptTokens: { } prompt, CompletionTokens: { } completion } ? prompt + completion : null),
-        };
+            SystemPrompt,
+            content,
+            "moderation",
+            Schema,
+            (message, inner) => inner is null ? new ContentModerationException(message) : new ContentModerationException(message, inner),
+            cancellationToken);
+        var verdict = Parse(answer.Content) ?? throw new ContentModerationException($"The model's answer does not fit the schema: {OpenRouterChat.Excerpt(answer.Content)}");
+        LogReviewed(logger, answer.Model, answer.Provider, answer.LatencyMs);
+        return verdict with { Model = answer.Model, Provider = answer.Provider, LatencyMs = answer.LatencyMs, Tokens = answer.Tokens };
     }
 
     /// <summary>The answer checked against the schema by hand too: providers do not all enforce it equally.</summary>
@@ -129,7 +82,7 @@ public sealed partial class OpenRouterContentModerator(
         RawVerdict? raw;
         try
         {
-            raw = JsonSerializer.Deserialize(answer, OpenRouterJsonContext.Default.RawVerdict);
+            raw = JsonSerializer.Deserialize(answer, ModerationJsonContext.Default.RawVerdict);
         }
         catch (JsonException)
         {
@@ -166,8 +119,6 @@ public sealed partial class OpenRouterContentModerator(
         return schema.RootElement.Clone();
     }
 
-    private static string Excerpt(string? text) => text is null ? "" : text.Length <= 300 ? text : text[..300];
-
     [LoggerMessage(Level = LogLevel.Debug, Message = "Moderation answered by {Model} via {Provider} in {LatencyMs} ms")]
     private static partial void LogReviewed(ILogger logger, string model, string? provider, int latencyMs);
 }
@@ -175,52 +126,10 @@ public sealed partial class OpenRouterContentModerator(
 /// <summary>The beep as the model receives it; JSON encoding keeps its text from breaking out of the data.</summary>
 internal sealed record ReviewMessage(string Beep, [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? InReplyTo);
 
-internal sealed record ChatRequest(
-    string Model,
-    IReadOnlyList<ChatRequestMessage> Messages,
-    ResponseFormat ResponseFormat,
-    ProviderPreferences Provider,
-    double Temperature);
-
-internal sealed record ChatRequestMessage(string Role, string Content);
-
-internal sealed record ResponseFormat(string Type, JsonSchemaFormat JsonSchema);
-
-internal sealed record JsonSchemaFormat(string Name, bool Strict, JsonElement Schema);
-
-/// <summary>The fastest provider, and only ones that honour the structured output.</summary>
-internal sealed record ProviderPreferences(string Sort, bool RequireParameters);
-
-internal sealed record ChatResponse(string? Model, string? Provider, IReadOnlyList<ChatChoice>? Choices, ChatUsage? Usage, ChatError? Error);
-
-internal sealed record ChatChoice(ChatResponseMessage? Message);
-
-internal sealed record ChatResponseMessage(string? Content);
-
-internal sealed record ChatUsage(int? PromptTokens, int? CompletionTokens, int? TotalTokens);
-
-internal sealed record ChatError(JsonElement? Code, string? Message);
-
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
 internal sealed record RawVerdict(string? Decision, IReadOnlyList<string>? Categories, string? Severity, string? Reason);
 
 [JsonSourceGenerationOptions(PropertyNamingPolicy = JsonKnownNamingPolicy.SnakeCaseLower)]
 [JsonSerializable(typeof(ReviewMessage))]
-[JsonSerializable(typeof(ChatRequest))]
-[JsonSerializable(typeof(ChatResponse))]
 [JsonSerializable(typeof(RawVerdict))]
-internal sealed partial class OpenRouterJsonContext : JsonSerializerContext;
-
-/// <summary>Sets the key on every request; kept out of the request code so it never ends up in a log line.</summary>
-internal static class OpenRouterHttp
-{
-    public static void Configure(HttpClient client, OpenRouterOptions openRouter, ModerationOptions moderation, string siteUrl)
-    {
-        client.BaseAddress = openRouter.BaseUrl;
-        client.Timeout = moderation.RequestTimeout;
-        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", openRouter.ApiKey);
-        // OpenRouter's app attribution headers.
-        client.DefaultRequestHeaders.Add("HTTP-Referer", siteUrl);
-        client.DefaultRequestHeaders.Add("X-Title", "beeps");
-    }
-}
+internal sealed partial class ModerationJsonContext : JsonSerializerContext;

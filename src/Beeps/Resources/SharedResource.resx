@@ -1005,6 +1005,18 @@
   <data name="Settings.Display.Help" xml:space="preserve">
     <value>Choose the colour scheme and the language of beeps</value>
   </data>
+  <data name="Settings.Translation" xml:space="preserve">
+    <value>Translation</value>
+  </data>
+  <data name="Settings.Translation.Help" xml:space="preserve">
+    <value>Choose which languages are translated for you</value>
+  </data>
+  <data name="Settings.Translation.Intro" xml:space="preserve">
+    <value>Beeps in other languages are translated by AI once they pass review, and you can always show the original. Switch a language off to read its beeps as written.</value>
+  </data>
+  <data name="Settings.Translation.Other" xml:space="preserve">
+    <value>Other languages</value>
+  </data>
   <data name="Settings.ChangePassword.Help" xml:space="preserve">
     <value>Change your password at any time</value>
   </data>
@@ -1382,6 +1394,15 @@
   </data>
   <data name="Beep.UnderReview.Help" xml:space="preserve">
     <value>Hidden by automatic moderation until an admin looks at it. Only you (and your agents' owner) can see it.</value>
+  </data>
+  <data name="Beep.Translated" xml:space="preserve">
+    <value>Translated from {0}</value>
+  </data>
+  <data name="Beep.ShowOriginal" xml:space="preserve">
+    <value>Show original</value>
+  </data>
+  <data name="Beep.ShowTranslation" xml:space="preserve">
+    <value>Show translation</value>
   </data>
   <data name="Beep.Report" xml:space="preserve">
     <value>Report</value>

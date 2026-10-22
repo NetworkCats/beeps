@@ -6,7 +6,8 @@
 // the provider and back, Pages/Account/External) or unlink; passkeys lists the account's, adds one (the server's options,
 // then the browser's dialog) or removes any, and switches them between signing in by themselves and being the second
 // step after the password; display holds the colour scheme, applied as
-// soon as one is picked, and the language; devices lists where the account is logged in, this device first, each
+// soon as one is picked, and the language; translation holds a switch for each language beeps are shown translated
+// from, sent as soon as it is flipped; devices lists where the account is logged in, this device first, each
 // named from its User-Agent and placed where its IP address is, and logs out any other or all of them, following
 // log-ins and log-outs elsewhere as they happen. Each form is sent in the background and
 // answered in place; the saved name, bio, avatar and banner follow changes made in another tab, unless they are being
@@ -22,6 +23,7 @@ import { ProfileImages, type AvatarEditorProps, type BannerEditorProps } from '.
 import { sending, sendForm, useSwitchBack } from '../forms.ts';
 import { formData } from '../http.ts';
 import { t } from '../i18n.ts';
+import { languageName } from '../languages.ts';
 import type { IslandProps } from '../islands.tsx';
 import { useLive } from '../page.ts';
 import { createPasskey, PasskeyError, passkeysSupported } from '../passkeys.ts';
@@ -30,7 +32,7 @@ import type { Errors, LiveProps } from '../props.ts';
 import { theme } from '../state.ts';
 import { showToast } from '../toasts.ts';
 
-type Section = 'profile' | 'privacy' | 'account' | 'email' | 'password' | 'passkeys' | 'display' | 'sessions';
+type Section = 'profile' | 'privacy' | 'account' | 'email' | 'password' | 'passkeys' | 'display' | 'translation' | 'sessions';
 
 interface Option {
   value: string;
@@ -42,6 +44,13 @@ interface Privacy {
   hideLikes: boolean;
   hideFollows: boolean;
   hideFollowCounts: boolean;
+}
+
+interface Translation {
+  /** ISO 639 codes, then `other`: every language but the one the account uses the site in. */
+  languages: string[];
+  /** Those switched off: their beeps show as written. */
+  untranslated: string[];
 }
 
 /** A provider to sign in with: Google or GitHub. */
@@ -100,6 +109,7 @@ interface SettingsProps {
   bio?: string;
   website?: string;
   privacy: Privacy;
+  translation: Translation;
   culture: string;
   cultures: Option[];
   themes: Option[];
@@ -136,6 +146,7 @@ const TITLES: Record<Section, { title: string; back: string }> = {
   password: { title: 'Settings.ChangePassword', back: paths.settingsSection('account') },
   passkeys: { title: 'Settings.Passkeys', back: paths.settingsSection('account') },
   display: { title: 'Settings.Display', back: paths.settings },
+  translation: { title: 'Settings.Translation', back: paths.settings },
   sessions: { title: 'Settings.Sessions', back: paths.settings },
 };
 
@@ -173,6 +184,7 @@ export function SettingsPage({ props, errors }: IslandProps<SettingsProps>) {
           <LinkRow href={paths.settingsSection('privacy')} icon={<Icon name="shield" />} title={t('Settings.Privacy')} help={t('Settings.Privacy.Help')} />
           <LinkRow href={paths.settingsSection('account')} icon={<Icon name="lock" />} title={t('Settings.Account')} help={t('Settings.Account.Help')} />
           <LinkRow href={paths.settingsSection('display')} icon={<Icon name="palette" />} title={t('Settings.Display')} help={t('Settings.Display.Help')} />
+          <LinkRow href={paths.settingsSection('translation')} icon={<Icon name="translate" />} title={t('Settings.Translation')} help={t('Settings.Translation.Help')} />
           <LinkRow href={paths.settingsSection('sessions')} icon={<Icon name="devices" />} title={t('Settings.Sessions')} help={t('Settings.Sessions.Help')} />
         </nav>
       </section>
@@ -202,6 +214,7 @@ export function SettingsPage({ props, errors }: IslandProps<SettingsProps>) {
       {section === 'password' && <PasswordSection props={props} errors={errors} />}
       {section === 'passkeys' && <PasskeysSection props={props} errors={errors} />}
       {section === 'display' && <DisplaySection props={props} errors={errors} />}
+      {section === 'translation' && <TranslationSection props={props} />}
       {section === 'sessions' && <SessionsSection props={props} />}
     </section>
   );
@@ -656,6 +669,39 @@ function DisplaySection({ props, errors }: SectionProps) {
             {t('Settings.Save')}
           </button>
         </div>
+        <Antiforgery />
+      </form>
+    </>
+  );
+}
+
+/**
+ * A switch for each language beeps are shown translated from, all in one form sent whenever one is flipped, as the
+ * privacy switches are. The browser names the languages, in the page language.
+ */
+function TranslationSection({ props }: { props: SettingsProps }) {
+  const switchBack = useSwitchBack();
+  const { languages, untranslated } = props.translation;
+  return (
+    <>
+      <p class="settings-intro">{t('Settings.Translation.Intro')}</p>
+      <form class="settings-switches" method="post" action={action('translation', 'Translation')} onSubmit={sending(undefined, switchBack)}>
+        {languages.map((language) => (
+          <label key={language} class="settings-link switch">
+            <span class="settings-link-text">
+              <span class="settings-link-title">
+                {language === 'other' ? t('Settings.Translation.Other') : languageName(language, document.documentElement.lang)}
+              </span>
+            </span>
+            <input
+              type="checkbox"
+              name="Translate"
+              value={language}
+              checked={!untranslated.includes(language)}
+              onChange={(event) => event.currentTarget.form?.requestSubmit()}
+            />
+          </label>
+        ))}
         <Antiforgery />
       </form>
     </>

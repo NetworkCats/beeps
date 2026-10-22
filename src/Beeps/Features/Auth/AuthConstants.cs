@@ -46,6 +46,9 @@ public static class BeepsClaims
     public const string Locale = "beeps:locale";
     /// <summary>The account's colour scheme, once picked (Site.Themes).</summary>
     public const string Theme = "beeps:theme";
+
+    /// <summary>Languages the account reads beeps in as written, comma-separated (Translation.ReaderLanguages); absent when none.</summary>
+    public const string Untranslated = "beeps:untranslated";
     public const string EmailVerified = "beeps:verified";
     public const string OwnerId = "beeps:owner";
     public const string Connected = "beeps:connected";

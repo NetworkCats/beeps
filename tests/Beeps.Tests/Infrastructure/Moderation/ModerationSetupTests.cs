@@ -1,6 +1,7 @@
 using Beeps.Features.Moderation;
 using Beeps.Features.Site;
 using Beeps.Infrastructure.Moderation;
+using Beeps.Infrastructure.OpenRouter;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;

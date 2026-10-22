@@ -2,6 +2,7 @@ using System.Text.Json.Serialization;
 using Beeps.Features.Accounts;
 using Beeps.Features.Agents;
 using Beeps.Features.Site;
+using Beeps.Features.Translation;
 using Microsoft.Extensions.Localization;
 
 namespace Beeps.Pages.Islands;
@@ -49,6 +50,7 @@ public sealed record SettingsProps(
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Bio,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Website,
     PrivacyProps Privacy,
+    TranslationSettingsProps Translation,
     string Culture,
     IReadOnlyList<OptionProps> Cultures,
     IReadOnlyList<OptionProps> Themes,
@@ -123,6 +125,18 @@ public sealed record ConnectionProps(
 
 /// <summary>What the account keeps to itself.</summary>
 public sealed record PrivacyProps(bool HideLikes, bool HideFollows, bool HideFollowCounts);
+
+/// <summary>A switch for each language beeps are shown translated from, which the app names.</summary>
+/// <param name="Languages">ISO 639 codes, then <c>other</c>; not the one the account uses the site in, which is never translated.</param>
+/// <param name="Untranslated">Those switched off.</param>
+public sealed record TranslationSettingsProps(IReadOnlyList<string> Languages, IReadOnlyList<string> Untranslated)
+{
+    public static TranslationSettingsProps For(string culture, IReadOnlyList<string> untranslated)
+    {
+        var target = TranslationLanguages.TargetFor(culture);
+        return new TranslationSettingsProps([.. TranslationLanguages.Choices.Where(l => l != target)], [.. untranslated.Where(l => l != target)]);
+    }
+}
 
 /// <summary>Onboarding/Verify.cshtml: the code, a new one, or another address.</summary>
 /// <param name="Email">Where the code went.</param>

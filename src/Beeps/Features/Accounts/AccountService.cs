@@ -7,6 +7,7 @@ using Beeps.Features.RateLimiting;
 using Beeps.Features.Search;
 using Beeps.Features.Site;
 using Beeps.Features.Shared;
+using Beeps.Features.Translation;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Localization;
@@ -645,7 +646,34 @@ public sealed partial class AccountService(
             user.PasswordHash is not null,
             passwordCodeWaiting,
             [.. (await store.ListLoginsAsync(user.Id, cancellationToken)).Select(l => new LinkedLogin(l.Provider, l.Name))],
-            user.PasskeyTwoFactor);
+            user.PasskeyTwoFactor,
+            user.UntranslatedLanguages);
+    }
+
+    /// <summary>
+    /// Which languages' beeps the account reads translated: those in <paramref name="translated"/>, of the switches the
+    /// settings show (<see cref="TranslationLanguages.Untranslated"/>), on every device it is signed in on.
+    /// </summary>
+    public async Task<Result> SetTranslationAsync(Guid userId, IReadOnlyCollection<string>? translated, CancellationToken cancellationToken)
+    {
+        var user = await store.FindUserAsync(userId, cancellationToken);
+        if (user is null)
+        {
+            return AccountNotFound();
+        }
+
+        var limited = await rateLimits.CheckAsync(RateLimitPolicies.AccountChange, RateLimitPartitions.Account(userId), cancellationToken);
+        if (!limited.IsSuccess)
+        {
+            return limited;
+        }
+
+        user.UntranslatedLanguages = TranslationLanguages.Untranslated(user.UntranslatedLanguages, translated ?? [], TranslationLanguages.TargetFor(user.Locale));
+        await unitOfWork.SaveChangesAsync(cancellationToken);
+        await store.ForgetAccountAsync(user.Id, cancellationToken);
+        // The account's other open tabs show beeps translated as now asked.
+        await live.AccountChangedAsync(user.Id, cancellationToken);
+        return Result.Success;
     }
 
     /// <summary>What the human's profile shows others of their likes and follows.</summary>

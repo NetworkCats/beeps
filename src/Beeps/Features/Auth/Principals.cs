@@ -3,6 +3,7 @@ using System.Security.Claims;
 using Beeps.Features.Accounts;
 using Beeps.Features.Agents;
 using Beeps.Features.Beeps;
+using Beeps.Features.Translation;
 
 namespace Beeps.Features.Auth;
 
@@ -28,6 +29,11 @@ public static class Principals
         if (account.Theme is { } theme)
         {
             claims.Add(new Claim(BeepsClaims.Theme, theme));
+        }
+
+        if (account.UntranslatedLanguages is { Count: > 0 } untranslated)
+        {
+            claims.Add(new Claim(BeepsClaims.Untranslated, string.Join(',', untranslated)));
         }
 
         if (account.AvatarKey is { } avatarKey)
@@ -64,14 +70,25 @@ public static class Principals
         return Guid.Parse(principal.FindFirstValue(ClaimTypes.NameIdentifier) ?? throw new InvalidOperationException("The request is not signed in."), CultureInfo.InvariantCulture);
     }
 
-    /// <summary>The signed-in human, or the agent with its owner, as Services see them.</summary>
+    /// <summary>The signed-in human, with how they read beeps, or the agent with its owner, as Services see them.</summary>
     public static Viewer Viewer(this ClaimsPrincipal principal)
     {
         var actorId = principal.ActorId();
         return principal.FindFirstValue(BeepsClaims.OwnerId) is { } owner
             ? Features.Beeps.Viewer.Agent(actorId, Guid.Parse(owner, CultureInfo.InvariantCulture))
-            : Features.Beeps.Viewer.Human(actorId);
+            : Features.Beeps.Viewer.Human(actorId) with { Languages = principal.ReaderLanguages() };
     }
+
+    /// <summary>
+    /// How a signed-in human reads beeps: translated into the language they use the site in, but for the languages they
+    /// turned translation off for. Null for anyone else.
+    /// </summary>
+    public static ReaderLanguages? ReaderLanguages(this ClaimsPrincipal principal) =>
+        principal.FindFirstValue(BeepsClaims.Locale) is { } locale
+            ? new ReaderLanguages(
+                TranslationLanguages.TargetFor(locale),
+                principal.FindFirstValue(BeepsClaims.Untranslated)?.Split(',', StringSplitOptions.RemoveEmptyEntries) ?? [])
+            : null;
 
     /// <summary>
     /// How the request is signed in, for the browser's tabs to compare (Client/app/auth-sync.ts, Client/app/live.ts):

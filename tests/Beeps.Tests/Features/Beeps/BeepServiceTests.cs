@@ -9,6 +9,7 @@ using Beeps.Features.Profiles;
 using Beeps.Features.RateLimiting;
 using Beeps.Features.Search;
 using Beeps.Features.Shared;
+using Beeps.Features.Translation;
 using Beeps.Tests.Support;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -24,6 +25,7 @@ public sealed class BeepServiceTests
     private readonly IBeepStore store = Substitute.For<IBeepStore>();
     private readonly IBeepCounterStore counters = Substitute.For<IBeepCounterStore>();
     private readonly IOutbox outbox = Substitute.For<IOutbox>();
+    private readonly ITranslationJobs translationJobs = Substitute.For<ITranslationJobs>();
     private readonly IModerationJobs moderationJobs = Substitute.For<IModerationJobs>();
     private readonly ILiveEventStore liveEvents = Substitute.For<ILiveEventStore>();
     private readonly INotificationStore notifications = Substitute.For<INotificationStore>();
@@ -71,8 +73,9 @@ public sealed class BeepServiceTests
         Assert.Equal(added.Id, added.RootId);
         Assert.Null(added.ReplyToId);
         Assert.Equal(ModerationStatus.Pending, added.ModerationStatus);
-        // Reviewed after posting, queued in the same transaction.
+        // Reviewed after posting, queued in the same transaction; translated once the review lets it through.
         moderationJobs.Received(1).Enqueue(added.Id);
+        translationJobs.DidNotReceiveWithAnyArgs().Enqueue(default);
         store.Received(1).AddBeep(added, Arg.Is<IReadOnlyCollection<Guid>>(m => m.Single() == alice.Id), Arg.Is<IReadOnlyCollection<Guid>>(t => t.Single() == tagId));
         outbox.Received(1).Enqueue(BeepNotificationsRequest.MessageType, Arg.Is<BeepNotificationsRequest>(r => r.BeepId == added.Id), Arg.Any<JsonTypeInfo<BeepNotificationsRequest>>());
         // Searchable once committed, in the same transaction, and announced to open pages afterwards.
@@ -94,6 +97,8 @@ public sealed class BeepServiceTests
         Assert.True(result.IsSuccess);
         Assert.Equal(ModerationStatus.Allowed, added?.ModerationStatus);
         moderationJobs.DidNotReceiveWithAnyArgs().Enqueue(default);
+        // Nothing to wait for: translated at once.
+        translationJobs.Received(1).Enqueue(added!.Id);
     }
 
     [Fact]
@@ -106,6 +111,7 @@ public sealed class BeepServiceTests
         Assert.True(result.IsSuccess);
         Assert.Equal(ModerationStatus.Allowed, added?.ModerationStatus);
         moderationJobs.DidNotReceiveWithAnyArgs().Enqueue(default);
+        translationJobs.DidNotReceiveWithAnyArgs().Enqueue(default);
     }
 
     [Fact]
@@ -584,6 +590,7 @@ public sealed class BeepServiceTests
             unitOfWork,
             outbox,
             moderationJobs,
+            translationJobs,
             TestData.RateLimits(rateLimitStore),
             TestData.Live(liveEvents, counters),
             TestData.Inboxes(liveEvents, notifications),

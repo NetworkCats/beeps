@@ -5,7 +5,7 @@ using Beeps.Features.Shared;
 namespace Beeps.Features.Beeps;
 
 /// <summary>
-/// Turns stored rows into what a viewer sees: relations, avatar URLs, mentions, hashtags and live counts.
+/// Turns stored rows into what a viewer sees: relations, avatar URLs, mentions, hashtags, live counts and translations.
 /// Shared by every feature that shows beeps, so they all look the same.
 /// </summary>
 public sealed partial class BeepViews(IBeepStore store, IBeepCounterStore counters, AvatarUrls avatars, MediaUrls media, ILogger<BeepViews> logger)
@@ -50,7 +50,9 @@ public sealed partial class BeepViews(IBeepStore store, IBeepCounterStore counte
                 BeepText.Hashtags(row.Text),
                 images,
                 viewer?.MayDeleteBeepOf(row.Author.Id, row.Author.OwnerId) ?? false,
-                row.UnderReview);
+                row.UnderReview,
+                // Never one's own: they wrote it as they meant it.
+                viewer is { Languages: { } languages } && row.Author.Id != viewer.ActorId ? languages.Translate(row.Translation) : null);
         })];
     }
 

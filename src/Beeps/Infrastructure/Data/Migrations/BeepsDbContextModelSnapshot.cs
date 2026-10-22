@@ -385,6 +385,13 @@ namespace Beeps.Infrastructure.Data.Migrations
                         .HasColumnType("character varying(16)")
                         .HasColumnName("theme");
 
+                    b.PrimitiveCollection<List<string>>("UntranslatedLanguages")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("text[]")
+                        .HasColumnName("untranslated_languages")
+                        .HasDefaultValueSql("'{}'");
+
                     b.HasKey("Id")
                         .HasName("pk_users");
 
@@ -1201,6 +1208,97 @@ namespace Beeps.Infrastructure.Data.Migrations
                     b.ToTable("site_settings", (string)null);
                 });
 
+            modelBuilder.Entity("Beeps.Features.Translation.BeepTranslation", b =>
+                {
+                    b.Property<Guid>("BeepId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("beep_id");
+
+                    b.Property<string>("Chinese")
+                        .HasMaxLength(8000)
+                        .HasColumnType("character varying(8000)")
+                        .HasColumnName("chinese");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("English")
+                        .HasMaxLength(8000)
+                        .HasColumnType("character varying(8000)")
+                        .HasColumnName("english");
+
+                    b.Property<string>("Language")
+                        .IsRequired()
+                        .HasMaxLength(8)
+                        .HasColumnType("character varying(8)")
+                        .HasColumnName("language");
+
+                    b.Property<int>("LatencyMs")
+                        .HasColumnType("integer")
+                        .HasColumnName("latency_ms");
+
+                    b.Property<string>("Model")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("model");
+
+                    b.Property<string>("Provider")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("provider");
+
+                    b.Property<int?>("Tokens")
+                        .HasColumnType("integer")
+                        .HasColumnName("tokens");
+
+                    b.HasKey("BeepId")
+                        .HasName("pk_beep_translations");
+
+                    b.ToTable("beep_translations", (string)null);
+                });
+
+            modelBuilder.Entity("Beeps.Features.Translation.TranslationJob", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<int>("Attempts")
+                        .HasColumnType("integer")
+                        .HasColumnName("attempts");
+
+                    b.Property<Guid>("BeepId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("beep_id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("LastError")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("last_error");
+
+                    b.Property<DateTimeOffset>("RunAfter")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("run_after");
+
+                    b.HasKey("Id")
+                        .HasName("pk_translation_jobs");
+
+                    b.HasIndex("BeepId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_translation_jobs_beep_id");
+
+                    b.HasIndex("RunAfter")
+                        .HasDatabaseName("ix_translation_jobs_run_after");
+
+                    b.ToTable("translation_jobs", (string)null);
+                });
+
             modelBuilder.Entity("Beeps.Infrastructure.Data.IdempotencyEntry", b =>
                 {
                     b.Property<string>("Key")
@@ -1711,6 +1809,26 @@ namespace Beeps.Infrastructure.Data.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_follows_user_follower_id");
+                });
+
+            modelBuilder.Entity("Beeps.Features.Translation.BeepTranslation", b =>
+                {
+                    b.HasOne("Beeps.Features.Beeps.Beep", null)
+                        .WithOne()
+                        .HasForeignKey("Beeps.Features.Translation.BeepTranslation", "BeepId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_beep_translations_beeps_beep_id");
+                });
+
+            modelBuilder.Entity("Beeps.Features.Translation.TranslationJob", b =>
+                {
+                    b.HasOne("Beeps.Features.Beeps.Beep", null)
+                        .WithMany()
+                        .HasForeignKey("BeepId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_translation_jobs_beeps_beep_id");
                 });
 #pragma warning restore 612, 618
         }

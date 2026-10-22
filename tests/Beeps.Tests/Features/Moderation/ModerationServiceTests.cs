@@ -4,6 +4,7 @@ using Beeps.Features.Live;
 using Beeps.Features.Moderation;
 using Beeps.Features.Search;
 using Beeps.Features.Shared;
+using Beeps.Features.Translation;
 using Beeps.Tests.Support;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -24,6 +25,7 @@ public sealed class ModerationServiceTests
     private readonly IBeepCounterStore counters = Substitute.For<IBeepCounterStore>();
     private readonly ILiveEventStore liveEvents = Substitute.For<ILiveEventStore>();
     private readonly IOutbox outbox = Substitute.For<IOutbox>();
+    private readonly ITranslationJobs translationJobs = Substitute.For<ITranslationJobs>();
     private readonly ImmediateUnitOfWork unitOfWork = new();
     private readonly List<ModerationResult> results = [];
 
@@ -50,6 +52,8 @@ public sealed class ModerationServiceTests
         Assert.Empty(TestData.LiveEvents(liveEvents, LiveEventTypes.BeepHidden));
         // The admin pages show the review's outcome.
         Assert.Single(TestData.LiveEvents(liveEvents, LiveEventTypes.AdminChanged));
+        // Let through: translated next.
+        translationJobs.Received(1).Enqueue(BeepId);
     }
 
     [Fact]
@@ -69,6 +73,7 @@ public sealed class ModerationServiceTests
             [$$"""{"id":"{{BeepId:D}}","author_id":"{{AuthorId:D}}","author_owner_id":"{{OwnerId:D}}"}"""],
             TestData.LiveEvents(liveEvents, LiveEventTypes.BeepHidden));
         await counters.Received(1).AddAsync(ParentId, new BeepCounts(1, 3), new BeepCounts(0, -1), Arg.Any<CancellationToken>());
+        translationJobs.DidNotReceiveWithAnyArgs().Enqueue(default);
     }
 
     [Fact]
@@ -84,6 +89,19 @@ public sealed class ModerationServiceTests
         outbox.DidNotReceiveWithAnyArgs().Enqueue<SearchBeepSyncRequest>(default!, default!, default!);
         Assert.Empty(TestData.LiveEvents(liveEvents, LiveEventTypes.BeepHidden));
         await counters.DidNotReceiveWithAnyArgs().AddAsync(default, default, default, TestSupport.Ct);
+    }
+
+    [Fact]
+    public async Task AnAllowAfterAnAdminsDecisionQueuesNoTranslation()
+    {
+        Subject(ModerationStatus.Pending);
+        moderator.ModerateAsync(default!, TestSupport.Ct).ReturnsForAnyArgs(Verdict(ModerationDecision.Allow));
+        store.SetStatusAsync(default, default!, default, TestSupport.Ct).ReturnsForAnyArgs(false);
+
+        await CreateService().ReviewAsync(BeepId, TestSupport.Ct);
+
+        // The admin's decision queued it already, if it let the beep through.
+        translationJobs.DidNotReceiveWithAnyArgs().Enqueue(default);
     }
 
     [Theory]
@@ -163,6 +181,7 @@ public sealed class ModerationServiceTests
         TestServices.Beeps(beeps, counters, liveEvents),
         unitOfWork,
         outbox,
+        translationJobs,
         TestData.Live(liveEvents, counters),
         TestData.Inboxes(liveEvents),
         Options.Create(new ModerationOptions()),

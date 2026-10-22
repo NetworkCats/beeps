@@ -987,7 +987,7 @@ public sealed partial class AccountServiceTests
         var settings = await CreateService().GetSettingsAsync(user.Id, TestSupport.Ct);
         var missing = await CreateService().GetSettingsAsync(Guid.NewGuid(), TestSupport.Ct);
 
-        Assert.Equal(new AccountSettings("tom", "tom", "hello", "https://tom.example", "tom@example.com", null, "en", new ProfilePrivacy(false, false, true), true, null, settings.Value.Logins, false), settings.Value);
+        Assert.Equal(new AccountSettings("tom", "tom", "hello", "https://tom.example", "tom@example.com", null, "en", new ProfilePrivacy(false, false, true), true, null, settings.Value.Logins, false, settings.Value.UntranslatedLanguages), settings.Value);
         Assert.Equal([new LinkedLogin(ExternalProviders.GitHub, "octocat")], settings.Value.Logins);
         Assert.Equal(ErrorKind.NotFound, missing.Error?.Kind);
     }
@@ -1021,6 +1021,26 @@ public sealed partial class AccountServiceTests
         Assert.Equal((true, false, true), (user.HideLikes, user.HideFollows, user.HideFollowCounts));
         Assert.Equal(1, unitOfWork.Saves);
         Assert.Equal([$$"""{"actor_id":"{{user.Id:D}}"}"""], TestData.LiveEvents(liveEvents, LiveEventTypes.ActorChanged));
+        Assert.Equal(ErrorKind.NotFound, missing.Error?.Kind);
+    }
+
+    [Fact]
+    public async Task TheLanguagesLeftUntranslatedAreSavedAndOpenTabsShownAnew()
+    {
+        var user = TestData.User();
+        user.Locale = "zh-Hans";
+        user.UntranslatedLanguages = ["zh", "ko"];
+        store.FindUserAsync(user.Id, Arg.Any<CancellationToken>()).Returns(user);
+
+        // Shown in Chinese, the switches leave Chinese out: what was saved for it stays.
+        var result = await CreateService().SetTranslationAsync(user.Id, ["en", "ja", "ko", "es", "fr", "de", "pt", "ru", "it", "ar", "hi", "nonsense"], TestSupport.Ct);
+        var missing = await CreateService().SetTranslationAsync(Guid.NewGuid(), [], TestSupport.Ct);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(["zh", "other"], user.UntranslatedLanguages);
+        Assert.Equal(1, unitOfWork.Saves);
+        await store.Received(1).ForgetAccountAsync(user.Id, Arg.Any<CancellationToken>());
+        Assert.Equal([$$"""{"account_id":"{{user.Id:D}}"}"""], TestData.LiveEvents(liveEvents, LiveEventTypes.AccountChanged));
         Assert.Equal(ErrorKind.NotFound, missing.Error?.Kind);
     }
 

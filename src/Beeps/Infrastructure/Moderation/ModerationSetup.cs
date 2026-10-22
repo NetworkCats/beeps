@@ -1,5 +1,6 @@
 using Beeps.Features.Moderation;
 using Beeps.Features.Site;
+using Beeps.Infrastructure.OpenRouter;
 using Microsoft.Extensions.Options;
 
 namespace Beeps.Infrastructure.Moderation;
@@ -23,7 +24,7 @@ public static class ModerationSetup
         services.AddHttpClient<OpenRouterContentModerator>((sp, client) => OpenRouterHttp.Configure(
             client,
             sp.GetRequiredService<IOptions<OpenRouterOptions>>().Value,
-            sp.GetRequiredService<IOptions<ModerationOptions>>().Value,
+            sp.GetRequiredService<IOptions<ModerationOptions>>().Value.RequestTimeout,
             sp.GetRequiredService<IOptions<SiteOptions>>().Value.BaseUrl));
         // Development without a key gets the stand-in, which allows everything but marked test beeps.
         services.AddScoped<IContentModerator>(sp =>

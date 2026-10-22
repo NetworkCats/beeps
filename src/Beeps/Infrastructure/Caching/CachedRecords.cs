@@ -1,6 +1,7 @@
 using System.Text.Json.Serialization;
 using Beeps.Features.Accounts;
 using Beeps.Features.Media;
+using Beeps.Features.Translation;
 
 namespace Beeps.Infrastructure.Caching;
 
@@ -12,6 +13,7 @@ namespace Beeps.Infrastructure.Caching;
 /// <param name="LikeCount">The written-back column, shown only when the beep has no live counts.</param>
 /// <param name="Mentions">Actors the text mentioned when it was posted (whether they are still visible is decided on read).</param>
 /// <param name="Media">Ready images, in order.</param>
+/// <param name="Translation">Its language and translations, once translated.</param>
 public sealed record CachedBeep(
     Guid Id,
     string Text,
@@ -22,7 +24,8 @@ public sealed record CachedBeep(
     int LikeCount,
     int ReplyCount,
     IReadOnlyList<Guid> Mentions,
-    IReadOnlyList<MediaRow> Media);
+    IReadOnlyList<MediaRow> Media,
+    BeepTranslations? Translation);
 
 /// <summary>
 /// An actor as cached. Visibility is not stored but derived on read (<see cref="Data.Stores.ContentReads.GetActorsAsync"/>): an agent is

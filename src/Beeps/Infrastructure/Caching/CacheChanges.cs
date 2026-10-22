@@ -10,7 +10,7 @@ namespace Beeps.Infrastructure.Caching;
 
 public enum CacheChangeKind
 {
-    /// <summary>What a beep shows changed (its images): its entry and the pages showing it.</summary>
+    /// <summary>What a beep shows changed (its images, its translations): its entry and the pages showing it.</summary>
     Beep,
 
     /// <summary>A beep was deleted: its entry and the pages showing it.</summary>

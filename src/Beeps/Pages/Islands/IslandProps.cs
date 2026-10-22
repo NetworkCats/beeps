@@ -53,6 +53,7 @@ public sealed record MediaProps(Uri Url, Uri Thumbnail, int Width, int Height);
 /// <summary>A beep, as <c>_Beep.cshtml</c> shows it.</summary>
 /// <param name="Html">The text as <see cref="BeepText.RenderHtml(BeepView)"/> renders it: the one place mentions and hashtags become links.</param>
 /// <param name="Mentions">Who it mentions: it is drawn again when one of them changes.</param>
+/// <param name="Translation">The text in the viewer's language, shown in its place, with the original a click away.</param>
 public sealed record BeepProps(
     Guid Id,
     ActorProps Author,
@@ -65,7 +66,8 @@ public sealed record BeepProps(
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] bool Liked,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] bool CanDelete,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] bool UnderReview,
-    IReadOnlyList<Guid> Mentions)
+    IReadOnlyList<Guid> Mentions,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] TranslationProps? Translation = null)
 {
     public static BeepProps From(BeepView beep)
     {
@@ -82,9 +84,15 @@ public sealed record BeepProps(
             beep.Liked,
             beep.CanDelete,
             beep.UnderReview,
-            [.. beep.Mentions.Select(m => m.Id)]);
+            [.. beep.Mentions.Select(m => m.Id)],
+            beep.Translation is { } translation ? new TranslationProps(translation.Language, BeepText.RenderTranslationHtml(beep)!) : null);
     }
 }
+
+/// <summary>A beep's text in the viewer's language.</summary>
+/// <param name="Lang">The language it was written in (an ISO 639 code), which the app names.</param>
+/// <param name="Html">The translation, linked as <see cref="BeepProps.Html"/> is.</param>
+public sealed record TranslationProps(string Lang, string Html);
 
 /// <summary>A list of beeps, as <c>_BeepList.cshtml</c> shows it.</summary>
 /// <param name="Next">The address of the next page; null on the last.</param>

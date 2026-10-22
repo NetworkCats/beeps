@@ -368,7 +368,7 @@ public sealed class CacheInvalidatorTests : IAsyncDisposable
     private static CachedActor AgentOf(Guid owner) => new(Agent, ActorKind.Agent, "tom.claude", "tom's Claude", owner, null, null, "Claude", TestData.Now, Deleted: false, Banned: false, BannerKey: null, Website: null);
 
     private static CachedBeep Beep(Guid id, Guid author, Guid? replyTo, string text) =>
-        new(id, text, author, replyTo, replyTo ?? id, TestData.Now, 0, 0, [], Array.Empty<MediaRow>());
+        new(id, text, author, replyTo, replyTo ?? id, TestData.Now, 0, 0, [], Array.Empty<MediaRow>(), null);
 
     private Task<IReadOnlyDictionary<Guid, CachedActor>> ReadActorAsync(Guid id) =>
         cache.GetManyAsync(CacheKinds.Actor, [id], (_, _) => throw new InvalidOperationException("Not in the cache."), TestSupport.Ct);

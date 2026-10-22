@@ -1,5 +1,6 @@
 using Beeps.Features.Accounts;
 using Beeps.Features.Media;
+using Beeps.Features.Translation;
 
 namespace Beeps.Features.Beeps;
 
@@ -11,6 +12,7 @@ public sealed record ActorRow(Guid Id, ActorKind Kind, string? Handle, string? D
 
 /// <summary>A visible beep as stores return it. Counts are the last written-back values; <see cref="Liked"/> is by the viewer.</summary>
 /// <param name="UnderReview">Hidden by moderation; only its author and their owner get to see it.</param>
+/// <param name="Translation">Its language and translations, once translated.</param>
 public sealed record BeepRow(
     Guid Id,
     string Text,
@@ -21,7 +23,8 @@ public sealed record BeepRow(
     int LikeCount,
     int ReplyCount,
     bool Liked,
-    bool UnderReview = false);
+    bool UnderReview = false,
+    BeepTranslations? Translation = null);
 
 /// <summary>What a write needs to know about an existing, visible beep.</summary>
 public sealed record BeepRef(Guid Id, Guid AuthorId, Guid? AuthorOwnerId, Guid RootId, Guid? ReplyToId, int LikeCount, int ReplyCount)
@@ -37,6 +40,7 @@ public sealed record ActorView(Guid Id, ActorKind Kind, string? Handle, string? 
 /// <param name="Media">Attached images, in the author's order.</param>
 /// <param name="CanDelete">The viewer may delete it (<see cref="Viewer.MayDeleteBeepOf"/>); the pages show a button for it.</param>
 /// <param name="UnderReview">Hidden by moderation until an admin looks at it; only its author and their owner see it, marked.</param>
+/// <param name="Translation">The text in the viewer's language, when they read it translated (<see cref="ReaderLanguages"/>).</param>
 public sealed record BeepView(
     Guid Id,
     string Text,
@@ -51,7 +55,8 @@ public sealed record BeepView(
     IReadOnlyList<string> Hashtags,
     IReadOnlyList<MediaView> Media,
     bool CanDelete,
-    bool UnderReview = false)
+    bool UnderReview = false,
+    TranslationView? Translation = null)
 {
     public bool IsReply => ReplyToId is not null;
 }

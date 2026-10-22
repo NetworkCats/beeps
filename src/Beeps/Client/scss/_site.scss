@@ -1081,6 +1081,31 @@
   }
 }
 
+// Under a translated beep, as on Twitter: where it was translated from, and a way to the original and back.
+.beep-translation {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--cui-space-1);
+  margin: var(--cui-space-1) 0 0;
+  color: var(--cui-text-2);
+  font-size: 0.8125rem;
+  line-height: 1.125rem;
+}
+
+.beep-translation-toggle {
+  padding: 0;
+  color: var(--cui-primary-text);
+  font: inherit;
+  background: none;
+  border: 0;
+  cursor: pointer;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
 // A link shows without its scheme and is cut short (BeepText.AppendLink); the rest is hidden, not left out, so it copies.
 .link-hidden {
   @include visually-hidden;

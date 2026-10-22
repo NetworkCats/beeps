@@ -235,3 +235,28 @@ test('the verification page says where the code went, sends another after a minu
   assert.match(changing, /name="NewEmail"/);
   assert.match(changing, /name="CurrentPassword"/);
 });
+
+test('a translated beep shows its translation in place of its text, says from what, and offers the original', async () => {
+  const html = await draw('home.json', 'index', (props) => {
+    const beep = props.list.items.find((b: { id: string }) => b.id.endsWith('00000000000a'));
+    beep.translation = { lang: 'ja', html: 'Who knows <a class="hashtag" href="/tags/beeps">#beeps</a>? (translated)' };
+  });
+  assert.match(html, /<div class="beep-text">Who knows <a class="hashtag" href="\/tags\/beeps">#beeps<\/a>\? \(translated\)<\/div>/);
+  assert.match(html, /<p class="beep-translation">Translated from Japanese<span class="beep-dot" aria-hidden="true">·<\/span><button class="beep-translation-toggle" type="button">Show original<\/button><\/p>/);
+  // Untranslated beeps have no such line.
+  assert.equal(html.match(/class="beep-translation"/g)?.length, 1);
+});
+
+test('the translation settings switch each language but the page\'s own, those switched off unchecked', async () => {
+  const list = await draw('settings.json', 'settings');
+  assert.match(list, /<a class="settings-link" href="\/settings\/translation">/);
+  const html = await draw('settings.json', 'settings', (props) => {
+    props.section = 'translation';
+    props.translation.untranslated = ['ja', 'other'];
+  });
+  assert.match(html, /<form class="settings-switches" method="post" action="\/settings\/translation\?handler=Translation">/);
+  assert.match(html, /Chinese<\/span><\/span><input type="checkbox" name="Translate" value="zh" checked/);
+  assert.match(html, /Japanese<\/span><\/span><input type="checkbox" name="Translate" value="ja"\/>/);
+  assert.match(html, /Other languages<\/span><\/span><input type="checkbox" name="Translate" value="other"\/>/);
+  assert.doesNotMatch(html, /value="en"/);
+});

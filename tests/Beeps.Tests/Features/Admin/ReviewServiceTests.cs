@@ -6,6 +6,7 @@ using Beeps.Features.Media;
 using Beeps.Features.Moderation;
 using Beeps.Features.Search;
 using Beeps.Features.Shared;
+using Beeps.Features.Translation;
 using Beeps.Tests.Support;
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -23,6 +24,7 @@ public sealed class ReviewServiceTests
     private readonly IBeepCounterStore counters = Substitute.For<IBeepCounterStore>();
     private readonly ILiveEventStore liveEvents = Substitute.For<ILiveEventStore>();
     private readonly IOutbox outbox = Substitute.For<IOutbox>();
+    private readonly ITranslationJobs translationJobs = Substitute.For<ITranslationJobs>();
     private readonly ImmediateUnitOfWork unitOfWork = new();
     private readonly List<AdminAuditLog> audit = [];
 
@@ -88,6 +90,24 @@ public sealed class ReviewServiceTests
         // Open pages put it back where it belongs, and its author's loses the "under review" mark.
         Assert.Equal(["{}"], TestData.LiveEvents(liveEvents, LiveEventTypes.Resync));
         Assert.Equal([$$"""{"ids":["{{BeepId:D}}"]}"""], TestData.LiveEvents(liveEvents, LiveEventTypes.BeepsChanged));
+        // Let through only now: translated next.
+        translationJobs.Received(1).Enqueue(BeepId);
+    }
+
+    [Fact]
+    public async Task KeepingABeepTheModelAllowedQueuesNoSecondTranslation()
+    {
+        Subject(ModerationStatus.Allowed);
+        Guid[] seen = [Guid.NewGuid()];
+        store.SetStatusAsync(BeepId, Arg.Any<IReadOnlyCollection<ModerationStatus>>(), ModerationStatus.HumanAllowed, Arg.Any<CancellationToken>()).Returns(true);
+        store.ResolveReportsAsync(BeepId, seen, AdminId, TestData.Now, Arg.Any<CancellationToken>()).Returns(1);
+
+        var result = await Create().KeepAsync(AdminId, BeepId, seen, TestSupport.Ct);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal("Allowed -> HumanAllowed, reports resolved: 1", Assert.Single(audit).Detail);
+        // The model's review queued it already.
+        translationJobs.DidNotReceiveWithAnyArgs().Enqueue(default);
     }
 
     [Fact]
@@ -246,6 +266,7 @@ public sealed class ReviewServiceTests
             new AdminAccess(admins, TestData.Time(), localizer),
             unitOfWork,
             outbox,
+            translationJobs,
             TestData.Live(liveEvents, counters),
             TestData.Inboxes(liveEvents),
             TestData.Time(),

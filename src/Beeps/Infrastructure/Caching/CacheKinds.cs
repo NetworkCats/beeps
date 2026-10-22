@@ -20,8 +20,9 @@ public sealed class CacheKind<TKey, TValue>(string name, Func<TKey, string> form
 /// <summary>Everything the content cache holds.</summary>
 public static class CacheKinds
 {
+    // "2": the record gained Translation.
     public static readonly CacheKind<Guid, CachedBeep> Beep =
-        new("beep", Id, ContentCacheJsonContext.Default.CachedBeep, o => o.BeepExpiration);
+        new("beep2", Id, ContentCacheJsonContext.Default.CachedBeep, o => o.BeepExpiration);
 
     public static readonly CacheKind<Guid, CachedActor> Actor =
         new("actor2", Id, ContentCacheJsonContext.Default.CachedActor, o => o.ActorExpiration);

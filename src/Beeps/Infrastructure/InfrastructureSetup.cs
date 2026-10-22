@@ -12,6 +12,7 @@ using Beeps.Features.RateLimiting;
 using Beeps.Features.Search;
 using Beeps.Features.Shared;
 using Beeps.Features.Timelines;
+using Beeps.Features.Translation;
 using Beeps.Infrastructure.Caching;
 using Beeps.Infrastructure.Captcha;
 using Beeps.Infrastructure.Crawlers;
@@ -31,6 +32,7 @@ using Beeps.Infrastructure.Previews;
 using Beeps.Infrastructure.Redis;
 using Beeps.Infrastructure.Search;
 using Beeps.Infrastructure.Storage;
+using Beeps.Infrastructure.Translation;
 using Microsoft.AspNetCore.DataProtection;
 
 namespace Beeps.Infrastructure;
@@ -51,6 +53,7 @@ public static class InfrastructureSetup
         services.AddBeepsLive();
         services.AddBeepsSearch();
         services.AddBeepsModeration();
+        services.AddBeepsTranslation();
         services.AddBeepsIpLocation();
         services.AddBeepsDisposableEmails();
         services.AddBeepsCrawlerAddresses();
@@ -69,6 +72,7 @@ public static class InfrastructureSetup
         services.AddScoped<IProfileStore, EfProfileStore>();
         services.AddScoped<INotificationStore, EfNotificationStore>();
         services.AddScoped<IModerationStore, EfModerationStore>();
+        services.AddScoped<ITranslationStore, EfTranslationStore>();
         services.AddScoped<ISystemStore, EfSystemStore>();
         services.AddScoped<ISearchStore, EfSearchStore>();
         services.AddScoped<ISitemapStore, EfSitemapStore>();

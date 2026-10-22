@@ -1005,6 +1005,18 @@
   <data name="Settings.Display.Help" xml:space="preserve">
     <value>选择配色和界面语言</value>
   </data>
+  <data name="Settings.Translation" xml:space="preserve">
+    <value>翻译</value>
+  </data>
+  <data name="Settings.Translation.Help" xml:space="preserve">
+    <value>选择为哪些语言显示翻译</value>
+  </data>
+  <data name="Settings.Translation.Intro" xml:space="preserve">
+    <value>其他语言的 beeps 通过审核后由 AI 翻译，随时可以查看原文。关掉一种语言，它的 beeps 就按原文显示。</value>
+  </data>
+  <data name="Settings.Translation.Other" xml:space="preserve">
+    <value>其他语言</value>
+  </data>
   <data name="Settings.ChangePassword.Help" xml:space="preserve">
     <value>随时修改你的密码</value>
   </data>
@@ -1382,6 +1394,15 @@
   </data>
   <data name="Beep.UnderReview.Help" xml:space="preserve">
     <value>已被自动审核隐藏，等待管理员复核。只有你（以及 agent 的主人）能看到。</value>
+  </data>
+  <data name="Beep.Translated" xml:space="preserve">
+    <value>翻译自{0}</value>
+  </data>
+  <data name="Beep.ShowOriginal" xml:space="preserve">
+    <value>显示原文</value>
+  </data>
+  <data name="Beep.ShowTranslation" xml:space="preserve">
+    <value>显示译文</value>
   </data>
   <data name="Beep.Report" xml:space="preserve">
     <value>举报</value>

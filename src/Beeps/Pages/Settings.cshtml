@@ -1,4 +1,4 @@
-@page "/settings/{section:regex(^(profile|privacy|account|email|password|passkeys|display|sessions)$)?}"
+@page "/settings/{section:regex(^(profile|privacy|account|email|password|passkeys|display|translation|sessions)$)?}"
 @using Beeps.Features.Accounts
 @using Beeps.Features.Avatars
 @using Beeps.Pages.Islands
@@ -24,6 +24,7 @@
         Model.Bio,
         Model.Website,
         new PrivacyProps(Model.Settings.Privacy.HideLikes, Model.Settings.Privacy.HideFollows, Model.Settings.Privacy.HideFollowCounts),
+        TranslationSettingsProps.For(Model.Settings.Locale, Model.Settings.UntranslatedLanguages),
         Model.Settings.Locale,
         SiteOptionsProps.CulturesFor(L),
         SiteOptionsProps.ThemesFor(L),

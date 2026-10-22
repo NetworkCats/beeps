@@ -2,8 +2,10 @@ using Beeps.Features.Beeps;
 using Beeps.Features.Live;
 using Beeps.Features.Moderation;
 using Beeps.Features.Shared;
+using Beeps.Features.Translation;
 using Beeps.Infrastructure;
 using Beeps.Infrastructure.Moderation;
+using Beeps.Infrastructure.Queues;
 using Beeps.Tests.Support;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -45,7 +47,7 @@ public sealed class ModerationProcessorTests
     {
         moderator.ModerateAsync(default!, TestSupport.Ct).ReturnsForAnyArgs(
             new ModerationVerdict(ModerationDecision.Allow, [], ModerationSeverity.None, "Fine.", "m", null, 1, null));
-        var job = new ClaimedModerationJob(Guid.NewGuid(), BeepId, 1);
+        var job = new ClaimedBeepJob(Guid.NewGuid(), BeepId, 1);
 
         await Create().ProcessAsync(job, TestSupport.Ct);
 
@@ -57,7 +59,7 @@ public sealed class ModerationProcessorTests
     public async Task AFailedAttemptIsRetriedLater()
     {
         moderator.ModerateAsync(default!, TestSupport.Ct).ThrowsAsyncForAnyArgs(new ContentModerationException("OpenRouter answered 429"));
-        var job = new ClaimedModerationJob(Guid.NewGuid(), BeepId, 2);
+        var job = new ClaimedBeepJob(Guid.NewGuid(), BeepId, 2);
 
         await Create().ProcessAsync(job, TestSupport.Ct);
 
@@ -70,7 +72,7 @@ public sealed class ModerationProcessorTests
     public async Task TheLastFailedAttemptLeavesTheBeepToTheAdmins()
     {
         moderator.ModerateAsync(default!, TestSupport.Ct).ThrowsAsyncForAnyArgs(new ContentModerationException("bad answer"));
-        var job = new ClaimedModerationJob(Guid.NewGuid(), BeepId, 5);
+        var job = new ClaimedBeepJob(Guid.NewGuid(), BeepId, 5);
 
         await Create().ProcessAsync(job, TestSupport.Ct);
 
@@ -82,7 +84,7 @@ public sealed class ModerationProcessorTests
     [Fact]
     public async Task AJobThatOutlivedItsAttemptsIsNotTriedAgain()
     {
-        var job = new ClaimedModerationJob(Guid.NewGuid(), BeepId, 6);
+        var job = new ClaimedBeepJob(Guid.NewGuid(), BeepId, 6);
 
         await Create().ProcessAsync(job, TestSupport.Ct);
 
@@ -115,6 +117,7 @@ public sealed class ModerationProcessorTests
             TestServices.Beeps(beeps, counters, liveEvents),
             new ImmediateUnitOfWork(),
             Substitute.For<IOutbox>(),
+            Substitute.For<ITranslationJobs>(),
             TestData.Live(liveEvents, counters),
             TestData.Inboxes(liveEvents),
             Options.Create(options),

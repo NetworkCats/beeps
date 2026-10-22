@@ -19,7 +19,7 @@ internal static class WebAuth
         factory.Accounts.FindUserAsync(user.Id, Arg.Any<CancellationToken>()).Returns(user);
         // Read on every request, so a test can change the user (ban, rights…) after signing in.
         factory.Accounts.GetAccountStateAsync(user.Id, Arg.Any<CancellationToken>()).Returns(_ => user.BannedAt is null
-            ? new AccountState(user.Id, user.Actor.Handle!, user.Actor.DisplayName!, user.IsAdmin, user.EmailVerifiedAt is not null, user.Locale, Theme: user.Theme)
+            ? new AccountState(user.Id, user.Actor.Handle!, user.Actor.DisplayName!, user.IsAdmin, user.EmailVerifiedAt is not null, user.Locale, Theme: user.Theme, UntranslatedLanguages: user.UntranslatedLanguages)
             : null);
         if (admin)
         {

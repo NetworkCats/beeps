@@ -70,7 +70,8 @@ public sealed class EfAccountStore(BeepsDbContext db, CacheInvalidator invalidat
                     u.EmailVerifiedAt != null,
                     u.Locale,
                     u.Actor.AvatarMedia == null || u.Actor.AvatarMedia.Status != MediaStatus.Ready ? null : u.Actor.AvatarMedia.StorageKey,
-                    u.Theme))
+                    u.Theme,
+                    u.UntranslatedLanguages))
                 .FirstOrDefaultAsync(ct),
             SharedCache.Account);
 

@@ -6,6 +6,7 @@ using Beeps.Features.Profiles;
 using Beeps.Features.RateLimiting;
 using Beeps.Features.Search;
 using Beeps.Features.Shared;
+using Beeps.Features.Translation;
 using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Options;
 
@@ -21,6 +22,7 @@ public sealed partial class BeepService(
     IUnitOfWork unitOfWork,
     IOutbox outbox,
     IModerationJobs moderationJobs,
+    ITranslationJobs translationJobs,
     RateLimitService rateLimits,
     LiveUpdates live,
     InboxRecounter inboxes,
@@ -38,8 +40,8 @@ public sealed partial class BeepService(
     /// <summary>
     /// Posts a beep, or a reply when <paramref name="replyToId"/> is set, with up to four images the author
     /// uploaded (<paramref name="mediaIds"/>; with images the text may be empty). Mentions resolve to actors
-    /// that exist right now; hashtags, mentions, images, the notification job and the review
-    /// commit together with the beep. Nobody replies to someone who blocked them.
+    /// that exist right now; hashtags, mentions, images, the notification job and the review (or, with no review, the
+    /// translation) commit together with the beep. Nobody replies to someone who blocked them.
     /// </summary>
     public async Task<Result<BeepView>> PostAsync(Viewer author, string? text, Guid? replyToId, IReadOnlyList<Guid>? mediaIds, CancellationToken cancellationToken)
     {
@@ -133,6 +135,11 @@ public sealed partial class BeepService(
                 if (review)
                 {
                     moderationJobs.Enqueue(id);
+                }
+                else if (parsed.Text.Length > 0)
+                {
+                    // Let through as it is: translated now, rather than once a review lets it through.
+                    translationJobs.Enqueue(id);
                 }
 
                 await unitOfWork.SaveChangesAsync(ct);
