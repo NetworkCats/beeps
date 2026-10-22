@@ -81,4 +81,6 @@ jobs:
         run: |
           shellcheck deploy/ansible/roles/beeps/files/beeps-deploy deploy/ansible/roles/beeps/files/beeps-backup
           python3 -m py_compile deploy/ansible/roles/firewall/files/beeps-cloudflare-ips
+          # The env files live only on the server; newer Compose wants them present even without resolving them.
+          touch app.env postgres.env meilisearch.env
           docker compose -f compose.prod.yml config --quiet --no-env-resolution
