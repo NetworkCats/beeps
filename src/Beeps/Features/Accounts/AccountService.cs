@@ -672,7 +672,7 @@ public sealed partial class AccountService(
         await unitOfWork.SaveChangesAsync(cancellationToken);
         await store.ForgetAccountAsync(user.Id, cancellationToken);
         // The account's other open tabs show beeps translated as now asked.
-        await live.AccountChangedAsync(user.Id, cancellationToken);
+        await live.TranslationChangedAsync(user.Id, cancellationToken);
         return Result.Success;
     }
 
@@ -878,11 +878,12 @@ public sealed partial class AccountService(
             return AccountNotFound();
         }
 
-        // Expired codes count as none: the page then asks for the address and the password again.
+        // Codes expired or out of guesses count as none, as the settings page has it: it then asks for the address and the
+        // password again.
         var code = user.PendingEmail is null
             ? null
             : await store.FindEmailCodeAsync(EmailCodePurpose.ChangeEmail, user.NormalizedEmail, cancellationToken);
-        if (code is null || code.ExpiresAt <= time.GetUtcNow())
+        if (code is null || code.ExpiresAt <= time.GetUtcNow() || code.Attempts >= MaxCodeAttempts)
         {
             return CodeInvalid();
         }

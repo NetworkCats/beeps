@@ -51,7 +51,7 @@ FROM mcr.microsoft.com/dotnet/aspnet:10.0.13-noble
 RUN apt-get update \
     && apt-get install -y --no-install-recommends curl \
     && rm -rf /var/lib/apt/lists/*
-# Each instance keeps its downloaded reference data (IP locations, disposable email domains) and the link previews it
+# Each instance keeps its downloaded reference data (IP locations, disposable email domains, crawler addresses) and the link previews it
 # has drawn here, on a volume, so a restart does not fetch or draw them again.
 RUN mkdir -p /var/lib/beeps && chown "$APP_UID" /var/lib/beeps
 # Previews:FontDirectory's default.
@@ -62,6 +62,7 @@ COPY --from=build /bundle/efbundle ./efbundle
 ENV ASPNETCORE_HTTP_PORTS=8080 \
     IpLocation__Directory=/var/lib/beeps/ip-location \
     DisposableEmail__Directory=/var/lib/beeps/disposable-email \
+    Crawlers__Directory=/var/lib/beeps/crawlers \
     Previews__Directory=/var/lib/beeps/previews
 USER $APP_UID
 EXPOSE 8080

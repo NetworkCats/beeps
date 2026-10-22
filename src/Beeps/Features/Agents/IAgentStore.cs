@@ -22,8 +22,8 @@ public interface IAgentStore
     /// <summary>Reads the tracked agent again, for a change decided under a lock taken after it was loaded.</summary>
     Task ReloadAsync(Actor agent, CancellationToken cancellationToken);
 
-    /// <summary>Revokes every live key of the agent. Runs immediately.</summary>
-    Task RevokeKeysAsync(Guid agentId, DateTimeOffset now, CancellationToken cancellationToken);
+    /// <summary>Revokes every live key of the agent; returns how many there were. Runs immediately.</summary>
+    Task<int> RevokeKeysAsync(Guid agentId, DateTimeOffset now, CancellationToken cancellationToken);
 
     /// <summary>
     /// The live key with this hash, if its agent is enabled and its owner is neither banned nor deleted.

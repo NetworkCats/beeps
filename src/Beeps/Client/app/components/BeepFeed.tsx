@@ -215,6 +215,8 @@ export function useBeepFeed(options: FeedOptions): Feed {
     const answer = await getIslands(next);
     const page = answer.page ? options.pageOf(answer.page) : undefined;
     if (!page) return false;
+    // The list was drawn again from a fresh first page meanwhile: this page no longer goes on from where it ends.
+    if (state.next.value !== next) return true;
     putBeeps(page.items, since);
     const added = appendPage({ ids: state.ids.value, next }, { ids: page.items.map((beep) => beep.id), next: page.next });
     state.ids.value = added.ids;

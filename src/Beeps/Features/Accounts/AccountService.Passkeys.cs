@@ -130,33 +130,47 @@ public sealed partial class AccountService
             return AccountNotFound();
         }
 
-        var passkeys = await store.ListPasskeysAsync(userId, cancellationToken);
-        if (passkeys.FirstOrDefault(p => p.Id == passkeyId) is not { } passkey)
+        var removed = false;
+        // The ways left are read under the lock: two removals at once would otherwise both see another one left.
+        var result = await unitOfWork.InTransactionAsync(
+            AdvisoryLocks.SignInMethods(userId),
+            async ct =>
+            {
+                var passkeys = await store.ListPasskeysAsync(userId, ct);
+                if (passkeys.FirstOrDefault(p => p.Id == passkeyId) is not { } passkey)
+                {
+                    return Result.Success;
+                }
+
+                if (user.PasswordHash is null && !user.PasskeyTwoFactor && passkeys.Count == 1
+                    && (await store.ListLoginsAsync(userId, ct)).Count == 0)
+                {
+                    return Error.Conflict(AccountErrorCodes.LastSignInMethod, localizer["Error.LastPasskey"]);
+                }
+
+                var limited = await rateLimits.CheckAsync(RateLimitPolicies.AccountChange, RateLimitPartitions.Account(userId), ct);
+                if (!limited.IsSuccess)
+                {
+                    return limited;
+                }
+
+                store.RemovePasskey(passkey);
+                if (passkeys.Count == 1)
+                {
+                    user.PasskeyTwoFactor = false;
+                }
+
+                await unitOfWork.SaveChangesAsync(ct);
+                removed = true;
+                return Result.Success;
+            },
+            cancellationToken);
+        if (removed)
         {
-            return Result.Success;
+            LogPasskeyRemoved(logger, userId);
         }
 
-        if (user.PasswordHash is null && !user.PasskeyTwoFactor && passkeys.Count == 1
-            && (await store.ListLoginsAsync(userId, cancellationToken)).Count == 0)
-        {
-            return Error.Conflict(AccountErrorCodes.LastSignInMethod, localizer["Error.LastPasskey"]);
-        }
-
-        var limited = await rateLimits.CheckAsync(RateLimitPolicies.AccountChange, RateLimitPartitions.Account(userId), cancellationToken);
-        if (!limited.IsSuccess)
-        {
-            return limited;
-        }
-
-        store.RemovePasskey(passkey);
-        if (passkeys.Count == 1)
-        {
-            user.PasskeyTwoFactor = false;
-        }
-
-        await unitOfWork.SaveChangesAsync(cancellationToken);
-        LogPasskeyRemoved(logger, userId);
-        return Result.Success;
+        return result;
     }
 
     /// <summary>

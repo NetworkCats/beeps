@@ -275,13 +275,10 @@ public sealed partial class AdminService(
             return true;
         }, cancellationToken);
 
-    /// <summary>Revokes the agent's key without issuing a new one; its owner generates the next.</summary>
+    /// <summary>Revokes the agent's key without issuing a new one; its owner generates the next. None to revoke, nothing is audited.</summary>
     public Task<Result> RevokeAgentKeyAsync(Guid adminId, Guid agentId, CancellationToken cancellationToken) =>
         ChangeAgentAsync(adminId, agentId, AuditActions.RevokeAgentKey, async (agent, now, ct) =>
-        {
-            await agents.RevokeKeysAsync(agent.Id, now, ct);
-            return true;
-        }, cancellationToken);
+            await agents.RevokeKeysAsync(agent.Id, now, ct) > 0, cancellationToken);
 
     /// <summary>Soft-deletes the agent as its owner would: it disappears, its keys are revoked, the record stays.</summary>
     public async Task<Result> DeleteAgentAsync(Guid adminId, Guid agentId, CancellationToken cancellationToken)

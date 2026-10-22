@@ -102,9 +102,10 @@ public sealed partial class LiveService(
         // relation_changed event), as the cached copy may not have been dropped yet when that event comes.
         var home = topic.Kind == LiveTopicKind.Home ? await HomeAccountsAsync(viewer, fresh: false, cancellationToken) : null;
         // A first connection is replayed a little from before the page was rendered; a reconnection from its last event.
-        // As the browser's clock has it, which may run ahead; a time past the year 9999 would throw.
+        // As the browser's clock has it after a reset, which may run ahead: no later than now, or the account's changes
+        // until the browser's time would be taken for ones the page already shows.
         DateTimeOffset? renderedAt = request.LastEventId is null && request.From is { } from
-            ? DateTimeOffset.FromUnixTimeMilliseconds(Math.Min(from, DateTimeOffset.MaxValue.ToUnixTimeMilliseconds()))
+            ? DateTimeOffset.FromUnixTimeMilliseconds(Math.Min(from, time.GetUtcNow().ToUnixTimeMilliseconds()))
             : null;
         var followed = session.Verified && (topic.Kind != LiveTopicKind.Admin || session.Admin) ? topic : LiveTopic.None;
         var connection = new Connection(NewConnectionId(), viewer, followed, watched, home)
@@ -296,6 +297,8 @@ public sealed partial class LiveService(
             // Not when the page was rendered after the change: showing it anew would only replay the change, again and again.
             LiveEventTypes.AccountChanged when Read(item, LiveJsonContext.Default.AccountEvent).AccountId == connection.Viewer.AccountId && !RenderedSince(connection, item) =>
                 Message(LiveMessages.Reload, new EmptyMessage(), LiveJsonContext.Default.EmptyMessage, item.Id),
+            LiveEventTypes.TranslationChanged when Read(item, LiveJsonContext.Default.AccountEvent).AccountId == connection.Viewer.AccountId =>
+                Message(LiveMessages.Translation, new EmptyMessage(), LiveJsonContext.Default.EmptyMessage, item.Id),
             LiveEventTypes.SessionStarted when connection.SessionId is not null && Read(item, LiveJsonContext.Default.AccountEvent).AccountId == connection.Viewer.AccountId =>
                 Message(LiveMessages.Sessions, new EmptyMessage(), LiveJsonContext.Default.EmptyMessage, item.Id),
             LiveEventTypes.SearchChanged when connection.Topic.Kind == LiveTopicKind.Search =>

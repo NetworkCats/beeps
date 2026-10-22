@@ -21,10 +21,18 @@ public sealed partial class DiskPreviewStore(IOptions<PreviewOptions> options, T
         try
         {
             var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read | FileShare.Delete, bufferSize: 1, useAsync: true);
-            var now = time.GetUtcNow().UtcDateTime;
-            if (File.GetLastWriteTimeUtc(path) < now - TouchInterval)
+            try
             {
-                File.SetLastWriteTimeUtc(path, now);
+                var now = time.GetUtcNow().UtcDateTime;
+                if (File.GetLastWriteTimeUtc(path) < now - TouchInterval)
+                {
+                    File.SetLastWriteTimeUtc(path, now);
+                }
+            }
+            catch
+            {
+                stream.Dispose();
+                throw;
             }
 
             return stream;

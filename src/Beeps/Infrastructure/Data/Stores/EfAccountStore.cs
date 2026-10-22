@@ -30,8 +30,14 @@ public sealed class EfAccountStore(BeepsDbContext db, CacheInvalidator invalidat
     public Task<User?> FindUserByEmailAsync(string normalizedEmail, CancellationToken cancellationToken) =>
         Users().FirstOrDefaultAsync(u => u.NormalizedEmail == normalizedEmail, cancellationToken);
 
+    /// <remarks>
+    /// Locks the row until commit: the release of accounts left unverified (<see cref="ReleaseUnverifiedAsync"/>) skips
+    /// it meanwhile, and one already under way is waited for and then read as released.
+    /// </remarks>
     public async Task<bool> LeftUnverifiedEmailAsync(Guid userId, string normalizedEmail, CancellationToken cancellationToken) =>
-        !await db.Set<User>().AnyAsync(u => u.Id == userId && u.NormalizedEmail == normalizedEmail && u.EmailVerifiedAt == null, cancellationToken);
+        (await db.Database
+            .SqlQuery<Guid>($"""SELECT id AS "Value" FROM users WHERE id = {userId} AND normalized_email = {normalizedEmail} AND email_verified_at IS NULL FOR UPDATE""")
+            .ToListAsync(cancellationToken)).Count == 0;
 
     public Task<User?> FindUserByHandleAsync(string normalizedHandle, CancellationToken cancellationToken) =>
         Users().FirstOrDefaultAsync(u => u.Actor.NormalizedHandle == normalizedHandle, cancellationToken);
@@ -126,7 +132,7 @@ public sealed class EfAccountStore(BeepsDbContext db, CacheInvalidator invalidat
     /// <remarks>
     /// The email becomes <c>released:{id}</c> and the handle is cleared from the unique index, so both can be taken
     /// again; the row stays (like any deleted account) because others may have mentioned the handle. SKIP LOCKED leaves
-    /// alone an account that is verifying right now.
+    /// alone an account that is verifying right now (<see cref="LeftUnverifiedEmailAsync"/> holds its row).
     /// </remarks>
     public async Task<IReadOnlyList<Guid>> ReleaseUnverifiedAsync(DateTimeOffset registeredBefore, DateTimeOffset now, int batchSize, CancellationToken cancellationToken)
     {

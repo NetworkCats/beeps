@@ -39,7 +39,7 @@ public sealed class EfAgentStore(BeepsDbContext db, CacheInvalidator invalidator
 
     public Task ReloadAsync(Actor agent, CancellationToken cancellationToken) => db.Entry(agent).ReloadAsync(cancellationToken);
 
-    public Task RevokeKeysAsync(Guid agentId, DateTimeOffset now, CancellationToken cancellationToken) =>
+    public Task<int> RevokeKeysAsync(Guid agentId, DateTimeOffset now, CancellationToken cancellationToken) =>
         db.Set<AgentKey>()
             .Where(k => k.AgentId == agentId && k.RevokedAt == null)
             .ExecuteUpdateAsync(s => s.SetProperty(k => k.RevokedAt, now), cancellationToken);

@@ -596,11 +596,12 @@ async function onSubmit(event: SubmitEvent): Promise<void> {
 
 function onPop(event: PopStateEvent): void {
   let entry = entryOf(event.state);
-  // Gone back to show a form's answer (show()): that draws the page.
-  if (returning && entry) {
+  // Gone back to show a form's answer (show()): that draws the page. The page before may have been left at a link
+  // within it, whose entry has no state of this script's: it is given one, or the answer would wait for ever.
+  if (returning) {
     const settle = returning;
     returning = undefined;
-    current = entry;
+    current = entry ?? { key: newKey(), index: Math.max(0, current.index - 1) };
     shownUrl = window.location.href;
     settle();
     return;

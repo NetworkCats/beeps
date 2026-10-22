@@ -87,13 +87,20 @@ public sealed partial class LiveUpdates(ILiveEventStore store, IBeepCounterStore
     public Task SessionsEndedAsync(Guid accountId, CancellationToken cancellationToken) =>
         AppendAsync(LiveEventTypes.SessionsEnded, new AccountEvent(accountId), LiveJsonContext.Default.AccountEvent, cancellationToken);
 
-    /// <summary>The account's language, translations or admin rights changed: its open tabs show the site anew.</summary>
+    /// <summary>The account's language or admin rights changed: its open tabs show the site anew.</summary>
     public Task AccountChangedAsync(Guid accountId, CancellationToken cancellationToken) =>
         AppendAsync(LiveEventTypes.AccountChanged, new AccountEvent(accountId), LiveJsonContext.Default.AccountEvent, cancellationToken);
 
     /// <summary>The account picked another colour scheme: its open tabs switch to it.</summary>
     public Task ThemeChangedAsync(Guid accountId, string theme, CancellationToken cancellationToken) =>
         AppendAsync(LiveEventTypes.ThemeChanged, new ThemeChangedEvent(accountId, theme), LiveJsonContext.Default.ThemeChangedEvent, cancellationToken);
+
+    /// <summary>
+    /// The account changed which languages it reads translated: its open tabs draw their beeps again, in place. Not
+    /// shown anew as a whole, as for a language: the settings page the switch was flipped on would lose its focus.
+    /// </summary>
+    public Task TranslationChangedAsync(Guid accountId, CancellationToken cancellationToken) =>
+        AppendAsync(LiveEventTypes.TranslationChanged, new AccountEvent(accountId), LiveJsonContext.Default.AccountEvent, cancellationToken);
 
     /// <summary>The search index was written: open search pages ask again.</summary>
     public Task SearchChangedAsync(CancellationToken cancellationToken) =>

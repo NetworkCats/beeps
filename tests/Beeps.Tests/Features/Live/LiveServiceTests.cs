@@ -241,15 +241,38 @@ public sealed class LiveServiceTests : IAsyncDisposable
     }
 
     [Fact]
+    public async Task ATranslationChangeHasTheAccountsTabsDrawTheirBeepsAgain()
+    {
+        await OpenAsync(new LiveRequest("", null, null, null));
+
+        feed.Publish(LiveEventTypes.TranslationChanged, $$"""{"account_id":"{{Alice:D}}"}""");
+        var id = feed.Publish(LiveEventTypes.TranslationChanged, $$"""{"account_id":"{{Tom:D}}"}""");
+
+        Assert.Equal(new LiveMessage(LiveMessages.Translation, "{}", id), await NextAsync());
+    }
+
+    [Fact]
     public async Task APageRenderedAfterTheChangeIsNotShownAnewForIt()
     {
         // The test feed stamps its events at TestData.Now; a fresh page is replayed from a little before it was rendered.
+        time.Now = TestData.Now.AddMilliseconds(1);
         await OpenAsync(new LiveRequest("", null, null, TestData.Now.ToUnixTimeMilliseconds() + 1));
 
         feed.Publish(LiveEventTypes.AccountChanged, $$"""{"account_id":"{{Tom:D}}"}""");
         var id = feed.Publish(LiveEventTypes.Inbox, $$"""{"recipient_ids":["{{Tom:D}}"]}""");
 
         Assert.Equal((LiveMessages.Inbox, id), ((await NextAsync()).Type, stream!.Current.Id));
+    }
+
+    [Fact]
+    public async Task APageRenderedByAClockRunningAheadIsStillShownAnewForChanges()
+    {
+        // After a reset the page counts from the browser's own clock, ten minutes fast here.
+        await OpenAsync(new LiveRequest("", null, null, TestData.Now.AddMinutes(10).ToUnixTimeMilliseconds()));
+
+        var id = feed.Publish(LiveEventTypes.AccountChanged, $$"""{"account_id":"{{Tom:D}}"}""");
+
+        Assert.Equal(new LiveMessage(LiveMessages.Reload, "{}", id), await NextAsync());
     }
 
     [Fact]

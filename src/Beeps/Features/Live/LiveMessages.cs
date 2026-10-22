@@ -40,6 +40,9 @@ public static class LiveMessages
     /// <summary>The account picked another colour scheme, maybe in another tab: <see cref="ThemeMessage"/>. The page switches in place.</summary>
     public const string Theme = "theme";
 
+    /// <summary>The account changed which languages it reads translated, maybe in another tab: the page fetches the beeps it shows again.</summary>
+    public const string Translation = "translation";
+
     /// <summary>The account signed in or out somewhere, maybe on this device: its devices page lists them anew.</summary>
     public const string Sessions = "sessions";
 

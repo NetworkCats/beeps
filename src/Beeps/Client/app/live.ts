@@ -122,6 +122,8 @@ function connect(): void {
   // The session ended elsewhere, or the account's language or rights changed: the page as a whole is different now.
   on(events, 'signed_out', () => void showWhole(events));
   on(events, 'reload', () => void showWhole(events));
+  // The account reads other languages translated now, or as written: the beeps shown are fetched again.
+  on(events, 'translation', () => redraw(shownIds()));
   // Events were missed: anything may have changed, so everything shown is fetched again.
   on(events, 'reset', (_, moved) => {
     // From here on the page catches up by fetching; a later reconnect replays from where the server caught up (the
@@ -144,7 +146,7 @@ function connect(): void {
 }
 
 // Messages that say nothing about the site's content.
-const NOT_CONTENT = new Set(['ping', 'inbox', 'close', 'signed_out', 'reload', 'theme', 'sessions']);
+const NOT_CONTENT = new Set(['ping', 'inbox', 'close', 'signed_out', 'reload', 'theme', 'translation', 'sessions']);
 
 /** `moved`: the message came with an id of its own, which is now where a reconnect starts from. */
 function on<T>(events: EventSource, type: string, handle: (data: T, moved: boolean) => void): void {

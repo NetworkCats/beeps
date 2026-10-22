@@ -471,9 +471,23 @@ public sealed class BeepServiceTests
         Assert.True(result.IsSuccess);
         await counters.Received(1).AddAsync(beep.Id, new BeepCounts(1, 0), new BeepCounts(-1, 0), Arg.Any<CancellationToken>());
         await counters.DidNotReceive().AddAsync(notLiked.Id, Arg.Any<BeepCounts>(), Arg.Any<BeepCounts>(), Arg.Any<CancellationToken>());
-        Assert.Equal([[RateLimitPolicies.Like], [RateLimitPolicies.Like]], checkedPolicies);
+        Assert.Equal([[RateLimitPolicies.Like], [RateLimitPolicies.Like], [RateLimitPolicies.Like]], checkedPolicies);
         Assert.Equal(ErrorKind.NotFound, missing.Error?.Kind);
         Assert.Equal([$$"""{"beep_id":"{{beep.Id:D}}","actor_id":"{{OwnerId:D}}","liked":false}"""], TestData.LiveEvents(liveEvents, LiveEventTypes.LikeChanged));
+    }
+
+    [Fact]
+    public async Task ALikeIsTakenBackFromABeepOutOfSightNow()
+    {
+        // Liked, then its author was blocked: the beep is no longer visible to the viewer.
+        var beepId = Guid.NewGuid();
+        store.RemoveLikeAsync(OwnerId, beepId, Arg.Any<CancellationToken>()).Returns(true);
+
+        var result = await CreateService().UnlikeAsync(Human, beepId, TestSupport.Ct);
+
+        Assert.True(result.IsSuccess);
+        outbox.Received(1).Enqueue(BeepRecountRequest.MessageType, new BeepRecountRequest(beepId), Arg.Any<JsonTypeInfo<BeepRecountRequest>>());
+        Assert.Equal([$$"""{"beep_id":"{{beepId:D}}","actor_id":"{{OwnerId:D}}","liked":false}"""], TestData.LiveEvents(liveEvents, LiveEventTypes.LikeChanged));
     }
 
     [Fact]

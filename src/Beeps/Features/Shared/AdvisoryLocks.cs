@@ -26,6 +26,12 @@ public static class AdvisoryLocks
     /// </summary>
     public static long UnverifiedEmail(Guid userId) => Derive("unverified-email", userId);
 
+    /// <summary>
+    /// Per-account key for the ways to sign in: removing a passkey or unlinking Google or GitHub decides from the ones
+    /// left, so two removals at once must not both pass "not the last one".
+    /// </summary>
+    public static long SignInMethods(Guid userId) => Derive("sign-in-methods", userId);
+
     /// <summary>Held by whichever instance is running the scheduled job right now.</summary>
     public static long ScheduledJob(string name) => Derive($"job:{name}");
 

@@ -247,6 +247,9 @@ networks:
       config:
         - subnet: 172.30.0.0/24
           gateway: 172.30.0.1
+          # Addresses handed out to the other containers come from the upper half, so a service recreated while one
+          # colour is stopped cannot take that colour's fixed address (.11, .12) and block its next start.
+          ip_range: 172.30.0.128/25
 
 volumes:
   postgres-data:

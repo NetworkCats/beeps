@@ -193,29 +193,43 @@ public sealed partial class AccountService
             return AccountNotFound();
         }
 
-        var logins = await store.ListLoginsAsync(userId, cancellationToken);
-        if (logins.FirstOrDefault(l => l.Provider == ExternalProviders.Find(provider)) is not { } login)
+        string? unlinked = null;
+        // The ways left are read under the lock (RemovePasskeyAsync takes it too).
+        var result = await unitOfWork.InTransactionAsync(
+            AdvisoryLocks.SignInMethods(userId),
+            async ct =>
+            {
+                var logins = await store.ListLoginsAsync(userId, ct);
+                if (logins.FirstOrDefault(l => l.Provider == ExternalProviders.Find(provider)) is not { } login)
+                {
+                    return Result.Success;
+                }
+
+                // Passkeys sign in by themselves unless they are only the second step.
+                if (user.PasswordHash is null && logins.Count == 1
+                    && (user.PasskeyTwoFactor || (await store.ListPasskeysAsync(userId, ct)).Count == 0))
+                {
+                    return Error.Conflict(AccountErrorCodes.LastSignInMethod, localizer["Error.LastSignInMethod", ExternalProviders.DisplayName(login.Provider)]);
+                }
+
+                var limited = await rateLimits.CheckAsync(RateLimitPolicies.AccountChange, RateLimitPartitions.Account(userId), ct);
+                if (!limited.IsSuccess)
+                {
+                    return limited;
+                }
+
+                store.RemoveLogin(login);
+                await unitOfWork.SaveChangesAsync(ct);
+                unlinked = login.Provider;
+                return Result.Success;
+            },
+            cancellationToken);
+        if (unlinked is not null)
         {
-            return Result.Success;
+            LogUnlinked(logger, userId, unlinked);
         }
 
-        // Passkeys sign in by themselves unless they are only the second step.
-        if (user.PasswordHash is null && logins.Count == 1
-            && (user.PasskeyTwoFactor || (await store.ListPasskeysAsync(userId, cancellationToken)).Count == 0))
-        {
-            return Error.Conflict(AccountErrorCodes.LastSignInMethod, localizer["Error.LastSignInMethod", ExternalProviders.DisplayName(login.Provider)]);
-        }
-
-        var limited = await rateLimits.CheckAsync(RateLimitPolicies.AccountChange, RateLimitPartitions.Account(userId), cancellationToken);
-        if (!limited.IsSuccess)
-        {
-            return limited;
-        }
-
-        store.RemoveLogin(login);
-        await unitOfWork.SaveChangesAsync(cancellationToken);
-        LogUnlinked(logger, userId, login.Provider);
-        return Result.Success;
+        return result;
     }
 
     private static ExternalLogin NewLogin(Guid userId, ExternalIdentity identity, DateTimeOffset now) => new()

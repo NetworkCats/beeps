@@ -415,14 +415,14 @@ public sealed partial class BeepService(
         await store.AddViewsAsync(new Dictionary<Guid, long> { [beepId] = 1 }, cancellationToken);
     }
 
+    /// <summary>
+    /// Takes a like back, also from a beep out of the viewer's sight now (its author blocked since, say), which a like
+    /// would otherwise stay on for good. A beep out of sight that was never liked is not found.
+    /// </summary>
     public async Task<Result> UnlikeAsync(Viewer viewer, Guid beepId, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(viewer);
         var beep = await store.FindVisibleAsync(beepId, viewer.ActorId, cancellationToken);
-        if (beep is null)
-        {
-            return NotFound();
-        }
 
         // Same quota as liking, so flipping a like on and off is not free.
         var limited = await rateLimits.CheckAsync(RateLimitPolicies.Like, RateLimitPartitions.Actor(viewer.ActorId), cancellationToken);
@@ -431,12 +431,23 @@ public sealed partial class BeepService(
             return limited;
         }
 
-        if (await store.RemoveLikeAsync(viewer.ActorId, beepId, cancellationToken))
+        if (!await store.RemoveLikeAsync(viewer.ActorId, beepId, cancellationToken))
         {
-            await CountAsync(beep, new BeepCounts(-1, 0), cancellationToken);
-            await live.LikeChangedAsync(beepId, viewer.ActorId, liked: false, cancellationToken);
+            return beep is null ? NotFound() : Result.Success;
         }
 
+        if (beep is not null)
+        {
+            await CountAsync(beep, new BeepCounts(-1, 0), cancellationToken);
+        }
+        else
+        {
+            // Its counts were not read: recounted from the rows instead.
+            outbox.Enqueue(BeepRecountRequest.MessageType, new BeepRecountRequest(beepId), BeepCountsJsonContext.Default.BeepRecountRequest);
+            await unitOfWork.SaveChangesAsync(CancellationToken.None);
+        }
+
+        await live.LikeChangedAsync(beepId, viewer.ActorId, liked: false, cancellationToken);
         return Result.Success;
     }
 

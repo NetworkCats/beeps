@@ -1025,7 +1025,7 @@ public sealed partial class AccountServiceTests
     }
 
     [Fact]
-    public async Task TheLanguagesLeftUntranslatedAreSavedAndOpenTabsShownAnew()
+    public async Task TheLanguagesLeftUntranslatedAreSavedAndOpenTabsDrawTheirBeepsAgain()
     {
         var user = TestData.User();
         user.Locale = "zh-Hans";
@@ -1040,7 +1040,9 @@ public sealed partial class AccountServiceTests
         Assert.Equal(["zh", "other"], user.UntranslatedLanguages);
         Assert.Equal(1, unitOfWork.Saves);
         await store.Received(1).ForgetAccountAsync(user.Id, Arg.Any<CancellationToken>());
-        Assert.Equal([$$"""{"account_id":"{{user.Id:D}}"}"""], TestData.LiveEvents(liveEvents, LiveEventTypes.AccountChanged));
+        Assert.Equal([$$"""{"account_id":"{{user.Id:D}}"}"""], TestData.LiveEvents(liveEvents, LiveEventTypes.TranslationChanged));
+        // Not shown anew as a whole: the settings page the switch was flipped on keeps its focus.
+        Assert.Empty(TestData.LiveEvents(liveEvents, LiveEventTypes.AccountChanged));
         Assert.Equal(ErrorKind.NotFound, missing.Error?.Kind);
     }
 
@@ -1465,6 +1467,21 @@ public sealed partial class AccountServiceTests
 
         Assert.Equal(AccountErrorCodes.CodeInvalid, expired.Error?.Code);
         Assert.Equal(AccountErrorCodes.CodeInvalid, none.Error?.Code);
+        Assert.Single(sentCodes);
+    }
+
+    [Fact]
+    public async Task AMoveWhoseCodeRanOutOfGuessesIsNotSentAgain()
+    {
+        var user = TestData.User(passwordHash: "hashed:old password");
+        var (_, stored) = await IssueEmailChangeCodeAsync(user, "new@example.org");
+        // Sent long enough ago to send again, but every guess is used.
+        stored.ExpiresAt = TestData.Now - AccountService.ResendInterval + AccountService.CodeLifetime;
+        stored.Attempts = AccountService.MaxCodeAttempts;
+
+        var result = await CreateService().ResendEmailChangeAsync(user.Id, TestData.Origin, TestSupport.Ct);
+
+        Assert.Equal(AccountErrorCodes.CodeInvalid, result.Error?.Code);
         Assert.Single(sentCodes);
     }
 

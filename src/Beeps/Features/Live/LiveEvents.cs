@@ -83,6 +83,9 @@ public static class LiveEventTypes
     /// <summary>The account picked another colour scheme: its open tabs switch to it in place.</summary>
     public const string ThemeChanged = "theme_changed";
 
+    /// <summary>The account changed which languages it reads translated: its open tabs draw the beeps they show again.</summary>
+    public const string TranslationChanged = "translation_changed";
+
     /// <summary>The search index changed: open search results are asked again.</summary>
     public const string SearchChanged = "search_changed";
 

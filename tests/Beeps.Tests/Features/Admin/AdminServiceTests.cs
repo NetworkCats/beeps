@@ -428,6 +428,7 @@ public sealed class AdminServiceTests
     public async Task RevokingAKeyIssuesNoNewOne()
     {
         var agent = Agent();
+        agents.RevokeKeysAsync(agent.Id, TestData.Now, Arg.Any<CancellationToken>()).Returns(1);
 
         var result = await CreateService().RevokeAgentKeyAsync(AdminId, agent.Id, TestSupport.Ct);
 
@@ -435,6 +436,17 @@ public sealed class AdminServiceTests
         await agents.Received(1).RevokeKeysAsync(agent.Id, TestData.Now, Arg.Any<CancellationToken>());
         agents.DidNotReceiveWithAnyArgs().AddKey(default!);
         Assert.Equal(AuditActions.RevokeAgentKey, Assert.Single(audit).Action);
+    }
+
+    [Fact]
+    public async Task RevokingWhenThereIsNoKeyAuditsNothing()
+    {
+        var agent = Agent();
+
+        var result = await CreateService().RevokeAgentKeyAsync(AdminId, agent.Id, TestSupport.Ct);
+
+        Assert.True(result.IsSuccess);
+        Assert.Empty(audit);
     }
 
     [Fact]
