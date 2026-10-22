@@ -30,8 +30,9 @@ RUN dotnet publish src/Beeps/Beeps.csproj -c Release -a "$TARGETARCH" --no-resto
     -p:PublishReadyToRun=true -p:Version="${VERSION#v}"
 # Migrations run once per deploy, before the new version takes traffic, never at each instance's start.
 # Making the bundle builds the DbContext, which wants a connection string; it is never opened here, and the bundle
-# reads the real one from the environment when it runs.
-RUN export ConnectionStrings__Postgres="Host=localhost;Database=beeps" \
+# reads the real one from the environment when it runs. MSBuild takes VERSION from the environment as the Version
+# property, which wants no v; with it, the restore the bundle's build runs fails without saying why.
+RUN export ConnectionStrings__Postgres="Host=localhost;Database=beeps" VERSION="${VERSION#v}" \
     && case "$TARGETARCH" in amd64) rid=linux-x64 ;; arm64) rid=linux-arm64 ;; *) echo "No RID for $TARGETARCH" >&2; exit 1 ;; esac \
     && dotnet ef migrations bundle --project src/Beeps/Beeps.csproj --configuration Release --target-runtime "$rid" \
         --output /bundle/efbundle --force
