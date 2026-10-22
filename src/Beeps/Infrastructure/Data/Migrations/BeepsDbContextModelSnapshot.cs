@@ -339,6 +339,10 @@ namespace Beeps.Infrastructure.Data.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("following_count");
 
+                    b.Property<DateTimeOffset?>("GravatarCheckedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("gravatar_checked_at");
+
                     b.Property<bool>("HideFollowCounts")
                         .HasColumnType("boolean")
                         .HasColumnName("hide_follow_counts");
@@ -408,6 +412,10 @@ namespace Beeps.Infrastructure.Data.Migrations
                     b.HasIndex(new[] { "Id" }, "ix_users_banned")
                         .HasDatabaseName("ix_users_banned")
                         .HasFilter("banned_at IS NOT NULL");
+
+                    b.HasIndex(new[] { "CreatedAt" }, "ix_users_gravatar_unchecked")
+                        .HasDatabaseName("ix_users_gravatar_unchecked")
+                        .HasFilter("gravatar_checked_at IS NULL AND email_verified_at IS NOT NULL");
 
                     b.HasIndex(new[] { "CreatedAt" }, "ix_users_unverified")
                         .HasDatabaseName("ix_users_unverified")

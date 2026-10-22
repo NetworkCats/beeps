@@ -203,6 +203,50 @@ public sealed class AvatarServiceTests
         await store.DidNotReceiveWithAnyArgs().SetAvatarAsync(default, default, TestSupport.Ct);
     }
 
+    [Fact]
+    public async Task AnImportedImageBecomesTheFirstAvatarWithoutUsingTheAvatarQuota()
+    {
+        Guid? uploaded = null;
+        media.Store.When(s => s.AddMedia(Arg.Any<MediaItem>())).Do(ci => uploaded = ci.Arg<MediaItem>().Id);
+        media.OwnEverything();
+        store.SetFirstAvatarAsync(default, default, TestSupport.Ct).ReturnsForAnyArgs(true);
+        var limits = Substitute.For<IRateLimitStore>();
+        limits.TryAcquireAsync(default!, TestSupport.Ct).ReturnsForAnyArgs(RateLimitDecision.Allowed);
+
+        var result = await Create(limits).ImportAsync(OwnerId, TestImages.Content(TestImages.Png()), TestSupport.Ct);
+
+        Assert.True(result.IsSuccess);
+        await store.Received(1).SetFirstAvatarAsync(OwnerId, uploaded!.Value, Arg.Any<CancellationToken>());
+        await store.DidNotReceiveWithAnyArgs().SetAvatarAsync(default, default, TestSupport.Ct);
+        await accounts.Received(1).ForgetAccountAsync(OwnerId, Arg.Any<CancellationToken>());
+        Assert.Equal([$$"""{"actor_id":"{{OwnerId:D}}"}"""], TestData.LiveEvents(liveEvents, LiveEventTypes.ActorChanged));
+        // The upload counts as theirs; the change is not one they made.
+        await limits.DidNotReceive().TryAcquireAsync(Arg.Is<IReadOnlyList<RateLimitCounter>>(c => TestData.Policies(c).Contains(RateLimitPolicies.AvatarChange)), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task AnImportedImageLeavesAnAvatarSetMeanwhile()
+    {
+        media.OwnEverything();
+        store.SetFirstAvatarAsync(default, default, TestSupport.Ct).ReturnsForAnyArgs(false);
+
+        var result = await Create().ImportAsync(OwnerId, TestImages.Content(TestImages.Png()), TestSupport.Ct);
+
+        Assert.True(result.IsSuccess);
+        await store.DidNotReceiveWithAnyArgs().SetAvatarAsync(default, default, TestSupport.Ct);
+        await accounts.DidNotReceiveWithAnyArgs().ForgetAccountAsync(default, TestSupport.Ct);
+        Assert.Empty(TestData.LiveEvents(liveEvents, LiveEventTypes.ActorChanged));
+    }
+
+    [Fact]
+    public async Task OnlyHumansGetAnImportedAvatar()
+    {
+        var result = await Create().ImportAsync(AgentId, TestImages.Content(TestImages.Png()), TestSupport.Ct);
+
+        Assert.Equal(ErrorKind.NotFound, result.Error?.Kind);
+        media.Store.DidNotReceiveWithAnyArgs().AddMedia(default!);
+    }
+
     /// <summary>The bytes stored as the avatar size of the next upload.</summary>
     private Func<byte[]> CaptureAvatar()
     {

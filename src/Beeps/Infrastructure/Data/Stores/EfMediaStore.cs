@@ -131,6 +131,19 @@ public sealed class EfMediaStore(BeepsDbContext db, PendingCacheChanges cacheCha
         cacheChanges.Add(CacheChange.Actor(actorId));
     }
 
+    public async Task<bool> SetFirstAvatarAsync(Guid actorId, Guid mediaId, CancellationToken cancellationToken)
+    {
+        var updated = await db.Set<Actor>()
+            .Where(a => a.Id == actorId && a.AvatarMediaId == null)
+            .ExecuteUpdateAsync(s => s.SetProperty(a => a.AvatarMediaId, mediaId), cancellationToken);
+        if (updated > 0)
+        {
+            cacheChanges.Add(CacheChange.Actor(actorId));
+        }
+
+        return updated > 0;
+    }
+
     public async Task SetBannerAsync(Guid actorId, Guid? mediaId, CancellationToken cancellationToken)
     {
         await db.Set<Actor>()
@@ -145,6 +158,20 @@ public sealed class EfMediaStore(BeepsDbContext db, PendingCacheChanges cacheCha
             .Where(a => a.Id == actorId && a.BannerMedia != null && a.BannerMedia.Status == MediaStatus.Ready)
             .Select(a => a.BannerMedia!.StorageKey)
             .FirstOrDefaultAsync(cancellationToken);
+
+    public async Task<IReadOnlyList<GravatarCheck>> ListGravatarChecksAsync(int limit, CancellationToken cancellationToken) =>
+        await db.Set<User>()
+            .AsNoTracking()
+            .Where(u => u.GravatarCheckedAt == null && u.EmailVerifiedAt != null)
+            .OrderBy(u => u.CreatedAt)
+            .Take(limit)
+            .Select(u => new GravatarCheck(u.Id, u.Email, u.Actor.AvatarMediaId == null && u.Actor.DeletedAt == null && u.BannedAt == null))
+            .ToListAsync(cancellationToken);
+
+    public Task MarkGravatarCheckedAsync(Guid userId, DateTimeOffset checkedAt, CancellationToken cancellationToken) =>
+        db.Set<User>()
+            .Where(u => u.Id == userId)
+            .ExecuteUpdateAsync(s => s.SetProperty(u => u.GravatarCheckedAt, checkedAt), cancellationToken);
 
     private sealed record DeletedMedia(string StorageKey, DateTimeOffset CreatedAt, Guid Id);
 }

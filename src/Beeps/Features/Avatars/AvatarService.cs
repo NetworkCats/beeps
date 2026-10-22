@@ -19,17 +19,26 @@ public interface IAvatarStore
     /// <summary>Sets or (with null) removes the custom avatar. Runs immediately.</summary>
     Task SetAvatarAsync(Guid actorId, Guid? mediaId, CancellationToken cancellationToken);
 
+    /// <summary>Sets the custom avatar unless the actor has one; false if it had. Runs immediately.</summary>
+    Task<bool> SetFirstAvatarAsync(Guid actorId, Guid mediaId, CancellationToken cancellationToken);
+
     /// <summary>Sets or (with null) removes the profile banner. Runs immediately.</summary>
     Task SetBannerAsync(Guid actorId, Guid? mediaId, CancellationToken cancellationToken);
 
     /// <summary>The storage key of the actor's banner once it is ready; null for none.</summary>
     Task<string?> FindBannerKeyAsync(Guid actorId, CancellationToken cancellationToken);
+
+    /// <summary>Accounts with a verified address not yet looked up on Gravatar, oldest first.</summary>
+    Task<IReadOnlyList<GravatarCheck>> ListGravatarChecksAsync(int limit, CancellationToken cancellationToken);
+
+    /// <summary>The account is not looked up on Gravatar again. Runs immediately.</summary>
+    Task MarkGravatarCheckedAsync(Guid userId, DateTimeOffset checkedAt, CancellationToken cancellationToken);
 }
 
 /// <summary>
 /// Custom avatars: an image uploaded as an avatar becomes the viewer's, or one of their agents' if the
 /// viewer is a human; an agent only ever changes its own. Each change is a new upload: beep images cannot be used.
-/// Removing it brings the default pattern back.
+/// Removing it brings the default pattern back. A human's first one can also come from Gravatar (<see cref="GravatarImportJob"/>).
 /// </summary>
 public sealed partial class AvatarService(
     IAvatarStore store,
@@ -58,6 +67,23 @@ public sealed partial class AvatarService(
         return uploaded.IsSuccess ? await ChangeAsync(viewer, target.Value, uploaded.Value, cancellationToken) : uploaded.Error;
     }
 
+    /// <summary>
+    /// Makes an image found for the account on Gravatar its avatar, unless it has one by then: one the person set
+    /// meanwhile stays. Not a change the person made, so it counts against no avatar quota.
+    /// </summary>
+    public async Task<Result> ImportAsync(Guid userId, MediaContent file, CancellationToken cancellationToken)
+    {
+        var target = await store.FindActorAsync(userId, cancellationToken);
+        if (target is not { Kind: ActorKind.Human })
+        {
+            return Error.NotFound(ErrorCodes.NotFound, localizer["Error.ProfileNotFound"]);
+        }
+
+        var viewer = Viewer.Human(userId);
+        var uploaded = await media.UploadAvatarAsync(viewer, file, null, cancellationToken);
+        return uploaded.IsSuccess ? await ChangeAsync(viewer, target, uploaded.Value, cancellationToken, firstOnly: true) : uploaded.Error;
+    }
+
     /// <summary>Back to the default pattern. The image itself is deleted later, once nothing uses it.</summary>
     public async Task<Result> RemoveAsync(Viewer viewer, Guid actorId, CancellationToken cancellationToken)
     {
@@ -79,9 +105,10 @@ public sealed partial class AvatarService(
         return limited.IsSuccess ? target : limited.Error;
     }
 
-    private async Task<Result> ChangeAsync(Viewer viewer, AvatarTarget target, Guid? mediaId, CancellationToken cancellationToken)
+    /// <param name="firstOnly">Only if the actor has no avatar; an upload not set goes with the unused ones.</param>
+    private async Task<Result> ChangeAsync(Viewer viewer, AvatarTarget target, Guid? mediaId, CancellationToken cancellationToken, bool firstOnly = false)
     {
-        var result = await unitOfWork.InTransactionAsync(
+        var changed = await unitOfWork.InTransactionAsync<bool>(
             null,
             async ct =>
             {
@@ -92,13 +119,23 @@ public sealed partial class AvatarService(
                     return media.Unreadable();
                 }
 
+                if (firstOnly)
+                {
+                    return await store.SetFirstAvatarAsync(target.Id, mediaId!.Value, ct);
+                }
+
                 await store.SetAvatarAsync(target.Id, mediaId, ct);
-                return Result.Success;
+                return true;
             },
             cancellationToken);
-        if (!result.IsSuccess)
+        if (!changed.IsSuccess)
         {
-            return result;
+            return changed.Error;
+        }
+
+        if (!changed.Value)
+        {
+            return Result.Success;
         }
 
         // The navigation bar shows a human's avatar from the cached account state.

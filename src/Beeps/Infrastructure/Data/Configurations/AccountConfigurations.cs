@@ -57,6 +57,10 @@ internal sealed class UserConfiguration : IEntityTypeConfiguration<User>
         builder.HasIndex(u => u.CreatedAt, "ix_users_unverified")
             .HasFilter("email_verified_at IS NULL AND normalized_email NOT LIKE 'released:%'")
             .HasDatabaseName("ix_users_unverified");
+        // The Gravatar import: verified accounts not looked up yet, oldest first. Each leaves the index once looked up.
+        builder.HasIndex(u => u.CreatedAt, "ix_users_gravatar_unchecked")
+            .HasFilter("gravatar_checked_at IS NULL AND email_verified_at IS NOT NULL")
+            .HasDatabaseName("ix_users_gravatar_unchecked");
         // Visibility checks every author against the banned ones, who are few.
         builder.HasIndex(u => u.Id, "ix_users_banned").HasFilter("banned_at IS NOT NULL").HasDatabaseName("ix_users_banned");
     }

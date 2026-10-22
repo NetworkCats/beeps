@@ -21,6 +21,12 @@ public sealed class User
 
     public DateTimeOffset? EmailVerifiedAt { get; set; }
 
+    /// <summary>
+    /// When the verified address was looked up on Gravatar for a first avatar (<see cref="Avatars.GravatarImportJob"/>);
+    /// null until then. Looked up once: an avatar removed later does not come back.
+    /// </summary>
+    public DateTimeOffset? GravatarCheckedAt { get; set; }
+
     public bool IsAdmin { get; set; }
 
     public DateTimeOffset? BannedAt { get; set; }

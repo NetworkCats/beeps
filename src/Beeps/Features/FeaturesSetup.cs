@@ -74,6 +74,7 @@ public static class FeaturesSetup
         services.AddScoped<IScheduledJob, IdempotencyCleanupJob>();
         services.AddScoped<IScheduledJob, BeepCounterFlushJob>();
         services.AddScoped<IScheduledJob, MediaCleanupJob>();
+        services.AddScoped<IScheduledJob, GravatarImportJob>();
         return services;
     }
 }

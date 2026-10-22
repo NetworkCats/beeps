@@ -20,6 +20,7 @@ using Beeps.Infrastructure.Data;
 using Beeps.Infrastructure.Data.Stores;
 using Beeps.Infrastructure.DisposableEmails;
 using Beeps.Infrastructure.Email;
+using Beeps.Infrastructure.Gravatar;
 using Beeps.Infrastructure.Http;
 using Beeps.Infrastructure.IpGeolocation;
 using Beeps.Infrastructure.Jobs;
@@ -57,6 +58,7 @@ public static class InfrastructureSetup
         services.AddBeepsIpLocation();
         services.AddBeepsDisposableEmails();
         services.AddBeepsCrawlerAddresses();
+        services.AddBeepsGravatar();
         services.AddSingleton<IImageProcessor, SkiaImageProcessor>();
         services.AddBeepsPreviews();
         services.AddSingleton<IRateLimitStore, RedisRateLimitStore>();
