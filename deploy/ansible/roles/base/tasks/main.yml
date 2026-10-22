@@ -74,6 +74,15 @@
   when: not base_swapfile.stat.exists
   changed_when: true
 
+# Vultr's image comes with a swap file of its own at /swapfile, listed in its own way; with the line below as well,
+# it would be listed twice.
+- name: Drop the image's line for the swap file
+  tags: [kernel]
+  ansible.builtin.lineinfile:
+    path: /etc/fstab
+    regexp: '^/swapfile\s+swap\s'
+    state: absent
+
 - name: Use the swap file at boot
   tags: [kernel]
   ansible.posix.mount:
