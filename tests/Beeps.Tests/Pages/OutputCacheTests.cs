@@ -4,6 +4,7 @@ using Beeps.Features.Shared;
 using Beeps.Features.Shared.Http;
 using Microsoft.AspNetCore.OutputCaching;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using Beeps.Tests.Support;
 using Microsoft.AspNetCore.Mvc.Testing;
 
@@ -140,6 +141,18 @@ public sealed class OutputCacheTests : IDisposable
         {
             Assert.Contains("second", await client.GetStringAsync(new Uri(path, UriKind.Relative), TestSupport.Ct), StringComparison.Ordinal);
         }
+    }
+
+    [Fact]
+    public void TheCacheTakesNoMoreMemoryThanItIsGiven()
+    {
+        using var limited = factory.WithWebHostBuilder(builder => builder.UseSetting("PublicPageCache:SizeLimitMegabytes", "8"));
+
+        var options = limited.Services.GetRequiredService<IOptions<OutputCacheOptions>>().Value;
+
+        Assert.Equal(8L * 1024 * 1024, options.SizeLimit);
+        // Far below the framework's 64 MB: one page never takes a large share of it.
+        Assert.Equal(1024 * 1024, options.MaximumBodySize);
     }
 
     public void Dispose()

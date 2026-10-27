@@ -14,6 +14,12 @@ public sealed class PublicPageCacheOptions
 
     /// <summary>Seconds, not minutes: signed-out visitors get no live updates, so they see at most this much staleness.</summary>
     public TimeSpan Duration { get; set; } = TimeSpan.FromSeconds(5);
+
+    /// <summary>
+    /// Memory an instance gives its copies, in megabytes (counted as their bodies' size). The framework's default is
+    /// 100: a crawl through thousands of pages filled it in a minute, and the copies, long expired, stayed until the next.
+    /// </summary>
+    public int SizeLimitMegabytes { get; set; } = 32;
 }
 
 /// <summary>
@@ -37,6 +43,9 @@ public static class PublicPageCache
     /// </summary>
     private static readonly string[] QueryKeys = ["before", "after"];
 
+    /// <summary>The largest page kept; a timeline or profile page is about 70 KB.</summary>
+    private const int MaximumBodyBytes = 1024 * 1024;
+
     /// <summary>
     /// The query string a cached page may echo (an address that comes back to it): only <see cref="QueryKeys"/>, as the
     /// copy is shared by every query that differs in nothing else.
@@ -53,6 +62,10 @@ public static class PublicPageCache
         services.AddOptions<PublicPageCacheOptions>().BindConfiguration(PublicPageCacheOptions.SectionName);
         services.AddOutputCache();
         services.AddOptions<OutputCacheOptions>().Configure<IOptions<PublicPageCacheOptions>>((options, page) =>
+        {
+            options.SizeLimit = Math.Max(1, page.Value.SizeLimitMegabytes) * 1024L * 1024L;
+            // A page larger than this (a very long thread) is drawn each time rather than taking a share of the cache.
+            options.MaximumBodySize = MaximumBodyBytes;
             options.AddPolicy(Policy, builder =>
             {
                 builder.AddPolicy<RevalidatePolicy>();
@@ -72,7 +85,8 @@ public static class PublicPageCache
                     // A page's data (/page-data/…) is asked for as the page itself, marked by this header (Pages/Islands).
                     .SetVaryByHeader(IslandsHeader)
                     .SetVaryByQuery(QueryKeys);
-            }));
+            });
+        });
         return services;
     }
 

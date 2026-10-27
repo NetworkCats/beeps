@@ -20,8 +20,11 @@ public sealed class CacheOptions
     /// </summary>
     public TimeSpan LocalExpiration { get; set; } = TimeSpan.FromSeconds(30);
 
-    /// <summary>Memory an instance gives its own copies, in megabytes (counted as their JSON size).</summary>
-    public int LocalSizeLimitMegabytes { get; set; } = 64;
+    /// <summary>
+    /// Memory an instance gives its own copies, in megabytes (counted as their JSON size; as objects they take about
+    /// twice that). Copies live for <see cref="LocalExpiration"/> only, so this is reached under heavy traffic alone.
+    /// </summary>
+    public int LocalSizeLimitMegabytes { get; set; } = 32;
 
     /// <summary>Beeps: text, author, thread, mentions and images. Counts come live from their own hashes.</summary>
     public TimeSpan BeepExpiration { get; set; } = TimeSpan.FromHours(1);

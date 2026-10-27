@@ -27,6 +27,10 @@ x-app: &app
     ASPNETCORE_ENVIRONMENT: Production
     ForwardedHeaders__KnownProxies__0: 172.30.0.1
     DataProtection__CertificatePath: /run/secrets/beeps/dataprotection.pfx
+    # The GC heap may take half of mem_limit (hexadecimal 0x32 = 50%), not the 75% it takes by default. With that much
+    # room it put off collecting: a crawl through public pages took the app to 590 MB of 640, and it stayed near 500
+    # once the crawl was over, though the live heap is near 120 MB. At 40%, collections began to cost throughput.
+    DOTNET_GCHeapHardLimitPercent: "0x32"
   volumes:
     - ./secrets/app:/run/secrets/beeps:ro
   restart: unless-stopped

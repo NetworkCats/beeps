@@ -43,6 +43,7 @@ public static class InfrastructureSetup
     public static IServiceCollection AddBeepsInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
         services.AddSingleton(TimeProvider.System);
+        services.AddHostedService<MemoryTrimmer>();
         services.AddBeepsForwardedHeaders();
         services.AddBeepsDatabase();
         services.AddBeepsRedis();

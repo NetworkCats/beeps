@@ -36,7 +36,12 @@ public sealed partial class ContentCache : IDisposable
         this.options = options;
         this.time = time;
         this.logger = logger;
-        local = new MemoryCache(new MemoryCacheOptions { SizeLimit = options.Value.LocalSizeLimitMegabytes * 1024L * 1024L });
+        local = new MemoryCache(new MemoryCacheOptions
+        {
+            SizeLimit = options.Value.LocalSizeLimitMegabytes * 1024L * 1024L,
+            // Expired copies are only dropped by a scan, once a minute by default: twice their lifetime in memory.
+            ExpirationScanFrequency = options.Value.LocalExpiration,
+        });
     }
 
     /// <summary>
